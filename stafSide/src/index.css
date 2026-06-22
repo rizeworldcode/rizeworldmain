@@ -1,0 +1,58 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 40% 95%;
+    --clay-shadow: #c8d0e7;
+    --clay-highlight: #ffffff;
+  }
+
+  body {
+    @apply bg-[#eef2f6] text-[#334155] antialiased;
+    font-family: 'Nunito', sans-serif;
+  }
+}
+
+@layer components {
+  .clay-flat {
+    background: #eef2f6;
+    box-shadow: 12px 12px 24px var(--clay-shadow), 
+                -12px -12px 24px var(--clay-highlight);
+  }
+
+  .clay-inset {
+    background: #eef2f6;
+    box-shadow: inset 6px 6px 12px var(--clay-shadow), 
+                inset -6px -6px 12px var(--clay-highlight);
+  }
+
+  .clay-pressed {
+    background: #eef2f6;
+    box-shadow: inset 4px 4px 8px var(--clay-shadow), 
+                inset -4px -4px 8px var(--clay-highlight);
+  }
+
+  .clay-card {
+    @apply rounded-[2.5rem] transition-all duration-300;
+    background: #eef2f6;
+    box-shadow: 12px 12px 24px #c8d0e7, 
+                -12px -12px 24px #ffffff;
+  }
+
+  .clay-card:hover {
+    box-shadow: 16px 16px 32px #c8d0e7, 
+                -16px -16px 32px #ffffff;
+    transform: translateY(-4px);
+  }
+
+  .glass-morph {
+    @apply backdrop-blur-md bg-white/30 border border-white/40;
+  }
+}
+
+/* Atmospheric Blobs */
+.blob {
+  @apply absolute rounded-full blur-[100px] opacity-20 pointer-events-none;
+}
