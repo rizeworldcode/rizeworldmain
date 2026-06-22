@@ -15,40 +15,41 @@ const app = express();
 
 
 
-app.use(cors({
-  origin: true,
-  credentials: true
-}));
+// app.use(cors({
+//   origin: true,
+//   credentials: true
+// }));
 // CORS configuration
-// const allowedOrigins = [
-//   'http://localhost:5173',
-//   'http://localhost:5174',
-//   'http://localhost:5175',
-//   'http://localhost:5176',
-//   'http://localhost:5177',
-//   'http://localhost:5178',
-//   'http://localhost:5179',
-//   'http://localhost:5180',
-// ];
+const allowedOrigins = [
+  'https://employee.rizeworld.in',
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://localhost:5175',
+  'http://localhost:5176',
+  'http://localhost:5177',
+  'http://localhost:5178',
+  'http://localhost:5179',
+  'http://localhost:5180',
+];
 
-// const corsOptions = {
-//   origin: function (origin, callback) {
-//     // Allow requests with no origin (like mobile apps or curl)
-//     if (!origin) return callback(null, true);
-//     if (allowedOrigins.indexOf(origin) !== -1) {
-//       return callback(null, true);
-//     } else {
-//       return callback(new Error('CORS policy: This origin is not allowed by CORS'));
-//     }
-//   },
-//   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-//   credentials: true,
-//   allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'Accept', 'X-Requested-With']
-// };
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      return callback(null, true);
+    } else {
+      return callback(new Error('CORS policy: This origin is not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'Accept', 'X-Requested-With']
+};
 
-// // Apply CORS middleware
-// app.use(cors(corsOptions));
-// app.options('*', cors(corsOptions));
+// Apply CORS middleware
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 // Allow embedding public files (TC PDFs) in iframes from the dev frontend origins
 app.use((req, res, next) => {
