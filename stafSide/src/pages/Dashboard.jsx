@@ -284,7 +284,7 @@ const Dashboard = () => {
     if (!staffId) return;
     
     try {
-      const response = await fetch(`http://localhost:45000/api/notifications/staff/${staffId}`);
+      const response = await fetch(`https://rizeworldmain.onrender.com/api/notifications/staff/${staffId}`);
       const result = await response.json();
       if (result.success) {
         setNotifications(result.data);
@@ -300,7 +300,7 @@ const Dashboard = () => {
     const staffId = staffInfo.id || staffInfo._id;
     
     try {
-      await fetch(`http://localhost:45000/api/notifications/${notificationId}/read/${staffId}`, {
+      await fetch(`https://rizeworldmain.onrender.com/api/notifications/${notificationId}/read/${staffId}`, {
         method: 'PATCH'
       });
       // Update local state to mark as read
@@ -316,7 +316,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     // Initialize Socket.IO connection
-    socketRef.current = io('http://localhost:45000');
+    socketRef.current = io('https://rizeworldmain.onrender.com');
     
     // Listen for new notifications
     socketRef.current.on('newNotification', (newNotification) => {
@@ -459,7 +459,7 @@ const Dashboard = () => {
     }
     
     try {
-      const response = await fetch(`http://localhost:45000/api/staff/${staffId}/clock-in`, { 
+      const response = await fetch(`https://rizeworldmain.onrender.com/api/staff/${staffId}/clock-in`, { 
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -500,7 +500,7 @@ const Dashboard = () => {
     }
     
     try {
-      const response = await fetch(`http://localhost:45000/api/staff/${staffId}/clock-out`, { 
+      const response = await fetch(`https://rizeworldmain.onrender.com/api/staff/${staffId}/clock-out`, { 
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -541,7 +541,7 @@ const Dashboard = () => {
     
     try {
       setDelayWorkLoading(true);
-      const response = await fetch(`http://localhost:45000/api/delay-work/staff/${staffId}`);
+      const response = await fetch(`https://rizeworldmain.onrender.com/api/delay-work/staff/${staffId}`);
       const result = await response.json();
       if (result.success) {
         setDelayWork(result.data);
@@ -573,7 +573,7 @@ const Dashboard = () => {
     }
 
     try {
-      const response = await fetch('http://localhost:45000/api/delay-work', {
+      const response = await fetch('https://rizeworldmain.onrender.com/api/delay-work', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...delayWorkForm, staffId })
@@ -606,7 +606,7 @@ const Dashboard = () => {
       return;
     }
     try {
-      const response = await fetch(`http://localhost:45000/api/staff/${staffId}/toggle-task`, {
+      const response = await fetch(`https://rizeworldmain.onrender.com/api/staff/${staffId}/toggle-task`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ taskIndex })
@@ -649,7 +649,7 @@ const Dashboard = () => {
     // Convert to comma-separated string for updateTodayWork endpoint
     const todayWork = updatedTasks.map(t => t.name).join(', ');
     try {
-      const response = await fetch(`http://localhost:45000/api/staff/${staffId}/today-work`, { 
+      const response = await fetch(`https://rizeworldmain.onrender.com/api/staff/${staffId}/today-work`, { 
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ todayWork })
@@ -679,7 +679,7 @@ const Dashboard = () => {
     // Convert to comma-separated string for updateTodayWork endpoint
     const todayWork = updatedTasks.map(t => t.name).join(', ');
     try {
-      const response = await fetch(`http://localhost:45000/api/staff/${staffId}/today-work`, { 
+      const response = await fetch(`https://rizeworldmain.onrender.com/api/staff/${staffId}/today-work`, { 
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ todayWork })
@@ -701,7 +701,7 @@ const Dashboard = () => {
     // We don't need this anymore since tasks are managed individually, but keeping it for compatibility
     const todayWork = todayTasks.map(t => t.name).join(', ');
     try {
-      const response = await fetch(`http://localhost:45000/api/staff/${staffInfo.id}/today-work`, { 
+      const response = await fetch(`https://rizeworldmain.onrender.com/api/staff/${staffInfo.id}/today-work`, { 
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ todayWork })
