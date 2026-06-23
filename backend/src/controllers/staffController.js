@@ -291,8 +291,9 @@ exports.clockInStaff = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Staff ID is required' });
     }
 
-    const now = new Date();
-    const clockInTime = formatTime(now);
+const now = new Date();
+const istNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+const clockInTime = formatTime(istNow);
     console.log('Clock in time:', clockInTime);
     
     const staff = await Staff.findById(req.params.id);
@@ -445,8 +446,9 @@ exports.clockOutStaff = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Staff ID is required' });
     }
 
-    const now = new Date();
-    const clockOutTime = formatTime(now);
+const now = new Date();
+const istNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+const clockInTime = formatTime(istNow);
     console.log('Clock out time:', clockOutTime);
     
     const staff = await Staff.findById(req.params.id);
