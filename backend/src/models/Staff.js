@@ -57,10 +57,7 @@ const staffSchema = new mongoose.Schema({
     paidAt: { type: Date, default: Date.now }
   }],
   clock:[{
-    date: {
-      type: Date,
-      default: Date.now
-    },
+    date: istNow,
     sessions: [{
       clockIn: {
         type: String,
