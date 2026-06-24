@@ -446,9 +446,9 @@ exports.clockOutStaff = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Staff ID is required' });
     }
 
-const now = new Date();
-const istNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
-const clockInTime = formatTime(istNow);
+    const now = new Date();
+    const istNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+    const clockOutTime = formatTime(istNow);  // ← was incorrectly named clockInTime
     console.log('Clock out time:', clockOutTime);
     
     const staff = await Staff.findById(req.params.id);
