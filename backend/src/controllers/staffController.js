@@ -442,135 +442,101 @@ exports.clockOutStaff = async (req, res) => {
   try {
     console.log('=== Starting clock out ===');
     if (!req.params.id) {
-      console.log('Missing staff ID');
       return res.status(400).json({ success: false, message: 'Staff ID is required' });
     }
 
     const now = new Date();
     const istNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
-    const clockOutTime = formatTime(istNow);  // ← was incorrectly named clockInTime
+    const clockOutTime = formatTime(istNow);
     console.log('Clock out time:', clockOutTime);
-    
+
     const staff = await Staff.findById(req.params.id);
     if (!staff) {
-      console.log('Staff not found');
       return res.status(404).json({ success: false, message: 'Staff not found' });
     }
 
-    console.log('Found staff:', staff._id, staff.name);
-    console.log('Staff clock_status:', staff.clock_status);
-    console.log('Staff clock:', staff.clock);
-
-    // Check if today is Sunday
-    if (now.getDay() === 0) {
-      console.log('It\'s Sunday');
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Cannot clock in/out on Sunday. Enjoy your day off!' 
+    // ✅ Check clock_status instead of date
+    if (staff.clock_status !== 'clock_in') {
+      return res.status(400).json({
+        success: false,
+        message: 'You must clock in first before clocking out.'
       });
     }
 
-    // Check if today is a leave day
+    // Check Sunday
+    if (istNow.getDay() === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot clock in/out on Sunday. Enjoy your day off!'
+      });
+    }
+
+    // ✅ Find the most recent clock record that has an open session (no clockOut)
+    let targetClockIndex = -1;
+    let targetSessionIndex = -1;
+
+    for (let i = staff.clock.length - 1; i >= 0; i--) {
+      const record = staff.clock[i];
+      for (let j = record.sessions.length - 1; j >= 0; j--) {
+        if (!record.sessions[j].clockOut) {
+          targetClockIndex = i;
+          targetSessionIndex = j;
+          break;
+        }
+      }
+      if (targetClockIndex !== -1) break;
+    }
+
+    if (targetClockIndex === -1) {
+      return res.status(400).json({
+        success: false,
+        message: 'No open clock-in session found.'
+      });
+    }
+
+    // Calculate duration and update session
+    const openSession = staff.clock[targetClockIndex].sessions[targetSessionIndex];
+    const sessionDuration = calculateDuration(openSession.clockIn, clockOutTime);
+
+    staff.clock[targetClockIndex].sessions[targetSessionIndex].clockOut = clockOutTime;
+    staff.clock[targetClockIndex].sessions[targetSessionIndex].duration = sessionDuration;
+    staff.clock[targetClockIndex].totalHours = calculateTotalHours(staff.clock[targetClockIndex].sessions);
+
+    staff.status = 'Clocked Out';
+    staff.clock_status = 'clock_out';
+
+    const updatedStaff = await staff.save();
+    console.log('Saved staff successfully');
+
+    const updatedTodayClock = updatedStaff.clock[targetClockIndex];
+
+    // Update attendance record
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    const hasLeave = staff.leaves?.some(l => {
-      const leaveDate = new Date(l.date);
-      leaveDate.setHours(0, 0, 0, 0);
-      return leaveDate.getTime() === today.getTime();
-    });
-
-    const hasLeaveAttendance = staff.attendance?.some(a => {
-      const attDate = new Date(a.date);
-      attDate.setHours(0, 0, 0, 0);
-      return attDate.getTime() === today.getTime() && a.status === 'On Leave';
-    });
-
-    if (hasLeave || hasLeaveAttendance) {
-      console.log('It\'s a leave day');
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Cannot clock in/out today. It is marked as leave day.' 
-      });
-    }
-
-    // Get today's clock record
-    const todayClockIndex = staff.clock?.findIndex(c => 
-      new Date(c.date) >= today && new Date(c.date) < tomorrow
-    );
-
-    console.log('Today clock index:', todayClockIndex);
-
-    if (todayClockIndex === -1) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'You must clock in first before clocking out.' 
-      });
-    }
-
-    const todayClockRecord = staff.clock[todayClockIndex];
-    const lastSession = todayClockRecord.sessions[todayClockRecord.sessions.length - 1];
-    console.log('Last session:', lastSession);
-
-    // Check if last session already has clockOut
-    if (lastSession.clockOut) {
-      console.log('Already clocked out');
-      return res.status(400).json({ 
-        success: false, 
-        message: 'You already clocked out. Please clock in to start a new session.' 
-      });
-    }
-
-    // Calculate duration for this session
-    const sessionDuration = calculateDuration(lastSession.clockIn, clockOutTime);
-    console.log('Session duration:', sessionDuration);
-
-    // Update the last session with clockOut and duration directly on the document
-    const sessionIndex = todayClockRecord.sessions.length - 1;
-    todayClockRecord.sessions[sessionIndex].clockOut = clockOutTime;
-    todayClockRecord.sessions[sessionIndex].duration = sessionDuration;
-    todayClockRecord.totalHours = calculateTotalHours(todayClockRecord.sessions);
-    console.log('Today clock total hours:', todayClockRecord.totalHours);
-    staff.status = 'Clocked Out';
-    staff.clock_status = 'clock_out';
-
-    console.log('About to save staff...');
-    const updatedStaff = await staff.save();
-    console.log('Saved staff successfully');
-    const updatedTodayClock = updatedStaff.clock?.find(c => 
-      new Date(c.date) >= today && new Date(c.date) < tomorrow
-    );
-
-    // Update attendance record
-    const todayAttendanceIndex = staff.attendance?.findIndex(a => 
-      new Date(a.date) >= today && new Date(a.date) < tomorrow
-    );
-
     const totalHoursStr = updatedTodayClock?.totalHours || '-';
     const [hours] = totalHoursStr.split('h').map(Number);
     const attendanceStatus = hours < 4 ? 'Half-Day' : 'Present';
-    console.log('Attendance status:', attendanceStatus);
+
+    const todayAttendanceIndex = staff.attendance?.findIndex(a =>
+      new Date(a.date) >= today && new Date(a.date) < tomorrow
+    );
 
     if (todayAttendanceIndex !== -1) {
       await Staff.findOneAndUpdate(
         { _id: req.params.id, "attendance.date": { $gte: today, $lt: tomorrow } },
-        { 
-          $set: { "attendance.$.status": attendanceStatus }
-        }
+        { $set: { "attendance.$.status": attendanceStatus } }
       );
     } else {
-      await Staff.findByIdAndUpdate(
-        req.params.id,
-        { 
-          $push: { attendance: { date: now, status: attendanceStatus } }
-        }
-      );
+      await Staff.findByIdAndUpdate(req.params.id, {
+        $push: { attendance: { date: now, status: attendanceStatus } }
+      });
     }
 
     const staffObj = updatedStaff.toObject();
-    // Emit Socket.IO event to notify staff of clock update
+
     try {
       const io = socketUtil.getIO();
       io.emit(`staff-clock-update-${staffObj._id}`, {
@@ -581,6 +547,7 @@ exports.clockOutStaff = async (req, res) => {
     } catch (err) {
       console.error('Error emitting socket event:', err);
     }
+
     res.status(200).json({
       success: true,
       message: 'Clocked out successfully',
@@ -595,9 +562,7 @@ exports.clockOutStaff = async (req, res) => {
     console.error(error);
     res.status(400).json({ success: false, message: error.message });
   }
-};
-
-// Update today's work
+};// Update today's work
 exports.updateTodayWork = async (req, res) => {
   try {
     const { todayWork } = req.body;
