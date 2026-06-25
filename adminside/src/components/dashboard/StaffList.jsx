@@ -118,7 +118,7 @@ const StaffList = ({ onViewAll }) => {
     <div className="glass-card p-6 rounded-2xl overflow-hidden transition-colors">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">Staff Management</h3>
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">Employee Management</h3>
           <p className="text-sm text-gray-500 font-medium">Daily attendance and work tracking</p>
         </div>
         <button 
@@ -133,12 +133,11 @@ const StaffList = ({ onViewAll }) => {
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-gray-100 dark:border-white/5 text-[11px] uppercase tracking-widest text-gray-400 dark:text-gray-500 font-bold">
-              <th className="pb-4 pl-2">Staff Member</th>
+              <th className="pb-4 pl-2">Employee Member</th>
               <th className="pb-4">Department</th>
               <th className="pb-4">Job Status</th>
               <th className="pb-4">Clock In</th>
               <th className="pb-4">Clock Out</th>
-              <th className="pb-4">Today's Work</th>
               <th className="pb-4 pr-2 text-right">Status / Action</th>
             </tr>
           </thead>
@@ -193,9 +192,6 @@ const StaffList = ({ onViewAll }) => {
                     <LogOut size={14} className="rotate-180" />
                     <span className="text-xs">{getTodayClockData(staff).clockOut}</span>
                   </div>
-                </td>
-                <td className="py-4">
-                  <p className="text-xs text-gray-500 dark:text-gray-400 max-w-[180px] truncate">{staff.todayWork || '-'}</p>
                 </td>
                 <td className="py-4 pr-2 text-right">
                   <div className="flex items-center justify-end gap-3">

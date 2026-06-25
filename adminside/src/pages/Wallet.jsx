@@ -8,7 +8,7 @@ const WalletPage = () => {
   const [filterType, setFilterType] = useState('all');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newTransaction, setNewTransaction] = useState({
-    type: 'client_payment',
+    source: 'client_payment',
     name: '',
     amount: '',
     date: new Date().toISOString().split('T')[0],
@@ -48,6 +48,7 @@ const WalletPage = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...newTransaction,
+          type: newTransaction.source,
           amount: parseFloat(newTransaction.amount),
         }),
       });
@@ -55,7 +56,7 @@ const WalletPage = () => {
       if (result.success) {
         setIsAddModalOpen(false);
         setNewTransaction({
-          type: 'client_payment',
+          source: 'client_payment',
           name: '',
           amount: '',
           date: new Date().toISOString().split('T')[0],
@@ -91,7 +92,7 @@ const WalletPage = () => {
   };
 
   const totalIncome = transactions
-    .filter(t => t.type === 'client_payment')
+    .filter(t => t.type === 'client_payment' || t.type === 'income' || t.source === 'client_payment')
     .reduce((sum, t) => sum + t.amount, 0);
   const totalExpense = transactions
     .filter(t => t.type === 'salary')
@@ -177,17 +178,17 @@ const WalletPage = () => {
       <div className="flex items-center gap-4">
         <Filter size={20} className="text-gray-500" />
         <div className="flex gap-2">
-          {['all', 'client_payment', 'salary'].map((type) => (
+          {['all', 'client_payment', 'salary'].map((source) => (
             <button
-              key={type}
-              onClick={() => setFilterType(type)}
+              key={source}
+              onClick={() => setFilterType(source)}
               className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                filterType === type
+                  filterType === source
                   ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
                   : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-white/5'
               }`}
             >
-              {type === 'all' ? 'All' : type === 'client_payment' ? 'Client Payments' : 'Salary'}
+              {source === 'all' ? 'All' : source === 'client_payment' ? 'Client Payments' : 'Salary'}
             </button>
           ))}
         </div>
@@ -252,21 +253,21 @@ const WalletPage = () => {
                     <td className="px-6 py-4">
                       <span
                         className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          transaction.type === 'client_payment'
+                          transaction.source === 'client_payment'
                             ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
                             : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'
                         }`}
                       >
-                        {transaction.type === 'client_payment' ? 'Income' : 'Expense'}
+                        {transaction.source === 'client_payment' ? 'income' : 'Expense'}
                       </span>
                     </td>
                     <td className="px-6 py-4">
                       <span
                         className={`font-bold ${
-                          transaction.type === 'client_payment' ? 'text-emerald-600' : 'text-rose-600'
+                          transaction.source === 'client_payment' ? 'text-emerald-600' : 'text-rose-600'
                         }`}
                       >
-                        {transaction.type === 'client_payment' ? '+' : '-'}₹
+                        {transaction.source === 'client_payment' ? '+' : '-'}₹
                         {transaction.amount.toLocaleString('en-IN')}
                       </span>
                     </td>
@@ -313,8 +314,8 @@ const WalletPage = () => {
                   Type
                 </label>
                 <select
-                  value={newTransaction.type}
-                  onChange={(e) => setNewTransaction({ ...newTransaction, type: e.target.value })}
+                  value={newTransaction.source}
+                  onChange={(e) => setNewTransaction({ ...newTransaction, source: e.target.value })}
                   className="w-full px-4 py-3 rounded-xl bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white"
                 >
                   <option value="client_payment">Client Payment</option>

@@ -8,6 +8,9 @@ const {
   createManualNotification
 } = require('../controllers/notificationController');
 const { notifyHRAndSupport } = require('../utils/notificationService');
+const { protect } = require('../middleware/authMiddleware');
+
+router.use(protect);
 
 // Get notifications for a specific staff member
 router.get('/staff/:staffId', getNotificationsForStaff);

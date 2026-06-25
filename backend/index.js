@@ -15,10 +15,6 @@ const app = express();
 
 
 
-// app.use(cors({
-//   origin: true,
-//   credentials: true
-// }));
 // CORS configuration
 const allowedOrigins = [
   'https://employee.rizeworld.in',
@@ -100,7 +96,15 @@ app.use('/api/notifications', notificationRoutes);
 // Delay Work routes
 const delayWorkRoutes = require('./src/routes/delayWorkRoutes');
 app.use('/api/delay-work', delayWorkRoutes);
+const clientAmountPaidRoutes = require('./src/routes/ClientAmountPaid');
+app.use('/api', clientAmountPaidRoutes);
+// admin validation routes
+const adminValidationRoutes = require('./src/routes/adminValidation');
+app.use('/api', adminValidationRoutes);
 
+// hearing routs
+const hearingRoutes = require('./src/routes/HR_hearing');
+app.use('/api', hearingRoutes);
 // Secure proxy endpoint to stream files from backend/public
 // Usage: /public-file?path=uploads/filename.pdf
 app.get('/public-file', (req, res) => {

@@ -4,8 +4,13 @@ import { LogOut } from 'lucide-react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import StaffLogin from './pages/StaffLogin';
+import HearingManagement from './pages/HearingManagement';
 
 const MainLayout = ({ onLogout }) => {
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const staffInfo = JSON.parse(localStorage.getItem('staffInfo') || '{}');
+  const isHR = staffInfo.role?.toLowerCase() === 'hr';
+
   return (
     <div className="min-h-screen bg-[#eef2f6] flex flex-col relative overflow-hidden">
       {/* Background Atmospheric Blobs */}
@@ -38,8 +43,34 @@ const MainLayout = ({ onLogout }) => {
 
       {/* Top Navbar */}
       <div className="flex items-center justify-between p-4 bg-[#eef2f6] z-40 sticky top-0">
-        <div className="w-10 h-10 bg-gradient-to-br from-[#8b5cf6] to-[#f472b6] rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/30">
-          <span className="text-white font-black text-lg">R</span>
+        <div className="flex items-center gap-4">
+          <div className="w-10 h-10 bg-gradient-to-br from-[#8b5cf6] to-[#f472b6] rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/30">
+            <span className="text-white font-black text-lg">R</span>
+          </div>
+          {isHR && (
+            <div className="flex items-center gap-2 bg-[#eef2f6] p-1 rounded-2xl clay-inset ml-2">
+              <button 
+                onClick={() => setActiveTab('dashboard')}
+                className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all ${
+                  activeTab === 'dashboard'
+                    ? 'clay-flat text-[#8b5cf6] font-bold shadow-md shadow-purple-500/10'
+                    : 'text-[#64748b] hover:text-[#8b5cf6]'
+                }`}
+              >
+                Dashboard
+              </button>
+              <button 
+                onClick={() => setActiveTab('hearing')}
+                className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all ${
+                  activeTab === 'hearing'
+                    ? 'clay-flat text-[#8b5cf6] font-bold shadow-md shadow-purple-500/10'
+                    : 'text-[#64748b] hover:text-[#8b5cf6]'
+                }`}
+              >
+                Hearing
+              </button>
+            </div>
+          )}
         </div>
         <button 
           onClick={onLogout}
@@ -51,7 +82,7 @@ const MainLayout = ({ onLogout }) => {
       
       {/* Main Content */}
       <main className="flex-1 p-4 md:p-10 relative z-10">
-        <Dashboard />
+        {activeTab === 'dashboard' ? <Dashboard /> : <HearingManagement />}
       </main>
     </div>
   );

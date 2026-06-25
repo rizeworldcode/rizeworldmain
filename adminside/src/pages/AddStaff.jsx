@@ -118,7 +118,7 @@ const AddStaff = ({ onBack }) => {
         </button>
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-            <UserPlus className="text-blue-500" /> Add New Staff Member
+            <UserPlus className="text-blue-500" /> Add New Employee
           </h1>
           <p className="text-gray-500 dark:text-gray-400 mt-1">Fill in the details to register a new employee</p>
         </div>
@@ -186,7 +186,7 @@ const AddStaff = ({ onBack }) => {
                   value={formData.department}
                   onChange={(e) => setFormData({...formData, department: e.target.value})}
                 >
-                  <option value="WEB DEvlopment" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">WEB DEvlopment</option>
+                  <option value="WEB DEvlopment" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">DEvlopment</option>
                   <option value="SEO" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">SEO</option>
                   <option value="Graphic Design" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Graphic Design</option>
                   <option value="SMM" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">SMM</option>
@@ -215,7 +215,7 @@ const AddStaff = ({ onBack }) => {
                 value={formData.role}
                 onChange={(e) => setFormData({...formData, role: e.target.value})}
               >
-                <option value="Staff" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Staff</option>
+                <option value="Staff" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Employee</option>
                 <option value="HR" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">HR</option>
                 <option value="Client Support" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Client Support</option>
                 <option value="Admin" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Admin</option>

@@ -7,6 +7,9 @@ const {
   updateOldClient,
   deleteOldClient
 } = require('../controllers/oldClientController');
+const { protect } = require('../middleware/authMiddleware');
+
+router.use(protect);
 
 router.route('/')
   .post(createOldClient)

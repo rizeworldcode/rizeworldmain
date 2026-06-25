@@ -8,7 +8,7 @@ const socketUtil = require('../../socket');
 exports.loginStaff = async (req, res) => {
   try {
     const { employeeId, password } = req.body;
-    
+
     const staff = await Staff.findOne({ employeeId });
     if (!staff) {
       return res.status(401).json({ success: false, message: 'Invalid Employee ID' });
@@ -35,8 +35,8 @@ exports.loginStaff = async (req, res) => {
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
-    
-    const todayClockRecord = staff.clock?.find(c => 
+
+    const todayClockRecord = staff.clock?.find(c =>
       new Date(c.date) >= today && new Date(c.date) < tomorrow
     );
 
@@ -73,15 +73,15 @@ exports.loginStaff = async (req, res) => {
 exports.createStaff = async (req, res) => {
   try {
     // Validate required fields for creation
-    if (!req.body.name || !req.body.phone || !req.body.email || 
-        !req.body.monthlySalary || !req.body.department || 
-        !req.body.jobType || !req.body.password) {
+    if (!req.body.name || !req.body.phone || !req.body.email ||
+      !req.body.monthlySalary || !req.body.department ||
+      !req.body.jobType || !req.body.password) {
       return res.status(400).json({
         success: false,
         message: 'Please provide all required fields: name, phone, email, monthlySalary, department, jobType, password'
       });
     }
-    
+
     // Auto-generate employee ID if not provided
     if (!req.body.employeeId) {
       const count = await Staff.countDocuments();
@@ -97,7 +97,7 @@ exports.createStaff = async (req, res) => {
         return doc;
       });
     }
-    
+
     const staff = new Staff(req.body);
     await staff.save();
     res.status(201).json({
@@ -232,10 +232,10 @@ const formatTime = (date) => {
 const timeToMinutes = (timeStr) => {
   const [time, modifier] = timeStr.split(' ');
   let [hours, minutes] = time.split(':').map(Number);
-  
+
   if (modifier === 'PM' && hours < 12) hours += 12;
   if (modifier === 'AM' && hours === 12) hours = 0;
-  
+
   return hours * 60 + minutes;
 };
 
@@ -244,13 +244,13 @@ const calculateDuration = (clockInStr, clockOutStr) => {
   try {
     const clockInMins = timeToMinutes(clockInStr);
     const clockOutMins = timeToMinutes(clockOutStr);
-    
+
     let diffMins = clockOutMins - clockInMins;
     if (diffMins < 0) diffMins += 24 * 60; // Handle overnight clock out
-    
+
     const hours = Math.floor(diffMins / 60);
     const mins = diffMins % 60;
-    
+
     return `${hours}h ${mins}m`;
   } catch (e) {
     console.error('Error calculating duration:', e);
@@ -271,10 +271,10 @@ const calculateTotalHours = (sessions) => {
         totalMins += diffMins;
       }
     });
-    
+
     const hours = Math.floor(totalMins / 60);
     const mins = totalMins % 60;
-    
+
     return `${hours}h ${mins}m`;
   } catch (e) {
     console.error('Error calculating total hours:', e);
@@ -291,11 +291,11 @@ exports.clockInStaff = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Staff ID is required' });
     }
 
-const now = new Date();
-const istNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
-const clockInTime = formatTime(istNow);
+    const now = new Date();
+    const istNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+    const clockInTime = formatTime(istNow);
     console.log('Clock in time:', clockInTime);
-    
+
     const staff = await Staff.findById(req.params.id);
     if (!staff) {
       console.log('Staff not found');
@@ -309,9 +309,9 @@ const clockInTime = formatTime(istNow);
     // Check if today is Sunday
     if (now.getDay() === 0) {
       console.log('It\'s Sunday');
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Cannot clock in/out on Sunday. Enjoy your day off!' 
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot clock in/out on Sunday. Enjoy your day off!'
       });
     }
 
@@ -335,40 +335,40 @@ const clockInTime = formatTime(istNow);
 
     if (hasLeave || hasLeaveAttendance) {
       console.log('It\'s a leave day');
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Cannot clock in/out today. It is marked as leave day.' 
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot clock in/out today. It is marked as leave day.'
       });
     }
 
     // Check if already clocked in today
-    const todayClockIndex = staff.clock?.findIndex(c => 
+    const todayClockIndex = staff.clock?.findIndex(c =>
       new Date(c.date) >= today && new Date(c.date) < tomorrow
     );
     console.log('Today clock index:', todayClockIndex);
 
     let updatedStaff;
-    
+
     if (todayClockIndex !== -1 && todayClockIndex !== undefined) {
       // Clock record exists for today
       const todayClockRecord = staff.clock[todayClockIndex];
       const lastSession = todayClockRecord.sessions[todayClockRecord.sessions.length - 1];
       console.log('Last session:', lastSession);
-      
+
       // Check if last session is already clocked in (no clockOut)
       if (lastSession && !lastSession.clockOut) {
         console.log('Already clocked in');
-        return res.status(400).json({ 
-          success: false, 
-          message: 'You already clocked in. Please clock out before clocking in again.' 
+        return res.status(400).json({
+          success: false,
+          message: 'You already clocked in. Please clock out before clocking in again.'
         });
       }
-      
+
       // Last session is completed, add new session
       updatedStaff = await Staff.findOneAndUpdate(
         { _id: req.params.id, "clock.date": { $gte: today, $lt: tomorrow } },
-        { 
-          $push: { 
+        {
+          $push: {
             "clock.$.sessions": {
               clockIn: clockInTime,
               clockOut: null,
@@ -384,8 +384,8 @@ const clockInTime = formatTime(istNow);
       console.log('Creating new clock record');
       updatedStaff = await Staff.findByIdAndUpdate(
         req.params.id,
-        { 
-          $push: { 
+        {
+          $push: {
             clock: {
               date: now,
               sessions: [{
@@ -403,7 +403,7 @@ const clockInTime = formatTime(istNow);
     }
 
     // Fetch today's updated clock data to send back
-    const updatedTodayClockIndex = updatedStaff.clock?.findIndex(c => 
+    const updatedTodayClockIndex = updatedStaff.clock?.findIndex(c =>
       new Date(c.date) >= today && new Date(c.date) < tomorrow
     );
     const updatedTodayClock = updatedStaff.clock[updatedTodayClockIndex];
@@ -567,7 +567,7 @@ exports.updateTodayWork = async (req, res) => {
   try {
     const { todayWork } = req.body;
     const now = new Date();
-    
+
     const staff = await Staff.findById(req.params.id);
     if (!staff) {
       return res.status(404).json({ success: false, message: 'Staff not found' });
@@ -582,7 +582,7 @@ exports.updateTodayWork = async (req, res) => {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    const todayWorkIndex = staff.work?.findIndex(w => 
+    const todayWorkIndex = staff.work?.findIndex(w =>
       new Date(w.date) >= today && new Date(w.date) < tomorrow
     );
 
@@ -602,24 +602,24 @@ exports.updateTodayWork = async (req, res) => {
     if (todayWorkIndex !== -1) {
       updatedStaff = await Staff.findOneAndUpdate(
         { _id: req.params.id, "work.date": { $gte: today, $lt: tomorrow } },
-        { 
-          $set: { "work.$.tasks": tasks } 
+        {
+          $set: { "work.$.tasks": tasks }
         },
         { new: true }
       );
     } else {
       updatedStaff = await Staff.findByIdAndUpdate(
         req.params.id,
-        { 
+        {
           $push: { work: { tasks, date: now } }
         },
         { new: true }
       );
     }
-    
+
     // Emit socket event
     const staffObj = updatedStaff.toObject();
-    const updatedTodayClock = staffObj.work?.find(w => 
+    const updatedTodayClock = staffObj.work?.find(w =>
       new Date(w.date) >= today && new Date(w.date) < tomorrow
     );
     try {
@@ -648,7 +648,7 @@ exports.toggleTaskComplete = async (req, res) => {
   try {
     const { taskIndex } = req.body;
     const staffId = req.params.id;
-    
+
     const staff = await Staff.findById(staffId);
     if (!staff) {
       return res.status(404).json({ success: false, message: 'Staff not found' });
@@ -660,7 +660,7 @@ exports.toggleTaskComplete = async (req, res) => {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    const todayWorkIndex = staff.work?.findIndex(w => 
+    const todayWorkIndex = staff.work?.findIndex(w =>
       new Date(w.date) >= today && new Date(w.date) < tomorrow
     );
 
@@ -671,12 +671,12 @@ exports.toggleTaskComplete = async (req, res) => {
     // Toggle the task's completed status
     staff.work[todayWorkIndex].tasks[taskIndex].completed = !staff.work[todayWorkIndex].tasks[taskIndex].completed;
     const updatedStaff = await staff.save();
-    
+
     // Get todayClock
-    const todayClock = updatedStaff.work?.find(w => 
+    const todayClock = updatedStaff.work?.find(w =>
       new Date(w.date) >= today && new Date(w.date) < tomorrow
     );
-    
+
     // Emit socket event
     const staffObj = updatedStaff.toObject();
     try {
@@ -705,7 +705,7 @@ exports.addExtraTask = async (req, res) => {
   try {
     const { taskName } = req.body;
     const staffId = req.params.id;
-    
+
     const staff = await Staff.findById(staffId);
     if (!staff) {
       return res.status(404).json({ success: false, message: 'Staff not found' });
@@ -718,7 +718,7 @@ exports.addExtraTask = async (req, res) => {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    const todayWorkIndex = staff.work?.findIndex(w => 
+    const todayWorkIndex = staff.work?.findIndex(w =>
       new Date(w.date) >= today && new Date(w.date) < tomorrow
     );
 
@@ -733,16 +733,16 @@ exports.addExtraTask = async (req, res) => {
     } else {
       updatedStaff = await Staff.findByIdAndUpdate(
         staffId,
-        { 
+        {
           $push: { work: { tasks: [{ name: taskName, completed: false, isExtra: true }], date: now } }
         },
         { new: true }
       );
     }
-    
+
     // Emit socket event
     const staffObj = updatedStaff.toObject();
-    const updatedTodayClock = staffObj.work?.find(w => 
+    const updatedTodayClock = staffObj.work?.find(w =>
       new Date(w.date) >= today && new Date(w.date) < tomorrow
     );
     try {
@@ -770,7 +770,7 @@ exports.addExtraTask = async (req, res) => {
 exports.submitWorkReport = async (req, res) => {
   try {
     const staffId = req.params.id;
-    
+
     const staff = await Staff.findById(staffId);
     if (!staff) {
       return res.status(404).json({ success: false, message: 'Staff not found' });
@@ -793,8 +793,8 @@ exports.submitWorkReport = async (req, res) => {
 
     // Calculate progress percentage
     const completedTasks = todayWork.tasks.filter(t => t.completed).length;
-    const progressPercentage = todayWork.tasks.length > 0 
-      ? Math.round((completedTasks / todayWork.tasks.length) * 100) 
+    const progressPercentage = todayWork.tasks.length > 0
+      ? Math.round((completedTasks / todayWork.tasks.length) * 100)
       : 0;
 
     // Check if report already exists for today
@@ -840,9 +840,9 @@ exports.submitWorkReport = async (req, res) => {
 exports.getWorkReports = async (req, res) => {
   try {
     const { date, staffId } = req.query;
-    
+
     let query = {};
-    
+
     if (date) {
       const reportDate = new Date(date);
       const startOfDay = new Date(reportDate);
@@ -851,7 +851,7 @@ exports.getWorkReports = async (req, res) => {
       endOfDay.setHours(23, 59, 59, 999);
       query.date = { $gte: startOfDay, $lte: endOfDay };
     }
-    
+
     if (staffId) {
       query.staffId = staffId;
     }
@@ -889,8 +889,8 @@ exports.submitAllReports = async (req, res) => {
 
       if (todayWork && todayWork.tasks && todayWork.tasks.length > 0) {
         const completedTasks = todayWork.tasks.filter(t => t.completed).length;
-        const progressPercentage = todayWork.tasks.length > 0 
-          ? Math.round((completedTasks / todayWork.tasks.length) * 100) 
+        const progressPercentage = todayWork.tasks.length > 0
+          ? Math.round((completedTasks / todayWork.tasks.length) * 100)
           : 0;
 
         // Check if report already exists
@@ -954,7 +954,7 @@ exports.updateAttendance = async (req, res) => {
     // Add new attendance record
     const staff = await Staff.findByIdAndUpdate(
       staffId,
-      { 
+      {
         $push: { attendance: { date: recordDate, status } },
         status: status // Also update current status
       },
@@ -977,20 +977,20 @@ exports.updateAttendance = async (req, res) => {
 // Clear salary status and save to history
 exports.clearSalary = async (req, res) => {
   try {
-    const { 
-      month, 
-      baseSalary, 
-      payoutSalary, 
-      totalLeaves, 
-      totalHalfDays, 
-      casualLeaveUsed 
+    const {
+      month,
+      baseSalary,
+      payoutSalary,
+      totalLeaves,
+      totalHalfDays,
+      casualLeaveUsed
     } = req.body;
 
     const staff = await Staff.findByIdAndUpdate(
       req.params.id,
-      { 
+      {
         salaryStatus: 'Paid',
-        $push: { 
+        $push: {
           salaryHistory: {
             month,
             baseSalary,
@@ -1143,7 +1143,7 @@ exports.uploadDocument = async (req, res) => {
 
     // Get document name from request or use original filename
     const documentName = req.body.name || req.file.originalname;
-    
+
     // Add document to staff
     staff.documents.push({
       name: documentName,

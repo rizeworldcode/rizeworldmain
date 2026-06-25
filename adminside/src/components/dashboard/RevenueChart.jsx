@@ -58,6 +58,16 @@ const RevenueChart = () => {
   const [data, setData] = useState([]);
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const fetchRevenueData = async (period) => {
     setLoading(true);
@@ -79,8 +89,8 @@ const RevenueChart = () => {
   }, [timeRange]);
 
   return (
-    <div className="glass-card p-6 rounded-2xl h-full flex flex-col transition-colors">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+    <div className="glass-card p-4 sm:p-6 rounded-2xl h-full flex flex-col transition-colors">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-8">
         <div>
           <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">Revenue Analytics</h3>
           <p className="text-sm text-gray-500 font-medium">Revenue distribution across {timeRange.toLowerCase()}s</p>
@@ -104,11 +114,11 @@ const RevenueChart = () => {
       </div>
 
       {loading ? (
-        <div className="flex-1 flex items-center justify-center min-h-[350px]">
+        <div className="flex-1 flex items-center justify-center min-h-[250px] sm:min-h-[350px]">
           <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
         </div>
       ) : data.length === 0 || data.every(item => item.revenue === 0) ? (
-        <div className="flex-1 flex flex-col items-center justify-center min-h-[350px]">
+        <div className="flex-1 flex flex-col items-center justify-center min-h-[250px] sm:min-h-[350px]">
           <div className="w-20 h-20 mb-4 rounded-2xl bg-gray-100 dark:bg-white/10 flex items-center justify-center">
             <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
@@ -121,15 +131,15 @@ const RevenueChart = () => {
         </div>
       ) : (
         <>
-          <div className="flex-1 w-full min-h-[350px] relative flex items-center justify-center">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="flex-1 w-full h-[260px] sm:h-[350px] relative flex items-center justify-center">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
               <PieChart>
                 <Pie
                   data={data}
                   cx="50%"
                   cy="50%"
-                  innerRadius={85}
-                  outerRadius={120}
+                  innerRadius={isMobile ? 60 : 85}
+                  outerRadius={isMobile ? 80 : 120}
                   paddingAngle={5}
                   dataKey="revenue"
                   animationBegin={0}
@@ -157,23 +167,23 @@ const RevenueChart = () => {
                 transition={{ delay: 0.5, duration: 0.5 }}
                 className="text-center"
               >
-                <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-1">Total Revenue</p>
-                <h4 className="text-3xl font-black text-gray-900 dark:text-white tracking-tighter">
+                <p className="text-[8px] sm:text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-[0.1em] sm:tracking-[0.2em] mb-0.5">Total Revenue</p>
+                <h4 className="text-base sm:text-3xl font-black text-gray-900 dark:text-white tracking-tighter leading-none">
                   ₹{(totalRevenue || 0).toLocaleString('en-IN')}
                 </h4>
-                <div className="mt-2 flex items-center gap-1 justify-center">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-500 uppercase">Live Data</span>
+                <div className="mt-0.5 sm:mt-2 flex items-center gap-1 justify-center">
+                  <div className="w-1 sm:w-1.5 h-1 sm:h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-[8px] sm:text-[10px] font-bold text-emerald-600 dark:text-emerald-500 uppercase">Live</span>
                 </div>
               </motion.div>
             </div>
           </div>
 
-          <div className="mt-6 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+          <div className="mt-4 sm:mt-6 grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2">
             {Array.isArray(data) && data.slice(0, 6).map((item, index) => (
-              <div key={item?.name || `legend-${index}`} className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
-                <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase">{item?.name || 'N/A'}</span>
+              <div key={item?.name || `legend-${index}`} className="flex items-center gap-1.5">
+                <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+                <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase truncate">{item?.name || 'N/A'}</span>
               </div>
             ))}
           </div>

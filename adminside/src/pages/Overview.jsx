@@ -140,10 +140,10 @@ const Overview = ({ onViewClient, onViewStaff }) => {
 
       {/* Analytics Grid */}
       <section className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-        <div className="xl:col-span-2 min-h-[450px]">
+        <div className="xl:col-span-2 min-h-[480px] sm:min-h-[450px]">
           <RevenueChart />
         </div>
-        <div className="xl:col-span-1 min-h-[450px]">
+        <div className="xl:col-span-1 min-h-[350px] sm:min-h-[450px]">
           <RecentClients onClientClick={onViewClient} />
         </div>
       </section>

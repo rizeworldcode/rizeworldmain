@@ -227,15 +227,25 @@ const Dashboard = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   // Delay Work State
   const [delayWork, setDelayWork] = useState([]);
+  const [clients, setClients] = useState([]);
   const [isAddDelayWorkOpen, setIsAddDelayWorkOpen] = useState(false);
   const [delayWorkForm, setDelayWorkForm] = useState({
     type: 'reel',
     publishedLink: '',
     totalAccountReach: 0,
     totalAccountViews: 0,
-    clientEmail: ''
+    clientEmail: '',
+    extra: false,
+    count: 1
   });
   const [delayWorkLoading, setDelayWorkLoading] = useState(false);
+
+  const getApiUrl = (endpoint) => {
+    const base = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+      ? 'http://localhost:45000/api'
+      : 'https://rizeworldmain.onrender.com/api';
+    return `${base}${endpoint}`;
+  };
   
   // Get staff info from localStorage
   const staffInfo = JSON.parse(localStorage.getItem('staffInfo') || '{}');
@@ -284,7 +294,7 @@ const Dashboard = () => {
     if (!staffId) return;
     
     try {
-      const response = await fetch(`https://rizeworldmain.onrender.com/api/notifications/staff/${staffId}`);
+      const response = await fetch(getApiUrl(`/notifications/staff/${staffId}`));
       const result = await response.json();
       if (result.success) {
         setNotifications(result.data);
@@ -300,7 +310,7 @@ const Dashboard = () => {
     const staffId = staffInfo.id || staffInfo._id;
     
     try {
-      await fetch(`https://rizeworldmain.onrender.com/api/notifications/${notificationId}/read/${staffId}`, {
+      await fetch(getApiUrl(`/notifications/${notificationId}/read/${staffId}`), {
         method: 'PATCH'
       });
       // Update local state to mark as read
@@ -316,7 +326,10 @@ const Dashboard = () => {
 
   useEffect(() => {
     // Initialize Socket.IO connection
-    socketRef.current = io('https://rizeworldmain.onrender.com');
+    const socketBase = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+      ? 'http://localhost:45000'
+      : 'https://rizeworldmain.onrender.com';
+    socketRef.current = io(socketBase);
     
     // Listen for new notifications
     socketRef.current.on('newNotification', (newNotification) => {
@@ -428,10 +441,11 @@ const Dashboard = () => {
 
     // Fetch notifications
     fetchNotifications();
-    // Only fetch Delay Work if user is a Data Analyst
+    // Only fetch Delay Work and Clients if user is a Data Analyst
     const staffInfo = JSON.parse(localStorage.getItem('staffInfo') || '{}');
     if (staffInfo.role?.toLowerCase() === 'data analyst') {
       fetchDelayWork();
+      fetchClients();
     }
     // Refresh notifications every 5 minutes
     const notificationTimer = setInterval(fetchNotifications, 300000);
@@ -459,7 +473,7 @@ const Dashboard = () => {
     }
     
     try {
-      const response = await fetch(`https://rizeworldmain.onrender.com/api/staff/${staffId}/clock-in`, { 
+      const response = await fetch(getApiUrl(`/staff/${staffId}/clock-in`), { 
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -500,7 +514,7 @@ const Dashboard = () => {
     }
     
     try {
-      const response = await fetch(`https://rizeworldmain.onrender.com/api/staff/${staffId}/clock-out`, { 
+      const response = await fetch(getApiUrl(`/staff/${staffId}/clock-out`), { 
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -541,7 +555,7 @@ const Dashboard = () => {
     
     try {
       setDelayWorkLoading(true);
-      const response = await fetch(`https://rizeworldmain.onrender.com/api/delay-work/staff/${staffId}`);
+      const response = await fetch(getApiUrl(`/delay-work/staff/${staffId}`));
       const result = await response.json();
       if (result.success) {
         setDelayWork(result.data);
@@ -553,7 +567,20 @@ const Dashboard = () => {
     }
   };
 
-  const handleAddDelayWork = async () => {
+  const fetchClients = async () => {
+    try {
+      const response = await fetch(getApiUrl('/clients'));
+      const result = await response.json();
+      if (result.success) {
+        setClients(result.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch clients:', err);
+    }
+  };
+
+  const handleAddDelayWork = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
     const staffInfo = JSON.parse(localStorage.getItem('staffInfo') || '{}');
     
     if (staffInfo.role?.toLowerCase() !== 'data analyst') {
@@ -568,15 +595,34 @@ const Dashboard = () => {
     }
     
     if (!delayWorkForm.clientEmail) {
-      alert('Please enter client email');
+      alert('Please select client email');
       return;
     }
 
+    const payload = {
+      type: delayWorkForm.type,
+      clientEmail: delayWorkForm.clientEmail,
+      extra: delayWorkForm.extra,
+      staffId
+    };
+
+    if (delayWorkForm.type === 'shoot') {
+      payload.count = delayWorkForm.count || 1;
+      payload.publishedLink = '';
+      payload.totalAccountReach = 0;
+      payload.totalAccountViews = 0;
+    } else {
+      payload.publishedLink = delayWorkForm.publishedLink;
+      payload.totalAccountReach = delayWorkForm.totalAccountReach;
+      payload.totalAccountViews = delayWorkForm.totalAccountViews;
+      payload.count = 1;
+    }
+
     try {
-      const response = await fetch('https://rizeworldmain.onrender.com/api/delay-work', {
+      const response = await fetch(getApiUrl('/delay-work'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...delayWorkForm, staffId })
+        body: JSON.stringify(payload)
       });
       const result = await response.json();
       if (result.success) {
@@ -587,7 +633,9 @@ const Dashboard = () => {
           publishedLink: '',
           totalAccountReach: 0,
           totalAccountViews: 0,
-          clientEmail: ''
+          clientEmail: '',
+          extra: false,
+          count: 1
         });
       } else {
         alert(result.message || 'Failed to add delay work');
@@ -606,7 +654,7 @@ const Dashboard = () => {
       return;
     }
     try {
-      const response = await fetch(`https://rizeworldmain.onrender.com/api/staff/${staffId}/toggle-task`, {
+      const response = await fetch(getApiUrl(`/staff/${staffId}/toggle-task`), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ taskIndex })
@@ -649,7 +697,7 @@ const Dashboard = () => {
     // Convert to comma-separated string for updateTodayWork endpoint
     const todayWork = updatedTasks.map(t => t.name).join(', ');
     try {
-      const response = await fetch(`https://rizeworldmain.onrender.com/api/staff/${staffId}/today-work`, { 
+      const response = await fetch(getApiUrl(`/staff/${staffId}/today-work`), { 
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ todayWork })
@@ -679,7 +727,7 @@ const Dashboard = () => {
     // Convert to comma-separated string for updateTodayWork endpoint
     const todayWork = updatedTasks.map(t => t.name).join(', ');
     try {
-      const response = await fetch(`https://rizeworldmain.onrender.com/api/staff/${staffId}/today-work`, { 
+      const response = await fetch(getApiUrl(`/staff/${staffId}/today-work`), { 
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ todayWork })
@@ -701,7 +749,7 @@ const Dashboard = () => {
     // We don't need this anymore since tasks are managed individually, but keeping it for compatibility
     const todayWork = todayTasks.map(t => t.name).join(', ');
     try {
-      const response = await fetch(`https://rizeworldmain.onrender.com/api/staff/${staffInfo.id}/today-work`, { 
+      const response = await fetch(getApiUrl(`/staff/${staffInfo.id || staffInfo._id}/today-work`), { 
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ todayWork })
@@ -1193,37 +1241,54 @@ const Dashboard = () => {
               {delayWork.map((work, index) => (
                 <div key={index} className="clay-card p-4 sm:p-6">
                   <div className="flex justify-between items-start mb-4">
-                    <span className={cn(
-                      "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest",
-                      work.type === 'reel' ? "bg-purple-100 text-purple-600" : 
-                      work.type === 'post' ? "bg-blue-100 text-blue-600" : 
-                      "bg-pink-100 text-pink-600"
-                    )}>
-                      {work.type}
-                    </span>
+                    <div className="flex flex-wrap gap-2">
+                      <span className={cn(
+                        "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest",
+                        work.type === 'reel' ? "bg-purple-100 text-purple-600" : 
+                        work.type === 'post' ? "bg-blue-100 text-blue-600" : 
+                        work.type === 'shot' ? "bg-pink-100 text-pink-600" :
+                        "bg-emerald-100 text-emerald-600"
+                      )}>
+                        {work.type}
+                      </span>
+                      {work.extra && (
+                        <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-amber-100 text-amber-600">
+                          Extra
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="mb-3">
                     <p className="text-[10px] font-black text-black uppercase tracking-widest mb-1">Client</p>
                     <p className="text-sm font-bold text-black">{work.clientId?.name || 'N/A'}</p>
                   </div>
-                  {work.publishedLink && (
-                    <div className="mb-3">
-                      <p className="text-[10px] font-black text-black uppercase tracking-widest mb-1">Published Link</p>
-                      <a href={work.publishedLink} target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-blue-600 hover:underline break-all">
-                        {work.publishedLink}
-                      </a>
+                  {work.type === 'shoot' ? (
+                    <div className="mb-4">
+                      <p className="text-[10px] font-black text-black uppercase tracking-widest mb-1">Shoot Count</p>
+                      <p className="text-xl sm:text-2xl font-black text-black">{work.count || 1}</p>
                     </div>
+                  ) : (
+                    <>
+                      {work.publishedLink && (
+                        <div className="mb-3">
+                          <p className="text-[10px] font-black text-black uppercase tracking-widest mb-1">Published Link</p>
+                          <a href={work.publishedLink} target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-blue-600 hover:underline break-all">
+                            {work.publishedLink}
+                          </a>
+                        </div>
+                      )}
+                      <div className="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                          <p className="text-[10px] font-black text-black uppercase tracking-widest mb-1">Account Reach</p>
+                          <p className="text-xl sm:text-2xl font-black text-black">{(work.totalAccountReach || 0).toLocaleString('en-IN')}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-black text-black uppercase tracking-widest mb-1">Account Views</p>
+                          <p className="text-xl sm:text-2xl font-black text-black">{(work.totalAccountViews || 0).toLocaleString('en-IN')}</p>
+                        </div>
+                      </div>
+                    </>
                   )}
-                  <div className="grid grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <p className="text-[10px] font-black text-black uppercase tracking-widest mb-1">Account Reach</p>
-                      <p className="text-xl sm:text-2xl font-black text-black">{work.totalAccountReach.toLocaleString('en-IN')}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black text-black uppercase tracking-widest mb-1">Account Views</p>
-                      <p className="text-xl sm:text-2xl font-black text-black">{work.totalAccountViews.toLocaleString('en-IN')}</p>
-                    </div>
-                  </div>
                   <div>
                     <p className="text-[10px] font-black text-black uppercase tracking-widest mb-1">Date Added</p>
                     <p className="text-sm font-bold text-gray-600">
@@ -1255,16 +1320,21 @@ const Dashboard = () => {
               <Clock className="text-amber-500" />
               Add Delay Work
             </h3>
-            <div className="space-y-3 sm:space-y-4">
+             <div className="space-y-3 sm:space-y-4">
               <div>
                 <label className="text-[10px] font-black text-black uppercase tracking-widest block mb-1 sm:mb-2">Client Email</label>
-                <input 
-                  type="email" 
-                  className="w-full p-3 sm:p-4 clay-inset rounded-2xl text-sm font-bold text-black focus:outline-none"
-                  placeholder="client@example.com"
+                <select 
+                  className="w-full p-3 sm:p-4 clay-inset rounded-2xl text-sm font-bold text-black focus:outline-none cursor-pointer"
                   value={delayWorkForm.clientEmail}
                   onChange={(e) => setDelayWorkForm({ ...delayWorkForm, clientEmail: e.target.value })}
-                />
+                >
+                  <option value="">Select Client Email</option>
+                  {clients.map((c) => (
+                    <option key={c._id || c.id} value={c.email}>
+                      {c.name} ({c.email})
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="text-[10px] font-black text-black uppercase tracking-widest block mb-1 sm:mb-2">Type</label>
@@ -1276,40 +1346,70 @@ const Dashboard = () => {
                   <option value="reel">Reel</option>
                   <option value="post">Post</option>
                   <option value="shot">Shot</option>
+                  <option value="shoot">Shoot</option>
                 </select>
               </div>
-              <div>
-                <label className="text-[10px] font-black text-black uppercase tracking-widest block mb-1 sm:mb-2">Published Link</label>
-                <input 
-                  type="text" 
-                  className="w-full p-3 sm:p-4 clay-inset rounded-2xl text-sm font-bold text-black focus:outline-none"
-                  placeholder="https://..."
-                  value={delayWorkForm.publishedLink}
-                  onChange={(e) => setDelayWorkForm({ ...delayWorkForm, publishedLink: e.target.value })}
-                />
+
+              <div className="flex gap-6 py-1">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input 
+                    type="checkbox"
+                    checked={delayWorkForm.extra}
+                    onChange={(e) => setDelayWorkForm({ ...delayWorkForm, extra: e.target.checked })}
+                    className="w-4 h-4 rounded text-amber-500 focus:ring-amber-500"
+                  />
+                  <span className="text-xs font-bold text-black uppercase tracking-wider">Extra</span>
+                </label>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+
+              {delayWorkForm.type === 'shoot' ? (
                 <div>
-                  <label className="text-[10px] font-black text-black uppercase tracking-widest block mb-1 sm:mb-2">Total Account Reach</label>
+                  <label className="text-[10px] font-black text-black uppercase tracking-widest block mb-1 sm:mb-2">Count</label>
                   <input 
                     type="number" 
+                    min="1"
                     className="w-full p-3 sm:p-4 clay-inset rounded-2xl text-sm font-bold text-black focus:outline-none"
-                    placeholder="0"
-                    value={delayWorkForm.totalAccountReach}
-                    onChange={(e) => setDelayWorkForm({ ...delayWorkForm, totalAccountReach: parseInt(e.target.value) || 0 })}
+                    placeholder="1"
+                    value={delayWorkForm.count}
+                    onChange={(e) => setDelayWorkForm({ ...delayWorkForm, count: parseInt(e.target.value) || 1 })}
                   />
                 </div>
-                <div>
-                  <label className="text-[10px] font-black text-black uppercase tracking-widest block mb-1 sm:mb-2">Total Account Views</label>
-                  <input 
-                    type="number" 
-                    className="w-full p-3 sm:p-4 clay-inset rounded-2xl text-sm font-bold text-black focus:outline-none"
-                    placeholder="0"
-                    value={delayWorkForm.totalAccountViews}
-                    onChange={(e) => setDelayWorkForm({ ...delayWorkForm, totalAccountViews: parseInt(e.target.value) || 0 })}
-                  />
-                </div>
-              </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="text-[10px] font-black text-black uppercase tracking-widest block mb-1 sm:mb-2">Published Link</label>
+                    <input 
+                      type="text" 
+                      className="w-full p-3 sm:p-4 clay-inset rounded-2xl text-sm font-bold text-black focus:outline-none"
+                      placeholder="https://..."
+                      value={delayWorkForm.publishedLink}
+                      onChange={(e) => setDelayWorkForm({ ...delayWorkForm, publishedLink: e.target.value })}
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    <div>
+                      <label className="text-[10px] font-black text-black uppercase tracking-widest block mb-1 sm:mb-2">Total Account Reach</label>
+                      <input 
+                        type="number" 
+                        className="w-full p-3 sm:p-4 clay-inset rounded-2xl text-sm font-bold text-black focus:outline-none"
+                        placeholder="0"
+                        value={delayWorkForm.totalAccountReach}
+                        onChange={(e) => setDelayWorkForm({ ...delayWorkForm, totalAccountReach: parseInt(e.target.value) || 0 })}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black text-black uppercase tracking-widest block mb-1 sm:mb-2">Total Account Views</label>
+                      <input 
+                        type="number" 
+                        className="w-full p-3 sm:p-4 clay-inset rounded-2xl text-sm font-bold text-black focus:outline-none"
+                        placeholder="0"
+                        value={delayWorkForm.totalAccountViews}
+                        onChange={(e) => setDelayWorkForm({ ...delayWorkForm, totalAccountViews: parseInt(e.target.value) || 0 })}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
               <div className="flex gap-3 mt-6 sm:mt-8">
                 <button onClick={() => setIsAddDelayWorkOpen(false)} className="flex-1 py-2.5 sm:py-3 rounded-2xl border border-gray-200 text-black font-bold hover:bg-gray-50 transition-all">Cancel</button>
                 <button onClick={handleAddDelayWork} className="flex-1 py-2.5 sm:py-3 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 text-white font-black hover:shadow-orange-500/30 transition-all">Add Delay Work</button>

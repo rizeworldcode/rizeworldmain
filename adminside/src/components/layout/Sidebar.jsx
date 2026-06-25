@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  LayoutDashboard, 
-  Users2, 
-  Users, 
-  Wallet, 
-  Settings, 
-  ChevronLeft, 
+import {
+  LayoutDashboard,
+  Users2,
+  Users,
+  Wallet,
+  Settings,
+  ChevronLeft,
   ChevronRight,
   Sparkles,
   CalendarCheck,
@@ -16,11 +16,11 @@ import {
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', id: 'dashboard' },
   { icon: CalendarCheck, label: 'Today asigned work', id: 'todayWork' },
-  { icon: Users2, label: 'Staff Detail', id: 'staffDetail' },
-  { icon: UserPlus, label: 'Add Staff', id: 'addStaff' },
+  { icon: Users2, label: 'Employee Detail', id: 'staffDetail' },
+  { icon: UserPlus, label: 'Add Employee', id: 'addStaff' },
   { icon: Users, label: 'Clients', id: 'clients' },
   { icon: Wallet, label: 'Wallet', id: 'wallet' },
-  { icon: Settings, label: 'Settings', id: 'settings' },
+  // { icon: Settings, label: 'Settings', id: 'settings' },
 ];
 
 const Sidebar = ({ activeTab, setActiveTab }) => {
@@ -34,18 +34,20 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
     >
       {/* Logo Section */}
       <div className="p-6 flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+        {/* <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
           <Sparkles className="text-white w-6 h-6" />
-        </div>
+        </div> */}
         <AnimatePresence>
           {!isCollapsed && (
             <motion.span
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -10 }}
-              className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 whitespace-nowrap"
+              className="flex items-center text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 whitespace-nowrap"
             >
-              Rezworld AI
+              <div className='w-50 h-30'><img src="/images/logo_img.png" alt="" /></div>
+
+              {/* Rizeworld */}
             </motion.span>
           )}
         </AnimatePresence>
@@ -58,8 +60,8 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
             key={item.id}
             onClick={() => setActiveTab(item.id)}
             className={`w-full flex items-center gap-4 p-3 rounded-xl transition-all duration-200 group relative
-              ${activeTab === item.id 
-                ? 'bg-blue-50 dark:bg-white/10 text-blue-600 dark:text-white shadow-inner' 
+              ${activeTab === item.id
+                ? 'bg-blue-50 dark:bg-white/10 text-blue-600 dark:text-white shadow-inner'
                 : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white'}`}
           >
             <item.icon className={`w-6 h-6 shrink-0 ${activeTab === item.id ? 'text-blue-600 dark:text-blue-400' : 'group-hover:text-blue-600 dark:group-hover:text-blue-400'}`} />
@@ -75,7 +77,7 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
                 </motion.span>
               )}
             </AnimatePresence>
-            
+
             {/* Active Indicator */}
             {activeTab === item.id && (
               <motion.div

@@ -9,6 +9,9 @@ const {
   deleteDelayWork,
   exportDelayWork
 } = require('../controllers/delayWorkController');
+const { protect } = require('../middleware/authMiddleware');
+
+router.use(protect);
 
 router.post('/', createDelayWork);
 router.get('/', getAllDelayWork);

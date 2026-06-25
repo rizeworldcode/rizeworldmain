@@ -22,10 +22,14 @@ const {
   deleteDocument,
   addExtraTask
 } = require('../controllers/staffController');
+const { protect } = require('../middleware/authMiddleware');
 const { requireOfficeWifi } = require('../middleware/officeWifi');
 const upload = require('../middleware/upload');
 
 router.post('/login', loginStaff);
+
+router.use(protect);
+
 router.post('/', createStaff);
 router.get('/', getAllStaff);
 router.get('/:id', getStaffById);

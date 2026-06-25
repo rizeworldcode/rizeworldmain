@@ -41,14 +41,16 @@ exports.getDashboardStats = async (req, res) => {
       }
     });
 
-    totalClientRevenue = allPayments.reduce((acc, payment) => acc + (payment.amount || 0), 0);
-
     // Calculate total paid salary
     const paidStaff = await Staff.find({ salaryStatus: 'Paid' });
     const totalPaidSalary = paidStaff.reduce((acc, staff) => acc + (staff.monthlySalary || 0), 0);
 
+
     // Net revenue after deducting salaries
-    const totalRevenue = Math.max(0, totalClientRevenue - totalPaidSalary);
+    const totalRevenue =  Math.max(0, totalReceived-totalPaidSalary);
+
+
+
 
     res.status(200).json({
       success: true,
@@ -71,110 +73,103 @@ exports.getDashboardStats = async (req, res) => {
 
 exports.getRevenueAnalytics = async (req, res) => {
   try {
-    const { period } = req.query; // 'day', 'week', or 'month' (default: 'month')
+    const { period } = req.query;
     const validPeriods = ['day', 'week', 'month'];
     const selectedPeriod = validPeriods.includes(period) ? period : 'month';
 
-    // Get all clients and collect all payments
     const clients = await Client.find();
     let allPayments = [];
 
     clients.forEach(client => {
-      // Current client payments
       if (client.payments && client.payments.length > 0) {
-        allPayments = [...allPayments, ...client.payments];
+        client.payments.forEach(p => {
+          allPayments.push({
+            amount: p.amount || 0,
+            date: new Date(p.date) // force convert here
+          });
+        });
       }
 
-      // History payments
       if (client.history && client.history.length > 0) {
         client.history.forEach(h => {
           if (h.payments && h.payments.length > 0) {
-            allPayments = [...allPayments, ...h.payments];
+            h.payments.forEach(p => {
+              allPayments.push({
+                amount: p.amount || 0,
+                date: new Date(p.date) // force convert here too
+              });
+            });
           }
         });
       }
     });
 
-    // Get all staff and calculate paid salaries
+
+
     const paidStaff = await Staff.find({ salaryStatus: 'Paid' });
     const totalPaidSalary = paidStaff.reduce((acc, staff) => acc + (staff.monthlySalary || 0), 0);
-
-    // Calculate total revenue (client payments minus paid salaries)
-    const totalClientRevenue = allPayments.reduce((acc, payment) => acc + (payment.amount || 0), 0);
+    const totalClientRevenue = allPayments.reduce((acc, p) => acc + p.amount, 0);
     const totalRevenue = totalClientRevenue - totalPaidSalary;
 
-    // Format data based on period
     let chartData = [];
-    let numPeriods = 0;
+
+    const isSameDay = (d1, d2) =>
+      d1.getDate() === d2.getDate() &&
+      d1.getMonth() === d2.getMonth() &&
+      d1.getFullYear() === d2.getFullYear();
 
     if (selectedPeriod === 'day') {
-      numPeriods = 7; // 7 days
-    } else if (selectedPeriod === 'week') {
-      numPeriods = 4; // 4 weeks
-    } else {
-      numPeriods = 6; // 6 months
-    }
-    
-    const salaryPerPeriod = totalPaidSalary / numPeriods;
-
-    if (selectedPeriod === 'day') {
-      // Last 7 days
       for (let i = 6; i >= 0; i--) {
         const date = new Date();
         date.setDate(date.getDate() - i);
-        const dayStr = date.toLocaleDateString('en-IN', { weekday: 'short' });
-        
-        const dayPayments = allPayments.filter(payment => {
-          const paymentDate = new Date(payment.date);
-          return (
-            paymentDate.getDate() === date.getDate() &&
-            paymentDate.getMonth() === date.getMonth() &&
-            paymentDate.getFullYear() === date.getFullYear()
-          );
+
+        const dayRevenue = allPayments
+          .filter(p => !isNaN(p.date) && isSameDay(p.date, date))
+          .reduce((acc, p) => acc + p.amount, 0);
+
+        chartData.push({
+          name: date.toLocaleDateString('en-IN', { weekday: 'short' }),
+          revenue: dayRevenue
         });
-        
-        const dayClientRevenue = dayPayments.reduce((acc, payment) => acc + (payment.amount || 0), 0);
-        const dayNetRevenue = dayClientRevenue - salaryPerPeriod;
-        chartData.push({ name: dayStr, revenue: Math.max(0, dayNetRevenue) });
       }
+
     } else if (selectedPeriod === 'week') {
-      // Last 4 weeks
       for (let i = 3; i >= 0; i--) {
         const weekStart = new Date();
+        weekStart.setHours(0, 0, 0, 0);
         weekStart.setDate(weekStart.getDate() - (i * 7) - weekStart.getDay());
         const weekEnd = new Date(weekStart);
         weekEnd.setDate(weekEnd.getDate() + 6);
-        
+        weekEnd.setHours(23, 59, 59, 999);
+
         const weekLabel = `${weekStart.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} - ${weekEnd.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`;
-        
-        const weekPayments = allPayments.filter(payment => {
-          const paymentDate = new Date(payment.date);
-          return paymentDate >= weekStart && paymentDate <= weekEnd;
-        });
-        
-        const weekClientRevenue = weekPayments.reduce((acc, payment) => acc + (payment.amount || 0), 0);
-        const weekNetRevenue = weekClientRevenue - salaryPerPeriod;
-        chartData.push({ name: weekLabel, revenue: Math.max(0, weekNetRevenue) });
+
+        const weekRevenue = allPayments
+          .filter(p => !isNaN(p.date) && p.date >= weekStart && p.date <= weekEnd)
+          .reduce((acc, p) => acc + p.amount, 0);
+
+        chartData.push({ name: weekLabel, revenue: weekRevenue });
       }
+
     } else {
-      // Last 6 months (default)
-      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                          'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       for (let i = 5; i >= 0; i--) {
         const date = new Date();
         date.setMonth(date.getMonth() - i);
         const monthIndex = date.getMonth();
         const year = date.getFullYear();
-        
-        const monthPayments = allPayments.filter(payment => {
-          const paymentDate = new Date(payment.date);
-          return paymentDate.getMonth() === monthIndex && paymentDate.getFullYear() === year;
-        });
-        
-        const monthClientRevenue = monthPayments.reduce((acc, payment) => acc + (payment.amount || 0), 0);
-        const monthNetRevenue = monthClientRevenue - salaryPerPeriod;
-        chartData.push({ name: monthNames[monthIndex], revenue: Math.max(0, monthNetRevenue) });
+
+        const monthRevenue = allPayments
+          .filter(p => !isNaN(p.date) &&
+            p.date.getMonth() === monthIndex &&
+            p.date.getFullYear() === year)
+          .reduce((acc, p) => acc + p.amount, 0);
+
+        chartData.push({ name: monthNames[monthIndex], revenue: monthRevenue });
       }
     }
+
 
     res.status(200).json({
       success: true,
@@ -186,7 +181,9 @@ exports.getRevenueAnalytics = async (req, res) => {
         period: selectedPeriod
       }
     });
+
   } catch (error) {
+    console.error('Revenue analytics error:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Error fetching revenue analytics'

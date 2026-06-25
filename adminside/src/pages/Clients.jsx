@@ -1,15 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  User, 
-  Mail, 
-  Phone, 
-  Calendar, 
-  CheckCircle2, 
-  MoreVertical, 
+import {
+  User,
+  Mail,
+  Phone,
+  Calendar,
+  CheckCircle2,
+  MoreVertical,
   CreditCard,
   Edit3,
-  X, 
+  X,
   TrendingUp,
   Banknote,
   PlusCircle,
@@ -27,11 +27,26 @@ const STATUS_OPTIONS = {
 
 const ActionMenu = ({ onAddPayment }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [coords, setCoords] = useState({ top: 0, left: 0 });
+  const btnRef = useRef(null);
+
+  const handleOpen = () => {
+    if (btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      const dropdownWidth = 224;
+      let left = rect.right - dropdownWidth;
+      if (left < 8) left = 8;
+      if (left + dropdownWidth > window.innerWidth - 8) left = window.innerWidth - dropdownWidth - 8;
+      setCoords({ top: rect.bottom + 8, left });
+    }
+    setIsOpen(!isOpen);
+  };
 
   return (
     <div className="relative">
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        ref={btnRef}
+        onClick={handleOpen}
         className="p-2 hover:bg-white/10 rounded-lg text-gray-500 transition-colors"
       >
         <MoreVertical size={18} />
@@ -40,18 +55,16 @@ const ActionMenu = ({ onAddPayment }) => {
       <AnimatePresence>
         {isOpen && (
           <>
-            <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
+            <div className="fixed inset-0 z-[9998]" onClick={() => setIsOpen(false)} />
             <motion.div
               initial={{ opacity: 0, y: 10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 10, scale: 0.95 }}
-              className="absolute right-0 mt-2 w-56 bg-white dark:bg-[#030303] rounded-2xl border border-gray-200 dark:border-white/10 shadow-2xl z-20 py-2 overflow-hidden"
+              style={{ position: 'fixed', top: coords.top, left: coords.left, zIndex: 9999 }}
+              className="w-56 bg-white dark:bg-[#030303] rounded-2xl border border-gray-200 dark:border-white/10 shadow-2xl py-2 overflow-hidden"
             >
               <button
-                onClick={() => {
-                  onAddPayment();
-                  setIsOpen(false);
-                }}
+                onClick={() => { onAddPayment(); setIsOpen(false); }}
                 className="w-full text-left px-4 py-3 text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 hover:text-black dark:hover:text-white transition-colors flex items-center gap-3"
               >
                 <PlusCircle size={16} className="text-emerald-500" />
@@ -85,20 +98,20 @@ const AddPaymentModal = ({ isOpen, onClose, onAdd }) => {
         <div className="space-y-4">
           <div>
             <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Amount (₹)</label>
-            <input 
-              type="number" 
+            <input
+              type="number"
               className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all placeholder:text-gray-400"
               placeholder="Enter amount"
               value={formData.amount}
-              onChange={(e) => setFormData({...formData, amount: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
             />
           </div>
           <div>
             <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Payment Mode</label>
-            <select 
+            <select
               className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all cursor-pointer"
               value={formData.mode}
-              onChange={(e) => setFormData({...formData, mode: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, mode: e.target.value })}
             >
               <option value="Online" className="bg-white dark:bg-[#030303] text-black dark:text-white">Online</option>
               <option value="Cash" className="bg-white dark:bg-[#030303] text-black dark:text-white">Cash</option>
@@ -107,27 +120,27 @@ const AddPaymentModal = ({ isOpen, onClose, onAdd }) => {
           {formData.mode === 'Online' && (
             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}>
               <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">UTR Number</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all placeholder:text-gray-400"
                 placeholder="Enter UTR number"
                 value={formData.utr}
-                onChange={(e) => setFormData({...formData, utr: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, utr: e.target.value })}
               />
             </motion.div>
           )}
           <div>
             <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Date Received</label>
-            <input 
-              type="date" 
+            <input
+              type="date"
               className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all"
               value={formData.date}
-              onChange={(e) => setFormData({...formData, date: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, date: e.target.value })}
             />
           </div>
           <div className="flex gap-3 mt-8">
             <button onClick={onClose} className="flex-1 px-6 py-3 rounded-xl border border-gray-200 dark:border-white/10 text-black dark:text-white font-bold hover:bg-gray-100 dark:hover:bg-white/5 transition-all">Cancel</button>
-            <button 
+            <button
               onClick={() => onAdd(formData)}
               className="flex-1 px-6 py-3 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20"
             >
@@ -215,10 +228,10 @@ const AddProjectModal = ({ isOpen, onClose, onAdd }) => {
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-black/60 backdrop-blur-md" />
-      <motion.div 
-        initial={{ scale: 0.9, opacity: 0 }} 
-        animate={{ scale: 1, opacity: 1 }} 
-        exit={{ scale: 0.9, opacity: 0 }} 
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.9, opacity: 0 }}
         className="relative w-full max-w-2xl bg-white dark:bg-[#030303] rounded-3xl border border-gray-200 dark:border-white/10 p-8 shadow-2xl max-h-[90vh] overflow-y-auto"
       >
         <h3 className="text-xl font-bold text-black dark:text-white mb-6 flex items-center gap-2">
@@ -228,22 +241,22 @@ const AddProjectModal = ({ isOpen, onClose, onAdd }) => {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Client Name</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all placeholder:text-gray-400"
                 placeholder="Client/Project Name"
                 value={formData.name}
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               />
             </div>
             <div>
               <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Email Address</label>
-              <input 
-                type="email" 
+              <input
+                type="email"
                 className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all placeholder:text-gray-400"
                 placeholder="client@example.com"
                 value={formData.email}
-                onChange={(e) => setFormData({...formData, email: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               />
             </div>
           </div>
@@ -251,17 +264,17 @@ const AddProjectModal = ({ isOpen, onClose, onAdd }) => {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Phone Number</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all placeholder:text-gray-400"
                 placeholder="+1 (555) 000-0000"
                 value={formData.phone}
-                onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
               />
             </div>
             <div>
               <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Select Department</label>
-              <select 
+              <select
                 className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all appearance-none cursor-pointer"
                 value={formData.department}
                 onChange={(e) => handleDepartmentChange(e.target.value)}
@@ -281,20 +294,20 @@ const AddProjectModal = ({ isOpen, onClose, onAdd }) => {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Project Start Date</label>
-              <input 
-                type="date" 
+              <input
+                type="date"
                 className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all"
                 value={formData.startDate}
-                onChange={(e) => setFormData({...formData, startDate: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
               />
             </div>
             <div>
               <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Project Deadline</label>
-              <input 
-                type="date" 
+              <input
+                type="date"
                 className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all"
                 value={formData.deadline}
-                onChange={(e) => setFormData({...formData, deadline: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
               />
             </div>
           </div>
@@ -302,7 +315,7 @@ const AddProjectModal = ({ isOpen, onClose, onAdd }) => {
           {showPackages && (
             <div>
               <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Select Package</label>
-              <select 
+              <select
                 className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all"
                 value={formData.package}
                 onChange={(e) => handlePackageChange(e.target.value)}
@@ -317,27 +330,27 @@ const AddProjectModal = ({ isOpen, onClose, onAdd }) => {
 
           <div>
             <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Work Detail</label>
-            <textarea 
+            <textarea
               rows={4}
               className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all placeholder:text-gray-400"
               placeholder="Describe the work in detail"
               value={formData.workDetail}
-              onChange={(e) => setFormData({...formData, workDetail: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, workDetail: e.target.value })}
             />
           </div>
           <div>
             <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Total Amount (Incl. 18% GST) (₹)</label>
-            <input 
-              type="number" 
+            <input
+              type="number"
               className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all placeholder:text-gray-400"
               placeholder="Total budget"
               value={formData.totalAmount}
-              onChange={(e) => setFormData({...formData, totalAmount: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, totalAmount: e.target.value })}
             />
           </div>
           <div className="flex gap-3 mt-8">
             <button onClick={onClose} className="flex-1 px-6 py-3 rounded-xl border border-gray-200 dark:border-white/10 text-black dark:text-white font-bold hover:bg-gray-100 dark:hover:bg-white/5 transition-all">Cancel</button>
-            <button 
+            <button
               onClick={() => onAdd(formData)}
               className="flex-1 px-6 py-3 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20"
             >
@@ -368,10 +381,10 @@ const AddOldClientModal = ({ isOpen, onClose, onAdd }) => {
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-black/60 backdrop-blur-md" />
-      <motion.div 
-        initial={{ scale: 0.9, opacity: 0 }} 
-        animate={{ scale: 1, opacity: 1 }} 
-        exit={{ scale: 0.9, opacity: 0 }} 
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.9, opacity: 0 }}
         className="relative w-full max-w-2xl bg-white dark:bg-[#030303] rounded-3xl border border-gray-200 dark:border-white/10 p-8 shadow-2xl max-h-[90vh] overflow-y-auto"
       >
         <h3 className="text-xl font-bold text-black dark:text-white mb-6 flex items-center gap-2">
@@ -381,65 +394,65 @@ const AddOldClientModal = ({ isOpen, onClose, onAdd }) => {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Client Name</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-amber-500 outline-none transition-all placeholder:text-gray-400"
                 placeholder="Client Name"
                 value={formData.name}
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               />
             </div>
             <div>
               <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Phone Number</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-amber-500 outline-none transition-all placeholder:text-gray-400"
                 placeholder="+1 (555) 000-0000"
                 value={formData.phone}
-                onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
               />
             </div>
           </div>
 
           <div>
             <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Email Address</label>
-            <input 
-              type="email" 
+            <input
+              type="email"
               className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-amber-500 outline-none transition-all placeholder:text-gray-400"
               placeholder="client@example.com"
               value={formData.email}
-              onChange={(e) => setFormData({...formData, email: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
             />
           </div>
 
           <div>
             <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Project Detail</label>
-            <textarea 
+            <textarea
               rows={3}
               className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-amber-500 outline-none transition-all placeholder:text-gray-400"
               placeholder="Describe the project"
               value={formData.projectDetail}
-              onChange={(e) => setFormData({...formData, projectDetail: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, projectDetail: e.target.value })}
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Start Date</label>
-              <input 
-                type="date" 
+              <input
+                type="date"
                 className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-amber-500 outline-none transition-all"
                 value={formData.startDate}
-                onChange={(e) => setFormData({...formData, startDate: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
               />
             </div>
             <div>
               <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Delivered Date</label>
-              <input 
-                type="date" 
+              <input
+                type="date"
                 className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-amber-500 outline-none transition-all"
                 value={formData.deliveredDate}
-                onChange={(e) => setFormData({...formData, deliveredDate: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, deliveredDate: e.target.value })}
               />
             </div>
           </div>
@@ -447,40 +460,40 @@ const AddOldClientModal = ({ isOpen, onClose, onAdd }) => {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Total Amount (₹)</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-amber-500 outline-none transition-all placeholder:text-gray-400"
                 placeholder="Total Amount"
                 value={formData.totalAmount}
-                onChange={(e) => setFormData({...formData, totalAmount: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, totalAmount: e.target.value })}
               />
             </div>
             <div>
               <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Paid Amount (₹)</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-amber-500 outline-none transition-all placeholder:text-gray-400"
                 placeholder="Paid Amount"
                 value={formData.paidAmount}
-                onChange={(e) => setFormData({...formData, paidAmount: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, paidAmount: e.target.value })}
               />
             </div>
           </div>
 
           <div>
             <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Address</label>
-            <textarea 
+            <textarea
               rows={2}
               className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-amber-500 outline-none transition-all placeholder:text-gray-400"
               placeholder="Client Address"
               value={formData.address}
-              onChange={(e) => setFormData({...formData, address: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
             />
           </div>
 
           <div className="flex gap-3 mt-8">
             <button onClick={onClose} className="flex-1 px-6 py-3 rounded-xl border border-gray-200 dark:border-white/10 text-black dark:text-white font-bold hover:bg-gray-100 dark:hover:bg-white/5 transition-all">Cancel</button>
-            <button 
+            <button
               onClick={() => onAdd(formData)}
               className="flex-1 px-6 py-3 rounded-xl bg-amber-600 text-white font-bold hover:bg-amber-700 transition-all shadow-lg shadow-amber-600/20"
             >
@@ -495,12 +508,27 @@ const AddOldClientModal = ({ isOpen, onClose, onAdd }) => {
 
 const StatusDropdown = ({ currentStatus, onStatusChange }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [coords, setCoords] = useState({ top: 0, left: 0 });
+  const btnRef = useRef(null);
   const options = STATUS_OPTIONS[currentStatus] || [];
+
+  const handleOpen = () => {
+    if (btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      const dropdownWidth = 192;
+      let left = rect.right - dropdownWidth;
+      if (left < 8) left = 8;
+      if (left + dropdownWidth > window.innerWidth - 8) left = window.innerWidth - dropdownWidth - 8;
+      setCoords({ top: rect.bottom + 8, left });
+    }
+    setIsOpen(!isOpen);
+  };
 
   return (
     <div className="relative">
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        ref={btnRef}
+        onClick={handleOpen}
         className="p-2 hover:bg-blue-500/10 rounded-lg text-blue-500 transition-colors group"
         title="Change Status"
       >
@@ -510,12 +538,13 @@ const StatusDropdown = ({ currentStatus, onStatusChange }) => {
       <AnimatePresence>
         {isOpen && (
           <>
-            <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
+            <div className="fixed inset-0 z-[9998]" onClick={() => setIsOpen(false)} />
             <motion.div
               initial={{ opacity: 0, y: 10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 10, scale: 0.95 }}
-              className="absolute right-0 mt-2 w-48 bg-white dark:bg-[#030303] rounded-2xl border border-gray-200 dark:border-white/10 shadow-2xl z-20 py-2 overflow-hidden"
+              style={{ position: 'fixed', top: coords.top, left: coords.left, zIndex: 9999 }}
+              className="w-48 bg-white dark:bg-[#030303] rounded-2xl border border-gray-200 dark:border-white/10 shadow-2xl py-2 overflow-hidden"
             >
               <div className="px-4 py-2 border-b border-gray-100 dark:border-white/5 mb-1">
                 <p className="text-[10px] font-bold text-gray-700 uppercase tracking-widest">Change Status To</p>
@@ -523,10 +552,7 @@ const StatusDropdown = ({ currentStatus, onStatusChange }) => {
               {options.map((option) => (
                 <button
                   key={option}
-                  onClick={() => {
-                    onStatusChange(option);
-                    setIsOpen(false);
-                  }}
+                  onClick={() => { onStatusChange(option); setIsOpen(false); }}
                   className="w-full text-left px-4 py-2.5 text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 hover:text-black dark:hover:text-white transition-colors flex items-center gap-3"
                 >
                   <div className={`w-2 h-2 rounded-full ${
@@ -556,14 +582,14 @@ const PaymentModal = ({ client, isOpen, onClose, theme }) => {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={onClose}
         className="absolute inset-0 bg-black/60 backdrop-blur-md"
       />
-      <motion.div 
+      <motion.div
         initial={{ scale: 0.9, opacity: 0, y: 20 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.9, opacity: 0, y: 20 }}
@@ -580,7 +606,7 @@ const PaymentModal = ({ client, isOpen, onClose, theme }) => {
               <p className="text-sm text-gray-500 dark:text-gray-400">{client.name}</p>
             </div>
           </div>
-          <button 
+          <button
             onClick={onClose}
             className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-xl text-gray-400 hover:text-black dark:hover:text-white transition-colors"
           >
@@ -594,11 +620,10 @@ const PaymentModal = ({ client, isOpen, onClose, theme }) => {
             <div className="space-y-4">
               <div className="bg-gray-50 dark:bg-white/5 p-4 rounded-2xl border border-gray-100 dark:border-white/5">
                 <p className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest mb-1">Project Status</p>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                  client.status === 'Completed' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 border border-emerald-500/20' :
-                  client.status === 'In Progress' ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20' :
-                  'bg-amber-500/10 text-amber-500 border border-amber-500/20'
-                }`}>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${client.status === 'Completed' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 border border-emerald-500/20' :
+                    client.status === 'In Progress' ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20' :
+                      'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                  }`}>
                   {client.status}
                 </span>
               </div>
@@ -618,9 +643,8 @@ const PaymentModal = ({ client, isOpen, onClose, theme }) => {
               </div>
             </div>
 
-            {/* Circular Progress */}
             <div className="h-[200px] flex items-center justify-center relative">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                 <PieChart>
                   <Pie
                     data={data}
@@ -634,7 +658,7 @@ const PaymentModal = ({ client, isOpen, onClose, theme }) => {
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <RechartsTooltip 
+                  <RechartsTooltip
                     contentStyle={{ backgroundColor: theme === 'dark' ? '#111' : '#fff', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '12px', color: theme === 'dark' ? '#fff' : '#000' }}
                   />
                 </PieChart>
@@ -681,7 +705,7 @@ const PaymentModal = ({ client, isOpen, onClose, theme }) => {
 
         {/* Modal Footer */}
         <div className="p-6 border-t border-gray-100 dark:border-white/10 bg-gray-50 dark:bg-white/5 text-right">
-          <button 
+          <button
             onClick={onClose}
             className="px-6 py-2 rounded-xl border border-gray-200 dark:border-white/10 text-black dark:text-white font-bold hover:bg-gray-100 dark:hover:bg-white/5 transition-all"
           >
@@ -795,37 +819,62 @@ const Clients = ({ onClientClick, theme }) => {
 
   const handleStatusChange = (clientId, newStatus) => {
     // Optimistic update
-    setClients(prev => prev.map(c => 
+    setClients(prev => prev.map(c =>
       c.id === clientId || c._id === clientId ? { ...c, status: newStatus } : c
     ));
     // TODO: Add backend integration for status update if needed
   };
 
-  const handleAddPayment = (data) => {
-    // TODO: Add backend integration for payment
-    setClients(prev => prev.map(c => {
-      if (c.id === activeClientId || c._id === activeClientId) {
-        const amount = parseFloat(data.amount);
-        return {
-          ...c,
-          paidAmount: c.paidAmount + amount,
-          pendingAmount: c.pendingAmount - amount,
-          payments: [
-            ...c.payments,
-            {
-              id: c.payments.length + 1,
-              date: data.date,
-              amount: amount,
-              mode: data.mode,
-              utr: data.utr
-            }
-          ]
-        };
-      }
-      return c;
-    }));
-    setIsAddPaymentOpen(false);
-  };
+const handleAddPayment = async (data) => {
+  try {
+    const response = await fetch(`http://localhost:45000/api/clientPayment/${activeClientId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        payingAmount: parseFloat(data.amount),
+        paymentMethod: data.mode,
+        ...(data.mode === 'Online' && { utr: data.utr })
+      })
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      // Optimistic UI update
+      setClients(prev => prev.map(c => {
+        if (c.id === activeClientId || c._id === activeClientId) {
+          const amount = parseFloat(data.amount);
+          return {
+            ...c,
+            paidAmount: c.paidAmount + amount,
+            pendingAmount: c.pendingAmount - amount,
+            payments: [
+              ...c.payments,
+              {
+                id: c.payments.length + 1,
+                date: data.date,
+                amount: amount,
+                mode: data.mode,
+                utr: data.utr || null
+              }
+            ]
+          };
+        }
+        return c;
+      }));
+      alert('Payment added successfully!');
+      fetchClients(); // Refresh from backend to sync latest data
+      setIsAddPaymentOpen(false);
+    } else {
+      alert(`Error: ${result.message}`);
+    }
+  } catch (error) {
+    console.error('Error adding payment:', error);
+    alert('Failed to add payment. Please try again.');
+  }
+};
 
   const handleAddProject = async (data) => {
     try {
@@ -874,37 +923,37 @@ const Clients = ({ onClientClick, theme }) => {
   };
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className="space-y-6"
     >
       <AnimatePresence>
         {paymentModalClient && (
-          <PaymentModal 
-            client={paymentModalClient} 
-            isOpen={!!paymentModalClient} 
-            onClose={() => setPaymentModalClient(null)} 
+          <PaymentModal
+            client={paymentModalClient}
+            isOpen={!!paymentModalClient}
+            onClose={() => setPaymentModalClient(null)}
             theme={theme}
           />
         )}
         {isAddPaymentOpen && (
-          <AddPaymentModal 
-            isOpen={isAddPaymentOpen} 
+          <AddPaymentModal
+            isOpen={isAddPaymentOpen}
             onClose={() => setIsAddPaymentOpen(false)}
             onAdd={handleAddPayment}
           />
         )}
         {isAddProjectOpen && (
-          <AddProjectModal 
-            isOpen={isAddProjectOpen} 
+          <AddProjectModal
+            isOpen={isAddProjectOpen}
             onClose={() => setIsAddProjectOpen(false)}
             onAdd={handleAddProject}
           />
         )}
         {isAddOldClientOpen && (
-          <AddOldClientModal 
-            isOpen={isAddOldClientOpen} 
+          <AddOldClientModal
+            isOpen={isAddOldClientOpen}
             onClose={() => setIsAddOldClientOpen(false)}
             onAdd={handleAddOldClient}
           />
@@ -917,13 +966,13 @@ const Clients = ({ onClientClick, theme }) => {
           <p className="text-gray-600 dark:text-gray-400">Manage your client relationships and project finances</p>
         </div>
         <div className="flex gap-3">
-          <button 
+          <button
             onClick={() => setIsAddOldClientOpen(true)}
             className="px-6 py-2.5 rounded-xl bg-amber-600 text-white font-bold hover:bg-amber-700 transition-all shadow-lg shadow-amber-600/20"
           >
             Add Old Client
           </button>
-          <button 
+          <button
             onClick={() => setIsAddProjectOpen(true)}
             className="px-6 py-2.5 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20"
           >
@@ -962,13 +1011,13 @@ const Clients = ({ onClientClick, theme }) => {
                   </td>
                 </tr>
               ) : clients.map((client) => (
-                <motion.tr 
+                <motion.tr
                   key={client._id || client.id}
                   layout
                   className="group border-b border-gray-50 dark:border-white/5 last:border-0 hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors"
                 >
                   <td className="py-6 px-6">
-                    <button 
+                    <button
                       onClick={() => onClientClick?.(client)}
                       className="flex items-center gap-4 text-left hover:opacity-80 transition-opacity group/client"
                     >
@@ -1021,33 +1070,32 @@ const Clients = ({ onClientClick, theme }) => {
                   <td className="py-6 px-4 text-xs font-medium text-gray-600 dark:text-gray-300">
                     <div className="flex items-center gap-2">
                       <Calendar size={14} className="text-gray-400 dark:text-gray-600" />
-                      {client.deadline}
+                      {client.deadline ? new Date(client.deadline).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'}
                     </div>
                   </td>
                   <td className="py-6 px-4">
-                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                      client.status === 'Completed' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' :
-                      client.status === 'In Progress' ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20' :
-                      client.status === 'On Hold' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' :
-                      'bg-rose-500/10 text-rose-500 border border-rose-500/20'
-                    }`}>
+                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${client.status === 'Completed' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' :
+                        client.status === 'In Progress' ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20' :
+                          client.status === 'On Hold' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' :
+                            'bg-rose-500/10 text-rose-500 border border-rose-500/20'
+                      }`}>
                       {client.status}
                     </span>
                   </td>
                   <td className="py-6 px-6 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <button 
+                      <button
                         onClick={() => setPaymentModalClient(client)}
-                        title="Payment Details" 
+                        title="Payment Details"
                         className="p-2 hover:bg-emerald-500/10 rounded-lg text-emerald-500 transition-colors"
                       >
                         <CreditCard size={18} />
                       </button>
-                      <StatusDropdown 
-                        currentStatus={client.status} 
-                        onStatusChange={(newStatus) => handleStatusChange(client._id || client.id, newStatus)} 
+                      <StatusDropdown
+                        currentStatus={client.status}
+                        onStatusChange={(newStatus) => handleStatusChange(client._id || client.id, newStatus)}
                       />
-                      <ActionMenu 
+                      <ActionMenu
                         onAddPayment={() => {
                           setActiveClientId(client._id || client.id);
                           setIsAddPaymentOpen(true);
@@ -1069,7 +1117,7 @@ const Clients = ({ onClientClick, theme }) => {
           Old Clients
         </h2>
         <div className="bg-white dark:bg-[#030303] rounded-2xl border border-gray-200 dark:border-white/10 overflow-hidden shadow-sm transition-colors">
-          <div className="overflow-x-auto">
+          <div className="overflow-visible">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-gray-100 dark:border-white/5 text-[11px] uppercase tracking-widest text-gray-700 dark:text-gray-500 font-bold">

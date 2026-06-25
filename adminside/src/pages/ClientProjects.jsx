@@ -1,12 +1,15 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Briefcase, 
-  Calendar, 
-  IndianRupee, 
-  CheckCircle2, 
-  Clock, 
+import { useParams, useNavigate } from 'react-router-dom';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+import {
+  Briefcase,
+  Calendar,
+  IndianRupee,
+  CheckCircle2,
+  Clock,
   ChevronLeft,
   ArrowLeft,
   Tag,
@@ -31,7 +34,7 @@ import {
 // Helper to parse work detail into tasks for UI fallback
 const parseWorkDetailToTasks = (workDetail) => {
   if (!workDetail) return [];
-  
+
   const tasks = [];
   const lines = workDetail.split(/[\n•]+/).map(line => line.trim()).filter(line => line.length > 0);
 
@@ -50,7 +53,7 @@ const parseWorkDetailToTasks = (workDetail) => {
       return;
     }
 
-    const complexPostingMatch = line.match(/Posting\s+Per\s+Month\s+[\d\-\s]+\(\s*(\d+)[\-\d\s]*Reels?\s*&\s*(\d+)[\-\d\s]*Posts?\s*\)/i);
+    const complexPostingMatch = line.match(/Posting\s+Per\s+Month\s+[\d\-\s]+\(\s*(\d+)[\d\s-]*Reels?\s*&\s*(\d+)[\d\s-]*Posts?\s*\)/i);
     if (complexPostingMatch) {
       tasks.push({ name: 'Reel Posting', total: parseInt(complexPostingMatch[1]), completed: 0, status: 'Pending', unit: 'Reels' });
       tasks.push({ name: 'Static Post Posting', total: parseInt(complexPostingMatch[2]), completed: 0, status: 'Pending', unit: 'Posts' });
@@ -78,18 +81,18 @@ const calculateProjectProgress = (project) => {
   return Math.round((totalCompleted / primaryTotal) * 100);
 };
 
-const ProjectSection = ({ 
-   project, 
-   isHistory = false, 
-   onUpdate = (p) => {}, 
-   onRenew = (p) => {}, 
-   onAddTask = (p) => {}, 
-   onDeleteExtraTask = (pid, idx) => {},
-   client 
+const ProjectSection = ({
+  project,
+  isHistory = false,
+  onUpdate = (_p) => { },
+  onRenew = (_p) => { },
+  onAddTask = (_p) => { },
+  onDeleteExtraTask = (_pid, _idx) => { },
+  client
 }) => {
   const projectProgress = calculateProjectProgress(project);
   const [invoiceMenuOpen, setInvoiceMenuOpen] = useState(false);
-  
+
   return (
     <div className={`grid grid-cols-1 lg:grid-cols-3 gap-8 ${isHistory ? 'opacity-95' : ''}`}>
       {/* Left Column: Progress & Scope */}
@@ -104,12 +107,12 @@ const ProjectSection = ({
           <div className="flex justify-between items-center mb-6">
             <div className="flex items-center gap-3">
               <h4 className="text-sm font-black text-gray-900 dark:text-white flex items-center gap-2">
-                <TrendingUp size={16} className="text-blue-500" /> 
+                <TrendingUp size={16} className="text-blue-500" />
                 WORK PROGRESS
               </h4>
               {client && (
                 <div className="relative">
-                  <button 
+                  <button
                     onClick={() => setInvoiceMenuOpen(!invoiceMenuOpen)}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] uppercase tracking-widest transition-all"
                   >
@@ -125,7 +128,7 @@ const ProjectSection = ({
                         exit={{ opacity: 0, y: -10 }}
                         className="absolute top-full left-0 mt-2 bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 rounded-xl shadow-lg z-10 overflow-hidden"
                       >
-                        <button 
+                        <button
                           onClick={async () => {
                             await downloadInvoice(project, client, true);
                             setInvoiceMenuOpen(false);
@@ -134,7 +137,7 @@ const ProjectSection = ({
                         >
                           With GST (18%)
                         </button>
-                        <button 
+                        <button
                           onClick={async () => {
                             await downloadInvoice(project, client, false);
                             setInvoiceMenuOpen(false);
@@ -151,12 +154,12 @@ const ProjectSection = ({
             </div>
             <span className="text-sm font-black text-blue-500">{projectProgress}%</span>
           </div>
-          
+
           <div className="w-full h-2 bg-gray-100 dark:bg-white/5 rounded-full overflow-hidden mb-8">
-            <motion.div 
-              initial={{ width: 0 }} 
-              animate={{ width: `${projectProgress}%` }} 
-              className={`h-full shadow-[0_0_15px_rgba(59,130,246,0.5)] ${projectProgress >= 100 ? 'bg-emerald-500' : 'bg-blue-500'}`} 
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${projectProgress}%` }}
+              className={`h-full shadow-[0_0_15px_rgba(59,130,246,0.5)] ${projectProgress >= 100 ? 'bg-emerald-500' : 'bg-blue-500'}`}
             />
           </div>
 
@@ -301,28 +304,26 @@ const generateInvoiceHTML = (project, client, includeGST = true) => {
   const invoiceDate = new Date().toLocaleDateString('en-IN');
   const invoiceNumber = `RWDM/${Date.now().toString().slice(-2)}-${Date.now().toString().slice(-4)}-${Date.now().toString().slice(-6)}`;
   const totalPrice = project.totalPrice || 0;
-  const paidAmount = project.paidAmount || 0;
-  const pendingAmount = project.pendingAmount || 0;
   const baseAmount = includeGST ? (totalPrice / 1.18).toFixed(2) : totalPrice.toFixed(2);
   const gstAmount = includeGST ? (totalPrice - parseFloat(baseAmount)).toFixed(2) : '0.00';
   const cgstAmount = includeGST ? (parseFloat(gstAmount) / 2).toFixed(2) : '0.00';
   const sgstAmount = cgstAmount;
   const finalTotal = includeGST ? totalPrice.toFixed(2) : baseAmount;
-  
+
   // HSN/SAC code based on department/service
   let hsnCode = '998365'; // default for digital services
   if (project.department === 'SEO') hsnCode = '998364';
   if (project.department === 'Graphic Design') hsnCode = '998361';
   if (project.department === 'Video Editing') hsnCode = '998362';
   if (project.department === 'Web Development') hsnCode = '998363';
-  
+
   // Amount in words function
   const numberToWords = (num) => {
     const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
     const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
-    
+
     if (num === 0) return 'Zero';
-    
+
     let words = '';
     const str = Math.floor(num).toString().padStart(9, '0');
     const crores = parseInt(str.substring(0, 2));
@@ -330,28 +331,28 @@ const generateInvoiceHTML = (project, client, includeGST = true) => {
     const thousands = parseInt(str.substring(4, 6));
     const hundreds = parseInt(str.substring(6, 7));
     const lastTwo = parseInt(str.substring(7, 9));
-    
+
     const convertTwoDigits = (n) => {
       if (n < 20) return ones[n];
       let word = tens[Math.floor(n / 10)];
       if (n % 10 !== 0) word += ' ' + ones[n % 10];
       return word;
     };
-    
+
     if (crores > 0) words += convertTwoDigits(crores) + ' Crore ';
     if (lakhs > 0) words += convertTwoDigits(lakhs) + ' Lakh ';
     if (thousands > 0) words += convertTwoDigits(thousands) + ' Thousand ';
     if (hundreds > 0) words += ones[hundreds] + ' Hundred ';
     if (lastTwo > 0) words += convertTwoDigits(lastTwo) + ' ';
-    
+
     const paisa = Math.round((num - Math.floor(num)) * 100);
     if (paisa > 0) words += 'and ' + convertTwoDigits(paisa) + ' Paise ';
-    
+
     return words.trim() + ' Only';
   };
-  
+
   const amountInWords = numberToWords(parseFloat(finalTotal));
-  
+
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -606,15 +607,11 @@ const generateAllProjectsInvoiceHTML = (projects, client, includeGST = true) => 
   const allCycles = [projects[0], ...(projects[0]?.history || [])].filter(Boolean);
   const invoiceDate = new Date().toLocaleDateString('en-IN');
   const invoiceNumber = `RWDM/ALL-${Date.now().toString().slice(-2)}-${Date.now().toString().slice(-4)}-${Date.now().toString().slice(-6)}`;
-  
+
   let totalAllPrice = 0;
-  let totalAllPaid = 0;
-  let totalAllPending = 0;
-  
+
   allCycles.forEach(cycle => {
     totalAllPrice += cycle.totalPrice || 0;
-    totalAllPaid += cycle.paidAmount || 0;
-    totalAllPending += cycle.pendingAmount || 0;
   });
 
   const totalBaseAmount = includeGST ? (totalAllPrice / 1.18).toFixed(2) : totalAllPrice.toFixed(2);
@@ -622,21 +619,21 @@ const generateAllProjectsInvoiceHTML = (projects, client, includeGST = true) => 
   const totalCgst = includeGST ? (parseFloat(totalGstAmount) / 2).toFixed(2) : '0.00';
   const totalSgst = totalCgst;
   const finalTotalAll = includeGST ? totalAllPrice.toFixed(2) : totalBaseAmount;
-  
+
   // HSN/SAC code based on department/service
   let hsnCode = '998365';
   if (projects[0]?.department === 'SEO') hsnCode = '998364';
   if (projects[0]?.department === 'Graphic Design') hsnCode = '998361';
   if (projects[0]?.department === 'Video Editing') hsnCode = '998362';
   if (projects[0]?.department === 'Web Development') hsnCode = '998363';
-  
+
   // Amount in words function
   const numberToWords = (num) => {
     const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
     const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
-    
+
     if (num === 0) return 'Zero';
-    
+
     let words = '';
     const str = Math.floor(num).toString().padStart(9, '0');
     const crores = parseInt(str.substring(0, 2));
@@ -644,28 +641,28 @@ const generateAllProjectsInvoiceHTML = (projects, client, includeGST = true) => 
     const thousands = parseInt(str.substring(4, 6));
     const hundreds = parseInt(str.substring(6, 7));
     const lastTwo = parseInt(str.substring(7, 9));
-    
+
     const convertTwoDigits = (n) => {
       if (n < 20) return ones[n];
       let word = tens[Math.floor(n / 10)];
       if (n % 10 !== 0) word += ' ' + ones[n % 10];
       return word;
     };
-    
+
     if (crores > 0) words += convertTwoDigits(crores) + ' Crore ';
     if (lakhs > 0) words += convertTwoDigits(lakhs) + ' Lakh ';
     if (thousands > 0) words += convertTwoDigits(thousands) + ' Thousand ';
     if (hundreds > 0) words += ones[hundreds] + ' Hundred ';
     if (lastTwo > 0) words += convertTwoDigits(lastTwo) + ' ';
-    
+
     const paisa = Math.round((num - Math.floor(num)) * 100);
     if (paisa > 0) words += 'and ' + convertTwoDigits(paisa) + ' Paise ';
-    
+
     return words.trim() + ' Only';
   };
-  
+
   const amountInWords = numberToWords(parseFloat(finalTotalAll));
-  
+
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -800,9 +797,9 @@ const generateAllProjectsInvoiceHTML = (projects, client, includeGST = true) => 
           <td style="border-left:1px solid #000; border-right:1px solid #000; padding:6px; font-size:11px; vertical-align:top; height:200px;"></td>
           <td style="border-right:1px solid #000; padding:6px; font-size:11px; vertical-align:top; height:200px;">
             <div>${allCycles.map((cycle, index) => {
-              const label = index === 0 ? 'Services_998361' : `Month ${index} - Completed${cycle.package ? ` - ${cycle.package}` : ''}`;
-              return label;
-            }).join('<br>')}</div>
+    const label = index === 0 ? 'Services_998361' : `Month ${index} - Completed${cycle.package ? ` - ${cycle.package}` : ''}`;
+    return label;
+  }).join('<br>')}</div>
             <div style="text-align:right; margin-top:8px;">Output CGST</div>
             <div style="text-align:right;">Output SGST</div>
             <div style="text-align:center; margin-top:12px;">Meta Ads</div>
@@ -925,7 +922,7 @@ const generatePDFInvoice = async (project, client, includeGST = true) => {
     const templatePath = '/GST Invoice No..pdf';
     const templateBytes = await fetch(templatePath).then(res => res.arrayBuffer());
     const pdfDoc = await PDFDocument.load(templateBytes, { ignoreEncryption: true });
-    
+
     console.log('PDF loaded successfully!');
     console.log('Number of pages:', pdfDoc.getPageCount());
 
@@ -933,11 +930,11 @@ const generatePDFInvoice = async (project, client, includeGST = true) => {
     const form = pdfDoc.getForm();
     const fields = form.getFields();
     console.log('Found fields:', fields.map(f => f.getName()));
-    
+
     // Load fonts
     const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const helveticaBoldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-    
+
     const page = pdfDoc.getPage(0);
     const { width, height } = page.getSize();
     console.log('Page size:', { width, height });
@@ -950,21 +947,21 @@ const generatePDFInvoice = async (project, client, includeGST = true) => {
     const cgstAmount = includeGST ? (parseFloat(gstAmount) / 2).toFixed(2) : '0.00';
     const sgstAmount = cgstAmount;
     const finalTotal = includeGST ? totalPrice.toFixed(2) : baseAmount;
-    
+
     // HSN/SAC code based on department/service
-    let hsnCode = '998365'; 
+    let hsnCode = '998365';
     if (project.department === 'SEO') hsnCode = '998364';
     if (project.department === 'Graphic Design') hsnCode = '998361';
     if (project.department === 'Video Editing') hsnCode = '998362';
     if (project.department === 'Web Development') hsnCode = '998363';
-    
+
     // Amount in words function
     const numberToWords = (num) => {
       const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
       const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
-      
+
       if (num === 0) return 'Zero';
-      
+
       let words = '';
       const str = Math.floor(num).toString().padStart(9, '0');
       const crores = parseInt(str.substring(0, 2));
@@ -972,23 +969,23 @@ const generatePDFInvoice = async (project, client, includeGST = true) => {
       const thousands = parseInt(str.substring(4, 6));
       const hundreds = parseInt(str.substring(6, 7));
       const lastTwo = parseInt(str.substring(7, 9));
-      
+
       const convertTwoDigits = (n) => {
         if (n < 20) return ones[n];
         let word = tens[Math.floor(n / 10)];
         if (n % 10 !== 0) word += ' ' + ones[n % 10];
         return word;
       };
-      
+
       if (crores > 0) words += convertTwoDigits(crores) + ' Crore ';
       if (lakhs > 0) words += convertTwoDigits(lakhs) + ' Lakh ';
       if (thousands > 0) words += convertTwoDigits(thousands) + ' Thousand ';
       if (hundreds > 0) words += ones[hundreds] + ' Hundred ';
       if (lastTwo > 0) words += convertTwoDigits(lastTwo) + ' ';
-      
+
       const paisa = Math.round((num - Math.floor(num)) * 100);
       if (paisa > 0) words += 'and ' + convertTwoDigits(paisa) + ' Paise ';
-      
+
       return words.trim() + ' Only';
     };
     const amountInWords = numberToWords(parseFloat(finalTotal));
@@ -1011,7 +1008,7 @@ const generatePDFInvoice = async (project, client, includeGST = true) => {
       { x: 400, y: height - 200, text: 'Test 4' },
       { x: 500, y: height - 250, text: 'Test 5' },
     ];
-    
+
     testPositions.forEach(pos => {
       page.drawText(pos.text, {
         x: pos.x,
@@ -1031,7 +1028,7 @@ const generatePDFInvoice = async (project, client, includeGST = true) => {
             // Try to set it as text field
             form.getTextField(field.getName()).setText('Test Value');
           }
-        } catch (e) {
+        } catch (_e) {
           console.log('Field not a text field:', field.getName());
         }
       });
@@ -1065,30 +1062,48 @@ const generatePDFInvoice = async (project, client, includeGST = true) => {
   }
 };
 
-const downloadAllProjectsInvoice = (projects, client, includeGST = true) => {
+const downloadAllProjectsInvoice = async (projects, client, includeGST = true) => {
   const html = generateAllProjectsInvoiceHTML(projects, client, includeGST);
-  const blob = new Blob([html], { type: 'text/html' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `All-Projects-Invoice-${client.name.replace(/\s+/g, '-')}-${includeGST ? 'with-gst' : 'without-gst'}-${Date.now().toString().slice(-6)}.html`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  await htmlToPDF(html, `All-Projects-Invoice-${client.name.replace(/\s+/g, '-')}-${includeGST ? 'with-gst' : 'without-gst'}-${Date.now().toString().slice(-6)}.pdf`);
+};
+
+const htmlToPDF = async (html, filename) => {
+  const iframe = document.createElement('iframe');
+  iframe.style.cssText = 'position:fixed; top:-9999px; left:-9999px; width:794px; height:1123px; border:none;';
+  document.body.appendChild(iframe);
+  iframe.contentDocument.open();
+  iframe.contentDocument.write(html);
+  iframe.contentDocument.close();
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  try {
+    const canvas = await html2canvas(iframe.contentDocument.body, {
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: '#ffffff',
+      width: 794,
+      windowWidth: 794,
+    });
+    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
+    const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+    let yOffset = 0;
+    while (yOffset < imgHeight) {
+      if (yOffset > 0) pdf.addPage();
+      pdf.addImage(imgData, 'JPEG', 0, -yOffset, pdfWidth, imgHeight);
+      yOffset += pdfHeight;
+    }
+    pdf.save(filename);
+  } finally {
+    document.body.removeChild(iframe);
+  }
 };
 
 const downloadInvoice = async (project, client, includeGST = true) => {
   const html = generateInvoiceHTML(project, client, includeGST);
-  const blob = new Blob([html], { type: 'text/html' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `Invoice-${client.name.replace(/\s+/g, '-')}-${includeGST ? 'with-gst' : 'without-gst'}-${Date.now().toString().slice(-6)}.html`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  await htmlToPDF(html, `Invoice-${client.name.replace(/\s+/g, '-')}-${includeGST ? 'with-gst' : 'without-gst'}-${Date.now().toString().slice(-6)}.pdf`);
 };
 
 const downloadDelayWork = async (clientId, startDate, endDate) => {
@@ -1097,10 +1112,10 @@ const downloadDelayWork = async (clientId, startDate, endDate) => {
     if (clientId) params.append('clientId', clientId);
     if (startDate) params.append('startDate', startDate);
     if (endDate) params.append('endDate', endDate);
-    
+
     const response = await fetch(`http://localhost:45000/api/delay-work/export?${params}`);
     if (!response.ok) throw new Error('Failed to download');
-    
+
     const blob = await response.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1116,7 +1131,10 @@ const downloadDelayWork = async (clientId, startDate, endDate) => {
   }
 };
 
-const ClientProjects = ({ client, onBack }) => {
+const ClientProjects = ({ onBack }) => {
+  const { id: clientId } = useParams();
+  const navigateHook = useNavigate();
+  const handleBack = onBack || (() => navigateHook('/clients'));
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
@@ -1139,12 +1157,11 @@ const ClientProjects = ({ client, onBack }) => {
   const [delayWorkStartDate, setDelayWorkStartDate] = useState('');
   const [delayWorkEndDate, setDelayWorkEndDate] = useState('');
 
-  const fetchClientData = async () => {
-    if (!client?._id && !client?.id) return;
+  const fetchClientData = useCallback(async () => {
+    if (!clientId) return;
     try {
       setLoading(true);
-      const id = client._id || client.id;
-      const response = await fetch(`http://localhost:45000/api/clients/${id}`);
+      const response = await fetch(`http://localhost:45000/api/clients/${clientId}`);
       const result = await response.json();
       if (result.success) {
         const clientData = result.data;
@@ -1159,13 +1176,11 @@ const ClientProjects = ({ client, onBack }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [clientId]);
 
   useEffect(() => {
     fetchClientData();
-  }, [client]);
-
-  if (!client) return null;
+  }, [fetchClientData]);
 
   const openUpdateModal = (project) => {
     const projectToUpdate = JSON.parse(JSON.stringify(project));
@@ -1203,7 +1218,7 @@ const ClientProjects = ({ client, onBack }) => {
       });
       const result = await response.json();
       if (result.success) {
-        setProjects(prevProjects => prevProjects.map(p => 
+        setProjects(prevProjects => prevProjects.map(p =>
           (p._id || p.id) === (tempProjectData._id || tempProjectData.id) ? result.data : p
         ));
         setIsUpdateProgressOpen(false);
@@ -1220,7 +1235,7 @@ const ClientProjects = ({ client, onBack }) => {
       return;
     }
     try {
-      const id = client._id || client.id;
+      const id = clientId;
       const response = await fetch(`http://localhost:45000/api/clients/${id}/renew`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -1352,7 +1367,7 @@ const ClientProjects = ({ client, onBack }) => {
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <button onClick={onBack} className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-xl text-gray-500 transition-colors">
+            <button onClick={handleBack} className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-xl text-gray-500 transition-colors">
               <ArrowLeft size={24} />
             </button>
             <div className="flex items-center gap-3 flex-wrap">
@@ -1364,9 +1379,8 @@ const ClientProjects = ({ client, onBack }) => {
                   {projects[0].package}
                 </span>
               )}
-              <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                projects[0]?.status === 'Completed' ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : 'bg-blue-500/10 text-blue-600 border border-blue-500/20'
-              }`}>
+              <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${projects[0]?.status === 'Completed' ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : 'bg-blue-500/10 text-blue-600 border border-blue-500/20'
+                }`}>
                 {projects[0]?.status || 'STATUS'}
               </span>
             </div>
@@ -1390,7 +1404,7 @@ const ClientProjects = ({ client, onBack }) => {
                   placeholder="End Date"
                 />
                 <button
-                  onClick={() => downloadDelayWork(client._id || client.id, delayWorkStartDate, delayWorkEndDate)}
+                  onClick={() => downloadDelayWork(clientId, delayWorkStartDate, delayWorkEndDate)}
                   className="flex items-center gap-2 px-6 py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm transition-all shadow-lg shadow-purple-600/20"
                 >
                   <Download size={18} />
@@ -1399,7 +1413,7 @@ const ClientProjects = ({ client, onBack }) => {
               </div>
 
               <div className="relative">
-                <button 
+                <button
                   onClick={() => setAllProjectsMenuOpen(!allProjectsMenuOpen)}
                   className="flex items-center gap-2 px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm transition-all shadow-lg shadow-blue-600/20"
                 >
@@ -1415,18 +1429,18 @@ const ClientProjects = ({ client, onBack }) => {
                       exit={{ opacity: 0, y: -10 }}
                       className="absolute top-full right-0 mt-2 bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 rounded-xl shadow-lg z-10 overflow-hidden"
                     >
-                      <button 
-                        onClick={() => {
-                          downloadAllProjectsInvoice(projects, client, true);
+                      <button
+                        onClick={async () => {
+                          await downloadAllProjectsInvoice(projects, client, true);
                           setAllProjectsMenuOpen(false);
                         }}
                         className="block w-full text-left px-4 py-2 text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10"
                       >
                         With GST (18%)
                       </button>
-                      <button 
-                        onClick={() => {
-                          downloadAllProjectsInvoice(projects, client, false);
+                      <button
+                        onClick={async () => {
+                          await downloadAllProjectsInvoice(projects, client, true);
                           setAllProjectsMenuOpen(false);
                         }}
                         className="block w-full text-left px-4 py-2 text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10"
@@ -1439,7 +1453,7 @@ const ClientProjects = ({ client, onBack }) => {
               </div>
 
               <div className="relative">
-                <button 
+                <button
                   onClick={() => setCurrentProjectMenuOpen(!currentProjectMenuOpen)}
                   className="flex items-center gap-2 px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition-all shadow-lg shadow-emerald-600/20"
                 >
@@ -1455,7 +1469,7 @@ const ClientProjects = ({ client, onBack }) => {
                       exit={{ opacity: 0, y: -10 }}
                       className="absolute top-full right-0 mt-2 bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 rounded-xl shadow-lg z-10 overflow-hidden"
                     >
-                      <button 
+                      <button
                         onClick={async () => {
                           await downloadInvoice(projects[0], client, true);
                           setCurrentProjectMenuOpen(false);
@@ -1464,7 +1478,7 @@ const ClientProjects = ({ client, onBack }) => {
                       >
                         With GST (18%)
                       </button>
-                      <button 
+                      <button
                         onClick={async () => {
                           await downloadInvoice(projects[0], client, false);
                           setCurrentProjectMenuOpen(false);
@@ -1481,7 +1495,7 @@ const ClientProjects = ({ client, onBack }) => {
           )}
         </div>
         <h1 className="text-5xl font-black text-blue-600 dark:text-blue-500 lowercase tracking-tight">
-          {client.name}
+          {projects[0]?.name}
         </h1>
       </div>
 
@@ -1522,10 +1536,10 @@ const ClientProjects = ({ client, onBack }) => {
             </div>
           </div>
 
-          <ProjectSection 
-            project={projects[0]} 
-            client={client} 
-            onUpdate={openUpdateModal} 
+          <ProjectSection
+            project={projects[0]}
+            client={projects[0]}
+            onUpdate={openUpdateModal}
             onRenew={openRenewModal}
             onAddTask={(p) => {
               setSelectedProjectForTask(p);
@@ -1539,10 +1553,10 @@ const ClientProjects = ({ client, onBack }) => {
             <div className="space-y-6">
               <h3 className="text-2xl font-black text-gray-900 dark:text-white">Past Cycles</h3>
               {projects[0].history.map((cycle, index) => (
-                <ProjectSection 
-                  key={index} 
-                  project={cycle} 
-                  client={client} 
+                <ProjectSection
+                  key={index}
+                  project={cycle}
+                  client={projects[0]}
                   isHistory={true}
                 />
               ))}
@@ -1556,10 +1570,10 @@ const ClientProjects = ({ client, onBack }) => {
         {isUpdateProgressOpen && tempProjectData && (
           <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsUpdateProgressOpen(false)} className="absolute inset-0 bg-black/60 backdrop-blur-md" />
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }} 
-              animate={{ scale: 1, opacity: 1 }} 
-              exit={{ scale: 0.9, opacity: 0 }} 
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
               className="relative w-full max-w-4xl bg-white dark:bg-[#030303] rounded-3xl border border-gray-200 dark:border-white/10 p-8 shadow-2xl max-h-[90vh] overflow-y-auto"
             >
               <div className="flex items-center justify-between mb-6">
@@ -1581,7 +1595,7 @@ const ClientProjects = ({ client, onBack }) => {
                     <div key={index} className="p-4 rounded-2xl bg-gray-50 dark:bg-white/[0.02] border border-gray-200 dark:border-white/10">
                       <p className="text-sm font-bold text-gray-900 dark:text-white mb-2">{task.name}</p>
                       <div className="flex items-center gap-3">
-                        <button 
+                        <button
                           onClick={() => handleTempTaskUpdate(index, -1)}
                           disabled={task.completed <= 0}
                           className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold hover:bg-blue-200 dark:hover:bg-blue-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1589,7 +1603,7 @@ const ClientProjects = ({ client, onBack }) => {
                           <Minus size={16} />
                         </button>
                         <span className="text-lg font-black text-gray-900 dark:text-white flex-1 text-center">{task.completed} / {task.total}</span>
-                        <button 
+                        <button
                           onClick={() => handleTempTaskUpdate(index, 1)}
                           disabled={task.completed >= task.total}
                           className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1613,7 +1627,7 @@ const ClientProjects = ({ client, onBack }) => {
                       <div key={index} className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20">
                         <p className="text-sm font-bold text-emerald-900 dark:text-emerald-200 mb-2">{task.name}</p>
                         <div className="flex items-center gap-3">
-                          <button 
+                          <button
                             onClick={() => handleTempTaskUpdate(index, -1, true)}
                             disabled={task.completed <= 0}
                             className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold hover:bg-emerald-200 dark:hover:bg-emerald-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1621,7 +1635,7 @@ const ClientProjects = ({ client, onBack }) => {
                             <Minus size={16} />
                           </button>
                           <span className="text-lg font-black text-gray-900 dark:text-white flex-1 text-center">{task.completed} / {task.total}</span>
-                          <button 
+                          <button
                             onClick={() => handleTempTaskUpdate(index, 1, true)}
                             disabled={task.completed >= task.total}
                             className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold hover:bg-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1637,7 +1651,7 @@ const ClientProjects = ({ client, onBack }) => {
 
               <div className="flex gap-3 mt-8">
                 <button onClick={() => setIsUpdateProgressOpen(false)} className="flex-1 px-6 py-3 rounded-xl border border-gray-200 dark:border-white/10 text-black dark:text-white font-bold hover:bg-gray-100 dark:hover:bg-white/5 transition-all">Cancel</button>
-                <button 
+                <button
                   onClick={handleProgressSubmit}
                   className="flex-1 px-6 py-3 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20"
                 >
@@ -1654,10 +1668,10 @@ const ClientProjects = ({ client, onBack }) => {
         {isRenewModalOpen && (
           <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsRenewModalOpen(false)} className="absolute inset-0 bg-black/60 backdrop-blur-md" />
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }} 
-              animate={{ scale: 1, opacity: 1 }} 
-              exit={{ scale: 0.9, opacity: 0 }} 
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
               className="relative w-full max-w-2xl bg-white dark:bg-[#030303] rounded-3xl border border-gray-200 dark:border-white/10 p-8 shadow-2xl max-h-[90vh] overflow-y-auto"
             >
               <div className="flex items-center justify-between mb-6">
@@ -1672,42 +1686,42 @@ const ClientProjects = ({ client, onBack }) => {
               <div className="space-y-4">
                 <div>
                   <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Package Name</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-purple-500 outline-none transition-all placeholder:text-gray-400"
                     placeholder="Package name"
                     value={renewFormData.package}
-                    onChange={(e) => setRenewModalData({...renewFormData, package: e.target.value})}
+                    onChange={(e) => setRenewModalData({ ...renewFormData, package: e.target.value })}
                   />
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Work Detail</label>
-                  <textarea 
+                  <textarea
                     rows={4}
                     className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-purple-500 outline-none transition-all placeholder:text-gray-400"
                     placeholder="Work details"
                     value={renewFormData.workDetail}
-                    onChange={(e) => setRenewModalData({...renewFormData, workDetail: e.target.value})}
+                    onChange={(e) => setRenewModalData({ ...renewFormData, workDetail: e.target.value })}
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Total Amount (₹)</label>
-                    <input 
-                      type="number" 
+                    <input
+                      type="number"
                       className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-purple-500 outline-none transition-all placeholder:text-gray-400"
                       placeholder="Total amount"
                       value={renewFormData.totalAmount}
-                      onChange={(e) => setRenewModalData({...renewFormData, totalAmount: e.target.value})}
+                      onChange={(e) => setRenewModalData({ ...renewFormData, totalAmount: e.target.value })}
                     />
                   </div>
                   <div>
                     <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Deadline</label>
-                    <input 
-                      type="date" 
+                    <input
+                      type="date"
                       className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-purple-500 outline-none transition-all"
                       value={renewFormData.deadline}
-                      onChange={(e) => setRenewModalData({...renewFormData, deadline: e.target.value})}
+                      onChange={(e) => setRenewModalData({ ...renewFormData, deadline: e.target.value })}
                     />
                   </div>
                 </div>
@@ -1715,7 +1729,7 @@ const ClientProjects = ({ client, onBack }) => {
 
               <div className="flex gap-3 mt-8">
                 <button onClick={() => setIsRenewModalOpen(false)} className="flex-1 px-6 py-3 rounded-xl border border-gray-200 dark:border-white/10 text-black dark:text-white font-bold hover:bg-gray-100 dark:hover:bg-white/5 transition-all">Cancel</button>
-                <button 
+                <button
                   onClick={handleRenewPackage}
                   className="flex-1 px-6 py-3 rounded-xl bg-purple-600 text-white font-bold hover:bg-purple-700 transition-all shadow-lg shadow-purple-600/20"
                 >
@@ -1732,10 +1746,10 @@ const ClientProjects = ({ client, onBack }) => {
         {isAddTaskModalOpen && selectedProjectForTask && (
           <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsAddTaskModalOpen(false)} className="absolute inset-0 bg-black/60 backdrop-blur-md" />
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }} 
-              animate={{ scale: 1, opacity: 1 }} 
-              exit={{ scale: 0.9, opacity: 0 }} 
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
               className="relative w-full max-w-lg bg-white dark:bg-[#030303] rounded-3xl border border-gray-200 dark:border-white/10 p-8 shadow-2xl max-h-[90vh] overflow-y-auto"
             >
               <div className="flex items-center justify-between mb-6">
@@ -1750,8 +1764,8 @@ const ClientProjects = ({ client, onBack }) => {
               <div className="space-y-4">
                 <div>
                   <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Task Name</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all placeholder:text-gray-400"
                     placeholder="Task name"
                     value={newTaskName}
@@ -1760,8 +1774,8 @@ const ClientProjects = ({ client, onBack }) => {
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Total Quantity</label>
-                  <input 
-                    type="number" 
+                  <input
+                    type="number"
                     min="1"
                     className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all placeholder:text-gray-400"
                     placeholder="Total"
@@ -1770,8 +1784,8 @@ const ClientProjects = ({ client, onBack }) => {
                   />
                 </div>
                 <div className="flex items-center gap-3 p-4 rounded-2xl bg-gray-50 dark:bg-white/[0.02] border border-gray-200 dark:border-white/10">
-                  <input 
-                    type="checkbox" 
+                  <input
+                    type="checkbox"
                     id="isExtraTask"
                     checked={isExtraTask}
                     onChange={(e) => setIsExtraTask(e.target.checked)}
@@ -1783,7 +1797,7 @@ const ClientProjects = ({ client, onBack }) => {
 
               <div className="flex gap-3 mt-8">
                 <button onClick={() => setIsAddTaskModalOpen(false)} className="flex-1 px-6 py-3 rounded-xl border border-gray-200 dark:border-white/10 text-black dark:text-white font-bold hover:bg-gray-100 dark:hover:bg-white/5 transition-all">Cancel</button>
-                <button 
+                <button
                   onClick={addNewTask}
                   className="flex-1 px-6 py-3 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20"
                 >

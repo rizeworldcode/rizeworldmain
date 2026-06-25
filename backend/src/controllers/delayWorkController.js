@@ -1,7 +1,7 @@
 const DelayWork = require('../models/DelayWork');
 const Client = require('../models/Client'); // To find client by email
 const ExcelJS = require('exceljs');
-
+const mongoose = require('mongoose');
 // Create new Delay Work entry
 exports.createDelayWork = async (req, res) => {
   try {
@@ -118,25 +118,20 @@ exports.exportDelayWork = async (req, res) => {
   try {
     const { clientId, startDate, endDate } = req.query;
     
-    // Build query
     const query = {};
+    
     if (clientId) {
-      query.clientId = clientId;
+      query.clientId = new mongoose.Types.ObjectId(clientId);  // ← cast to ObjectId
     }
+    
     if (startDate || endDate) {
       query.createdAt = {};
-      if (startDate) {
-        query.createdAt.$gte = new Date(startDate);
-      }
-      if (endDate) {
-        query.createdAt.$lte = new Date(endDate);
-      }
+      if (startDate) query.createdAt.$gte = new Date(startDate + 'T00:00:00.000Z');
+      if (endDate) query.createdAt.$lte = new Date(endDate + 'T23:59:59.999Z');
     }
-
     const delayWorks = await DelayWork.find(query)
       .populate('clientId', 'name email phone')
       .populate('staffId', 'name email');
-
     // Create workbook
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Delay Work');
@@ -148,11 +143,11 @@ exports.exportDelayWork = async (req, res) => {
       { header: 'Client Email', key: 'clientEmail', width: 25 },
       { header: 'Client Phone', key: 'clientPhone', width: 15 },
       { header: 'Type', key: 'type', width: 10 },
+      { header: 'Extra', key: 'extra', width: 10 },
+      { header: 'Count', key: 'count', width: 10 },
       { header: 'Published Link', key: 'publishedLink', width: 40 },
       { header: 'Total Account Reach', key: 'totalAccountReach', width: 20 },
-      { header: 'Total Account Views', key: 'totalAccountViews', width: 20 },
-      { header: 'Staff Name', key: 'staffName', width: 20 },
-      { header: 'Staff Email', key: 'staffEmail', width: 25 }
+      { header: 'Total Account Views', key: 'totalAccountViews', width: 20 }
     ];
 
     // Style header
@@ -173,11 +168,11 @@ exports.exportDelayWork = async (req, res) => {
         clientEmail: work.clientId?.email || '',
         clientPhone: work.clientId?.phone || '',
         type: work.type,
+        extra: work.extra ? 'Yes' : 'No',
+        count: work.count || 1,
         publishedLink: work.publishedLink || '',
         totalAccountReach: work.totalAccountReach || 0,
-        totalAccountViews: work.totalAccountViews || 0,
-        staffName: work.staffId?.name || '',
-        staffEmail: work.staffId?.email || ''
+        totalAccountViews: work.totalAccountViews || 0
       });
     });
 

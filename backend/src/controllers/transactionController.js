@@ -17,8 +17,10 @@ exports.createTransaction = async (req, res) => {
       description,
     } = req.body;
 
+    const transactionType = type || req.body.source;
+
     const transaction = new Transaction({
-      type,
+      type: transactionType,
       name,
       amount,
       date,
@@ -59,29 +61,61 @@ exports.createTransaction = async (req, res) => {
 exports.getAllTransactions = async (req, res) => {
   try {
     const { type, startDate, endDate } = req.query;
+
+    // --- 1. Fetch from Transaction model ---
     let query = {};
-
-    if (type) {
-      query.type = type;
-    }
-
+    if (type) query.type = type;
     if (startDate || endDate) {
       query.date = {};
-      if (startDate) {
-        query.date.$gte = new Date(startDate);
-      }
-      if (endDate) {
-        query.date.$lte = new Date(endDate);
-      }
+      if (startDate) query.date.$gte = new Date(startDate);
+      if (endDate) query.date.$lte = new Date(endDate + 'T23:59:59.999Z');
     }
 
-    const transactions = await Transaction.find(query)
-      .sort({ date: -1 });
+    const transactions = await Transaction.find(query).sort({ date: -1 });
+
+    // --- 2. Fetch client payment history ---
+    // Only fetch client payments if type is not 'expense' (they're always income)
+    let clientPayments = [];
+    if (!type || type === 'income' || type === 'client_payment') {
+      const clients = await Client.find({}, 'name email payments');
+
+      clients.forEach(client => {
+        (client.payments || []).forEach(payment => {
+          const paymentDate = new Date(payment.date);
+
+          // Apply date filter if provided
+          if (startDate && paymentDate < new Date(startDate)) return;
+          if (endDate && paymentDate > new Date(endDate + 'T23:59:59.999Z')) return;
+
+          clientPayments.push({
+            _id: payment._id,
+            type: 'client_payment',
+            name: client.name,
+            amount: payment.amount,
+            date: payment.date,
+            mode: payment.mode,
+            method: payment.mode?.toLowerCase() === 'online' ? 'bank_transfer' : 'cash',
+            utrNumber: payment.utr || null,
+            referenceId: client._id,
+            referenceModel: 'Client',
+            description: `Payment from client: ${client.name}`,
+            source: 'client_payment', // flag to distinguish in frontend
+            createdAt: payment.date,
+          });
+        });
+      });
+    }
+
+    // --- 3. Merge and sort by date descending ---
+    const allTransactions = [
+      ...transactions.map(t => ({ ...t.toObject(), source: t.type })),
+      ...clientPayments,
+    ].sort((a, b) => new Date(b.date) - new Date(a.date));
 
     res.status(200).json({
       success: true,
-      count: transactions.length,
-      data: transactions,
+      count: allTransactions.length,
+      data: allTransactions,
     });
   } catch (error) {
     res.status(500).json({
