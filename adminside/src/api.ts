@@ -1,5 +1,6 @@
 // Easily change this URL if your backend changes
-const BASE_URL: string = 'https://rizeworldmain.onrender.com/api';
+const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+const BASE_URL: string = isLocal ? 'http://localhost:45000/api' : 'https://rizeworldmain.onrender.com/api';
 
 // Helper function to make API calls
 async function apiRequest<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -121,9 +122,12 @@ export const adminLogout = () =>
   });
 
 // Wallet Endpoints
-export const getWalletTransactions = () => apiRequest('/wallet/transactions');
+export const getWalletTransactions = (type?: string) => {
+  const url = type && type !== 'all' ? `/transactions?type=${type}` : '/transactions';
+  return apiRequest(url);
+};
 export const addWalletTransaction = (transactionData: any) =>
-  apiRequest('/wallet/transactions', {
+  apiRequest('/transactions', {
     method: 'POST',
     body: JSON.stringify(transactionData),
   });
