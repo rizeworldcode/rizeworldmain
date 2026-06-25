@@ -9,8 +9,8 @@ const staffSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['Staff', 'HR', 'Client Support', 'Admin', 'Data Analyst'],
-    default: 'Staff'
+    enum: ['Employee', 'HR', 'Client Support', 'Admin', 'Data Analyst'],
+    default: 'Employee'
   },
   phone: {
     type: String,
