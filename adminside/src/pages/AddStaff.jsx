@@ -22,7 +22,7 @@ const AddStaff = ({ onBack }) => {
     phone: '',
     email: '',
     monthlySalary: '',
-    department: 'WEB DEvlopment',
+    department: 'WEB Development',
     jobType: 'Permanent',
     role: 'Staff',
     joiningDate: new Date().toISOString().split('T')[0],
@@ -186,7 +186,7 @@ const AddStaff = ({ onBack }) => {
                   value={formData.department}
                   onChange={(e) => setFormData({...formData, department: e.target.value})}
                 >
-                  <option value="WEB DEvlopment" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">DEvlopment</option>
+                  <option value="WEB Development" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Web Development</option>
                   <option value="SEO" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">SEO</option>
                   <option value="Graphic Design" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Graphic Design</option>
                   <option value="SMM" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">SMM</option>
