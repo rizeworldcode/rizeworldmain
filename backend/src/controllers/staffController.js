@@ -844,11 +844,9 @@ exports.getWorkReports = async (req, res) => {
     let query = {};
 
     if (date) {
-      const reportDate = new Date(date);
-      const startOfDay = new Date(reportDate);
-      startOfDay.setHours(0, 0, 0, 0);
-      const endOfDay = new Date(reportDate);
-      endOfDay.setHours(23, 59, 59, 999);
+      const [year, month, day] = date.split('-').map(Number);
+      const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0);
+      const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999);
       query.date = { $gte: startOfDay, $lte: endOfDay };
     }
 
