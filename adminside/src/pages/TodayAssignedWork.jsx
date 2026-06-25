@@ -15,6 +15,14 @@ import {
   Zap,
   Star
 } from 'lucide-react';
+import { 
+  getAllStaff, 
+  toggleStaffTask, 
+  addStaffExtraTask, 
+  submitStaffReport, 
+  submitAllStaffReports, 
+  getStaffWorkReports 
+} from '../api';
 
 const TodayAssignedWork = ({ initialSearch = '' }) => {
   const [searchTerm, setSearchTerm] = useState(initialSearch);
@@ -29,8 +37,7 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
 
   const fetchStaff = async () => {
     try {
-      const response = await fetch('http://localhost:45000/api/staff');
-      const result = await response.json();
+      const result = await getAllStaff();
       if (result.success) setStaffList(result.data);
     } catch (error) {
       console.error('Error fetching staff:', error);
@@ -73,12 +80,7 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
 
   const handleToggleTask = async (staffId, taskIndex) => {
     try {
-      const response = await fetch(`http://localhost:45000/api/staff/${staffId}/toggle-task`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ taskIndex })
-      });
-      const result = await response.json();
+      const result = await toggleStaffTask(staffId, taskIndex);
       if (result.success) fetchStaff();
     } catch (error) {
       console.error('Error toggling task:', error);
@@ -89,12 +91,7 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
     const taskName = newTasks[staffId]?.trim();
     if (!taskName) return;
     try {
-      const response = await fetch(`http://localhost:45000/api/staff/${staffId}/add-extra-task`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ taskName })
-      });
-      const result = await response.json();
+      const result = await addStaffExtraTask(staffId, taskName);
       if (result.success) {
         fetchStaff();
         setNewTasks(prev => ({ ...prev, [staffId]: '' }));
@@ -107,11 +104,7 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
   const handleSubmitReport = async (staffId) => {
     setSubmittingReport(staffId);
     try {
-      const response = await fetch(`http://localhost:45000/api/staff/${staffId}/submit-report`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      const result = await response.json();
+      const result = await submitStaffReport(staffId);
       alert(result.success ? 'Report submitted successfully!' : result.message || 'Failed to submit report');
     } catch (error) {
       alert('Failed to submit report');
@@ -123,11 +116,7 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
   const handleSubmitAllReports = async () => {
     setSubmittingAllReports(true);
     try {
-      const response = await fetch('http://localhost:45000/api/staff/submit-all-reports', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      const result = await response.json();
+      const result = await submitAllStaffReports();
       alert(result.message || (result.success ? 'All reports submitted!' : 'Failed to submit reports'));
     } catch (error) {
       alert('Failed to submit reports');
@@ -136,10 +125,10 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
     }
   };
 
-  const fetchReports = async () => {
+  const fetchReports = async (dateToFetch) => {
+    const queryDate = dateToFetch || selectedDate;
     try {
-      const response = await fetch(`http://localhost:45000/api/staff/reports?date=${selectedDate}`);
-      const result = await response.json();
+      const result = await getStaffWorkReports(queryDate);
       if (result.success) setReports(result.data);
     } catch (error) {
       console.error('Error fetching reports:', error);
@@ -147,7 +136,7 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
   };
 
   const openReportModal = () => {
-    fetchReports();
+    fetchReports(selectedDate);
     setIsReportModalOpen(true);
   };
 
@@ -450,7 +439,11 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
                     <label className="text-sm font-bold text-gray-700 dark:text-gray-300">Select Date:</label>
                     <input
                       type="date" value={selectedDate}
-                      onChange={(e) => { setSelectedDate(e.target.value); fetchReports(); }}
+                      onChange={(e) => {
+                        const newDate = e.target.value;
+                        setSelectedDate(newDate);
+                        fetchReports(newDate);
+                      }}
                       className="px-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>

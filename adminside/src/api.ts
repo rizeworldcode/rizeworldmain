@@ -132,6 +132,31 @@ export const addWalletTransaction = (transactionData: any) =>
     body: JSON.stringify(transactionData),
   });
 
+export const toggleStaffTask = (staffId: string, taskIndex: number) =>
+  apiRequest(`/staff/${staffId}/toggle-task`, {
+    method: 'PATCH',
+    body: JSON.stringify({ taskIndex }),
+  });
+
+export const addStaffExtraTask = (staffId: string, taskName: string) =>
+  apiRequest(`/staff/${staffId}/add-extra-task`, {
+    method: 'POST',
+    body: JSON.stringify({ taskName }),
+  });
+
+export const submitStaffReport = (staffId: string) =>
+  apiRequest(`/staff/${staffId}/submit-report`, {
+    method: 'POST',
+  });
+
+export const submitAllStaffReports = () =>
+  apiRequest('/staff/submit-all-reports', {
+    method: 'POST',
+  });
+
+export const getStaffWorkReports = (date: string) =>
+  apiRequest(`/staff/reports?date=${date}`);
+
 export default {
   getDashboardStats,
   getAllStaff,
@@ -153,4 +178,9 @@ export default {
   adminLogout,
   getWalletTransactions,
   addWalletTransaction,
+  toggleStaffTask,
+  addStaffExtraTask,
+  submitStaffReport,
+  submitAllStaffReports,
+  getStaffWorkReports,
 };
