@@ -31,7 +31,7 @@ const staffSchema = new mongoose.Schema({
   department: {
     type: String,
     required: true,
-    enum: ['DEvlopment', 'SEO', 'Graphic Design', 'SMM', 'Video Editing']
+    enum: ['WEB Development', 'SEO', 'Graphic Design', 'SMM', 'Video Editing']
   },
   jobType: {
     type: String,
