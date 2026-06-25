@@ -26,10 +26,18 @@ window.fetch = async (input, init = {}) => {
       } else if (input instanceof URL) {
         input = new URL(url);
       } else if (input && typeof input === 'object' && 'url' in input) {
-        try {
-          input = new Request(url, input);
-        } catch (e) {
-          input.url = url;
+        if (input instanceof Request) {
+          try {
+            input = new Request(url, input);
+          } catch (e) {
+            console.warn("Could not rewrite Request URL:", e);
+          }
+        } else {
+          try {
+            input['url'] = url;
+          } catch (e) {
+            console.warn("Could not assign URL to object:", e);
+          }
         }
       }
     }
