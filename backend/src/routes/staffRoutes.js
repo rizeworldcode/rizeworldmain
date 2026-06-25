@@ -32,6 +32,14 @@ router.use(protect);
 
 router.post('/', createStaff);
 router.get('/', getAllStaff);
+
+// Static/literal routes first
+router.get('/reports', getWorkReports);
+router.get('/leaves/all', getStaffLeaves);
+router.post('/submit-all-reports', submitAllReports);
+router.post('/mark-leave', markLeave);
+
+// Dynamic parameter routes
 router.get('/:id', getStaffById);
 router.put('/:id', updateStaff);
 router.delete('/:id', deleteStaff);
@@ -41,12 +49,8 @@ router.patch('/:id/today-work', updateTodayWork);
 router.patch('/:id/toggle-task', toggleTaskComplete);
 router.post('/:id/add-extra-task', addExtraTask);
 router.post('/:id/submit-report', submitWorkReport);
-router.post('/submit-all-reports', submitAllReports);
-router.get('/reports', getWorkReports);
 router.patch('/:id/clear-salary', clearSalary);
 router.post('/:id/attendance', updateAttendance);
-router.post('/mark-leave', markLeave);
-router.get('/leaves/all', getStaffLeaves);
 
 // Document routes
 router.post('/:id/upload-document', upload.single('document'), uploadDocument);
