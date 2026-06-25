@@ -19,6 +19,9 @@ const app = express();
 const allowedOrigins = [
   'https://admin.rizeworld.in',
   'https://employee.rizeworld.in',
+  'https://admin.rizeworld.in',
+  'https://rizeworld.in',
+  'https://www.rizeworld.in',
   'http://localhost:5173',
   'http://localhost:5174',
   'http://localhost:5175',
