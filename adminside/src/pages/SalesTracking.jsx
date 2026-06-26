@@ -21,7 +21,8 @@ import { getLiveLocations, getLocationHistory } from '../api';
 
 // Set Mapbox Access Token
 // @ts-ignore
-mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || 'pk.eyJ1Ijoicml6ZXdvcmxkIiwiYSI6ImNsdzF6cjhpZTA1NGQya21zcHphNDRxbmoifQ.placeholder_token';
+const env = import.meta.env || {};
+mapboxgl.accessToken = env.VITE_MAPBOX_ACCESS_TOKEN || 'pk.eyJ1Ijoicml6ZXdvcmxkIiwiYSI6ImNsdzF6cjhpZTA1NGQya21zcHphNDRxbmoifQ.placeholder_token';
 
 const SalesTracking = () => {
   const mapContainerRef = useRef(null);
@@ -95,9 +96,10 @@ const SalesTracking = () => {
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
-    const isTokenPlaceholder = !import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || 
-      import.meta.env.VITE_MAPBOX_ACCESS_TOKEN.includes('placeholder_token') ||
-      import.meta.env.VITE_MAPBOX_ACCESS_TOKEN.trim() === '';
+    const token = env.VITE_MAPBOX_ACCESS_TOKEN;
+    const isTokenPlaceholder = !token || 
+      token.includes('placeholder_token') ||
+      token.trim() === '';
 
     if (isTokenPlaceholder) {
       // Load initial data
@@ -461,9 +463,9 @@ const SalesTracking = () => {
             <div ref={mapContainerRef} className="absolute inset-0 w-full h-full" />
             
             {/* If token is placeholder or missing, show overlay explanation */}
-            {(!import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || 
-              import.meta.env.VITE_MAPBOX_ACCESS_TOKEN.includes('placeholder_token') ||
-              import.meta.env.VITE_MAPBOX_ACCESS_TOKEN.trim() === '') && (
+            {(!env.VITE_MAPBOX_ACCESS_TOKEN || 
+              env.VITE_MAPBOX_ACCESS_TOKEN.includes('placeholder_token') ||
+              env.VITE_MAPBOX_ACCESS_TOKEN.trim() === '') && (
               <div className="absolute inset-0 bg-gray-900/80 backdrop-blur-sm z-20 flex flex-col items-center justify-center p-8 text-center">
                 <AlertCircle className="w-16 h-16 text-yellow-500 animate-bounce mb-4" />
                 <h3 className="text-2xl font-black text-white mb-2">Mapbox Access Token Required</h3>
