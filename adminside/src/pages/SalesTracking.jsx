@@ -95,6 +95,20 @@ const SalesTracking = () => {
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
+    const isTokenPlaceholder = !import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || 
+      import.meta.env.VITE_MAPBOX_ACCESS_TOKEN.includes('placeholder_token') ||
+      import.meta.env.VITE_MAPBOX_ACCESS_TOKEN.trim() === '';
+
+    if (isTokenPlaceholder) {
+      // Load initial data
+      fetchLiveTrackingData();
+      // Auto-refresh every 10 seconds
+      const interval = setInterval(fetchLiveTrackingData, 10000);
+      return () => {
+        clearInterval(interval);
+      };
+    }
+
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
       style: 'mapbox://styles/mapbox/streets-v12',
@@ -113,7 +127,10 @@ const SalesTracking = () => {
 
     return () => {
       clearInterval(interval);
-      map.remove();
+      if (mapRef.current) {
+        map.remove();
+        mapRef.current = null;
+      }
     };
   }, []);
 
@@ -443,6 +460,23 @@ const SalesTracking = () => {
           <div className="bg-white dark:bg-[#111] rounded-[2rem] border border-gray-100 dark:border-white/5 shadow-sm overflow-hidden flex-1 relative min-h-[50vh]">
             <div ref={mapContainerRef} className="absolute inset-0 w-full h-full" />
             
+            {/* If token is placeholder or missing, show overlay explanation */}
+            {(!import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || 
+              import.meta.env.VITE_MAPBOX_ACCESS_TOKEN.includes('placeholder_token') ||
+              import.meta.env.VITE_MAPBOX_ACCESS_TOKEN.trim() === '') && (
+              <div className="absolute inset-0 bg-gray-900/80 backdrop-blur-sm z-20 flex flex-col items-center justify-center p-8 text-center">
+                <AlertCircle className="w-16 h-16 text-yellow-500 animate-bounce mb-4" />
+                <h3 className="text-2xl font-black text-white mb-2">Mapbox Access Token Required</h3>
+                <p className="text-gray-300 max-w-md text-sm leading-relaxed mb-6">
+                  Real-time mapping requires a valid Mapbox Public Access Token. Please add <code className="bg-black/40 px-2 py-1 rounded text-yellow-400 font-mono">VITE_MAPBOX_ACCESS_TOKEN</code> to your <code className="bg-black/40 px-2 py-1 rounded text-yellow-400 font-mono">adminside/.env</code> file and restart the development server.
+                </p>
+                <div className="bg-white/10 text-xs text-left p-4 rounded-xl border border-white/15 text-gray-200 font-mono">
+                  # Example adminside/.env configuration:<br />
+                  VITE_MAPBOX_ACCESS_TOKEN=pk.ey...your_mapbox_token_here
+                </div>
+              </div>
+            )}
+
             {/* Float HUD card for selected employee */}
             <AnimatePresence>
               {selectedEmployee && (
