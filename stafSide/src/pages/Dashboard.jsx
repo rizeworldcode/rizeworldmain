@@ -236,7 +236,8 @@ const Dashboard = () => {
     totalAccountViews: 0,
     clientEmail: '',
     extra: false,
-    count: 1
+    count: 1,
+    extraName: ''
   });
   const [delayWorkLoading, setDelayWorkLoading] = useState(false);
 
@@ -602,11 +603,17 @@ const Dashboard = () => {
     const payload = {
       type: delayWorkForm.type,
       clientEmail: delayWorkForm.clientEmail,
-      extra: delayWorkForm.extra,
+      extra: delayWorkForm.type === 'extra' ? true : delayWorkForm.extra,
       staffId
     };
 
-    if (delayWorkForm.type === 'shoot') {
+    if (delayWorkForm.type === 'extra') {
+      payload.extraName = delayWorkForm.extraName;
+      payload.count = delayWorkForm.count || 1;
+      payload.publishedLink = '';
+      payload.totalAccountReach = 0;
+      payload.totalAccountViews = 0;
+    } else if (delayWorkForm.type === 'shoot') {
       payload.count = delayWorkForm.count || 1;
       payload.publishedLink = '';
       payload.totalAccountReach = 0;
@@ -635,7 +642,8 @@ const Dashboard = () => {
           totalAccountViews: 0,
           clientEmail: '',
           extra: false,
-          count: 1
+          count: 1,
+          extraName: ''
         });
       } else {
         alert(result.message || 'Failed to add delay work');
@@ -1247,6 +1255,7 @@ const Dashboard = () => {
                         work.type === 'reel' ? "bg-purple-100 text-purple-600" : 
                         work.type === 'post' ? "bg-blue-100 text-blue-600" : 
                         work.type === 'shot' ? "bg-pink-100 text-pink-600" :
+                        work.type === 'extra' ? "bg-orange-100 text-orange-600" :
                         "bg-emerald-100 text-emerald-600"
                       )}>
                         {work.type}
@@ -1262,7 +1271,20 @@ const Dashboard = () => {
                     <p className="text-[10px] font-black text-black uppercase tracking-widest mb-1">Client</p>
                     <p className="text-sm font-bold text-black">{work.clientId?.name || 'N/A'}</p>
                   </div>
-                  {work.type === 'shoot' ? (
+                   {work.type === 'extra' ? (
+                    <>
+                      {work.extraName && (
+                        <div className="mb-3">
+                          <p className="text-[10px] font-black text-black uppercase tracking-widest mb-1">Extra Work Detail</p>
+                          <p className="text-sm font-bold text-black">{work.extraName}</p>
+                        </div>
+                      )}
+                      <div className="mb-4">
+                        <p className="text-[10px] font-black text-black uppercase tracking-widest mb-1">Count</p>
+                        <p className="text-xl sm:text-2xl font-black text-black">{work.count || 1}</p>
+                      </div>
+                    </>
+                  ) : work.type === 'shoot' ? (
                     <div className="mb-4">
                       <p className="text-[10px] font-black text-black uppercase tracking-widest mb-1">Shoot Count</p>
                       <p className="text-xl sm:text-2xl font-black text-black">{work.count || 1}</p>
@@ -1347,22 +1369,49 @@ const Dashboard = () => {
                   <option value="post">Post</option>
                   <option value="shot">Shot</option>
                   <option value="shoot">Shoot</option>
+                  <option value="extra">Extra</option>
                 </select>
               </div>
 
-              <div className="flex gap-6 py-1">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <input 
-                    type="checkbox"
-                    checked={delayWorkForm.extra}
-                    onChange={(e) => setDelayWorkForm({ ...delayWorkForm, extra: e.target.checked })}
-                    className="w-4 h-4 rounded text-amber-500 focus:ring-amber-500"
-                  />
-                  <span className="text-xs font-bold text-black uppercase tracking-wider">Extra</span>
-                </label>
-              </div>
+              {delayWorkForm.type !== 'extra' && (
+                <div className="flex gap-6 py-1">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input 
+                      type="checkbox"
+                      checked={delayWorkForm.extra}
+                      onChange={(e) => setDelayWorkForm({ ...delayWorkForm, extra: e.target.checked })}
+                      className="w-4 h-4 rounded text-amber-500 focus:ring-amber-500"
+                    />
+                    <span className="text-xs font-bold text-black uppercase tracking-wider">Extra</span>
+                  </label>
+                </div>
+              )}
 
-              {delayWorkForm.type === 'shoot' ? (
+              {delayWorkForm.type === 'extra' ? (
+                <>
+                  <div>
+                    <label className="text-[10px] font-black text-black uppercase tracking-widest block mb-1 sm:mb-2">Extra</label>
+                    <input 
+                      type="text" 
+                      className="w-full p-3 sm:p-4 clay-inset rounded-2xl text-sm font-bold text-black focus:outline-none"
+                      placeholder="Enter extra work name"
+                      value={delayWorkForm.extraName || ''}
+                      onChange={(e) => setDelayWorkForm({ ...delayWorkForm, extraName: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-black uppercase tracking-widest block mb-1 sm:mb-2">Count</label>
+                    <input 
+                      type="number" 
+                      min="1"
+                      className="w-full p-3 sm:p-4 clay-inset rounded-2xl text-sm font-bold text-black focus:outline-none"
+                      placeholder="1"
+                      value={delayWorkForm.count}
+                      onChange={(e) => setDelayWorkForm({ ...delayWorkForm, count: parseInt(e.target.value) || 1 })}
+                    />
+                  </div>
+                </>
+              ) : delayWorkForm.type === 'shoot' ? (
                 <div>
                   <label className="text-[10px] font-black text-black uppercase tracking-widest block mb-1 sm:mb-2">Count</label>
                   <input 
