@@ -1386,39 +1386,39 @@ const ClientProjects = ({ onBack }) => {
             </div>
           </div>
           {projects.length > 0 && (
-            <div className="flex flex-col lg:flex-row items-center gap-3">
+            <div className="flex flex-col md:flex-row md:flex-wrap lg:flex-nowrap items-stretch md:items-center gap-3 w-full lg:w-auto justify-end">
               {/* Delay Work Download Section */}
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full md:w-auto">
                 <input
                   type="date"
                   value={delayWorkStartDate}
                   onChange={(e) => setDelayWorkStartDate(e.target.value)}
-                  className="bg-black/5 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white focus:border-blue-500 outline-none transition-all"
+                  className="bg-black/5 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white focus:border-blue-500 outline-none transition-all w-full sm:w-auto"
                   placeholder="Start Date"
                 />
                 <input
                   type="date"
                   value={delayWorkEndDate}
                   onChange={(e) => setDelayWorkEndDate(e.target.value)}
-                  className="bg-black/5 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white focus:border-blue-500 outline-none transition-all"
+                  className="bg-black/5 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white focus:border-blue-500 outline-none transition-all w-full sm:w-auto"
                   placeholder="End Date"
                 />
                 <button
                   onClick={() => downloadDelayWork(clientId, delayWorkStartDate, delayWorkEndDate)}
-                  className="flex items-center gap-2 px-6 py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm transition-all shadow-lg shadow-purple-600/20"
+                  className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm transition-all shadow-lg shadow-purple-600/20 w-full sm:w-auto"
                 >
                   <Download size={18} />
-                  Download Delay Work
+                  <span className="whitespace-nowrap">Download Delay Work</span>
                 </button>
               </div>
 
-              <div className="relative">
+              <div className="relative w-full md:w-auto">
                 <button
                   onClick={() => setAllProjectsMenuOpen(!allProjectsMenuOpen)}
-                  className="flex items-center gap-2 px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm transition-all shadow-lg shadow-blue-600/20"
+                  className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm transition-all shadow-lg shadow-blue-600/20 w-full"
                 >
                   <Download size={18} />
-                  All Projects Invoice
+                  <span className="whitespace-nowrap">All Projects Invoice</span>
                   <ChevronDown size={18} />
                 </button>
                 <AnimatePresence>
@@ -1427,14 +1427,14 @@ const ClientProjects = ({ onBack }) => {
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
-                      className="absolute top-full right-0 mt-2 bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 rounded-xl shadow-lg z-10 overflow-hidden"
+                      className="absolute top-full right-0 mt-2 bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 rounded-xl shadow-lg z-10 overflow-hidden min-w-[200px]"
                     >
                       <button
                         onClick={async () => {
                           await downloadAllProjectsInvoice(projects, client, true);
                           setAllProjectsMenuOpen(false);
                         }}
-                        className="block w-full text-left px-4 py-2 text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10"
+                        className="block w-full text-left px-4 py-2.5 text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10"
                       >
                         With GST (18%)
                       </button>
@@ -1443,7 +1443,7 @@ const ClientProjects = ({ onBack }) => {
                           await downloadAllProjectsInvoice(projects, client, true);
                           setAllProjectsMenuOpen(false);
                         }}
-                        className="block w-full text-left px-4 py-2 text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10"
+                        className="block w-full text-left px-4 py-2.5 text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10"
                       >
                         Without GST
                       </button>
@@ -1452,13 +1452,13 @@ const ClientProjects = ({ onBack }) => {
                 </AnimatePresence>
               </div>
 
-              <div className="relative">
+              <div className="relative w-full md:w-auto">
                 <button
                   onClick={() => setCurrentProjectMenuOpen(!currentProjectMenuOpen)}
-                  className="flex items-center gap-2 px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition-all shadow-lg shadow-emerald-600/20"
+                  className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition-all shadow-lg shadow-emerald-600/20 w-full"
                 >
                   <Download size={18} />
-                  Current Project Invoice
+                  <span className="whitespace-nowrap">Current Project Invoice</span>
                   <ChevronDown size={18} />
                 </button>
                 <AnimatePresence>
@@ -1467,14 +1467,14 @@ const ClientProjects = ({ onBack }) => {
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
-                      className="absolute top-full right-0 mt-2 bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 rounded-xl shadow-lg z-10 overflow-hidden"
+                      className="absolute top-full right-0 mt-2 bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 rounded-xl shadow-lg z-10 overflow-hidden min-w-[200px]"
                     >
                       <button
                         onClick={async () => {
                           await downloadInvoice(projects[0], client, true);
                           setCurrentProjectMenuOpen(false);
                         }}
-                        className="block w-full text-left px-4 py-2 text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10"
+                        className="block w-full text-left px-4 py-2.5 text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10"
                       >
                         With GST (18%)
                       </button>
@@ -1483,7 +1483,7 @@ const ClientProjects = ({ onBack }) => {
                           await downloadInvoice(projects[0], client, false);
                           setCurrentProjectMenuOpen(false);
                         }}
-                        className="block w-full text-left px-4 py-2 text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10"
+                        className="block w-full text-left px-4 py-2.5 text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10"
                       >
                         Without GST
                       </button>
