@@ -83,11 +83,25 @@ const AddStaff = ({ onBack }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Validate Indian phone number (10 digits starting with 6-9)
+    const phonePattern = /^[6-9]\d{9}$/;
+    if (!phonePattern.test(formData.phone)) {
+      alert('Please enter a valid 10-digit Indian phone number starting with 6, 7, 8, or 9.');
+      return;
+    }
+
     try {
+      // Prepend +91 before submitting to the backend
+      const payload = {
+        ...formData,
+        phone: `+91 ${formData.phone}`
+      };
+
       const response = await fetch('http://localhost:45000/api/staff', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
       });
       const result = await response.json();
       if (result.success) {
@@ -164,15 +178,21 @@ const AddStaff = ({ onBack }) => {
 
             <div className="space-y-2">
               <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block px-1">Phone Number</label>
-              <div className="relative">
-                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" size={18} />
+              <div className="relative flex items-center">
+                <span className="absolute left-4 text-gray-500 dark:text-gray-400 font-bold text-sm select-none border-r border-gray-200 dark:border-white/10 pr-3">+91</span>
                 <input 
                   required
                   type="tel" 
-                  placeholder="+1 (555) 000-0000"
-                  className="w-full bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl pl-12 pr-4 py-3 text-sm text-gray-900 dark:text-white focus:border-blue-500 outline-none transition-all"
+                  placeholder="Enter 10-digit number"
+                  maxLength={10}
+                  className="w-full bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl pl-16 pr-4 py-3 text-sm text-gray-900 dark:text-white focus:border-blue-500 outline-none transition-all"
                   value={formData.phone}
-                  onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '');
+                    if (val.length <= 10) {
+                      setFormData({...formData, phone: val});
+                    }
+                  }}
                 />
               </div>
             </div>
