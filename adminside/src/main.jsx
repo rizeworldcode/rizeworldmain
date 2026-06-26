@@ -43,7 +43,10 @@ window.fetch = async (input, init = {}) => {
     }
   }
 
-  if (url.includes('/api') || url.startsWith('/api') || url.includes('localhost:45000') || url.includes('onrender.com')) {
+  const isBackendUrl = url.startsWith('/') || url.startsWith('api/') || url.includes('/api/') || url.includes('localhost:45000') || url.includes('onrender.com');
+  const isMapboxUrl = url.includes('mapbox');
+
+  if (isBackendUrl && !isMapboxUrl) {
     const token = localStorage.getItem('adminToken');
     if (token) {
       if (!init.headers) {
