@@ -98,7 +98,9 @@ const SalesTracking = () => {
 
     const token = env.VITE_MAPBOX_ACCESS_TOKEN;
     const isTokenPlaceholder = !token || 
-      token.includes('placeholder_token') ||
+      !token.startsWith('pk.') ||
+      token.includes('placeholder') ||
+      token.includes('your_mapbox_token') ||
       token.trim() === '';
 
     if (isTokenPlaceholder) {
@@ -464,7 +466,9 @@ const SalesTracking = () => {
             
             {/* If token is placeholder or missing, show overlay explanation */}
             {(!env.VITE_MAPBOX_ACCESS_TOKEN || 
-              env.VITE_MAPBOX_ACCESS_TOKEN.includes('placeholder_token') ||
+              !env.VITE_MAPBOX_ACCESS_TOKEN.startsWith('pk.') ||
+              env.VITE_MAPBOX_ACCESS_TOKEN.includes('placeholder') ||
+              env.VITE_MAPBOX_ACCESS_TOKEN.includes('your_mapbox_token') ||
               env.VITE_MAPBOX_ACCESS_TOKEN.trim() === '') && (
               <div className="absolute inset-0 bg-gray-900/80 backdrop-blur-sm z-20 flex flex-col items-center justify-center p-8 text-center">
                 <AlertCircle className="w-16 h-16 text-yellow-500 animate-bounce mb-4" />
