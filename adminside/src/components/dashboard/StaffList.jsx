@@ -71,16 +71,32 @@ const StaffList = ({ onViewAll }) => {
   }, []);
 
   const handleClockOut = async (id) => {
+    const member = staffMembers.find(s => s._id === id);
+    const defaultTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+    const inputTime = prompt(`Enter clock-out time for ${member ? member.name : 'staff'} (e.g. "05:30 PM" or "17:30"):`, defaultTime);
+    if (inputTime === null) return;
+    if (!inputTime.trim()) {
+      alert('Invalid time');
+      return;
+    }
+
     try {
+      const token = localStorage.getItem('adminToken');
       const response = await fetch(`http://localhost:45000/api/staff/${id}/clock-out`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ clockOutTime: inputTime.trim() })
       });
       const result = await response.json();
       if (result.success) {
         setStaffMembers(prev => prev.map(s => s._id === id ? result.data : s));
         setActiveMenu(null);
         alert('Staff clocked out successfully');
+      } else {
+        alert(result.message || 'Failed to clock out');
       }
     } catch (error) {
       console.error('Error clocking out staff:', error);
@@ -90,15 +106,21 @@ const StaffList = ({ onViewAll }) => {
 
   const handleClockIn = async (id) => {
     try {
+      const token = localStorage.getItem('adminToken');
       const response = await fetch(`http://localhost:45000/api/staff/${id}/clock-in`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
       });
       const result = await response.json();
       if (result.success) {
         setStaffMembers(prev => prev.map(s => s._id === id ? result.data : s));
         setActiveMenu(null);
         alert('Staff clocked in successfully');
+      } else {
+        alert(result.message || 'Failed to clock in');
       }
     } catch (error) {
       console.error('Error clocking in staff:', error);

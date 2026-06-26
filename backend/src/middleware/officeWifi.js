@@ -138,6 +138,11 @@ const isOfficeWifi = (req) => {
 // ---------------------------------------------------------------------------
 
 const requireOfficeWifi = (req, res, next) => {
+  // Bypass wifi check for admin role
+  if (req.role === 'admin') {
+    return next();
+  }
+
   // Skip check in local development so engineers can test without the office network
   if (process.env.NODE_ENV === 'development') {
     console.log('[officeWifi] development mode — WiFi check skipped');

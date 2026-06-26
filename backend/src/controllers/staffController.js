@@ -474,9 +474,25 @@ exports.clockOutStaff = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Staff ID is required' });
     }
 
-    const now = new Date();
-    const istNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
-    const clockOutTime = formatTime(istNow);
+    let clockOutTime;
+    if (req.role === 'admin' && req.body.clockOutTime) {
+      let rawTime = req.body.clockOutTime.trim();
+      // Check if it's in 24-hour format (e.g. "17:30")
+      const time24Pattern = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
+      if (time24Pattern.test(rawTime)) {
+        const [h, m] = rawTime.split(':').map(Number);
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        const displayH = h % 12 || 12;
+        const displayM = m < 10 ? `0${m}` : m;
+        clockOutTime = `${displayH}:${displayM} ${ampm}`;
+      } else {
+        clockOutTime = rawTime;
+      }
+    } else {
+      const now = new Date();
+      const istNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+      clockOutTime = formatTime(istNow);
+    }
     console.log('Clock out time:', clockOutTime);
 
     const staff = await Staff.findById(req.params.id);

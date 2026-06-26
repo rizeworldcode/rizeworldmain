@@ -489,9 +489,13 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
 
   const handleClockIn = async (member) => {
     try {
+      const token = localStorage.getItem('adminToken');
       const response = await fetch(`http://localhost:45000/api/staff/${member._id}/clock-in`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
       });
       const result = await response.json();
 
@@ -510,10 +514,23 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
   };
 
   const handleClockOut = async (member) => {
+    const defaultTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+    const inputTime = prompt(`Enter clock-out time for ${member.name} (e.g. "05:30 PM" or "17:30"):`, defaultTime);
+    if (inputTime === null) return;
+    if (!inputTime.trim()) {
+      alert('Invalid time');
+      return;
+    }
+
     try {
+      const token = localStorage.getItem('adminToken');
       const response = await fetch(`http://localhost:45000/api/staff/${member._id}/clock-out`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ clockOutTime: inputTime.trim() })
       });
       const result = await response.json();
 
