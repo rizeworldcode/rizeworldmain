@@ -9,6 +9,10 @@ exports.updateClientPaidAmount = async (req, res) => {
     if (!client) {
       return res.status(404).json({ success: false, message: 'Client not found' });
     }
+    const currentPending = Number(client.pendingAmount);
+    if (payingAmount > currentPending) {
+      return res.status(400).json({ success: false, message: `Payment amount (₹${payingAmount}) cannot exceed the pending amount (₹${currentPending})` });
+    }
 
     const newPaidAmount = Number(client.paidAmount) + payingAmount;
     const newPendingAmount = Number(client.totalPrice) - newPaidAmount;

@@ -19,6 +19,21 @@ exports.createTransaction = async (req, res) => {
 
     const transactionType = type || req.body.source;
 
+    let client = null;
+    if (referenceId && referenceModel === 'Client') {
+      client = await Client.findById(referenceId);
+      if (!client) {
+        return res.status(404).json({ success: false, message: 'Client not found' });
+      }
+      const currentPending = Number(client.pendingAmount);
+      if (amount > currentPending) {
+        return res.status(400).json({
+          success: false,
+          message: `Transaction amount (₹${amount}) cannot exceed the client's pending amount (₹${currentPending})`
+        });
+      }
+    }
+
     const transaction = new Transaction({
       type: transactionType,
       name,
@@ -35,15 +50,13 @@ exports.createTransaction = async (req, res) => {
     await transaction.save();
 
     // Update the respective model if needed
-    if (referenceId && referenceModel) {
-      if (referenceModel === 'Client') {
-        await Client.findByIdAndUpdate(referenceId, {
-          $push: { payments: { date, amount, mode, utr: utrNumber } },
-          $inc: { paidAmount: amount, pendingAmount: -amount },
-        });
-      } else if (referenceModel === 'Staff') {
-        // For staff, we might want to link to salary history
-      }
+    if (client) {
+      client.payments.push({ date, amount, mode, utr: utrNumber });
+      client.paidAmount += amount;
+      client.pendingAmount -= amount;
+      await client.save();
+    } else if (referenceId && referenceModel === 'Staff') {
+      // For staff, we might want to link to salary history
     }
 
     res.status(201).json({

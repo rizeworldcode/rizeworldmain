@@ -78,7 +78,7 @@ const ActionMenu = ({ onAddPayment }) => {
   );
 };
 
-const AddPaymentModal = ({ isOpen, onClose, onAdd }) => {
+const AddPaymentModal = ({ isOpen, onClose, onAdd, maxAmount }) => {
   const [formData, setFormData] = useState({
     amount: '',
     mode: 'Online',
@@ -88,6 +88,9 @@ const AddPaymentModal = ({ isOpen, onClose, onAdd }) => {
 
   if (!isOpen) return null;
 
+  const amountVal = parseFloat(formData.amount) || 0;
+  const isOverLimit = maxAmount !== undefined && amountVal > maxAmount;
+
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-black/60 backdrop-blur-md" />
@@ -95,16 +98,32 @@ const AddPaymentModal = ({ isOpen, onClose, onAdd }) => {
         <h3 className="text-xl font-bold text-black dark:text-white mb-6 flex items-center gap-2">
           <PlusCircle className="text-emerald-500" /> Add New Payment
         </h3>
+        
+        {maxAmount !== undefined && (
+          <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+            <p className="text-xs text-blue-600 dark:text-blue-400 font-bold">
+              Remaining Pending Amount: ₹{maxAmount.toLocaleString('en-IN')}
+            </p>
+          </div>
+        )}
+
         <div className="space-y-4">
           <div>
             <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Amount (₹)</label>
             <input
               type="number"
-              className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all placeholder:text-gray-400"
+              className={`w-full bg-gray-50 dark:bg-white/5 border rounded-xl px-4 py-2.5 text-sm text-black dark:text-white outline-none transition-all placeholder:text-gray-400 ${
+                isOverLimit ? 'border-red-500 focus:border-red-500' : 'border-gray-200 dark:border-white/10 focus:border-blue-500'
+              }`}
               placeholder="Enter amount"
               value={formData.amount}
               onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
             />
+            {isOverLimit && (
+              <p className="text-[11px] text-red-500 font-semibold mt-1">
+                Amount cannot exceed the remaining pending amount of ₹{maxAmount.toLocaleString('en-IN')}.
+              </p>
+            )}
           </div>
           <div>
             <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Payment Mode</label>
@@ -141,8 +160,16 @@ const AddPaymentModal = ({ isOpen, onClose, onAdd }) => {
           <div className="flex gap-3 mt-8">
             <button onClick={onClose} className="flex-1 px-6 py-3 rounded-xl border border-gray-200 dark:border-white/10 text-black dark:text-white font-bold hover:bg-gray-100 dark:hover:bg-white/5 transition-all">Cancel</button>
             <button
-              onClick={() => onAdd(formData)}
-              className="flex-1 px-6 py-3 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20"
+              onClick={() => {
+                if (isOverLimit) return;
+                onAdd(formData);
+              }}
+              disabled={isOverLimit || !formData.amount}
+              className={`flex-1 px-6 py-3 rounded-xl font-bold transition-all shadow-lg ${
+                isOverLimit || !formData.amount
+                  ? 'bg-gray-300 dark:bg-white/10 text-gray-500 dark:text-gray-400 cursor-not-allowed shadow-none'
+                  : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-600/20'
+              }`}
             >
               Add Payment
             </button>
@@ -826,6 +853,14 @@ const Clients = ({ onClientClick, theme }) => {
   };
 
 const handleAddPayment = async (data) => {
+  const activeClient = clients.find(c => c.id === activeClientId || c._id === activeClientId);
+  const amount = parseFloat(data.amount);
+
+  if (activeClient && amount > activeClient.pendingAmount) {
+    alert(`Error: Payment amount (₹${amount.toLocaleString('en-IN')}) cannot exceed the pending amount (₹${activeClient.pendingAmount.toLocaleString('en-IN')})`);
+    return;
+  }
+
   try {
     const response = await fetch(`http://localhost:45000/api/clientPayment/${activeClientId}`, {
       method: 'POST',
@@ -942,6 +977,7 @@ const handleAddPayment = async (data) => {
             isOpen={isAddPaymentOpen}
             onClose={() => setIsAddPaymentOpen(false)}
             onAdd={handleAddPayment}
+            maxAmount={clients.find(c => c.id === activeClientId || c._id === activeClientId)?.pendingAmount}
           />
         )}
         {isAddProjectOpen && (
