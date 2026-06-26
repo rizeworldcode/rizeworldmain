@@ -350,6 +350,115 @@ const Dashboard = () => {
     }
   };
 
+  const [gpsError, setGpsError] = useState(null);
+
+  useEffect(() => {
+    // Only track if user is exactly "Sales Team"
+    if (staffInfo.role !== 'Sales Team') return;
+
+    let watchId = null;
+    let lastSentTime = 0;
+    let lastSentCoords = null;
+
+    const getDistance = (lat1, lon1, lat2, lon2) => {
+      const R = 6371e3; // metres
+      const φ1 = lat1 * Math.PI/180;
+      const φ2 = lat2 * Math.PI/180;
+      const Δφ = (lat2-lat1) * Math.PI/180;
+      const Δλ = (lon2-lon1) * Math.PI/180;
+      const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                Math.cos(φ1) * Math.cos(φ2) *
+                Math.sin(Δλ/2) * Math.sin(Δλ/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return R * c;
+    };
+
+    const sendLocationUpdate = async (coords) => {
+      const staffToken = localStorage.getItem('staffToken');
+      if (!staffToken) return;
+
+      try {
+        const response = await fetch(getApiUrl('/location/update'), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${staffToken}`
+          },
+          body: JSON.stringify({
+            employeeId: staffInfo.id || staffInfo._id,
+            employeeName: staffInfo.name,
+            latitude: coords.latitude,
+            longitude: coords.longitude,
+            accuracy: coords.accuracy,
+            speed: coords.speed,
+            heading: coords.heading,
+            deviceInfo: navigator.userAgent,
+            timestamp: new Date().toISOString()
+          })
+        });
+        const result = await response.json();
+        if (result.success) {
+          lastSentCoords = { latitude: coords.latitude, longitude: coords.longitude };
+          lastSentTime = Date.now();
+        }
+      } catch (err) {
+        console.error('Failed to send location update:', err);
+      }
+    };
+
+    const handleSuccess = (position) => {
+      setGpsError(null);
+      const coords = position.coords;
+      const now = Date.now();
+      
+      // Initial send
+      if (!lastSentCoords) {
+        sendLocationUpdate(coords);
+        return;
+      }
+
+      // Check distance and time thresholds
+      const distanceMoved = getDistance(
+        lastSentCoords.latitude,
+        lastSentCoords.longitude,
+        coords.latitude,
+        coords.longitude
+      );
+      const timeElapsed = now - lastSentTime;
+
+      // Update backend only every 10-15 seconds OR when moved 20-30 meters
+      if (timeElapsed >= 10000 || distanceMoved >= 20) {
+        sendLocationUpdate(coords);
+      }
+    };
+
+    const handleError = (error) => {
+      console.warn('Geolocation error:', error);
+      if (error.code === error.PERMISSION_DENIED) {
+        setGpsError('permission_denied');
+      } else {
+        setGpsError('unavailable');
+      }
+    };
+
+    if ('geolocation' in navigator) {
+      // Start tracking
+      watchId = navigator.geolocation.watchPosition(handleSuccess, handleError, {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      });
+    } else {
+      setGpsError('unavailable');
+    }
+
+    return () => {
+      if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+    };
+  }, [staffInfo]);
+
   // Fetch notifications
   const fetchNotifications = async () => {
     const staffInfo = JSON.parse(localStorage.getItem('staffInfo') || '{}');
@@ -855,6 +964,44 @@ const Dashboard = () => {
           )}
         </div>
       </header>
+
+      {/* GPS Status Banners for Sales Team */}
+      {staffInfo.role === 'Sales Team' && gpsError && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6 p-5 rounded-3xl border-2 border-amber-300 bg-amber-50/50 dark:bg-amber-950/20 text-amber-900 dark:text-amber-200 font-bold flex items-center gap-4 shadow-sm"
+        >
+          <span className="text-2xl">⚠️</span>
+          <div>
+            <h4 className="text-base font-black">
+              {gpsError === 'permission_denied' ? 'Location Access Denied' : 'GPS Location Unavailable'}
+            </h4>
+            <p className="text-sm font-semibold mt-1 opacity-90">
+              {gpsError === 'permission_denied' 
+                ? 'Please enable location services in your browser settings. Sales Team members must share location to keep portal active.'
+                : 'GPS signal is currently unavailable. Please verify that your device has location/GPS turned on.'}
+            </p>
+          </div>
+        </motion.div>
+      )}
+
+      {staffInfo.role === 'Sales Team' && !gpsError && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6 p-5 rounded-3xl border-2 border-emerald-300 bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-900 dark:text-emerald-200 font-bold flex items-center gap-4 shadow-sm"
+        >
+          <span className="relative flex h-3.5 w-3.5 shrink-0">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500"></span>
+          </span>
+          <div>
+            <h4 className="text-base font-black">MERN GPS Tracking Active</h4>
+            <p className="text-sm font-semibold mt-0.5 opacity-90">Your live coordinates are securely shared with the administration team.</p>
+          </div>
+        </motion.div>
+      )}
 
       {/* Employee Info Card */}
       <motion.section 

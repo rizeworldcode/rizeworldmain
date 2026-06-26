@@ -11,6 +11,7 @@ import TodayAssignedWork from './pages/TodayAssignedWork';
 import AddStaff from './pages/AddStaff';
 import WalletPage from './pages/Wallet';
 import AdminLogin from './pages/AdminLogin';
+import SalesTracking from './pages/SalesTracking';
 import { adminLogout } from './api';
 
 
@@ -46,6 +47,7 @@ function App() {
     if (pathname.startsWith('/staff')) return 'staffDetail';
     if (pathname.startsWith('/clients')) return 'clients';
     if (pathname.startsWith('/wallet')) return 'wallet';
+    if (pathname.startsWith('/tracking')) return 'salesTracking';
     if (pathname.startsWith('/settings')) return 'settings';
     return '';
   };
@@ -92,6 +94,7 @@ function App() {
                 else if (tab === 'addStaff') navigate('/staff/add');
                 else if (tab === 'clients') navigate('/clients');
                 else if (tab === 'wallet') navigate('/wallet');
+                else if (tab === 'salesTracking') navigate('/tracking');
                 else if (tab === 'settings') navigate('/settings');
               }}
             />
@@ -123,6 +126,7 @@ function App() {
                       else if (tab === 'addStaff') navigate('/staff/add');
                       else if (tab === 'clients') navigate('/clients');
                       else if (tab === 'wallet') navigate('/wallet');
+                      else if (tab === 'salesTracking') navigate('/tracking');
                       else if (tab === 'settings') navigate('/settings');
                       setIsMobileMenuOpen(false);
                     }}
@@ -172,6 +176,9 @@ function App() {
                     } />
                     <Route path="/wallet" element={
                       <WalletPage />
+                    } />
+                    <Route path="/tracking" element={
+                      <SalesTracking />
                     } />
                     <Route path="/settings" element={
                       <motion.div

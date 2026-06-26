@@ -9,8 +9,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Sparkles,
-  CalendarCheck,
-  UserPlus
+  UserPlus,
+  MapPin
 } from 'lucide-react';
 
 const navItems = [
@@ -20,6 +20,7 @@ const navItems = [
   { icon: UserPlus, label: 'Add Employee', id: 'addStaff' },
   { icon: Users, label: 'Clients', id: 'clients' },
   { icon: Wallet, label: 'Wallet', id: 'wallet' },
+  { icon: MapPin, label: 'Sales Tracking', id: 'salesTracking' },
   // { icon: Settings, label: 'Settings', id: 'settings' },
 ];
 

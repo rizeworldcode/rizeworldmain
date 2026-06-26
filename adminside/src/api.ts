@@ -157,6 +157,10 @@ export const submitAllStaffReports = () =>
 export const getStaffWorkReports = (date: string) =>
   apiRequest(`/staff/reports?date=${date}`);
 
+export const getLiveLocations = () => apiRequest('/location/live');
+export const getLocationHistory = (employeeId: string, date?: string) =>
+  apiRequest(`/location/history/${employeeId}${date ? `?date=${date}` : ''}`);
+
 export default {
   getDashboardStats,
   getAllStaff,
@@ -183,4 +187,6 @@ export default {
   submitStaffReport,
   submitAllStaffReports,
   getStaffWorkReports,
+  getLiveLocations,
+  getLocationHistory,
 };

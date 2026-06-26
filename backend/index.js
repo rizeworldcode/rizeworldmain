@@ -109,6 +109,10 @@ app.use('/api', adminValidationRoutes);
 // hearing routs
 const hearingRoutes = require('./src/routes/HR_hearing');
 app.use('/api', hearingRoutes);
+
+// Location routes
+const locationRoutes = require('./src/routes/locationRoutes');
+app.use('/api/location', locationRoutes);
 // Secure proxy endpoint to stream files from backend/public
 // Usage: /public-file?path=uploads/filename.pdf
 app.get('/public-file', (req, res) => {
