@@ -20,6 +20,7 @@ import {
 import { getLiveLocations, getLocationHistory } from '../api';
 
 // Set Mapbox Access Token
+// @ts-ignore
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || 'pk.eyJ1Ijoicml6ZXdvcmxkIiwiYSI6ImNsdzF6cjhpZTA1NGQya21zcHphNDRxbmoifQ.placeholder_token';
 
 const SalesTracking = () => {
