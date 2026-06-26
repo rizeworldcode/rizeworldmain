@@ -24,7 +24,7 @@ const AddStaff = ({ onBack }) => {
     monthlySalary: '',
     department: 'WEB Development',
     jobType: 'Permanent',
-    role: 'Staff',
+    role: 'Employee',
     joiningDate: new Date().toISOString().split('T')[0],
     salaryStatus: 'Pending',
     accountHolder: '',
@@ -215,7 +215,7 @@ const AddStaff = ({ onBack }) => {
                 value={formData.role}
                 onChange={(e) => setFormData({...formData, role: e.target.value})}
               >
-                <option value="Staff" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Employee</option>
+                <option value="Employee" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Employee</option>
                 <option value="HR" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">HR</option>
                 <option value="Client Support" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Client Support</option>
                 <option value="Admin" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Admin</option>

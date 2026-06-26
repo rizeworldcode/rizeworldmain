@@ -56,7 +56,7 @@ const EditStaffModal = ({ isOpen, onClose, staffMember, onUpdate }) => {
         joiningDate: staffMember.joiningDate,
         salaryStatus: staffMember.salaryStatus,
         jobType: staffMember.jobType,
-        role: staffMember.role || 'Staff',
+        role: staffMember.role || 'Employee',
         newDocumentName: ''
       });
       setSelectedFile(null);
@@ -171,7 +171,7 @@ const EditStaffModal = ({ isOpen, onClose, staffMember, onUpdate }) => {
                 value={formData.role}
                 onChange={(e) => setFormData({ ...formData, role: e.target.value })}
               >
-                <option value="Staff" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Staff</option>
+                <option value="Employee" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Employee</option>
                 <option value="HR" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">HR</option>
                 <option value="Client Support" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Client Support</option>
                 <option value="Admin" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Admin</option>
