@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const delayWorkSchema = new mongoose.Schema({
   type: {
     type: String,
-    enum: ['reel', 'post', 'shot', 'shoot', 'extra'],
+    enum: ['reel', 'post', 'shoot', 'extra'],
     required: true
   },
   extra: {

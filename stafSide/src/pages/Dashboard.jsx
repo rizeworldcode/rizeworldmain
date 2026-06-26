@@ -1367,7 +1367,6 @@ const Dashboard = () => {
                 >
                   <option value="reel">Reel</option>
                   <option value="post">Post</option>
-                  <option value="shot">Shot</option>
                   <option value="shoot">Shoot</option>
                   <option value="extra">Extra</option>
                 </select>
