@@ -1431,7 +1431,7 @@ const ClientProjects = ({ onBack }) => {
                     >
                       <button
                         onClick={async () => {
-                          await downloadAllProjectsInvoice(projects, client, true);
+                          await downloadAllProjectsInvoice(projects, projects[0], true);
                           setAllProjectsMenuOpen(false);
                         }}
                         className="block w-full text-left px-4 py-2.5 text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10"
@@ -1440,7 +1440,7 @@ const ClientProjects = ({ onBack }) => {
                       </button>
                       <button
                         onClick={async () => {
-                          await downloadAllProjectsInvoice(projects, client, true);
+                          await downloadAllProjectsInvoice(projects, projects[0], false);
                           setAllProjectsMenuOpen(false);
                         }}
                         className="block w-full text-left px-4 py-2.5 text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10"
@@ -1471,7 +1471,7 @@ const ClientProjects = ({ onBack }) => {
                     >
                       <button
                         onClick={async () => {
-                          await downloadInvoice(projects[0], client, true);
+                          await downloadInvoice(projects[0], projects[0], true);
                           setCurrentProjectMenuOpen(false);
                         }}
                         className="block w-full text-left px-4 py-2.5 text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10"
@@ -1480,7 +1480,7 @@ const ClientProjects = ({ onBack }) => {
                       </button>
                       <button
                         onClick={async () => {
-                          await downloadInvoice(projects[0], client, false);
+                          await downloadInvoice(projects[0], projects[0], false);
                           setCurrentProjectMenuOpen(false);
                         }}
                         className="block w-full text-left px-4 py-2.5 text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10"
