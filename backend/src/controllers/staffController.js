@@ -139,9 +139,38 @@ exports.getStaffById = async (req, res) => {
         message: 'Staff not found'
       });
     }
+
+    // Get today's clock record for sending to frontend
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const todayClockRecord = staff.clock?.find(c =>
+      new Date(c.date) >= today && new Date(c.date) < tomorrow
+    );
+
     res.status(200).json({
       success: true,
-      data: staff
+      data: {
+        id: staff._id,
+        name: staff.name,
+        employeeId: staff.employeeId,
+        department: staff.department,
+        email: staff.email,
+        joiningDate: staff.joiningDate,
+        monthlySalary: staff.monthlySalary,
+        clock: staff.clock,
+        work: staff.work,
+        status: staff.status,
+        clock_status: staff.clock_status,
+        attendance: staff.attendance,
+        salaryHistory: staff.salaryHistory,
+        leaves: staff.leaves,
+        totalCasualLeaves: staff.totalCasualLeaves,
+        todayClock: todayClockRecord || null,
+        role: staff.role
+      }
     });
   } catch (error) {
     res.status(500).json({

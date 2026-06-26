@@ -247,15 +247,15 @@ const Dashboard = () => {
       : 'https://rizeworldmain.onrender.com/api';
     return `${base}${endpoint}`;
   };
-  
-  // Get staff info from localStorage
-  const staffInfo = JSON.parse(localStorage.getItem('staffInfo') || '{}');
+
+  // Get staff info from state & localStorage
+  const [staffInfo, setStaffInfo] = useState(JSON.parse(localStorage.getItem('staffInfo') || '{}'));
   const baseSalary = staffInfo.monthlySalary || 0;
   const { payout, fullLeaves, halfDays } = calculatePayout(staffInfo);
   const chartData = generateChartData(staffInfo);
 
   // Check if today is a leave day or Sunday
-  const checkLeaveDay = () => {
+  const checkLeaveDay = (info = staffInfo) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
@@ -265,8 +265,8 @@ const Dashboard = () => {
     }
     
     // Check leaves array
-    if (staffInfo.leaves && Array.isArray(staffInfo.leaves)) {
-      const hasLeave = staffInfo.leaves.some(leave => {
+    if (info.leaves && Array.isArray(info.leaves)) {
+      const hasLeave = info.leaves.some(leave => {
         const leaveDate = new Date(leave.date);
         leaveDate.setHours(0, 0, 0, 0);
         return leaveDate.getTime() === today.getTime();
@@ -275,8 +275,8 @@ const Dashboard = () => {
     }
     
     // Check attendance array for "On Leave"
-    if (staffInfo.attendance && Array.isArray(staffInfo.attendance)) {
-      const hasLeaveAttendance = staffInfo.attendance.some(att => {
+    if (info.attendance && Array.isArray(info.attendance)) {
+      const hasLeaveAttendance = info.attendance.some(att => {
         const attDate = new Date(att.date);
         attDate.setHours(0, 0, 0, 0);
         return attDate.getTime() === today.getTime() && att.status === 'On Leave';
@@ -285,6 +285,69 @@ const Dashboard = () => {
     }
     
     return false;
+  };
+
+  // Sync staff info across multiple local react states
+  const syncStaffDataStates = (updatedStaff) => {
+    setStaffInfo(updatedStaff);
+
+    const leaveDay = checkLeaveDay(updatedStaff);
+    setIsLeaveDay(leaveDay);
+
+    if (!leaveDay) {
+      const canClockOut = updatedStaff.clock_status === 'clock_in';
+      const canClockIn = updatedStaff.clock_status === 'clock_out' || !updatedStaff.clock_status;
+      
+      if (updatedStaff.todayClock && updatedStaff.todayClock.sessions) {
+        const todayClock = updatedStaff.todayClock;
+        const sessions = todayClock.sessions || [];
+        setAttendanceStatus({
+          canClockIn: canClockIn,
+          canClockOut: canClockOut,
+          sessions: sessions,
+          totalHours: todayClock.totalHours || '-'
+        });
+      } else {
+        setAttendanceStatus({
+          canClockIn: canClockIn,
+          canClockOut: canClockOut,
+          sessions: [],
+          totalHours: '-'
+        });
+      }
+      
+      if (updatedStaff.work) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const todayWorkRec = updatedStaff.work.find(w => 
+          new Date(w.date) >= today && new Date(w.date) < tomorrow
+        );
+        if (todayWorkRec && todayWorkRec.tasks) {
+          setTodayTasks(todayWorkRec.tasks);
+        } else {
+          setTodayTasks([]);
+        }
+      } else {
+        setTodayTasks([]);
+      }
+    }
+  };
+
+  const fetchStaffInfo = async () => {
+    const staffId = staffInfo.id || staffInfo._id;
+    if (!staffId) return;
+    try {
+      const response = await fetch(getApiUrl(`/staff/${staffId}`));
+      const result = await response.json();
+      if (result.success) {
+        localStorage.setItem('staffInfo', JSON.stringify(result.data));
+        syncStaffDataStates(result.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch staff info:', err);
+    }
   };
 
   // Fetch notifications
@@ -326,6 +389,13 @@ const Dashboard = () => {
   const socketRef = useRef(null);
 
   useEffect(() => {
+    // Sync initial state from localStorage immediately
+    const staffInfoLocal = JSON.parse(localStorage.getItem('staffInfo') || '{}');
+    syncStaffDataStates(staffInfoLocal);
+
+    // Fetch latest staff data from backend on mount/reload
+    fetchStaffInfo();
+
     // Initialize Socket.IO connection
     const socketBase = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
       ? 'http://localhost:45000'
@@ -341,43 +411,12 @@ const Dashboard = () => {
     });
 
     // Listen for staff clock updates from admin
-    const staffInfoLocal = JSON.parse(localStorage.getItem('staffInfo') || '{}');
     const staffId = staffInfoLocal.id || staffInfoLocal._id;
     if (staffId) {
       socketRef.current.on(`staff-clock-update-${staffId}`, (updatedStaff) => {
         // Update localStorage
         localStorage.setItem('staffInfo', JSON.stringify(updatedStaff));
-        
-        // Update local state
-        const leaveDay = checkLeaveDay();
-        setIsLeaveDay(leaveDay);
-        
-        if (!leaveDay) {
-          const canClockOut = updatedStaff.clock_status === 'clock_in';
-          const canClockIn = updatedStaff.clock_status === 'clock_out' || !updatedStaff.clock_status;
-          
-          const todayClock = updatedStaff.todayClock;
-          const sessions = todayClock?.sessions || [];
-          
-          setAttendanceStatus({
-            canClockIn: canClockIn,
-            canClockOut: canClockOut,
-            sessions: sessions,
-            totalHours: todayClock?.totalHours || '-'
-          });
-          
-          // Also update todayTasks
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          const tomorrow = new Date(today);
-          tomorrow.setDate(tomorrow.getDate() + 1);
-          const todayWorkRec = updatedStaff.work?.find(w => 
-            new Date(w.date) >= today && new Date(w.date) < tomorrow
-          );
-          if (todayWorkRec && todayWorkRec.tasks) {
-            setTodayTasks(todayWorkRec.tasks);
-          }
-        }
+        syncStaffDataStates(updatedStaff);
       });
     }
     
@@ -389,56 +428,6 @@ const Dashboard = () => {
     if (hour < 12) setGreeting('Good Morning');
     else if (hour < 18) setGreeting('Good Afternoon');
     else setGreeting('Good Evening');
-    
-    // Check if leave day
-    const leaveDay = checkLeaveDay();
-    setIsLeaveDay(leaveDay);
-
-    if (!leaveDay) {
-      // Fetch initial status from localStorage
-      const staffInfo = JSON.parse(localStorage.getItem('staffInfo') || '{}');
-      
-      // Use clock_status to determine button states
-      const canClockOut = staffInfo.clock_status === 'clock_in';
-      const canClockIn = staffInfo.clock_status === 'clock_out' || !staffInfo.clock_status;
-      
-      // Check for today's clock record using todayClock from login
-      if (staffInfo.todayClock && staffInfo.todayClock.sessions) {
-        // Employee has clock record for today
-        const todayClock = staffInfo.todayClock;
-        const sessions = todayClock.sessions || [];
-        
-        setAttendanceStatus({
-          canClockIn: canClockIn,
-          canClockOut: canClockOut,
-          sessions: sessions,
-          totalHours: todayClock.totalHours || '-'
-        });
-      } else {
-        // Employee hasn't clocked in yet today OR no todayClock record
-        // Show clock in button, hide clock out button
-        setAttendanceStatus({
-          canClockIn: canClockIn,
-          canClockOut: canClockOut,
-          sessions: [],
-          totalHours: '-'
-        });
-      }
-      
-      // Check if we have today's work
-      if (staffInfo.work) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        const todayWorkRec = staffInfo.work.find(w => 
-          new Date(w.date) >= today && new Date(w.date) < tomorrow
-        );
-        if (todayWorkRec && todayWorkRec.tasks) {
-          setTodayTasks(todayWorkRec.tasks);
-        }
-      }
-    }
 
     // Fetch notifications
     fetchNotifications();
@@ -494,6 +483,7 @@ const Dashboard = () => {
 
         // Update localStorage with full staff data
         localStorage.setItem('staffInfo', JSON.stringify(result.data));
+        syncStaffDataStates(result.data);
 
         alert(`Clocked in successfully at ${lastSession.clockIn}`);
       } else {
@@ -536,6 +526,7 @@ const Dashboard = () => {
 
         // Update localStorage with full staff data
         localStorage.setItem('staffInfo', JSON.stringify(result.data));
+        syncStaffDataStates(result.data);
 
         alert(`Clocked out successfully at ${clockOutTime}`);
       } else {
@@ -671,17 +662,7 @@ const Dashboard = () => {
       if (result.success) {
         // Update localStorage
         localStorage.setItem('staffInfo', JSON.stringify(result.data));
-        // Update local state
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        const todayWorkRec = result.data.work.find(w => 
-          new Date(w.date) >= today && new Date(w.date) < tomorrow
-        );
-        if (todayWorkRec && todayWorkRec.tasks) {
-          setTodayTasks(todayWorkRec.tasks);
-        }
+        syncStaffDataStates(result.data);
       }
     } catch (err) {
       console.error(err);
@@ -714,7 +695,7 @@ const Dashboard = () => {
       if (result.success) {
         // Update localStorage and state
         localStorage.setItem('staffInfo', JSON.stringify(result.data));
-        setTodayTasks(updatedTasks);
+        syncStaffDataStates(result.data);
         setNewTaskInput('');
       }
     } catch (err) {
@@ -744,7 +725,7 @@ const Dashboard = () => {
       if (result.success) {
         // Update localStorage and state
         localStorage.setItem('staffInfo', JSON.stringify(result.data));
-        setTodayTasks(updatedTasks);
+        syncStaffDataStates(result.data);
       }
     } catch (err) {
       console.error(err);
