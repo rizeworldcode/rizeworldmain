@@ -19,6 +19,13 @@ exports.createTransaction = async (req, res) => {
 
     const transactionType = type || req.body.source;
 
+    if (mode === 'online') {
+      const utrStr = (utrNumber || '').trim();
+      if (!utrStr || utrStr.length < 12 || utrStr.length > 16) {
+        return res.status(400).json({ success: false, message: 'UTR number must be between 12 and 16 characters for online mode.' });
+      }
+    }
+
     let client = null;
     if (referenceId && referenceModel === 'Client') {
       client = await Client.findById(referenceId);

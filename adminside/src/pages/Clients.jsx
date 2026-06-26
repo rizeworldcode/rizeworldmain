@@ -90,6 +90,9 @@ const AddPaymentModal = ({ isOpen, onClose, onAdd, maxAmount }) => {
 
   const amountVal = parseFloat(formData.amount) || 0;
   const isOverLimit = maxAmount !== undefined && amountVal > maxAmount;
+  const utrTrimmed = (formData.utr || '').trim();
+  const isUtrInvalid = formData.mode === 'Online' && (utrTrimmed.length < 12 || utrTrimmed.length > 16);
+  const showUtrError = formData.mode === 'Online' && formData.utr !== '' && (utrTrimmed.length < 12 || utrTrimmed.length > 16);
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
@@ -141,11 +144,18 @@ const AddPaymentModal = ({ isOpen, onClose, onAdd, maxAmount }) => {
               <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">UTR Number</label>
               <input
                 type="text"
-                className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all placeholder:text-gray-400"
-                placeholder="Enter UTR number"
+                className={`w-full bg-gray-50 dark:bg-white/5 border rounded-xl px-4 py-2.5 text-sm text-black dark:text-white outline-none transition-all placeholder:text-gray-400 ${
+                  showUtrError ? 'border-red-500 focus:border-red-500' : 'border-gray-200 dark:border-white/10 focus:border-blue-500'
+                }`}
+                placeholder="Enter 12-16 digit UTR number"
                 value={formData.utr}
                 onChange={(e) => setFormData({ ...formData, utr: e.target.value })}
               />
+              {showUtrError && (
+                <p className="text-[11px] text-red-500 font-semibold mt-1">
+                  UTR number must be between 12 and 16 characters. (Current length: {utrTrimmed.length})
+                </p>
+              )}
             </motion.div>
           )}
           <div>
@@ -161,12 +171,12 @@ const AddPaymentModal = ({ isOpen, onClose, onAdd, maxAmount }) => {
             <button onClick={onClose} className="flex-1 px-6 py-3 rounded-xl border border-gray-200 dark:border-white/10 text-black dark:text-white font-bold hover:bg-gray-100 dark:hover:bg-white/5 transition-all">Cancel</button>
             <button
               onClick={() => {
-                if (isOverLimit) return;
+                if (isOverLimit || isUtrInvalid) return;
                 onAdd(formData);
               }}
-              disabled={isOverLimit || !formData.amount}
+              disabled={isOverLimit || isUtrInvalid || !formData.amount}
               className={`flex-1 px-6 py-3 rounded-xl font-bold transition-all shadow-lg ${
-                isOverLimit || !formData.amount
+                isOverLimit || isUtrInvalid || !formData.amount
                   ? 'bg-gray-300 dark:bg-white/10 text-gray-500 dark:text-gray-400 cursor-not-allowed shadow-none'
                   : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-600/20'
               }`}
@@ -859,6 +869,14 @@ const handleAddPayment = async (data) => {
   if (activeClient && amount > activeClient.pendingAmount) {
     alert(`Error: Payment amount (₹${amount.toLocaleString('en-IN')}) cannot exceed the pending amount (₹${activeClient.pendingAmount.toLocaleString('en-IN')})`);
     return;
+  }
+
+  if (data.mode === 'Online') {
+    const utrVal = (data.utr || '').trim();
+    if (!utrVal || utrVal.length < 12 || utrVal.length > 16) {
+      alert('Error: UTR number must be between 12 and 16 characters for online payments.');
+      return;
+    }
   }
 
   try {

@@ -23,6 +23,10 @@ const WalletPage = () => {
     fetchTransactions();
   }, [filterType]);
 
+  const utrTrimmed = (newTransaction.utrNumber || '').trim();
+  const isUtrInvalid = newTransaction.mode === 'online' && (utrTrimmed.length < 12 || utrTrimmed.length > 16);
+  const showUtrError = newTransaction.mode === 'online' && newTransaction.utrNumber !== '' && (utrTrimmed.length < 12 || utrTrimmed.length > 16);
+
   const fetchTransactions = async () => {
     try {
       setLoading(true);
@@ -39,6 +43,13 @@ const WalletPage = () => {
 
   const handleAddTransaction = async (e) => {
     e.preventDefault();
+    if (newTransaction.mode === 'online') {
+      const utrVal = (newTransaction.utrNumber || '').trim();
+      if (!utrVal || utrVal.length < 12 || utrVal.length > 16) {
+        alert('Error: UTR number must be between 12 and 16 characters.');
+        return;
+      }
+    }
     try {
       const payload = {
         ...newTransaction,
@@ -396,9 +407,16 @@ const WalletPage = () => {
                         type="text"
                         value={newTransaction.utrNumber}
                         onChange={(e) => setNewTransaction({ ...newTransaction, utrNumber: e.target.value })}
-                        className="w-full px-4 py-3 rounded-xl bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white"
+                        className={`w-full px-4 py-3 rounded-xl bg-white dark:bg-white/5 border text-gray-900 dark:text-white ${
+                          showUtrError ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-200 dark:border-white/10'
+                        }`}
                         placeholder="e.g., 123456789012"
                       />
+                      {showUtrError && (
+                        <p className="text-[11px] text-red-500 font-semibold mt-1">
+                          UTR number must be between 12 and 16 characters. (Current length: {utrTrimmed.length})
+                        </p>
+                      )}
                     </div>
                   </>
                 )}
@@ -425,7 +443,12 @@ const WalletPage = () => {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 transition-all"
+                  disabled={isUtrInvalid}
+                  className={`flex-1 px-6 py-3 rounded-xl font-semibold shadow-lg transition-all ${
+                    isUtrInvalid
+                      ? 'bg-gray-300 dark:bg-white/10 text-gray-500 dark:text-gray-400 cursor-not-allowed shadow-none'
+                      : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-blue-500/20 hover:shadow-blue-500/30'
+                  }`}
                 >
                   Add Transaction
                 </button>

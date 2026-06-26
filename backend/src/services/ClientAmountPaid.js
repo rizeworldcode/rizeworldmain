@@ -13,7 +13,13 @@ exports.updateClientPaidAmount = async (req, res) => {
     if (payingAmount > currentPending) {
       return res.status(400).json({ success: false, message: `Payment amount (₹${payingAmount}) cannot exceed the pending amount (₹${currentPending})` });
     }
-
+    const paymentMode = req.body.paymentMethod === 'Cash' ? 'Cash' : 'Online';
+    if (paymentMode === 'Online') {
+      const utrStr = (req.body.utr || '').trim();
+      if (!utrStr || utrStr.length < 12 || utrStr.length > 16) {
+        return res.status(400).json({ success: false, message: 'UTR number must be between 12 and 16 characters for online payments.' });
+      }
+    }
     const newPaidAmount = Number(client.paidAmount) + payingAmount;
     const newPendingAmount = Number(client.totalPrice) - newPaidAmount;
 
