@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard,
+  CalendarCheck,
   Users2,
   Users,
   Wallet,
