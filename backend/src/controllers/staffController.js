@@ -474,6 +474,9 @@ exports.clockOutStaff = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Staff ID is required' });
     }
 
+    const now = new Date();
+    const istNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+
     let clockOutTime;
     if (req.role === 'admin' && req.body.clockOutTime) {
       let rawTime = req.body.clockOutTime.trim();
@@ -489,8 +492,6 @@ exports.clockOutStaff = async (req, res) => {
         clockOutTime = rawTime;
       }
     } else {
-      const now = new Date();
-      const istNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
       clockOutTime = formatTime(istNow);
     }
     console.log('Clock out time:', clockOutTime);
