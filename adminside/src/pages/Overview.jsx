@@ -8,6 +8,17 @@ import StaffList from '../components/dashboard/StaffList';
 import { getDashboardStats, getAllStaff, markStaffLeave } from '../api';
 
 const Overview = ({ onViewClient, onViewStaff }) => {
+  const getAdminNameFromEmail = () => {
+    const email = localStorage.getItem('currentAdminEmail');
+    if (!email || email === 'Admin') return 'Alex';
+    const namePart = email.split('@')[0];
+    const cleanName = namePart.replace(/[._-]/g, ' ');
+    return cleanName
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
   const [stats, setStats] = useState({
     totalRevenue: 0,
     totalClients: 0,
@@ -93,7 +104,7 @@ const Overview = ({ onViewClient, onViewStaff }) => {
               transition={{ delay: 0.3 }}
               className="text-gray-500 font-medium"
             >
-              Welcome back, Alex. Here's what's happening with your business today.
+              Welcome back, {getAdminNameFromEmail()}. Here's what's happening with your business today.
             </motion.p>
           </div>
           <button

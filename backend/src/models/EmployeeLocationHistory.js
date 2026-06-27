@@ -32,6 +32,9 @@ const employeeLocationHistorySchema = new mongoose.Schema({
     type: Date,
     required: true,
     index: true
+  },
+  photoUrl: {
+    type: String
   }
 }, {
   timestamps: true

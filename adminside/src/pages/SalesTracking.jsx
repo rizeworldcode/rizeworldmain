@@ -2,17 +2,17 @@ import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { 
-  MapPin, 
-  Search, 
-  RefreshCw, 
-  Phone, 
-  Navigation, 
-  Maximize2, 
-  Download, 
-  FileText, 
-  Calendar, 
-  CheckCircle, 
+import {
+  MapPin,
+  Search,
+  RefreshCw,
+  Phone,
+  Navigation,
+  Maximize2,
+  Download,
+  FileText,
+  Calendar,
+  CheckCircle,
   AlertCircle,
   Clock,
   Navigation2
@@ -28,12 +28,13 @@ const SalesTracking = () => {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const markersRef = useRef({}); // Stores marker instances keyed by employeeId
+  const historyPhotoMarkersRef = useRef([]); // Stores photo markers on route history
 
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all'); // 'all', 'online', 'offline'
-  
+
   // Selected Employee Detail States
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [reverseGeocodedAddress, setReverseGeocodedAddress] = useState('Loading address...');
@@ -97,7 +98,7 @@ const SalesTracking = () => {
     if (!mapContainerRef.current) return;
 
     const token = env.VITE_MAPBOX_ACCESS_TOKEN;
-    const isTokenPlaceholder = !token || 
+    const isTokenPlaceholder = !token ||
       !token.startsWith('pk.') ||
       token.includes('placeholder') ||
       token.includes('your_mapbox_token') ||
@@ -153,20 +154,18 @@ const SalesTracking = () => {
 
       // Element for custom marker design
       const el = document.createElement('div');
-      el.className = `w-8 h-8 rounded-full border-2 border-white flex items-center justify-center shadow-lg cursor-pointer transition-all ${
-        online ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'
-      }`;
+      el.className = `w-8 h-8 rounded-full border-2 border-white flex items-center justify-center shadow-lg cursor-pointer transition-all ${online ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'
+        }`;
       el.innerHTML = `<span class="text-white text-xs font-bold font-sans">${employeeName.charAt(0)}</span>`;
 
       // If marker already exists, update position smoothly
       if (markersRef.current[employeeId]) {
         markersRef.current[employeeId].setLngLat([longitude, latitude]);
-        
+
         // Update marker DOM element background
         const markerElement = markersRef.current[employeeId].getElement();
-        markerElement.className = `w-8 h-8 rounded-full border-2 border-white flex items-center justify-center shadow-lg cursor-pointer transition-all ${
-          online ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'
-        }`;
+        markerElement.className = `w-8 h-8 rounded-full border-2 border-white flex items-center justify-center shadow-lg cursor-pointer transition-all ${online ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'
+          }`;
       } else {
         // Create new marker instance
         const marker = new mapboxgl.Marker({ element: el })
@@ -220,9 +219,9 @@ const SalesTracking = () => {
   const filteredEmployees = useMemo(() => {
     return employees.filter((emp) => {
       const matchesSearch = emp.employeeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                            emp.employeeId.toLowerCase().includes(searchQuery.toLowerCase());
+        emp.employeeId.toLowerCase().includes(searchQuery.toLowerCase());
       const online = isOnline(emp.lastUpdated);
-      
+
       if (filterType === 'online') return matchesSearch && online;
       if (filterType === 'offline') return matchesSearch && !online;
       return matchesSearch;
@@ -256,6 +255,10 @@ const SalesTracking = () => {
     if (map.getSource('route')) map.removeSource('route');
     if (map.getLayer('start-point')) map.removeLayer('start-point');
     if (map.getSource('start-point')) map.removeSource('start-point');
+
+    // Clean existing photo markers
+    historyPhotoMarkersRef.current.forEach(m => m.remove());
+    historyPhotoMarkersRef.current = [];
 
     if (!points || points.length === 0) return;
 
@@ -314,6 +317,34 @@ const SalesTracking = () => {
       }
     });
 
+    // Add photo markers
+    const photoPoints = points.filter(p => p.photoUrl);
+    photoPoints.forEach(p => {
+      const el = document.createElement('div');
+      el.className = 'w-10 h-10 rounded-full border-2 border-white flex items-center justify-center shadow-lg cursor-pointer bg-blue-500 hover:bg-blue-600 transition-all z-20';
+      el.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path><circle cx="12" cy="13" r="3"></circle></svg>';
+
+      const baseUrl = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+        ? 'http://localhost:45000'
+        : 'https://rizeworldmain.onrender.com';
+      const photoPath = p.photoUrl.startsWith('/') ? p.photoUrl.slice(1) : p.photoUrl;
+      const imgUrl = `${baseUrl}/public-file?path=${photoPath}`;
+
+      const popup = new mapboxgl.Popup({ offset: 25, closeButton: true, className: 'photo-popup' }).setHTML(`
+        <div class="p-2 space-y-2 min-w-[200px]">
+          <img src="${imgUrl}" alt="Location Photo" class="w-full h-auto rounded-lg shadow-md block object-cover" style="min-height: 150px; background: #eee;" />
+          <p class="text-xs font-bold text-gray-800 text-center">${new Date(p.timestamp).toLocaleTimeString()}</p>
+        </div>
+      `);
+
+      const marker = new mapboxgl.Marker({ element: el })
+        .setLngLat([p.longitude, p.latitude])
+        .setPopup(popup)
+        .addTo(map);
+
+      historyPhotoMarkersRef.current.push(marker);
+    });
+
     // Fit bounds to route
     const bounds = new mapboxgl.LngLatBounds();
     coordinates.forEach(coord => bounds.extend(coord));
@@ -364,15 +395,15 @@ const SalesTracking = () => {
           <p className="text-gray-500 dark:text-gray-400 mt-1">Real-time Mapbox tracking and route history analysis</p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
-          <button 
-            onClick={fetchLiveTrackingData} 
+          <button
+            onClick={fetchLiveTrackingData}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-700 dark:text-white font-bold text-sm hover:bg-gray-200 dark:hover:bg-white/10 transition-all"
           >
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
             <span>Refresh</span>
           </button>
-          <button 
-            onClick={fitAllMarkers} 
+          <button
+            onClick={fitAllMarkers}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm transition-all shadow-md"
           >
             <Maximize2 size={16} />
@@ -389,26 +420,25 @@ const SalesTracking = () => {
           <div className="bg-white dark:bg-[#111] p-6 rounded-[2rem] border border-gray-100 dark:border-white/5 shadow-sm space-y-4">
             <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-              <input 
-                type="text" 
-                placeholder="Search Employee..." 
+              <input
+                type="text"
+                placeholder="Search Employee..."
                 className="w-full bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl pl-11 pr-4 py-2.5 text-sm text-gray-900 dark:text-white focus:border-blue-500 outline-none transition-all"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            
+
             {/* Filter Tabs */}
             <div className="flex gap-2 p-1 bg-gray-100 dark:bg-white/5 rounded-2xl">
               {['all', 'online', 'offline'].map((type) => (
                 <button
                   key={type}
                   onClick={() => setFilterType(type)}
-                  className={`flex-1 py-2 text-xs font-bold rounded-xl capitalize transition-all ${
-                    filterType === type 
-                      ? 'bg-white dark:bg-white/10 text-blue-600 dark:text-white shadow-sm'
-                      : 'text-gray-500 hover:text-gray-800 dark:hover:text-white'
-                  }`}
+                  className={`flex-1 py-2 text-xs font-bold rounded-xl capitalize transition-all ${filterType === type
+                    ? 'bg-white dark:bg-white/10 text-blue-600 dark:text-white shadow-sm'
+                    : 'text-gray-500 hover:text-gray-800 dark:hover:text-white'
+                    }`}
                 >
                   {type}
                 </button>
@@ -421,7 +451,7 @@ const SalesTracking = () => {
             <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-2 px-1">
               Sales Staff ({filteredEmployees.length})
             </h3>
-            
+
             {filteredEmployees.length === 0 ? (
               <div className="text-center py-10 text-gray-500 text-sm">
                 No matching sales employees.
@@ -434,16 +464,14 @@ const SalesTracking = () => {
                     key={emp.employeeId}
                     whileHover={{ scale: 1.01 }}
                     onClick={() => zoomToEmployee(emp)}
-                    className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
-                      selectedEmployee?.employeeId === emp.employeeId
-                        ? 'bg-blue-50/50 dark:bg-white/5 border-blue-500/30'
-                        : 'bg-gray-50 dark:bg-white/5 border-transparent hover:border-gray-200 dark:hover:border-white/10'
-                    }`}
+                    className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${selectedEmployee?.employeeId === emp.employeeId
+                      ? 'bg-blue-50/50 dark:bg-white/5 border-blue-500/30'
+                      : 'bg-gray-50 dark:bg-white/5 border-transparent hover:border-gray-200 dark:hover:border-white/10'
+                      }`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${
-                        online ? 'bg-emerald-500' : 'bg-gray-400'
-                      }`}>
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${online ? 'bg-emerald-500' : 'bg-gray-400'
+                        }`}>
                         {emp.employeeName.charAt(0)}
                       </div>
                       <div>
@@ -463,25 +491,25 @@ const SalesTracking = () => {
         <div className="xl:col-span-3 space-y-6 flex flex-col h-[80vh]">
           <div className="bg-white dark:bg-[#111] rounded-[2rem] border border-gray-100 dark:border-white/5 shadow-sm overflow-hidden flex-1 relative min-h-[50vh]">
             <div ref={mapContainerRef} className="absolute inset-0 w-full h-full" />
-            
+
             {/* If token is placeholder or missing, show overlay explanation */}
-            {(!env.VITE_MAPBOX_ACCESS_TOKEN || 
+            {(!env.VITE_MAPBOX_ACCESS_TOKEN ||
               !env.VITE_MAPBOX_ACCESS_TOKEN.startsWith('pk.') ||
               env.VITE_MAPBOX_ACCESS_TOKEN.includes('placeholder') ||
               env.VITE_MAPBOX_ACCESS_TOKEN.includes('your_mapbox_token') ||
               env.VITE_MAPBOX_ACCESS_TOKEN.trim() === '') && (
-              <div className="absolute inset-0 bg-gray-900/80 backdrop-blur-sm z-20 flex flex-col items-center justify-center p-8 text-center">
-                <AlertCircle className="w-16 h-16 text-yellow-500 animate-bounce mb-4" />
-                <h3 className="text-2xl font-black text-white mb-2">Mapbox Access Token Required</h3>
-                <p className="text-gray-300 max-w-md text-sm leading-relaxed mb-6">
-                  Real-time mapping requires a valid Mapbox Public Access Token. Please add <code className="bg-black/40 px-2 py-1 rounded text-yellow-400 font-mono">VITE_MAPBOX_ACCESS_TOKEN</code> to your <code className="bg-black/40 px-2 py-1 rounded text-yellow-400 font-mono">adminside/.env</code> file and restart the development server.
-                </p>
-                <div className="bg-white/10 text-xs text-left p-4 rounded-xl border border-white/15 text-gray-200 font-mono">
-                  # Example adminside/.env configuration:<br />
-                  VITE_MAPBOX_ACCESS_TOKEN=pk.ey...your_mapbox_token_here
+                <div className="absolute inset-0 bg-gray-900/80 backdrop-blur-sm z-20 flex flex-col items-center justify-center p-8 text-center">
+                  <AlertCircle className="w-16 h-16 text-yellow-500 animate-bounce mb-4" />
+                  <h3 className="text-2xl font-black text-white mb-2">Mapbox Access Token Required</h3>
+                  <p className="text-gray-300 max-w-md text-sm leading-relaxed mb-6">
+                    Real-time mapping requires a valid Mapbox Public Access Token. Please add <code className="bg-black/40 px-2 py-1 rounded text-yellow-400 font-mono">VITE_MAPBOX_ACCESS_TOKEN</code> to your <code className="bg-black/40 px-2 py-1 rounded text-yellow-400 font-mono">adminside/.env</code> file and restart the development server.
+                  </p>
+                  <div className="bg-white/10 text-xs text-left p-4 rounded-xl border border-white/15 text-gray-200 font-mono">
+                    # Example adminside/.env configuration:<br />
+                    VITE_MAPBOX_ACCESS_TOKEN=pk.ey...your_mapbox_token_here
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
             {/* Float HUD card for selected employee */}
             <AnimatePresence>
@@ -496,14 +524,13 @@ const SalesTracking = () => {
                     <div className="flex items-center justify-between">
                       <h3 className="text-xl font-black text-gray-900 dark:text-white flex items-center gap-2">
                         {selectedEmployee.employeeName}
-                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
-                          isOnline(selectedEmployee.lastUpdated) ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
-                        }`}>
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${isOnline(selectedEmployee.lastUpdated) ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                          }`}>
                           {isOnline(selectedEmployee.lastUpdated) ? 'Online' : 'Offline'}
                         </span>
                       </h3>
-                      <button 
-                        onClick={() => setSelectedEmployee(null)} 
+                      <button
+                        onClick={() => setSelectedEmployee(null)}
                         className="text-gray-400 hover:text-gray-700 dark:hover:text-white font-bold text-sm p-1"
                       >
                         ✕
@@ -554,8 +581,8 @@ const SalesTracking = () => {
                   <div className="md:w-60 border-t md:border-t-0 md:border-l border-gray-100 dark:border-white/5 pt-4 md:pt-0 md:pl-6 flex flex-col justify-between">
                     <div className="space-y-3 text-left">
                       <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest">Route Analysis</h4>
-                      <input 
-                        type="date" 
+                      <input
+                        type="date"
                         className="w-full bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2 text-xs text-gray-900 dark:text-white outline-none"
                         value={selectedHistoryDate}
                         onChange={(e) => setSelectedHistoryDate(e.target.value)}

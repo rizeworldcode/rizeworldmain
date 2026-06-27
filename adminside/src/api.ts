@@ -160,6 +160,8 @@ export const getStaffWorkReports = (date: string) =>
 export const getLiveLocations = () => apiRequest('/location/live');
 export const getLocationHistory = (employeeId: string, date?: string) =>
   apiRequest(`/location/history/${employeeId}${date ? `?date=${date}` : ''}`);
+export const getLocationPhotos = () => apiRequest('/location/photos');
+export const getAllVisitingCards = () => apiRequest('/visiting-card/all');
 
 export default {
   getDashboardStats,
@@ -189,4 +191,6 @@ export default {
   getStaffWorkReports,
   getLiveLocations,
   getLocationHistory,
+  getLocationPhotos,
+  getAllVisitingCards,
 };

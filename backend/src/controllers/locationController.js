@@ -161,3 +161,82 @@ exports.getLocationHistory = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// POST /api/location/photo
+// Handles photo upload with GPS coordinates for Sales Team
+exports.uploadPhotoLocation = async (req, res) => {
+  try {
+    const { employeeId, employeeName, latitude, longitude, accuracy, timestamp } = req.body;
+    
+    // Validate request
+    if (!employeeId || !latitude || !longitude) {
+      return res.status(400).json({ success: false, message: 'employeeId, latitude, and longitude are required' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'Photo file is required' });
+    }
+
+    const lat = parseFloat(latitude);
+    const lng = parseFloat(longitude);
+
+    if (!isValidCoordinates(lat, lng)) {
+      return res.status(400).json({ success: false, message: 'Invalid coordinates' });
+    }
+
+    // Security check
+    if (req.role !== 'admin' && String(req.user._id) !== String(employeeId)) {
+      return res.status(403).json({ success: false, message: 'Unauthorized: You can only upload photos for yourself' });
+    }
+
+    // Role check
+    const employee = await Staff.findById(employeeId);
+    if (!employee || employee.role !== 'Sales Team') {
+      return res.status(403).json({ success: false, message: 'Only Sales Team can use this feature' });
+    }
+
+    const name = employeeName || employee.name;
+    const timeVal = timestamp ? new Date(timestamp) : new Date();
+    const photoUrl = `/uploads/${req.file.filename}`;
+
+    // Add to Location History with photoUrl
+    const newRecord = await EmployeeLocationHistory.create({
+      employeeId,
+      employeeName: name,
+      latitude: lat,
+      longitude: lng,
+      accuracy: accuracy ? parseFloat(accuracy) : undefined,
+      timestamp: timeVal,
+      photoUrl
+    });
+
+    // Optionally emit a socket event to inform admin immediately
+    try {
+      const io = socketUtil.getIO();
+      io.emit(`location-photo-${employeeId}`, newRecord);
+      io.emit('live-locations-photo', newRecord);
+    } catch (socketErr) {
+      console.warn('Socket emit failed:', socketErr.message);
+    }
+
+    res.status(200).json({ success: true, data: newRecord, message: 'Photo uploaded successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// GET /api/location/photos
+exports.getLocationPhotos = async (req, res) => {
+  try {
+    if (req.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Unauthorized: Only admins can view photo history' });
+    }
+
+    const photos = await EmployeeLocationHistory.find({ photoUrl: { $exists: true, $ne: null } })
+      .sort({ timestamp: -1 });
+
+    res.status(200).json({ success: true, data: photos });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

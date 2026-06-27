@@ -15,9 +15,12 @@ window.fetch = async (input, init = {}) => {
     url = input.url;
   }
 
-  if (url.includes('/api') || url.startsWith('/api') || url.includes('localhost:45000') || url.includes('onrender.com')) {
+  const isLocalApi = url.startsWith('/api') || url.startsWith('api/');
+  const isBackendDomain = url.includes('localhost:45000') || url.includes('rizeworld') || url.includes('onrender.com');
+  const isExternalApi = url.includes('api.ocr.space') || url.includes('unpkg.com');
+
+  if ((isLocalApi || isBackendDomain) && !isExternalApi) {
     const token = localStorage.getItem('staffToken');
-    console.log(`[stafSide Fetch] Intercepting: ${url}, token found: ${!!token}`);
     if (token) {
       if (!init.headers) {
         init.headers = {};

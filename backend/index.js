@@ -113,6 +113,11 @@ app.use('/api', hearingRoutes);
 // Location routes
 const locationRoutes = require('./src/routes/locationRoutes');
 app.use('/api/location', locationRoutes);
+
+// Visiting Card routes
+const visitingCardRoutes = require('./src/routes/visitingCardRoutes');
+app.use('/api/visiting-card', visitingCardRoutes);
+
 // Secure proxy endpoint to stream files from backend/public
 // Usage: /public-file?path=uploads/filename.pdf
 app.get('/public-file', (req, res) => {
@@ -126,12 +131,12 @@ app.get('/public-file', (req, res) => {
       return res.status(403).json({ success: false, message: 'Forbidden' });
     }
 
-    const fullPath = path.join(__dirname, 'public', normalizedRequested);
+    const fullPath = path.join(__dirname, normalizedRequested);
     const normalizedFull = path.normalize(fullPath);
-    const publicRoot = path.normalize(path.join(__dirname, 'public'));
+    const uploadsRoot = path.normalize(path.join(__dirname, 'uploads'));
 
-    // Ensure resolved path is inside the public directory
-    if (!normalizedFull.startsWith(publicRoot)) {
+    // Ensure resolved path is inside the uploads directory
+    if (!normalizedFull.startsWith(uploadsRoot)) {
       return res.status(403).json({ success: false, message: 'Forbidden' });
     }
 

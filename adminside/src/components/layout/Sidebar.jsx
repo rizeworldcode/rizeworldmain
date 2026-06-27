@@ -11,7 +11,9 @@ import {
   ChevronRight,
   Sparkles,
   UserPlus,
-  MapPin
+  MapPin,
+  Camera,
+  CreditCard
 } from 'lucide-react';
 
 const navItems = [
@@ -22,6 +24,8 @@ const navItems = [
   { icon: Users, label: 'Clients', id: 'clients' },
   { icon: Wallet, label: 'Wallet', id: 'wallet' },
   { icon: MapPin, label: 'Sales Tracking', id: 'salesTracking' },
+  { icon: Camera, label: 'Sales Photos', id: 'salesPhotos' },
+  { icon: CreditCard, label: 'Visiting Cards', id: 'visitingCards' },
   // { icon: Settings, label: 'Settings', id: 'settings' },
 ];
 

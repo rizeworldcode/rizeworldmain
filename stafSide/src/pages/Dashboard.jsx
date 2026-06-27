@@ -13,7 +13,10 @@ import {
   Clock,
   User,
   Calendar,
-  X
+  X,
+  Camera,
+  RefreshCw,
+  CreditCard
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -351,6 +354,508 @@ const Dashboard = () => {
   };
 
   const [gpsError, setGpsError] = useState(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [cameraStream, setCameraStream] = useState(null);
+  const [capturedPhoto, setCapturedPhoto] = useState(null);
+  const [capturedBlob, setCapturedBlob] = useState(null);
+  const [cameraError, setCameraError] = useState(null);
+  const [facingMode, setFacingMode] = useState('environment');
+  const [isCardScanner, setIsCardScanner] = useState(false);
+  const [isUploadingCard, setIsUploadingCard] = useState(false);
+  const [isExtractingCardText, setIsExtractingCardText] = useState(false);
+  const [ocrResult, setOcrResult] = useState(null);
+  const [cardForm, setCardForm] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    company: '',
+    rawText: ''
+  });
+  const videoRef = useRef(null);
+
+  useEffect(() => {
+    if (isCameraActive && !cameraStream && !capturedPhoto) {
+      const enableStream = async () => {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { 
+              facingMode: facingMode,
+              width: { ideal: 1280 },
+              height: { ideal: 720 }
+            }
+          });
+          setCameraStream(stream);
+        } catch (err) {
+          console.error('Error accessing camera:', err);
+          setCameraError('Could not access camera. Please ensure camera permissions are granted.');
+        }
+      };
+      enableStream();
+    }
+  }, [isCameraActive, cameraStream, capturedPhoto, facingMode]);
+
+  useEffect(() => {
+    if (cameraStream && videoRef.current) {
+      videoRef.current.srcObject = cameraStream;
+    }
+  }, [cameraStream, isCameraActive, capturedPhoto]);
+
+  useEffect(() => {
+    return () => {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [cameraStream]);
+
+  const stopCamera = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+      setCameraStream(null);
+    }
+    setIsCameraActive(false);
+    setCapturedPhoto(null);
+    setCapturedBlob(null);
+    setCameraError(null);
+    setFacingMode('environment'); // Reset to default environment on close
+    setIsCardScanner(false);
+    setIsExtractingCardText(false);
+    setOcrResult(null);
+    setCardForm({
+      name: '',
+      phone: '',
+      email: '',
+      company: '',
+      rawText: ''
+    });
+  };
+
+  const toggleFacingMode = () => {
+    const nextMode = facingMode === 'environment' ? 'user' : 'environment';
+    setFacingMode(nextMode);
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+      setCameraStream(null);
+    }
+  };
+
+  const dataURItoBlob = (dataURI) => {
+    const byteString = atob(dataURI.split(',')[1]);
+    const mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
+    const ab = new ArrayBuffer(byteString.length);
+    const ia = new Uint8Array(ab);
+    for (let i = 0; i < byteString.length; i++) {
+      ia[i] = byteString.charCodeAt(i);
+    }
+    return new Blob([ab], { type: mimeString });
+  };
+
+  const runOCR = async (dataUrl) => {
+    setIsExtractingCardText(true);
+    setCardForm({
+      name: 'Extracting...',
+      phone: 'Extracting...',
+      email: 'Extracting...',
+      company: 'Extracting...',
+      rawText: 'Running OCR on captured card photo...'
+    });
+
+    try {
+      const apiKey = import.meta.env.VITE_OCR_SPACE_API_KEY;
+      if (!apiKey) {
+        throw new Error('VITE_OCR_SPACE_API_KEY is not configured in client environment variables.');
+      }
+      const blob = dataURItoBlob(dataUrl);
+      const formData = new FormData();
+      formData.append('file', blob, `visiting_card_ocr_${Date.now()}.jpg`);
+      formData.append('apikey', apiKey);
+      formData.append('language', 'eng');
+      formData.append('detectOrientation', 'true');
+      formData.append('scale', 'true');
+      formData.append('OCREngine', '2');
+      formData.append('isOverlayRequired', 'false');
+
+      const response = await fetch('https://api.ocr.space/parse/image', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.IsErroredOnProcessing) {
+        const errorMsg = result.ErrorMessage ? result.ErrorMessage.join(', ') : 'Unknown OCR.Space error';
+        throw new Error(errorMsg);
+      }
+
+      const parsedResults = result.ParsedResults;
+      if (!parsedResults || parsedResults.length === 0) {
+        throw new Error('No parsed text found in the document');
+      }
+
+      const rawText = parsedResults[0].ParsedText || '';
+
+      // Parse fields directly on the client using regex
+      const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean);
+      let email = '';
+      let phone = '';
+      let name = '';
+      let address = '';
+
+      // 1. Email Extraction
+      const emailPattern = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+      const emailMatch = rawText.match(emailPattern);
+      if (emailMatch) {
+        email = emailMatch[0];
+      }
+
+      // 2. Phone Extraction
+      const phonePattern = /(?:\+?\d{1,4}[-.\s]?)?\(?\d{3,5}\)?[-.\s]?\d{3,5}[-.\s]?\d{4,6}/;
+      const phoneMatch = rawText.match(phonePattern);
+      if (phoneMatch) {
+        const cleanDigits = phoneMatch[0].replace(/[^\d]/g, '');
+        if (cleanDigits.length >= 8) {
+          phone = phoneMatch[0].trim();
+        }
+      }
+
+      // 3. Name Extraction
+      const nameMatch = rawText.match(/(?:student\s+)?name[:\-\s]+([a-zA-Z\s.]+)/i);
+      if (nameMatch) {
+        name = nameMatch[1].trim();
+      } else {
+        const nameLine = lines.find(l => /^name[:\-\s]+/i.test(l));
+        if (nameLine) {
+          name = nameLine.replace(/^name[:\-\s]+/i, '').trim();
+        } else if (lines.length > 0) {
+          const firstLine = lines[0];
+          if (firstLine && firstLine.split(' ').length <= 4 && !/\d/.test(firstLine)) {
+            name = firstLine;
+          }
+        }
+      }
+
+      // 4. Address Reconstruction
+      const addressLines = lines.filter(line => {
+        const lower = line.toLowerCase();
+        if (line.includes('@')) return false;
+        if (phoneMatch && line.includes(phoneMatch[0])) return false;
+        if (lower.includes('name:') || lower.includes('roll:') || lower.includes('dob:')) return false;
+        return true;
+      });
+      address = addressLines.slice(0, 4).join(', ');
+
+      setOcrResult({
+        name: name || null,
+        email: email || null,
+        phone: phone || null,
+        address: address || null,
+        confidence: rawText ? 100 : 0,
+        method: 'client-ocr-space'
+      });
+
+      setCardForm({
+        name: name,
+        phone: phone,
+        email: email,
+        company: '',
+        rawText: address || rawText
+      });
+
+    } catch (err) {
+      console.error('OCR scan failed:', err);
+      setOcrResult({
+        name: null,
+        email: null,
+        phone: null,
+        address: null,
+        confidence: 0,
+        method: 'failed'
+      });
+      setCardForm({
+        name: '',
+        phone: '',
+        email: '',
+        company: '',
+        rawText: `Scan failed: ${err.message || 'Ensure your Internet connection is stable and API Key is active.'}`
+      });
+    } finally {
+      setIsExtractingCardText(false);
+    }
+  };
+
+  const capturePhoto = () => {
+    if (!videoRef.current) return;
+    const video = videoRef.current;
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg');
+      setCapturedPhoto(dataUrl);
+      
+      canvas.toBlob((blob) => {
+        setCapturedBlob(blob);
+      }, 'image/jpeg', 0.9);
+      
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+        setCameraStream(null);
+      }
+
+      if (isCardScanner) {
+        runOCR(dataUrl);
+      }
+    }
+  };
+
+  const retakePhoto = async () => {
+    setCapturedPhoto(null);
+    setCapturedBlob(null);
+    setCameraError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { 
+          facingMode: facingMode,
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
+      });
+      setCameraStream(stream);
+    } catch (err) {
+      console.error('Error accessing camera:', err);
+      setCameraError('Could not access camera. Please ensure camera permissions are granted.');
+    }
+  };
+
+  const handleUploadCapturedPhoto = async () => {
+    if (!capturedBlob) {
+      alert('No photo captured yet!');
+      return;
+    }
+
+    if (!('geolocation' in navigator)) {
+      alert('Geolocation is not supported by your browser.');
+      return;
+    }
+
+    setIsUploadingPhoto(true);
+
+    const getPositionPromise = (options) => {
+      return new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, options);
+      });
+    };
+
+    let position = null;
+    let errorDetail = null;
+
+    try {
+      // Attempt 1: High accuracy, short timeout
+      console.log('Attempting high-accuracy geolocation...');
+      position = await getPositionPromise({
+        enableHighAccuracy: true,
+        timeout: 5000,
+        maximumAge: 0
+      });
+    } catch (err) {
+      console.warn('High-accuracy geolocation failed/timed out. Retrying with standard options...', err);
+      errorDetail = err;
+
+      // Only attempt fallback if permission wasn't denied
+      if (err.code !== err.PERMISSION_DENIED) {
+        try {
+          // Attempt 2: Low accuracy, accept cached location up to 1 min, longer timeout
+          position = await getPositionPromise({
+            enableHighAccuracy: false,
+            timeout: 10000,
+            maximumAge: 60000
+          });
+        } catch (fallbackErr) {
+          console.error('All geolocation attempts failed:', fallbackErr);
+          errorDetail = fallbackErr;
+        }
+      }
+    }
+
+    if (!position) {
+      setIsUploadingPhoto(false);
+      let errorMessage = 'Failed to get location.';
+      if (errorDetail) {
+        if (errorDetail.code === errorDetail.PERMISSION_DENIED) {
+          errorMessage = 'Location permission was denied. Please allow location access in your browser settings and try again.';
+        } else if (errorDetail.code === errorDetail.POSITION_UNAVAILABLE) {
+          errorMessage = 'Location provider is unavailable. Please ensure your device\'s Location Services/GPS are enabled.';
+        } else if (errorDetail.code === errorDetail.TIMEOUT) {
+          errorMessage = 'Location request timed out. Please check your network or GPS signal and try again.';
+        } else {
+          errorMessage = `Geolocation error: ${errorDetail.message}`;
+        }
+      }
+      alert(errorMessage);
+      return;
+    }
+
+    const { latitude, longitude, accuracy } = position.coords;
+    const staffInfoLocal = JSON.parse(localStorage.getItem('staffInfo') || '{}');
+    const staffId = staffInfoLocal.id || staffInfoLocal._id;
+    const staffToken = localStorage.getItem('staffToken');
+
+    if (!staffId || !staffToken) {
+      alert('Staff ID or token not found. Please log in again.');
+      setIsUploadingPhoto(false);
+      return;
+    }
+
+    const formData = new FormData();
+    const file = new File([capturedBlob], `location_photo_${Date.now()}.jpg`, { type: 'image/jpeg' });
+    formData.append('photo', file);
+    formData.append('employeeId', staffId);
+    formData.append('employeeName', staffInfoLocal.name);
+    formData.append('latitude', latitude);
+    formData.append('longitude', longitude);
+    formData.append('accuracy', accuracy);
+    formData.append('timestamp', new Date().toISOString());
+
+    try {
+      const response = await fetch(getApiUrl('/location/photo'), {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${staffToken}`
+        },
+        body: formData
+      });
+      const result = await response.json();
+      if (result.success) {
+        alert('Photo uploaded successfully with coordinates!');
+        stopCamera();
+      } else {
+        alert(result.message || 'Failed to upload photo');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Network error: Could not upload photo.');
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
+
+  const handleUploadVisitingCard = async () => {
+    if (!capturedBlob) {
+      alert('No card photo captured yet!');
+      return;
+    }
+
+    if (!('geolocation' in navigator)) {
+      alert('Geolocation is not supported by your browser.');
+      return;
+    }
+
+    setIsUploadingCard(true);
+
+    const getPositionPromise = (options) => {
+      return new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, options);
+      });
+    };
+
+    let position = null;
+    let errorDetail = null;
+
+    try {
+      position = await getPositionPromise({
+        enableHighAccuracy: true,
+        timeout: 5000,
+        maximumAge: 0
+      });
+    } catch (err) {
+      console.warn('High-accuracy GPS failed. Trying standard triangulation...', err);
+      errorDetail = err;
+      if (err.code !== err.PERMISSION_DENIED) {
+        try {
+          position = await getPositionPromise({
+            enableHighAccuracy: false,
+            timeout: 10000,
+            maximumAge: 60000
+          });
+        } catch (fallbackErr) {
+          errorDetail = fallbackErr;
+        }
+      }
+    }
+
+    if (!position) {
+      setIsUploadingCard(false);
+      let errorMessage = 'Failed to get location coordinates.';
+      if (errorDetail) {
+        if (errorDetail.code === errorDetail.PERMISSION_DENIED) {
+          errorMessage = 'Location permission was denied. Please allow location access in your browser settings and try again.';
+        } else if (errorDetail.code === errorDetail.POSITION_UNAVAILABLE) {
+          errorMessage = 'Location provider is unavailable. Please ensure your device\'s Location Services/GPS are enabled.';
+        } else if (errorDetail.code === errorDetail.TIMEOUT) {
+          errorMessage = 'Location request timed out. Please check your network or GPS signal and try again.';
+        } else {
+          errorMessage = `Geolocation error: ${errorDetail.message}`;
+        }
+      }
+      alert(errorMessage);
+      return;
+    }
+
+    const { latitude, longitude, accuracy } = position.coords;
+    const staffInfoLocal = JSON.parse(localStorage.getItem('staffInfo') || '{}');
+    const staffId = staffInfoLocal.id || staffInfoLocal._id;
+    const staffToken = localStorage.getItem('staffToken');
+
+    if (!staffId || !staffToken) {
+      alert('Staff ID or token not found. Please log in again.');
+      setIsUploadingCard(false);
+      return;
+    }
+
+    const formData = new FormData();
+    const file = new File([capturedBlob], `visiting_card_${Date.now()}.jpg`, { type: 'image/jpeg' });
+    formData.append('photo', file);
+    formData.append('employeeId', staffId);
+    formData.append('employeeName', staffInfoLocal.name);
+    formData.append('latitude', latitude);
+    formData.append('longitude', longitude);
+    formData.append('accuracy', accuracy);
+    formData.append('timestamp', new Date().toISOString());
+    formData.append('cardName', cardForm.name || '');
+    formData.append('cardPhone', cardForm.phone || '');
+    formData.append('cardEmail', cardForm.email || '');
+    formData.append('cardCompany', cardForm.company || '');
+    formData.append('cardRawText', cardForm.rawText || '');
+
+    try {
+      const response = await fetch(getApiUrl('/visiting-card/upload'), {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${staffToken}`
+        },
+        body: formData
+      });
+      const result = await response.json();
+      if (result.success) {
+        alert('Visiting card and coordinates submitted successfully!');
+        stopCamera();
+      } else {
+        alert(result.message || 'Failed to submit visiting card');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Network error: Could not submit visiting card.');
+    } finally {
+      setIsUploadingCard(false);
+    }
+  };
 
   useEffect(() => {
     // Only track if user is exactly "Sales Team"
@@ -1003,6 +1508,271 @@ const Dashboard = () => {
         </motion.div>
       )}
 
+      {/* Capture Actions for Sales Team */}
+      {staffInfo.role === 'Sales Team' && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6 flex flex-col sm:flex-row gap-4"
+        >
+          <button 
+            type="button"
+            onClick={() => {
+              setIsCardScanner(false);
+              setIsCameraActive(true);
+            }}
+            disabled={isUploadingPhoto || isUploadingCard}
+            className={cn(
+              "clay-card p-5 rounded-3xl flex-1 flex items-center justify-center gap-3 transition-all cursor-pointer font-black text-lg text-left outline-none border-none",
+              (isUploadingPhoto || isUploadingCard) ? "bg-gray-200 text-gray-500 cursor-not-allowed" : "bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:shadow-lg hover:-translate-y-1"
+            )}
+          >
+            {isUploadingPhoto ? (
+              <div className="w-6 h-6 border-4 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+            ) : (
+              <Camera size={24} />
+            )}
+            {isUploadingPhoto ? 'Uploading Photo...' : 'Capture Location Photo'}
+          </button>
+
+          <button 
+            type="button"
+            onClick={() => {
+              setIsCardScanner(true);
+              setIsCameraActive(true);
+            }}
+            disabled={isUploadingPhoto || isUploadingCard}
+            className={cn(
+              "clay-card p-5 rounded-3xl flex-1 flex items-center justify-center gap-3 transition-all cursor-pointer font-black text-lg text-left outline-none border-none",
+              (isUploadingPhoto || isUploadingCard) ? "bg-gray-200 text-gray-500 cursor-not-allowed" : "bg-gradient-to-r from-purple-500 to-pink-600 text-white hover:shadow-lg hover:-translate-y-1"
+            )}
+          >
+            {isUploadingCard ? (
+              <div className="w-6 h-6 border-4 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+            ) : (
+              <CreditCard size={24} />
+            )}
+            {isUploadingCard ? 'Processing Card...' : 'Scan Visiting Card'}
+          </button>
+        </motion.div>
+      )}
+
+      {/* Live Camera Modal */}
+      {isCameraActive && (
+        <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="clay-card w-full max-w-lg overflow-hidden p-6 sm:p-8 relative bg-white rounded-3xl shadow-2xl flex flex-col items-center max-h-[90vh]"
+          >
+            {/* Close Button */}
+            <button
+              type="button"
+              onClick={stopCamera}
+              className="absolute top-4 right-4 w-10 h-10 clay-flat rounded-2xl flex items-center justify-center text-black hover:clay-inset hover:text-rose-500 transition-all z-10"
+            >
+              <X size={20} />
+            </button>
+
+            <h3 className="text-xl sm:text-2xl font-black text-black mb-4 flex items-center gap-2">
+              {isCardScanner ? (
+                <CreditCard className="text-purple-600" size={24} />
+              ) : (
+                <Camera className="text-blue-600" size={24} />
+              )}
+              {isCardScanner ? 'Visiting Card Scanner' : 'Live Photo Capture'}
+            </h3>
+
+            {/* Video Feed / Image Preview container */}
+            <div className={cn(
+              "relative w-full bg-black rounded-2xl overflow-hidden shadow-inner border border-gray-100 flex items-center justify-center shrink-0",
+              isCardScanner ? "aspect-[7/4]" : "aspect-[4/3]"
+            )}>
+              {cameraError ? (
+                <div className="p-6 text-center text-rose-500 font-bold">
+                  <p>{cameraError}</p>
+                </div>
+              ) : !capturedPhoto ? (
+                <>
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="w-full h-full object-cover"
+                  />
+                  {/* Switch Camera Trigger */}
+                  <button
+                    type="button"
+                    onClick={toggleFacingMode}
+                    className="absolute top-4 left-4 p-3 bg-black/60 hover:bg-black/80 text-white rounded-2xl transition-all border border-white/20 active:scale-95 flex items-center justify-center gap-1.5 shadow-lg z-20 backdrop-blur-sm"
+                    title="Switch camera mode"
+                  >
+                    <RefreshCw size={18} />
+                    <span className="text-[10px] font-black uppercase tracking-wider hidden xs:inline-block">
+                      {facingMode === 'environment' ? 'Front Camera' : 'Rear Camera'}
+                    </span>
+                  </button>
+                  {/* Overlay guideline */}
+                  <div className="absolute inset-0 border-2 border-dashed border-white/30 rounded-2xl pointer-events-none m-4 flex items-center justify-center">
+                    <p className="text-white/60 text-xs font-bold bg-black/40 px-3 py-1 rounded-full">
+                      {isCardScanner ? 'Align visiting card in landscape' : 'Align subject inside grid'}
+                    </p>
+                  </div>
+                </>
+              ) : !isCardScanner ? (
+                <img
+                  src={capturedPhoto}
+                  alt="Captured Location"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full bg-gray-900 flex items-center justify-center">
+                  <img
+                    src={capturedPhoto}
+                    alt="Captured Card"
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Verification Form (Card Scanner only, after capture) */}
+            {isCardScanner && capturedPhoto && (
+              <div className="w-full flex-1 overflow-y-auto pr-1 mt-4 space-y-4 max-h-[40vh] py-2 relative">
+                {isExtractingCardText && (
+                  <div className="absolute inset-0 bg-white/85 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center gap-3">
+                    <RefreshCw className="text-purple-600 animate-spin" size={32} />
+                    <span className="text-sm font-bold text-gray-700 animate-pulse">Extracting text using OCR...</span>
+                  </div>
+                )}
+                
+                {/* Structured Confirmation Summary Box */}
+                {!isExtractingCardText && ocrResult && (
+                  <div className="p-4 bg-gray-50 border border-gray-200 rounded-2xl text-left space-y-3 shadow-sm">
+                    <span className="text-[10px] text-purple-600 font-black uppercase tracking-wider block mb-1">Document Intelligence Summary</span>
+                    <div className="space-y-1.5 text-xs text-gray-700 font-semibold font-mono">
+                      <div>Name    &rarr; <span className="text-gray-900 font-bold">{cardForm.name || 'Not found'}</span></div>
+                      <div>Email   &rarr; <span className="text-gray-900 font-bold">{cardForm.email || 'Not found'}</span></div>
+                      <div>Phone   &rarr; <span className="text-gray-900 font-bold">{cardForm.phone || 'Not found'}</span></div>
+                      <div>Address &rarr; <span className="text-gray-900 font-bold">{cardForm.rawText || 'Not found'}</span></div>
+                    </div>
+                    <div className="flex items-center justify-between pt-2 border-t border-gray-200">
+                      <span className="text-xs font-bold text-gray-500">Confidence: <span className="text-purple-600 font-extrabold">{ocrResult.confidence}%</span></span>
+                      <span className="text-[9px] px-2 py-0.5 bg-purple-100 text-purple-700 rounded-md font-bold uppercase">{ocrResult.method}</span>
+                    </div>
+                    <p className="text-[10px] font-bold text-gray-500 italic mt-2">
+                      Are these details correct? You may edit any field below before confirming.
+                    </p>
+                  </div>
+                )}
+
+                <div className="space-y-3">
+                  <span className="text-[10px] text-gray-400 font-black uppercase tracking-wider block mb-1">Verify Card Fields</span>
+                  
+                  <div>
+                    <label className="text-xs font-bold text-gray-600 block mb-1">Contact Person Name</label>
+                    <input
+                      type="text"
+                      disabled={isExtractingCardText}
+                      value={cardForm.name}
+                      onChange={(e) => setCardForm({ ...cardForm, name: e.target.value })}
+                      placeholder="e.g. John Doe"
+                      className="w-full px-4 py-2 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-bold text-gray-600 block mb-1">Phone Number</label>
+                      <input
+                        type="text"
+                        disabled={isExtractingCardText}
+                        value={cardForm.phone}
+                        onChange={(e) => setCardForm({ ...cardForm, phone: e.target.value })}
+                        placeholder="e.g. +91 9999999999"
+                        className="w-full px-4 py-2 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-gray-600 block mb-1">Email Address</label>
+                      <input
+                        type="email"
+                        disabled={isExtractingCardText}
+                        value={cardForm.email}
+                        onChange={(e) => setCardForm({ ...cardForm, email: e.target.value })}
+                        placeholder="e.g. info@acme.com"
+                        className="w-full px-4 py-2 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-gray-600 block mb-1">Address / Raw Card Text</label>
+                    <textarea
+                      disabled={isExtractingCardText}
+                      value={cardForm.rawText}
+                      onChange={(e) => setCardForm({ ...cardForm, rawText: e.target.value })}
+                      placeholder="Enter address, website or other text printed on the card..."
+                      rows="3"
+                      className="w-full px-4 py-2 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none disabled:opacity-50"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="mt-6 w-full flex flex-col gap-3 shrink-0">
+              {!capturedPhoto ? (
+                <button
+                  type="button"
+                  onClick={capturePhoto}
+                  disabled={!!cameraError}
+                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-black py-4 px-6 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center gap-2 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed animate-pulse"
+                >
+                  <span className="w-4 h-4 bg-white rounded-full"></span>
+                  {isCardScanner ? 'Capture Visiting Card' : 'Capture Snapshot'}
+                </button>
+              ) : (
+                <div className="flex gap-4">
+                  <button
+                    type="button"
+                    onClick={retakePhoto}
+                    disabled={isUploadingPhoto || isUploadingCard || isExtractingCardText}
+                    className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 font-black py-4 px-6 rounded-2xl transition-all flex items-center justify-center gap-2 border border-gray-200 disabled:opacity-50"
+                  >
+                    Retake
+                  </button>
+                  <button
+                    type="button"
+                    onClick={isCardScanner ? handleUploadVisitingCard : handleUploadCapturedPhoto}
+                    disabled={isUploadingPhoto || isUploadingCard || isExtractingCardText}
+                    className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black py-4 px-6 rounded-2xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {isUploadingPhoto || isUploadingCard ? (
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    ) : (
+                      'Confirm & Send'
+                    )}
+                  </button>
+                </div>
+              )}
+              
+              <button
+                type="button"
+                onClick={stopCamera}
+                disabled={isUploadingPhoto || isUploadingCard || isExtractingCardText}
+                className="w-full text-center text-sm font-bold text-gray-500 hover:text-gray-700 py-2 transition-all disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
       {/* Employee Info Card */}
       <motion.section 
         initial={{ opacity: 0, y: 20 }}
@@ -1182,7 +1952,7 @@ const Dashboard = () => {
             </div>
           </div>
           <div className="h-[300px] sm:h-[350px]">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
               <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                 <XAxis 
