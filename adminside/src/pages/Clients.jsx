@@ -303,10 +303,11 @@ const AddProjectModal = ({ isOpen, onClose, onAdd }) => {
               <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Phone Number</label>
               <input
                 type="text"
+                maxLength={10}
                 className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all placeholder:text-gray-400"
-                placeholder="+1 (555) 000-0000"
+                placeholder="e.g. 9876543210"
                 value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/[^\d]/g, '').slice(0, 10) })}
               />
             </div>
             <div>
@@ -443,10 +444,11 @@ const AddOldClientModal = ({ isOpen, onClose, onAdd }) => {
               <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Phone Number</label>
               <input
                 type="text"
+                maxLength={10}
                 className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-amber-500 outline-none transition-all placeholder:text-gray-400"
-                placeholder="+1 (555) 000-0000"
+                placeholder="e.g. 9876543210"
                 value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/[^\d]/g, '').slice(0, 10) })}
               />
             </div>
           </div>
@@ -930,13 +932,29 @@ const handleAddPayment = async (data) => {
 };
 
   const handleAddProject = async (data) => {
+    // Extract only digits from phone input
+    let cleanPhone = (data.phone || '').replace(/[^\d]/g, '');
+    
+    // If user entered 12 digits starting with 91, strip the country code
+    if (cleanPhone.length === 12 && cleanPhone.startsWith('91')) {
+      cleanPhone = cleanPhone.slice(2);
+    }
+
+    const phonePattern = /^[6-9]\d{9}$/;
+    if (cleanPhone.length !== 10 || !phonePattern.test(cleanPhone)) {
+      alert('Please enter a valid 10-digit Indian phone number.');
+      return;
+    }
+
     try {
+      const submitData = { ...data, phone: `+91 ${cleanPhone}` };
+
       const response = await fetch('http://localhost:45000/api/clients', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(data)
+        body: JSON.stringify(submitData)
       });
       const result = await response.json();
       if (result.success) {
@@ -953,13 +971,29 @@ const handleAddPayment = async (data) => {
   };
 
   const handleAddOldClient = async (data) => {
+    // Extract only digits from phone input
+    let cleanPhone = (data.phone || '').replace(/[^\d]/g, '');
+    
+    // If user entered 12 digits starting with 91, strip the country code
+    if (cleanPhone.length === 12 && cleanPhone.startsWith('91')) {
+      cleanPhone = cleanPhone.slice(2);
+    }
+
+    const phonePattern = /^[6-9]\d{9}$/;
+    if (cleanPhone.length !== 10 || !phonePattern.test(cleanPhone)) {
+      alert('Please enter a valid 10-digit Indian phone number.');
+      return;
+    }
+
     try {
+      const submitData = { ...data, phone: `+91 ${cleanPhone}` };
+
       const response = await fetch('http://localhost:45000/api/old-clients', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(data)
+        body: JSON.stringify(submitData)
       });
       const result = await response.json();
       if (result.success) {

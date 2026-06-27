@@ -18,7 +18,7 @@ import {
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', id: 'dashboard' },
-  { icon: CalendarCheck, label: 'Today asigned work', id: 'todayWork' },
+  { icon: CalendarCheck, label: 'Today assigned work', id: 'todayWork' },
   { icon: Users2, label: 'Employee Detail', id: 'staffDetail' },
   { icon: UserPlus, label: 'Add Employee', id: 'addStaff' },
   { icon: Users, label: 'Clients', id: 'clients' },

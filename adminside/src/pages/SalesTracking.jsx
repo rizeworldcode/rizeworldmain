@@ -392,7 +392,7 @@ const SalesTracking = () => {
           <h1 className="text-3xl font-black text-gray-900 dark:text-white flex items-center gap-3">
             <MapPin className="text-blue-500" /> Sales Team Live Tracking
           </h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">Real-time Mapbox tracking and route history analysis</p>
+          <p className="text-gray-500 dark:text-gray-400 mt-1">Real-time tracking and route history analysis</p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           <button
