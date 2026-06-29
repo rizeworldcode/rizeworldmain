@@ -261,23 +261,56 @@ const StaffPerformance = ({ staffId, onBack }) => {
         return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
       });
 
-      const fullLeaves = monthlyAttendance.filter(r => r.status === 'On Leave').length;
-      const halfDays = monthlyAttendance.filter(r => r.status === 'Half-Day').length;
-      const recordedDays = monthlyAttendance.length;
-      const absentDays = Math.max(0, daysInMonthSoFar - recordedDays);
-      const totalFullLeaves = fullLeaves + absentDays;
+      let fullLeaves = 0;
+      let halfDays = 0;
+      let presents = 0;
 
-      const deductibleLeaves = Math.max(0, totalFullLeaves - 1);
+      // Loop through each day of the current month up to today
+      for (let day = 1; day <= daysInMonthSoFar; day++) {
+        const dateToCheck = new Date(currentYear, currentMonth, day);
+        const isSunday = dateToCheck.getDay() === 0; // 0 = Sunday
+
+        // Find attendance record for this day
+        const record = monthlyAttendance.find(r => {
+          const rd = new Date(r.date);
+          return rd.getDate() === day && rd.getMonth() === currentMonth && rd.getFullYear() === currentYear;
+        });
+
+        // Check if there is an explicit leave set by admin for this day
+        const hasAdminLeave = (staff.leaves || []).some(l => {
+          const ld = new Date(l.date);
+          return ld.getDate() === day && ld.getMonth() === currentMonth && ld.getFullYear() === currentYear;
+        });
+
+        if (isSunday || hasAdminLeave || (record && record.status === 'On Leave')) {
+          // Sunday or admin-assigned leave is counted as Present!
+          presents++;
+        } else if (record) {
+          if (record.status === 'Half-Day') {
+            halfDays++;
+          } else if (record.status === 'Present') {
+            presents++;
+          } else {
+            // Treat other statuses (like 'Absent') as full leave
+            fullLeaves++;
+          }
+        } else {
+          // No record on a weekday
+          fullLeaves++;
+        }
+      }
+
+      const deductibleLeaves = Math.max(0, fullLeaves - 1);
       const deduction = (deductibleLeaves * dailyRate) + (halfDays * (dailyRate / 2));
       const finalPayout = Math.round(baseSalary - deduction);
-      const attendancePercentage = Math.round(((daysInMonthSoFar - totalFullLeaves - (halfDays * 0.5)) / daysInMonthSoFar) * 100);
+      const attendancePercentage = Math.round(((daysInMonthSoFar - fullLeaves - (halfDays * 0.5)) / daysInMonthSoFar) * 100);
 
       history.push({
         month: currentMonthName + " (Current)",
-        presents: Math.max(0, daysInMonthSoFar - totalFullLeaves - halfDays),
-        leaves: totalFullLeaves,
+        presents: presents,
+        leaves: fullLeaves,
         halfDays: halfDays,
-        casualLeaveUsed: totalFullLeaves > 0,
+        casualLeaveUsed: fullLeaves > 0,
         deduction,
         finalPayout,
         attendancePercentage
@@ -319,40 +352,40 @@ const StaffPerformance = ({ staffId, onBack }) => {
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="max-w-7xl mx-auto p-6 space-y-8"
+      className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6 sm:space-y-8"
     >
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 border-b border-gray-100 dark:border-white/5 pb-6">
         <button 
           onClick={onBack}
-          className="flex items-center gap-2 text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors"
+          className="flex items-center gap-2 text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors self-start"
         >
           <ArrowLeft size={20} />
           <span className="font-bold uppercase tracking-widest text-xs">Back to Staff List</span>
         </button>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-4">
+          <div className="text-left">
+            <h1 className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white uppercase tracking-tight">Performance Report</h1>
+            <p className="text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-widest">Monthly Salary & Attendance Breakdown</p>
+          </div>
           <button
             onClick={() => setIsEditModalOpen(true)}
-            className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all"
+            className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white px-4 py-2.5 rounded-lg text-sm font-bold shadow-md hover:shadow-lg transition-all shrink-0"
           >
-            <Edit3 size={20} />
+            <Edit3 size={16} />
             Edit Details
           </button>
-          <div className="text-right">
-            <h1 className="text-3xl font-black text-gray-900 dark:text-white uppercase tracking-tight">Performance Report</h1>
-            <p className="text-sm font-bold text-gray-500 uppercase tracking-widest">Monthly Salary & Attendance Breakdown</p>
-          </div>
         </div>
       </div>
 
       {/* Profile Card */}
-      <div className="bg-white dark:bg-[#111] p-8 rounded-[2.5rem] border border-gray-100 dark:border-white/5 shadow-sm flex flex-col md:flex-row gap-8 items-center">
-        <div className="w-32 h-32 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center text-blue-500 border-2 border-white/10">
+      <div className="bg-white dark:bg-[#111] p-6 sm:p-8 rounded-3xl sm:rounded-[2.5rem] border border-gray-100 dark:border-white/5 shadow-sm flex flex-col md:flex-row gap-6 sm:gap-8 items-center">
+        <div className="w-32 h-32 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center text-blue-500 border-2 border-white/10 shrink-0">
           <User size={64} />
         </div>
         <div className="flex-1 space-y-4 text-center md:text-left">
           <div>
-            <h2 className="text-4xl font-black text-gray-900 dark:text-white">{staff.name}</h2>
+            <h2 className="text-3xl sm:text-4xl font-black text-gray-900 dark:text-white">{staff.name}</h2>
             <p className="text-blue-500 font-black uppercase tracking-[0.2em] text-sm mt-1">{staff.department} • {staff.jobType}</p>
           </div>
           <div className="flex flex-wrap gap-6 justify-center md:justify-start">
@@ -385,8 +418,8 @@ const StaffPerformance = ({ staffId, onBack }) => {
       </div>
 
       {/* Working Hours Calculation Breakdown */}
-      <div className="bg-white dark:bg-[#111] p-8 rounded-[2.5rem] border border-gray-100 dark:border-white/5 shadow-sm">
-        <h3 className="text-2xl font-black text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+      <div className="bg-white dark:bg-[#111] p-6 sm:p-8 rounded-3xl sm:rounded-[2.5rem] border border-gray-100 dark:border-white/5 shadow-sm">
+        <h3 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white mb-6 flex items-center gap-2">
           <Clock size={24} className="text-blue-500" />
           Working Hours Calculation
         </h3>
@@ -402,7 +435,7 @@ const StaffPerformance = ({ staffId, onBack }) => {
           
           return (
             <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="p-4 bg-blue-500/5 border border-blue-500/10 rounded-2xl">
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Expected Hours</p>
                   <p className="text-xl font-black text-blue-600 dark:text-blue-400">{expectedFormatted}</p>
@@ -444,12 +477,12 @@ const StaffPerformance = ({ staffId, onBack }) => {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: idx * 0.1 }}
-            className="bg-white dark:bg-[#111] p-8 rounded-[2.5rem] border border-gray-100 dark:border-white/5 shadow-sm space-y-6 relative overflow-hidden group"
+            className="bg-white dark:bg-[#111] p-6 sm:p-8 rounded-3xl sm:rounded-[2.5rem] border border-gray-100 dark:border-white/5 shadow-sm space-y-6 relative overflow-hidden group"
           >
             {/* Background Glow */}
             <div className="absolute -right-10 -top-10 w-40 h-40 bg-blue-500/5 blur-3xl rounded-full group-hover:bg-blue-500/10 transition-colors" />
 
-            <div className="flex justify-between items-start relative z-10">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10">
               <div>
                 <h3 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight">{report.month}</h3>
                 <div className="flex items-center gap-2 mt-1">
@@ -462,24 +495,24 @@ const StaffPerformance = ({ staffId, onBack }) => {
                   <span className="text-[10px] font-black text-blue-500 uppercase">{report.attendancePercentage}% Efficiency</span>
                 </div>
               </div>
-              <div className="text-right">
+              <div className="text-left sm:text-right shrink-0">
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Final Payout</p>
                 <p className="text-3xl font-black text-emerald-500">₹{report.finalPayout.toLocaleString()}</p>
               </div>
             </div>
 
             <div className="grid grid-cols-3 gap-4 relative z-10">
-              <div className="p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
+              <div className="p-3 sm:p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
                 <p className="text-[9px] font-black text-gray-400 uppercase mb-1">Presents</p>
-                <p className="text-xl font-black text-gray-900 dark:text-white">{report.presents} <span className="text-[10px] text-gray-500">Days</span></p>
+                <p className="text-base sm:text-xl font-black text-gray-900 dark:text-white">{report.presents} <span className="text-[10px] text-gray-500">Days</span></p>
               </div>
-              <div className="p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
+              <div className="p-3 sm:p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
                 <p className="text-[9px] font-black text-gray-400 uppercase mb-1">Full Leaves</p>
-                <p className="text-xl font-black text-rose-500">{report.leaves} <span className="text-[10px] text-gray-500">Days</span></p>
+                <p className="text-base sm:text-xl font-black text-rose-500">{report.leaves} <span className="text-[10px] text-gray-500">Days</span></p>
               </div>
-              <div className="p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
+              <div className="p-3 sm:p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
                 <p className="text-[9px] font-black text-gray-400 uppercase mb-1">Half Days</p>
-                <p className="text-xl font-black text-amber-500">{report.halfDays} <span className="text-[10px] text-gray-500">Days</span></p>
+                <p className="text-base sm:text-xl font-black text-amber-500">{report.halfDays} <span className="text-[10px] text-gray-500">Days</span></p>
               </div>
             </div>
 
@@ -491,6 +524,18 @@ const StaffPerformance = ({ staffId, onBack }) => {
               <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded ${report.casualLeaveUsed ? 'bg-emerald-500/20 text-emerald-600' : 'bg-gray-200 text-gray-500'}`}>
                 {report.casualLeaveUsed ? 'Yes (1 Free)' : 'Not Used'}
               </span>
+            </div>
+
+            <div className="p-4 bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 rounded-2xl relative z-10 text-[10px] text-gray-500 dark:text-gray-400 font-medium space-y-1">
+              <p className="text-[9px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1.5 border-b border-gray-100 dark:border-white/5 pb-1">Salary Calculation Formula:</p>
+              <p>Base Salary: ₹{(staff.monthlySalary || 0).toLocaleString('en-IN')}</p>
+              <p>Daily Rate (Base / 30): ₹{Math.round((staff.monthlySalary || 0) / 30).toLocaleString('en-IN')}</p>
+              <p>Deductible Leaves: {Math.max(0, report.leaves - 1)} day(s) (Total {report.leaves} leaves, 1 casual leave free)</p>
+              <p>Half Days Deduction: {report.halfDays} × 50% rate = {report.halfDays * 0.5} day(s)</p>
+              <p className="font-bold text-rose-500 pt-1.5 mt-1 border-t border-gray-100 dark:border-white/5">
+                Deduction: (Deductible Leaves + Half Days × 0.5) × Daily Rate = -₹{Math.round(report.deduction).toLocaleString('en-IN')}
+              </p>
+              <p className="text-[8px] text-gray-400 dark:text-gray-500 italic leading-tight">(Sundays & admin-marked leaves counted as Present)</p>
             </div>
 
             <div className="flex justify-between items-center pt-4 border-t border-gray-100 dark:border-white/5 relative z-10">
@@ -523,9 +568,9 @@ const StaffPerformance = ({ staffId, onBack }) => {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ duration: 0.3 }}
-            className="relative w-full max-w-4xl bg-white dark:bg-[#111] rounded-[2.5rem] border border-gray-100 dark:border-white/5 shadow-2xl overflow-y-auto max-h-[90vh]"
+            className="relative w-full max-w-4xl mx-4 bg-white dark:bg-[#111] rounded-3xl sm:rounded-[2.5rem] border border-gray-100 dark:border-white/5 shadow-2xl overflow-y-auto max-h-[90vh]"
           >
-            <form onSubmit={handleEditSubmit} className="p-8 space-y-6">
+            <form onSubmit={handleEditSubmit} className="p-6 sm:p-8 space-y-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-3xl font-black text-gray-900 dark:text-white">Edit Staff Details</h2>
                 <button

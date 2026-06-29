@@ -569,29 +569,58 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
       return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
     });
 
-    // Count present and half-days from recorded attendance
-    const presentDays = monthlyAttendance.filter(r => r.status === 'Present').length;
-    const halfDays = monthlyAttendance.filter(r => r.status === 'Half-Day').length;
-    const explicitlyOnLeave = monthlyAttendance.filter(r => r.status === 'On Leave').length;
+    let fullLeaves = 0;
+    let halfDays = 0;
+    let presents = 0;
 
-    // Days not clocked in at all (excluding today if not clocked out yet)
-    // We assume staff should work every day for this calculation, 
-    // or you might want to exclude Sundays. Let's stick to simple 30-day logic.
-    const daysRecorded = monthlyAttendance.length;
-    const absentDays = Math.max(0, daysInMonthSoFar - daysRecorded);
+    // Loop through each day of the current month up to today
+    for (let day = 1; day <= daysInMonthSoFar; day++) {
+      const dateToCheck = new Date(currentYear, currentMonth, day);
+      const isSunday = dateToCheck.getDay() === 0; // 0 = Sunday
 
-    const totalFullLeaves = explicitlyOnLeave + absentDays;
+      // Find attendance record for this day
+      const record = monthlyAttendance.find(r => {
+        const rd = new Date(r.date);
+        return rd.getDate() === day && rd.getMonth() === currentMonth && rd.getFullYear() === currentYear;
+      });
+
+      // Check if there is an explicit leave set by admin for this day
+      const hasAdminLeave = (member.leaves || []).some(l => {
+        const ld = new Date(l.date);
+        return ld.getDate() === day && ld.getMonth() === currentMonth && ld.getFullYear() === currentYear;
+      });
+
+      if (isSunday || hasAdminLeave || (record && record.status === 'On Leave')) {
+        // Sunday or admin-assigned leave is counted as Present!
+        presents++;
+      } else if (record) {
+        if (record.status === 'Half-Day') {
+          halfDays++;
+        } else if (record.status === 'Present') {
+          presents++;
+        } else {
+          // Treat other statuses (like 'Absent') as full leave
+          fullLeaves++;
+        }
+      } else {
+        // No record on a weekday
+        fullLeaves++;
+      }
+    }
 
     // 1st leave is casual (no deduction)
-    const deductibleLeaves = Math.max(0, totalFullLeaves - 1);
+    const deductibleLeaves = Math.max(0, fullLeaves - 1);
     const deduction = (deductibleLeaves * oneDaySalary) + (halfDays * (oneDaySalary / 2));
 
     const payout = Math.round(baseSalary - deduction);
     return {
       payout,
-      fullLeaves: totalFullLeaves,
+      fullLeaves,
       halfDays,
-      isCasualUsed: totalFullLeaves > 0
+      isCasualUsed: fullLeaves > 0,
+      baseSalary,
+      oneDaySalary,
+      deduction
     };
   };
 
@@ -794,7 +823,7 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
                         {member.salaryStatus}
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                     <td className="px-6 py-4">
                       {(() => {
                         const { payout, fullLeaves, halfDays, isCasualUsed } = calculatePayout(member);
                         return (

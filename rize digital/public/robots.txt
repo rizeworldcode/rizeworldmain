@@ -1,0 +1,25 @@
+# RizeWorld Enterprise Robots.txt
+# https://rizeworld.in/
+
+User-agent: *
+Allow: /
+Allow: /services/
+Allow: /locations/
+Allow: /blogs/
+Allow: /portfolio/
+Allow: /case-studies/
+Allow: /faq
+Allow: /pricing
+Allow: /contact
+Allow: /about
+Allow: /team
+Allow: /careers
+
+# Block system/build routes
+Disallow: /assets/
+Disallow: /dist/
+Disallow: /node_modules/
+Disallow: /_next/
+
+# Sitemap Index
+Sitemap: https://rizeworld.in/sitemap.xml

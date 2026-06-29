@@ -8,6 +8,6 @@ const { protect } = require('../middleware/authMiddleware');
 router.post('/addHearing', protect, addHearing)
 router.put('/updateHearing/:id', protect, updateHearing)
 router.delete('/deleteHearing/:id', protect, deleteHearing)
-router.get('/getHearing', protect, getHearing)
+router.get('/getHearing', getHearing)
 
 module.exports = router;
