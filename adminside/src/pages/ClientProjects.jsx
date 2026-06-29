@@ -1408,7 +1408,7 @@ const ClientProjects = ({ onBack }) => {
                   className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm transition-all shadow-lg shadow-purple-600/20 w-full sm:w-auto"
                 >
                   <Download size={18} />
-                  <span className="whitespace-nowrap">Download Delay Work</span>
+                  <span className="whitespace-nowrap">Download Daily Work</span>
                 </button>
               </div>
 

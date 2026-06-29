@@ -1190,7 +1190,7 @@ const Dashboard = () => {
     const staffInfo = JSON.parse(localStorage.getItem('staffInfo') || '{}');
     
     if (staffInfo.role?.toLowerCase() !== 'data analyst') {
-      alert('Only Data Analysts can add delay work');
+      alert('Only Data Analysts can add daily work');
       return;
     }
     
@@ -1204,29 +1204,27 @@ const Dashboard = () => {
       alert('Please select client email');
       return;
     }
-
+    
     const payload = {
+      staffId,
       type: delayWorkForm.type,
       clientEmail: delayWorkForm.clientEmail,
       extra: delayWorkForm.type === 'extra' ? true : delayWorkForm.extra,
-      staffId
     };
-
+    
     if (delayWorkForm.type === 'extra') {
       payload.extraName = delayWorkForm.extraName;
       payload.count = delayWorkForm.count || 1;
-      payload.publishedLink = '';
-      payload.totalAccountReach = 0;
-      payload.totalAccountViews = 0;
     } else if (delayWorkForm.type === 'shoot') {
       payload.count = delayWorkForm.count || 1;
-      payload.publishedLink = '';
-      payload.totalAccountReach = 0;
-      payload.totalAccountViews = 0;
     } else {
       payload.publishedLink = delayWorkForm.publishedLink;
       payload.totalAccountReach = delayWorkForm.totalAccountReach;
       payload.totalAccountViews = delayWorkForm.totalAccountViews;
+    }
+    
+    // Default to 1 count for standard deliverables if not set
+    if (!payload.count && (payload.type === 'reel' || payload.type === 'post')) {
       payload.count = 1;
     }
 
@@ -1251,7 +1249,7 @@ const Dashboard = () => {
           extraName: ''
         });
       } else {
-        alert(result.message || 'Failed to add delay work');
+        alert(result.message || 'Failed to add daily work');
       }
     } catch (err) {
       console.error(err);
@@ -1782,11 +1780,18 @@ const Dashboard = () => {
         <div>
           <div className="flex items-center gap-4 sm:gap-6 mb-6 sm:mb-8">
             <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-[#8b5cf6] to-[#f472b6] flex items-center justify-center text-white font-black text-2xl sm:text-3xl shadow-lg">
-              {JSON.parse(localStorage.getItem('staffInfo') || '{}')?.name?.charAt(0) || 'U'}
+              {staffInfo?.name?.charAt(0) || 'U'}
             </div>
             <div>
-              <h3 className="text-xl sm:text-3xl font-black text-black">{JSON.parse(localStorage.getItem('staffInfo') || '{}')?.name || 'Employee'}</h3>
-              <p className="text-sm sm:text-lg font-bold text-black mt-1">{JSON.parse(localStorage.getItem('staffInfo') || '{}')?.department || 'N/A'}</p>
+              <h3 className="text-xl sm:text-3xl font-black text-black">{staffInfo?.name || 'Employee'}</h3>
+              <p className="text-sm sm:text-lg font-bold text-black mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span>{staffInfo?.department || 'N/A'}</span>
+                {staffInfo?.reportingPerson && staffInfo.reportingPerson !== '-' && (
+                  <span className="text-xs text-gray-500 font-bold bg-black/5 border border-black/10 rounded-full px-2.5 py-0.5 whitespace-nowrap">
+                    Report to: {staffInfo.reportingPerson}
+                  </span>
+                )}
+              </p>
             </div>
           </div>
 
@@ -2118,29 +2123,29 @@ const Dashboard = () => {
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 sm:mb-8">
             <h3 className="text-lg sm:text-xl font-black text-black uppercase tracking-tight flex items-center gap-2">
               <Clock size={20} className="text-amber-500" />
-              Delay Work
+              Daily Work
             </h3>
             <button 
               onClick={() => setIsAddDelayWorkOpen(true)}
               className="flex items-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-br from-amber-500 to-orange-500 text-white rounded-2xl text-xs sm:text-sm font-black uppercase tracking-widest shadow-lg hover:shadow-orange-500/30 transition-all active:scale-95 w-fit"
             >
               <Plus size={16} />
-              Add Delay Work
+              Add Daily Work
             </button>
           </div>
           
           {delayWorkLoading ? (
             <div className="py-10 text-center">
               <div className="w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-              <p className="text-sm font-black text-black uppercase tracking-widest mt-4">Loading Delay Work...</p>
+              <p className="text-sm font-black text-black uppercase tracking-widest mt-4">Loading Daily Work...</p>
             </div>
           ) : delayWork.length === 0 ? (
             <div className="text-center py-12">
               <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-6 rounded-2xl clay-inset bg-amber-100 flex items-center justify-center">
                 <Clock size={32} className="text-amber-500" />
               </div>
-              <h3 className="text-lg sm:text-xl font-bold text-black mb-2">No delay work added yet</h3>
-              <p className="text-black font-semibold">Add your first delay work entry above!</p>
+              <h3 className="text-lg sm:text-xl font-bold text-black mb-2">No daily work added yet</h3>
+              <p className="text-black font-semibold">Add your first daily work entry above!</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
@@ -2238,7 +2243,7 @@ const Dashboard = () => {
 
             <h3 className="text-xl sm:text-2xl font-black text-black mb-6 sm:mb-8 flex items-center gap-2">
               <Clock className="text-amber-500" />
-              Add Delay Work
+              Add Daily Work
             </h3>
              <div className="space-y-3 sm:space-y-4">
               <div>
@@ -2358,7 +2363,7 @@ const Dashboard = () => {
               )}
               <div className="flex gap-3 mt-6 sm:mt-8">
                 <button onClick={() => setIsAddDelayWorkOpen(false)} className="flex-1 py-2.5 sm:py-3 rounded-2xl border border-gray-200 text-black font-bold hover:bg-gray-50 transition-all">Cancel</button>
-                <button onClick={handleAddDelayWork} className="flex-1 py-2.5 sm:py-3 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 text-white font-black hover:shadow-orange-500/30 transition-all">Add Delay Work</button>
+                <button onClick={handleAddDelayWork} className="flex-1 py-2.5 sm:py-3 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 text-white font-black hover:shadow-orange-500/30 transition-all">Add Daily Work</button>
               </div>
             </div>
           </div>

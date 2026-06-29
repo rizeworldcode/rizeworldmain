@@ -16,15 +16,18 @@ import {
   Hash
 } from 'lucide-react';
 
+const PREDEFINED_ROLES = ['HR', 'Client Support', 'Admin', 'Data Analyst', 'Sales Team'];
+
 const AddStaff = ({ onBack }) => {
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
     email: '',
     monthlySalary: '',
-    department: 'WEB Development',
+    department: 'Development',
     jobType: 'Permanent',
-    role: 'Employee',
+    role: 'HR',
+    reportingPerson: '',
     joiningDate: new Date().toISOString().split('T')[0],
     salaryStatus: 'Pending',
     accountHolder: '',
@@ -206,11 +209,13 @@ const AddStaff = ({ onBack }) => {
                   value={formData.department}
                   onChange={(e) => setFormData({...formData, department: e.target.value})}
                 >
-                  <option value="WEB Development" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Web Development</option>
-                  <option value="SEO" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">SEO</option>
-                  <option value="Graphic Design" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Graphic Design</option>
-                  <option value="SMM" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">SMM</option>
-                  <option value="Video Editing" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Video Editing</option>
+                  <option value="Development" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Development</option>
+                  <option value="Designing & Editing" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Designing & Editing</option>
+                  <option value="Markiting" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Marketing</option>
+                  <option value="Accounts" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Accounts</option>
+                  <option value="HR" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">HR</option>
+                  <option value="Sales Team" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Sales Team</option>
+                  <option value="Other" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Other</option>
                 </select>
               </div>
             </div>
@@ -230,18 +235,52 @@ const AddStaff = ({ onBack }) => {
 
             <div className="space-y-2">
               <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block px-1">Employee Role</label>
-              <select 
-                className="w-full bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl px-4 py-3 text-sm text-gray-900 dark:text-white focus:border-blue-500 outline-none transition-all cursor-pointer"
-                value={formData.role}
-                onChange={(e) => setFormData({...formData, role: e.target.value})}
-              >
-                <option value="Employee" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Employee</option>
-                <option value="HR" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">HR</option>
-                <option value="Client Support" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Client Support</option>
-                <option value="Admin" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Admin</option>
-                <option value="Data Analyst" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Data Analyst</option>
-                <option value="Sales Team" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Sales Team</option>
-              </select>
+              {(() => {
+                const isCustomRole = formData.role && !PREDEFINED_ROLES.includes(formData.role);
+                return (
+                  <div className="space-y-2">
+                    <select 
+                      className="w-full bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl px-4 py-3 text-sm text-gray-900 dark:text-white focus:border-blue-500 outline-none transition-all cursor-pointer"
+                      value={isCustomRole ? 'Other' : formData.role}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === 'Other') {
+                          setFormData({...formData, role: ''});
+                        } else {
+                          setFormData({...formData, role: val});
+                        }
+                      }}
+                    >
+                      <option value="HR" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">HR</option>
+                      <option value="Client Support" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Client Support</option>
+                      <option value="Admin" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Admin</option>
+                      <option value="Data Analyst" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Data Analyst</option>
+                      <option value="Sales Team" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Sales Team</option>
+                      <option value="Other" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Other (Type custom role)</option>
+                    </select>
+                    {(isCustomRole || formData.role === '' || !PREDEFINED_ROLES.includes(formData.role)) && (
+                      <input 
+                        type="text"
+                        className="w-full bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl px-4 py-3 text-sm text-gray-900 dark:text-white focus:border-blue-500 outline-none transition-all"
+                        placeholder="Type custom role..."
+                        value={formData.role}
+                        onChange={(e) => setFormData({...formData, role: e.target.value})}
+                      />
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block px-1">Reporting Person Name</label>
+              <input 
+                type="text" 
+                placeholder="e.g. Manager Name"
+                className="w-full bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl px-4 py-3 text-sm text-gray-900 dark:text-white focus:border-blue-500 outline-none transition-all"
+                value={formData.reportingPerson}
+                onChange={(e) => setFormData({...formData, reportingPerson: e.target.value})}
+              />
             </div>
 
             <div className="space-y-2">

@@ -392,6 +392,9 @@ const StaffPerformance = ({ staffId, onBack }) => {
             <span className="flex items-center gap-2 text-gray-500 font-bold text-sm"><Mail size={16} /> {staff.email}</span>
             <span className="flex items-center gap-2 text-gray-500 font-bold text-sm"><Phone size={16} /> {staff.phone}</span>
             <span className="flex items-center gap-2 text-gray-500 font-bold text-sm"><Briefcase size={16} /> Base: ₹{staff.monthlySalary?.toLocaleString()}</span>
+            {staff.reportingPerson && staff.reportingPerson !== '-' && (
+              <span className="flex items-center gap-2 text-gray-500 font-bold text-sm"><User size={16} /> Repo: {staff.reportingPerson}</span>
+            )}
             <span className="flex items-center gap-2 text-gray-500 font-bold text-sm">
               <Clock size={16} />
               {(() => {

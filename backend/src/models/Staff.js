@@ -9,8 +9,11 @@ const staffSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['Employee', 'HR', 'Client Support', 'Admin', 'Data Analyst', 'Sales Team'],
-    default: 'Employee'
+  },
+  reportingPerson: {
+    type: String,
+    trim: true,
+    default: '-'
   },
   phone: {
     type: String,
@@ -31,7 +34,7 @@ const staffSchema = new mongoose.Schema({
   department: {
     type: String,
     required: true,
-    enum: ['WEB Development', 'SEO', 'Graphic Design', 'SMM', 'Video Editing']
+    enum: ['Development', 'Designing & Editing', 'Markiting', 'Accounts', 'HR', 'Sales Team', 'Other']
   },
   jobType: {
     type: String,
@@ -56,11 +59,11 @@ const staffSchema = new mongoose.Schema({
     casualLeavesUsed: { type: Number, default: 0 },
     paidAt: { type: Date, default: Date.now }
   }],
-  clock:[{
+  clock: [{
     date: {
-  type: Date,
-  default: Date.now
-},
+      type: Date,
+      default: Date.now
+    },
     sessions: [{
       clockIn: {
         type: String,
@@ -80,7 +83,7 @@ const staffSchema = new mongoose.Schema({
       default: '-'
     }
   }],
-  work:[{
+  work: [{
     tasks: [{
       name: {
         type: String,
@@ -151,14 +154,14 @@ const staffSchema = new mongoose.Schema({
 });
 
 // Hash password before saving
-staffSchema.pre('save', async function(next) {
+staffSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
   this.password = await bcrypt.hash(this.password, 10);
   next();
 });
 
 // Method to compare password
-staffSchema.methods.comparePassword = async function(candidatePassword) {
+staffSchema.methods.comparePassword = async function (candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 

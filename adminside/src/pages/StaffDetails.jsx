@@ -27,6 +27,8 @@ import {
 } from 'lucide-react';
 import StaffPerformance from './StaffPerformance';
 
+const PREDEFINED_ROLES = ['HR', 'Client Support', 'Admin', 'Data Analyst', 'Sales Team'];
+
 const EditStaffModal = ({ isOpen, onClose, staffMember, onUpdate }) => {
   const [formData, setFormData] = useState({
     monthlySalary: '',
@@ -39,6 +41,7 @@ const EditStaffModal = ({ isOpen, onClose, staffMember, onUpdate }) => {
     salaryStatus: '',
     jobType: '',
     role: '',
+    reportingPerson: '',
     newDocumentName: ''
   });
 
@@ -57,6 +60,7 @@ const EditStaffModal = ({ isOpen, onClose, staffMember, onUpdate }) => {
         salaryStatus: staffMember.salaryStatus,
         jobType: staffMember.jobType,
         role: staffMember.role || 'Employee',
+        reportingPerson: staffMember.reportingPerson || '',
         newDocumentName: ''
       });
       setSelectedFile(null);
@@ -143,12 +147,19 @@ const EditStaffModal = ({ isOpen, onClose, staffMember, onUpdate }) => {
 
             <div>
               <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block mb-1.5">Department</label>
-              <input
-                type="text"
-                className="w-full bg-black/5 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:border-blue-500 outline-none transition-all"
+              <select
+                className="w-full bg-black/5 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:border-blue-500 outline-none transition-all cursor-pointer"
                 value={formData.department}
                 onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-              />
+              >
+                <option value="Development" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Development</option>
+                <option value="Designing & Editing" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Designing & Editing</option>
+                <option value="Markiting" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Marketing</option>
+                <option value="Accounts" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Accounts</option>
+                <option value="HR" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">HR</option>
+                <option value="Sales Team" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Sales Team</option>
+                <option value="Other" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Other</option>
+              </select>
             </div>
 
             <div>
@@ -166,18 +177,52 @@ const EditStaffModal = ({ isOpen, onClose, staffMember, onUpdate }) => {
 
             <div>
               <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block mb-1.5">Employee Role</label>
-              <select
+              {(() => {
+                const isCustomRole = formData.role && !PREDEFINED_ROLES.includes(formData.role);
+                return (
+                  <div className="space-y-2">
+                    <select
+                      className="w-full bg-black/5 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:border-blue-500 outline-none transition-all cursor-pointer"
+                      value={isCustomRole ? 'Other' : formData.role}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === 'Other') {
+                          setFormData({ ...formData, role: '' });
+                        } else {
+                          setFormData({ ...formData, role: val });
+                        }
+                      }}
+                    >
+                      <option value="HR" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">HR</option>
+                      <option value="Client Support" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Client Support</option>
+                      <option value="Admin" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Admin</option>
+                      <option value="Data Analyst" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Data Analyst</option>
+                      <option value="Sales Team" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Sales Team</option>
+                      <option value="Other" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Other (Type custom role)</option>
+                    </select>
+                    {(isCustomRole || formData.role === '' || !PREDEFINED_ROLES.includes(formData.role)) && (
+                      <input
+                        type="text"
+                        className="w-full bg-black/5 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:border-blue-500 outline-none transition-all"
+                        placeholder="Type custom role..."
+                        value={formData.role}
+                        onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                      />
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+
+            <div>
+              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block mb-1.5">Reporting Person Name</label>
+              <input
+                type="text"
                 className="w-full bg-black/5 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:border-blue-500 outline-none transition-all"
-                value={formData.role}
-                onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-              >
-                <option value="Employee" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Employee</option>
-                <option value="HR" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">HR</option>
-                <option value="Client Support" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Client Support</option>
-                <option value="Admin" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Admin</option>
-                <option value="Data Analyst" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Data Analyst</option>
-                <option value="Sales Team" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Sales Team</option>
-              </select>
+                placeholder="e.g. Manager Name"
+                value={formData.reportingPerson}
+                onChange={(e) => setFormData({ ...formData, reportingPerson: e.target.value })}
+              />
             </div>
 
             <div>
@@ -808,12 +853,26 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 mb-1.5">
-                        {member.department}
-                      </div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                        <Briefcase size={12} /> {member.jobType}
+                     <td className="px-6 py-4">
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex flex-wrap gap-1.5">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                            {member.department}
+                          </span>
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+                            {member.role || 'Employee'}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-gray-500 dark:text-gray-400 flex flex-col gap-1">
+                          <span className="flex items-center gap-1">
+                            <Briefcase size={12} className="text-gray-400" /> {member.jobType}
+                          </span>
+                          {member.reportingPerson && member.reportingPerson !== '-' && (
+                            <span className="flex items-center gap-1 font-semibold text-gray-700 dark:text-gray-300">
+                              Repo: {member.reportingPerson}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
