@@ -273,10 +273,10 @@ const AddStaff = ({ onBack }) => {
             </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block px-1">Reporting Person Name</label>
+              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block px-1">Reporting Person (Employee ID)</label>
               <input 
                 type="text" 
-                placeholder="e.g. Manager Name"
+                placeholder="e.g. RW-1001"
                 className="w-full bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl px-4 py-3 text-sm text-gray-900 dark:text-white focus:border-blue-500 outline-none transition-all"
                 value={formData.reportingPerson}
                 onChange={(e) => setFormData({...formData, reportingPerson: e.target.value})}

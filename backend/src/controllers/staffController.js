@@ -40,6 +40,14 @@ exports.loginStaff = async (req, res) => {
       new Date(c.date) >= today && new Date(c.date) < tomorrow
     );
 
+    let reportingPersonName = '-';
+    if (staff.reportingPerson && staff.reportingPerson !== '-') {
+      const manager = await Staff.findOne({ employeeId: staff.reportingPerson });
+      if (manager) {
+        reportingPersonName = manager.name;
+      }
+    }
+
     res.status(200).json({
       success: true,
       message: 'Login successful',
@@ -60,7 +68,9 @@ exports.loginStaff = async (req, res) => {
         leaves: staff.leaves,
         totalCasualLeaves: staff.totalCasualLeaves,
         todayClock: todayClockRecord || null, // Send today's specific clock record
-        role: staff.role // Include role for notifications
+        role: staff.role, // Include role for notifications
+        reportingPerson: staff.reportingPerson || '-',
+        reportingPersonName
       },
       token
     });
@@ -150,6 +160,14 @@ exports.getStaffById = async (req, res) => {
       new Date(c.date) >= today && new Date(c.date) < tomorrow
     );
 
+    let reportingPersonName = '-';
+    if (staff.reportingPerson && staff.reportingPerson !== '-') {
+      const manager = await Staff.findOne({ employeeId: staff.reportingPerson });
+      if (manager) {
+        reportingPersonName = manager.name;
+      }
+    }
+
     res.status(200).json({
       success: true,
       data: {
@@ -169,7 +187,9 @@ exports.getStaffById = async (req, res) => {
         leaves: staff.leaves,
         totalCasualLeaves: staff.totalCasualLeaves,
         todayClock: todayClockRecord || null,
-        role: staff.role
+        role: staff.role,
+        reportingPerson: staff.reportingPerson || '-',
+        reportingPersonName
       }
     });
   } catch (error) {
@@ -1216,5 +1236,56 @@ exports.deleteDocument = async (req, res) => {
     res.status(200).json({ success: true, data: updatedStaff });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Get staff members who report to the logged in user
+exports.getMyReportees = async (req, res) => {
+  try {
+    const managerId = req.user.employeeId;
+    if (!managerId) {
+      return res.status(400).json({ success: false, message: 'Manager employee ID not found' });
+    }
+
+    const reportees = await Staff.find({ reportingPerson: managerId })
+      .select('name employeeId department role jobType status clock work attendance');
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const reporteesData = reportees.map(staff => {
+      const todayWorkRecord = staff.work?.find(w =>
+        new Date(w.date) >= today && new Date(w.date) < tomorrow
+      );
+
+      const todayClockRecord = staff.clock?.find(c =>
+        new Date(c.date) >= today && new Date(c.date) < tomorrow
+      );
+
+      return {
+        id: staff._id,
+        name: staff.name,
+        employeeId: staff.employeeId,
+        department: staff.department,
+        role: staff.role,
+        jobType: staff.jobType,
+        status: staff.status,
+        todayTasks: todayWorkRecord ? todayWorkRecord.tasks : [],
+        todayClock: todayClockRecord || null
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      count: reporteesData.length,
+      data: reporteesData
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
   }
 };

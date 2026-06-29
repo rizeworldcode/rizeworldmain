@@ -20,7 +20,8 @@ const {
   getStaffLeaves,
   uploadDocument,
   deleteDocument,
-  addExtraTask
+  addExtraTask,
+  getMyReportees
 } = require('../controllers/staffController');
 const { protect } = require('../middleware/authMiddleware');
 const { requireOfficeWifi } = require('../middleware/officeWifi');
@@ -32,6 +33,7 @@ router.use(protect);
 
 router.post('/', createStaff);
 router.get('/', getAllStaff);
+router.get('/my-reportees', getMyReportees);
 
 // Static/literal routes first
 router.get('/reports', getWorkReports);

@@ -12,6 +12,7 @@ import {
   LogOut,
   Clock,
   User,
+  Users,
   Calendar,
   X,
   Camera,
@@ -253,6 +254,8 @@ const Dashboard = () => {
 
   // Get staff info from state & localStorage
   const [staffInfo, setStaffInfo] = useState(JSON.parse(localStorage.getItem('staffInfo') || '{}'));
+  const [reportees, setReportees] = useState([]);
+  const [loadingReportees, setLoadingReportees] = useState(false);
   const baseSalary = staffInfo.monthlySalary || 0;
   const { payout, fullLeaves, halfDays } = calculatePayout(staffInfo);
   const chartData = generateChartData(staffInfo);
@@ -335,6 +338,27 @@ const Dashboard = () => {
       } else {
         setTodayTasks([]);
       }
+    }
+  };
+
+  const fetchReportees = async () => {
+    const token = localStorage.getItem('staffToken');
+    if (!token) return;
+    setLoadingReportees(true);
+    try {
+      const response = await fetch(getApiUrl('/staff/my-reportees'), {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const result = await response.json();
+      if (result.success) {
+        setReportees(result.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch reportees:', err);
+    } finally {
+      setLoadingReportees(false);
     }
   };
 
@@ -1009,6 +1033,7 @@ const Dashboard = () => {
 
     // Fetch latest staff data from backend on mount/reload
     fetchStaffInfo();
+    fetchReportees();
 
     // Initialize Socket.IO connection
     const socketBase = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
@@ -1787,8 +1812,8 @@ const Dashboard = () => {
               <p className="text-sm sm:text-lg font-bold text-black mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
                 <span>{staffInfo?.department || 'N/A'}</span>
                 {staffInfo?.reportingPerson && staffInfo.reportingPerson !== '-' && (
-                  <span className="text-xs text-gray-500 font-bold bg-black/5 border border-black/10 rounded-full px-2.5 py-0.5 whitespace-nowrap">
-                    Report to: {staffInfo.reportingPerson}
+                  <span className="text-xs text-gray-500 font-bold bg-black/5 border border-black/10 rounded-full px-2.5 py-0.5 whitespace-nowrap" title={`ID: ${staffInfo.reportingPerson}`}>
+                    Report to: {staffInfo.reportingPersonName && staffInfo.reportingPersonName !== '-' ? staffInfo.reportingPersonName : staffInfo.reportingPerson}
                   </span>
                 )}
               </p>
@@ -2112,6 +2137,97 @@ const Dashboard = () => {
           </div>
         )}
       </motion.section>
+
+      {/* Reportees Section - Only if the staff member has reportees */}
+      {reportees && reportees.length > 0 && (
+        <motion.section 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="clay-card p-6 sm:p-8 space-y-6"
+        >
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 border-b border-black/5 pb-4">
+            <div>
+              <h3 className="text-xl font-black text-[#8b5cf6] uppercase tracking-tight flex items-center gap-2">
+                <Users size={20} className="text-[#8b5cf6]" />
+                My Team's Daily Work
+              </h3>
+              <p className="text-xs text-gray-500 font-bold mt-1">Today's assigned tasks and attendance status of staff members reporting to you</p>
+            </div>
+            <span className="text-xs font-bold text-white bg-[#8b5cf6] px-4 py-2 rounded-2xl w-fit shadow-md shadow-purple-500/10">
+              {reportees.length} Team Members
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {reportees.map((member) => (
+              <div key={member.id} className="clay-card p-5 border border-black/5 bg-[#f8fafc]/50 relative overflow-hidden group">
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#8b5cf6] to-[#f472b6] flex items-center justify-center text-white font-black text-sm">
+                      {member.name.charAt(0)}
+                    </div>
+                    <div>
+                      <h4 className="font-black text-black text-sm">{member.name}</h4>
+                      <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mt-0.5">
+                        {member.role || 'HR'} • {member.department}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Clock In Status */}
+                  <div className="flex flex-col items-end gap-1">
+                    <span className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">Attendance</span>
+                    <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-lg border ${
+                      member.todayClock && member.todayClock.sessions && member.todayClock.sessions.length > 0
+                        ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
+                        : 'bg-rose-500/10 text-rose-600 border-rose-500/20'
+                    }`}>
+                      {member.todayClock && member.todayClock.sessions && member.todayClock.sessions.length > 0 ? 'Present' : 'Absent'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Today's Tasks */}
+                <div>
+                  <h5 className="text-[10px] font-black text-black uppercase tracking-widest mb-3 border-b border-black/5 pb-1">Today's Assigned Tasks</h5>
+                  {member.todayTasks && member.todayTasks.length > 0 ? (
+                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                      {member.todayTasks.map((task, idx) => (
+                        <div key={idx} className="flex items-center gap-2.5 p-2 rounded-xl bg-white/5 border border-black/5 hover:bg-white/10 transition-colors">
+                          <div className={`w-5 h-5 rounded-lg flex items-center justify-center transition-all ${
+                            task.completed 
+                              ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20' 
+                              : 'bg-black/5 border border-black/10 text-gray-400'
+                          }`}>
+                            {task.completed ? (
+                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                              </svg>
+                            ) : (
+                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                              </svg>
+                            )}
+                          </div>
+                          <span className={`text-xs font-bold transition-all ${
+                            task.completed ? 'text-gray-500 line-through' : 'text-black'
+                          }`}>
+                            {task.name}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-4 bg-black/5 rounded-xl border border-dashed border-gray-200">
+                      <p className="text-xs text-gray-500 font-bold">No tasks assigned for today</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.section>
+      )}
 
       {/* Delay Work Section - Only for Data Analysts */}
       {staffInfo.role?.toLowerCase() === 'data analyst' && (

@@ -62,6 +62,7 @@ const getCurrentMonthExpectedHours = () => {
 
 const StaffPerformance = ({ staffId, onBack }) => {
   const [staff, setStaff] = useState(null);
+  const [allStaff, setAllStaff] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editForm, setEditForm] = useState({
@@ -89,6 +90,7 @@ const StaffPerformance = ({ staffId, onBack }) => {
         const response = await fetch(`http://localhost:45000/api/staff`);
         const result = await response.json();
         if (result.success) {
+          setAllStaff(result.data);
           const foundStaff = result.data.find(s => s._id === staffId);
           setStaff(foundStaff);
           // Initialize edit form with staff data, fix legacy department value
@@ -392,9 +394,14 @@ const StaffPerformance = ({ staffId, onBack }) => {
             <span className="flex items-center gap-2 text-gray-500 font-bold text-sm"><Mail size={16} /> {staff.email}</span>
             <span className="flex items-center gap-2 text-gray-500 font-bold text-sm"><Phone size={16} /> {staff.phone}</span>
             <span className="flex items-center gap-2 text-gray-500 font-bold text-sm"><Briefcase size={16} /> Base: ₹{staff.monthlySalary?.toLocaleString()}</span>
-            {staff.reportingPerson && staff.reportingPerson !== '-' && (
-              <span className="flex items-center gap-2 text-gray-500 font-bold text-sm"><User size={16} /> Repo: {staff.reportingPerson}</span>
-            )}
+            {staff.reportingPerson && staff.reportingPerson !== '-' && (() => {
+              const manager = allStaff.find(s => s.employeeId === staff.reportingPerson);
+              return (
+                <span className="flex items-center gap-2 text-gray-500 font-bold text-sm" title={`ID: ${staff.reportingPerson}`}>
+                  <User size={16} /> Repo: {manager ? manager.name : staff.reportingPerson}
+                </span>
+              );
+            })()}
             <span className="flex items-center gap-2 text-gray-500 font-bold text-sm">
               <Clock size={16} />
               {(() => {

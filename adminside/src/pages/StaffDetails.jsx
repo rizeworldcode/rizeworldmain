@@ -215,11 +215,11 @@ const EditStaffModal = ({ isOpen, onClose, staffMember, onUpdate }) => {
             </div>
 
             <div>
-              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block mb-1.5">Reporting Person Name</label>
+              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block mb-1.5">Reporting Person (Employee ID)</label>
               <input
                 type="text"
                 className="w-full bg-black/5 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:border-blue-500 outline-none transition-all"
-                placeholder="e.g. Manager Name"
+                placeholder="e.g. RW-1001"
                 value={formData.reportingPerson}
                 onChange={(e) => setFormData({ ...formData, reportingPerson: e.target.value })}
               />
@@ -854,26 +854,31 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
                       </div>
                     </td>
                      <td className="px-6 py-4">
-                      <div className="flex flex-col gap-1.5">
-                        <div className="flex flex-wrap gap-1.5">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-                            {member.department}
-                          </span>
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
-                            {member.role || 'Employee'}
-                          </span>
-                        </div>
-                        <div className="text-[11px] text-gray-500 dark:text-gray-400 flex flex-col gap-1">
-                          <span className="flex items-center gap-1">
-                            <Briefcase size={12} className="text-gray-400" /> {member.jobType}
-                          </span>
-                          {member.reportingPerson && member.reportingPerson !== '-' && (
-                            <span className="flex items-center gap-1 font-semibold text-gray-700 dark:text-gray-300">
-                              Repo: {member.reportingPerson}
-                            </span>
-                          )}
-                        </div>
-                      </div>
+                      {(() => {
+                        const manager = staff.find(s => s.employeeId === member.reportingPerson);
+                        return (
+                          <div className="flex flex-col gap-1.5">
+                            <div className="flex flex-wrap gap-1.5">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                                {member.department}
+                              </span>
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+                                {member.role || 'Employee'}
+                              </span>
+                            </div>
+                            <div className="text-[11px] text-gray-500 dark:text-gray-400 flex flex-col gap-1">
+                              <span className="flex items-center gap-1">
+                                <Briefcase size={12} className="text-gray-400" /> {member.jobType}
+                              </span>
+                              {member.reportingPerson && member.reportingPerson !== '-' && (
+                                <span className="flex items-center gap-1 font-semibold text-gray-700 dark:text-gray-300" title={`ID: ${member.reportingPerson}`}>
+                                  Repo: {manager ? manager.name : member.reportingPerson}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-sm font-bold text-gray-900 dark:text-white">₹{member.monthlySalary}</div>
