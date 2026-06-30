@@ -394,11 +394,23 @@ const StaffPerformance = ({ staffId, onBack }) => {
             <span className="flex items-center gap-2 text-gray-500 font-bold text-sm"><Mail size={16} /> {staff.email}</span>
             <span className="flex items-center gap-2 text-gray-500 font-bold text-sm"><Phone size={16} /> {staff.phone}</span>
             <span className="flex items-center gap-2 text-gray-500 font-bold text-sm"><Briefcase size={16} /> Base: ₹{staff.monthlySalary?.toLocaleString()}</span>
-            {staff.reportingPerson && staff.reportingPerson !== '-' && (() => {
-              const manager = allStaff.find(s => s.employeeId === staff.reportingPerson);
+            {staff.reportingPerson && (() => {
+              const reportingPersonIds = Array.isArray(staff.reportingPerson)
+                ? staff.reportingPerson
+                : (staff.reportingPerson && staff.reportingPerson !== '-' ? [staff.reportingPerson] : []);
+
+              if (reportingPersonIds.length === 0) return null;
+
+              const managerNames = reportingPersonIds
+                .map(id => {
+                  const match = allStaff.find(s => s.employeeId === id);
+                  return match ? match.name : id;
+                })
+                .join(', ');
+
               return (
-                <span className="flex items-center gap-2 text-gray-500 font-bold text-sm" title={`ID: ${staff.reportingPerson}`}>
-                  <User size={16} /> Repo: {manager ? manager.name : staff.reportingPerson}
+                <span className="flex items-center gap-2 text-gray-500 font-bold text-sm" title={`IDs: ${reportingPersonIds.join(', ')}`}>
+                  <User size={16} /> Repo: {managerNames || '-'}
                 </span>
               );
             })()}

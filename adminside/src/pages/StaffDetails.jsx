@@ -60,7 +60,7 @@ const EditStaffModal = ({ isOpen, onClose, staffMember, onUpdate }) => {
         salaryStatus: staffMember.salaryStatus,
         jobType: staffMember.jobType,
         role: staffMember.role || 'Employee',
-        reportingPerson: staffMember.reportingPerson || '',
+        reportingPerson: Array.isArray(staffMember.reportingPerson) ? staffMember.reportingPerson.join(', ') : (staffMember.reportingPerson || ''),
         newDocumentName: ''
       });
       setSelectedFile(null);
@@ -76,6 +76,9 @@ const EditStaffModal = ({ isOpen, onClose, staffMember, onUpdate }) => {
     // Create the updated object
     const updatedData = {
       ...rest,
+      reportingPerson: typeof rest.reportingPerson === 'string'
+        ? rest.reportingPerson.split(',').map(s => s.trim()).filter(Boolean)
+        : (rest.reportingPerson || []),
       documents: staffMember.documents
     };
 
@@ -154,7 +157,7 @@ const EditStaffModal = ({ isOpen, onClose, staffMember, onUpdate }) => {
               >
                 <option value="Development" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Development</option>
                 <option value="Designing & Editing" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Designing & Editing</option>
-                <option value="Markiting" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Marketing</option>
+                <option value="Marketing" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Marketing</option>
                 <option value="Accounts" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Accounts</option>
                 <option value="HR" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">HR</option>
                 <option value="Sales Team" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Sales Team</option>
@@ -855,7 +858,17 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
                     </td>
                      <td className="px-6 py-4">
                       {(() => {
-                        const manager = staff.find(s => s.employeeId === member.reportingPerson);
+                        const reportingPersonIds = Array.isArray(member.reportingPerson)
+                          ? member.reportingPerson
+                          : (member.reportingPerson && member.reportingPerson !== '-' ? [member.reportingPerson] : []);
+
+                        const managerNames = reportingPersonIds
+                          .map(id => {
+                            const match = staff.find(s => s.employeeId === id);
+                            return match ? match.name : id;
+                          })
+                          .join(', ');
+
                         return (
                           <div className="flex flex-col gap-1.5">
                             <div className="flex flex-wrap gap-1.5">
@@ -870,9 +883,9 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
                               <span className="flex items-center gap-1">
                                 <Briefcase size={12} className="text-gray-400" /> {member.jobType}
                               </span>
-                              {member.reportingPerson && member.reportingPerson !== '-' && (
-                                <span className="flex items-center gap-1 font-semibold text-gray-700 dark:text-gray-300" title={`ID: ${member.reportingPerson}`}>
-                                  Repo: {manager ? manager.name : member.reportingPerson}
+                              {reportingPersonIds.length > 0 && (
+                                <span className="flex items-center gap-1 font-semibold text-gray-700 dark:text-gray-300" title={`IDs: ${reportingPersonIds.join(', ')}`}>
+                                  Repo: {managerNames || '-'}
                                 </span>
                               )}
                             </div>

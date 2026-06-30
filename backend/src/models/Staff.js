@@ -11,9 +11,8 @@ const staffSchema = new mongoose.Schema({
     type: String,
   },
   reportingPerson: {
-    type: String,
-    trim: true,
-    default: '-'
+    type: [String],
+    default: []
   },
   phone: {
     type: String,

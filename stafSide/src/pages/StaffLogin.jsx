@@ -161,9 +161,7 @@ const StaffLogin = ({ onLogin }) => {
             </motion.button>
           </form>
 
-          <div className="mt-8 text-center relative z-10">
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Rezworld AI Staff Network</p>
-          </div>
+
         </div>
       </motion.div>
     </div>

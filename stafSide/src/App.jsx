@@ -44,9 +44,7 @@ const MainLayout = ({ onLogout }) => {
       {/* Top Navbar */}
       <div className="flex items-center justify-between p-4 bg-[#eef2f6] z-40 sticky top-0">
         <div className="flex items-center gap-4">
-          <div className="w-10 h-10 bg-gradient-to-br from-[#8b5cf6] to-[#f472b6] rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/30">
-            <span className="text-white font-black text-lg">R</span>
-          </div>
+          <img src="/logo.png" className="w-10 h-10 object-contain rounded-xl shadow-lg shadow-purple-500/10" alt="RizeWorld Logo" />
           {isHR && (
             <div className="flex items-center gap-2 bg-[#eef2f6] p-1 rounded-2xl clay-inset ml-2">
               <button 

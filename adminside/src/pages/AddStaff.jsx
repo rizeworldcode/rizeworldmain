@@ -98,7 +98,10 @@ const AddStaff = ({ onBack }) => {
       // Prepend +91 before submitting to the backend
       const payload = {
         ...formData,
-        phone: `+91 ${formData.phone}`
+        phone: `+91 ${formData.phone}`,
+        reportingPerson: typeof formData.reportingPerson === 'string'
+          ? formData.reportingPerson.split(',').map(s => s.trim()).filter(Boolean)
+          : (formData.reportingPerson || [])
       };
 
       const response = await fetch('http://localhost:45000/api/staff', {
@@ -211,7 +214,7 @@ const AddStaff = ({ onBack }) => {
                 >
                   <option value="Development" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Development</option>
                   <option value="Designing & Editing" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Designing & Editing</option>
-                  <option value="Markiting" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Marketing</option>
+                  <option value="Marketing" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Marketing</option>
                   <option value="Accounts" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Accounts</option>
                   <option value="HR" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">HR</option>
                   <option value="Sales Team" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Sales Team</option>

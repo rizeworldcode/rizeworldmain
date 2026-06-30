@@ -220,6 +220,10 @@ const Dashboard = () => {
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
   const [todayTasks, setTodayTasks] = useState([]);
   const [newTaskInput, setNewTaskInput] = useState('');
+  const [checklistText, setChecklistText] = useState('');
+  const [isUpdatingChecklist, setIsUpdatingChecklist] = useState(false);
+  const [masterPool, setMasterPool] = useState(JSON.parse(localStorage.getItem('tlMasterPool') || '[]'));
+  const [newPoolItem, setNewPoolItem] = useState('');
   const [isLeaveDay, setIsLeaveDay] = useState(false);
   const [attendanceStatus, setAttendanceStatus] = useState({
     canClockIn: true,
@@ -1307,6 +1311,60 @@ const Dashboard = () => {
     }
   };
 
+  const handleAddToPool = () => {
+    if (!newPoolItem.trim()) return;
+    const updatedPool = [...masterPool, newPoolItem.trim()];
+    setMasterPool(updatedPool);
+    localStorage.setItem('tlMasterPool', JSON.stringify(updatedPool));
+    setNewPoolItem('');
+  };
+
+  const handleRemoveFromPool = (index) => {
+    const itemToRemove = masterPool[index];
+    const updatedPool = masterPool.filter((_, i) => i !== index);
+    setMasterPool(updatedPool);
+    localStorage.setItem('tlMasterPool', JSON.stringify(updatedPool));
+    
+    // Also remove from today's work if it was selected
+    const isSelected = todayTasks.some(t => t.name === itemToRemove);
+    if (isSelected) {
+      handleToggleSelectTask(itemToRemove, false);
+    }
+  };
+
+  const handleToggleSelectTask = async (taskName, selected) => {
+    const staffInfo = JSON.parse(localStorage.getItem('staffInfo') || '{}');
+    const staffId = staffInfo.id || staffInfo._id;
+    if (!staffId) return;
+
+    let updatedTasks = [];
+    if (selected) {
+      if (!todayTasks.some(t => t.name === taskName)) {
+        updatedTasks = [...todayTasks, { name: taskName, completed: false }];
+      } else {
+        updatedTasks = [...todayTasks];
+      }
+    } else {
+      updatedTasks = todayTasks.filter(t => t.name !== taskName);
+    }
+
+    const todayWork = updatedTasks.map(t => t.name).join(', ');
+    try {
+      const response = await fetch(getApiUrl(`/staff/${staffId}/today-work`), { 
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ todayWork })
+      });
+      const result = await response.json();
+      if (result.success) {
+        localStorage.setItem('staffInfo', JSON.stringify(result.data));
+        syncStaffDataStates(result.data);
+      }
+    } catch (err) {
+      console.error('Failed to sync selection:', err);
+    }
+  };
+
   const handleAddTask = async () => {
     if (!newTaskInput.trim()) {
       alert('Please enter a task');
@@ -1811,11 +1869,23 @@ const Dashboard = () => {
               <h3 className="text-xl sm:text-3xl font-black text-black">{staffInfo?.name || 'Employee'}</h3>
               <p className="text-sm sm:text-lg font-bold text-black mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
                 <span>{staffInfo?.department || 'N/A'}</span>
-                {staffInfo?.reportingPerson && staffInfo.reportingPerson !== '-' && (
-                  <span className="text-xs text-gray-500 font-bold bg-black/5 border border-black/10 rounded-full px-2.5 py-0.5 whitespace-nowrap" title={`ID: ${staffInfo.reportingPerson}`}>
-                    Report to: {staffInfo.reportingPersonName && staffInfo.reportingPersonName !== '-' ? staffInfo.reportingPersonName : staffInfo.reportingPerson}
-                  </span>
-                )}
+                {staffInfo?.reportingPerson && (() => {
+                  const reportingPersonIds = Array.isArray(staffInfo.reportingPerson)
+                    ? staffInfo.reportingPerson
+                    : (staffInfo.reportingPerson && staffInfo.reportingPerson !== '-' ? [staffInfo.reportingPerson] : []);
+
+                  if (reportingPersonIds.length === 0) return null;
+
+                  const managerNames = staffInfo.reportingPersonName && staffInfo.reportingPersonName !== '-'
+                    ? staffInfo.reportingPersonName
+                    : reportingPersonIds.join(', ');
+
+                  return (
+                    <span className="text-xs text-gray-500 font-bold bg-black/5 border border-black/10 rounded-full px-2.5 py-0.5 whitespace-nowrap" title={`IDs: ${reportingPersonIds.join(', ')}`}>
+                      Report to: {managerNames}
+                    </span>
+                  );
+                })()}
               </p>
             </div>
           </div>
@@ -2092,11 +2162,25 @@ const Dashboard = () => {
                     : 'bg-black/5 border-gray-200'
                 }`}
               >
-                <div className={`p-1.5 rounded-lg transition-all ${
-                  task.completed 
-                    ? 'bg-emerald-500/20 text-emerald-600' 
-                    : 'bg-gray-500/20 text-black'
-                }`}>
+                <div 
+                  onClick={() => {
+                    if (staffInfo.role === 'Technical TL & Digital Marketing Specialist') {
+                      alert("Tasks for Technical TL role can only be completed/approved by the Admin.");
+                      return;
+                    }
+                    handleToggleTask(index);
+                  }}
+                  className={`p-1.5 rounded-lg transition-all ${
+                    staffInfo.role === 'Technical TL & Digital Marketing Specialist'
+                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                      : 'cursor-pointer hover:scale-105 active:scale-95'
+                  } ${
+                    task.completed 
+                      ? 'bg-emerald-500/20 text-emerald-600' 
+                      : 'bg-gray-500/20 text-black'
+                  }`}
+                  title={staffInfo.role === 'Technical TL & Digital Marketing Specialist' ? 'Approval by admin only' : 'Toggle complete'}
+                >
                   {task.completed ? (
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                       <polyline points="20 6 9 17 4 12"></polyline>
@@ -2137,6 +2221,88 @@ const Dashboard = () => {
           </div>
         )}
       </motion.section>
+
+      {/* TL Checklist Manager Section - Only for Technical TL & Digital Marketing Specialist */}
+      {staffInfo.role === 'Technical TL & Digital Marketing Specialist' && (
+        <motion.section 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="clay-card p-6 sm:p-8 space-y-6"
+        >
+          <div className="flex justify-between items-center border-b border-black/5 pb-3">
+            <div>
+              <h3 className="text-xl font-black text-[#8b5cf6] uppercase tracking-tight flex items-center gap-2">
+                <Users size={20} className="text-[#8b5cf6]" />
+                TL Master Checklist Pool
+              </h3>
+              <p className="text-xs text-gray-500 font-bold mt-1">Create checklist items for yourself and select (check) the work you are doing today.</p>
+            </div>
+          </div>
+          
+          {/* Add Item to Pool */}
+          <div className="flex gap-3">
+            <input 
+              type="text"
+              value={newPoolItem}
+              onChange={(e) => setNewPoolItem(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleAddToPool()}
+              placeholder="Add task to your master pool..."
+              className="flex-1 p-4 clay-inset rounded-2xl text-sm font-bold text-black placeholder-gray-800 focus:outline-none"
+            />
+            <button 
+              onClick={handleAddToPool}
+              className="px-4 py-2.5 bg-gradient-to-br from-[#8b5cf6] to-[#f472b6] text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-lg hover:shadow-purple-500/30 transition-all active:scale-95 flex items-center gap-2"
+            >
+              <Plus size={16} />
+              Add
+            </button>
+          </div>
+
+          {/* List of Pool Items with Checkboxes to SELECT Today's Work */}
+          <div className="space-y-3">
+            <h4 className="text-[10px] font-black text-black uppercase tracking-widest border-b border-black/5 pb-1">Select Work For Today</h4>
+            {masterPool.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {masterPool.map((item, idx) => {
+                  const isSelected = todayTasks.some(t => t.name === item);
+                  return (
+                    <div key={idx} className="flex items-center justify-between p-3.5 rounded-2xl border border-gray-200 bg-white/50 relative group">
+                      <div className="flex items-center gap-3 flex-1">
+                        <button
+                          onClick={() => handleToggleSelectTask(item, !isSelected)}
+                          className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all border ${
+                            isSelected 
+                              ? 'bg-[#8b5cf6] border-[#8b5cf6] text-white shadow-md shadow-purple-500/20' 
+                              : 'bg-black/5 border-gray-300 text-transparent'
+                          }`}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                          </svg>
+                        </button>
+                        <span className="text-sm font-bold text-black">
+                          {item}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => handleRemoveFromPool(idx)}
+                        className="p-1.5 rounded-lg text-gray-400 hover:bg-red-500/10 hover:text-red-600 transition-all opacity-0 group-hover:opacity-100"
+                        title="Remove from pool"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-6 bg-black/5 rounded-2xl border border-dashed border-gray-200">
+                <p className="text-xs text-gray-500 font-bold">Your master pool is empty. Add items above!</p>
+              </div>
+            )}
+          </div>
+        </motion.section>
+      )}
 
       {/* Reportees Section - Only if the staff member has reportees */}
       {reportees && reportees.length > 0 && (

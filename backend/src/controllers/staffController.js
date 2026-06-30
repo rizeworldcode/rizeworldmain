@@ -41,10 +41,10 @@ exports.loginStaff = async (req, res) => {
     );
 
     let reportingPersonName = '-';
-    if (staff.reportingPerson && staff.reportingPerson !== '-') {
-      const manager = await Staff.findOne({ employeeId: staff.reportingPerson });
-      if (manager) {
-        reportingPersonName = manager.name;
+    if (staff.reportingPerson && staff.reportingPerson.length > 0) {
+      const managers = await Staff.find({ employeeId: { $in: staff.reportingPerson } });
+      if (managers && managers.length > 0) {
+        reportingPersonName = managers.map(m => m.name).join(', ');
       }
     }
 
@@ -69,7 +69,7 @@ exports.loginStaff = async (req, res) => {
         totalCasualLeaves: staff.totalCasualLeaves,
         todayClock: todayClockRecord || null, // Send today's specific clock record
         role: staff.role, // Include role for notifications
-        reportingPerson: staff.reportingPerson || '-',
+        reportingPerson: staff.reportingPerson || [],
         reportingPersonName
       },
       token
@@ -161,10 +161,10 @@ exports.getStaffById = async (req, res) => {
     );
 
     let reportingPersonName = '-';
-    if (staff.reportingPerson && staff.reportingPerson !== '-') {
-      const manager = await Staff.findOne({ employeeId: staff.reportingPerson });
-      if (manager) {
-        reportingPersonName = manager.name;
+    if (staff.reportingPerson && staff.reportingPerson.length > 0) {
+      const managers = await Staff.find({ employeeId: { $in: staff.reportingPerson } });
+      if (managers && managers.length > 0) {
+        reportingPersonName = managers.map(m => m.name).join(', ');
       }
     }
 
@@ -188,7 +188,7 @@ exports.getStaffById = async (req, res) => {
         totalCasualLeaves: staff.totalCasualLeaves,
         todayClock: todayClockRecord || null,
         role: staff.role,
-        reportingPerson: staff.reportingPerson || '-',
+        reportingPerson: staff.reportingPerson || [],
         reportingPersonName
       }
     });
