@@ -120,7 +120,8 @@ app.use('/api/visiting-card', visitingCardRoutes);
 
 // Secure proxy endpoint to stream files from backend/public
 // Usage: /public-file?path=uploads/filename.pdf
-app.get('/public-file', (req, res) => {
+const { protect } = require('./src/middleware/authMiddleware');
+app.get('/public-file', protect, (req, res) => {
   try {
     const requested = String(req.query.path || '');
     if (!requested) return res.status(400).json({ success: false, message: 'Missing path' });
