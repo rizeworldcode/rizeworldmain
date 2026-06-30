@@ -1205,7 +1205,7 @@ const handleAddPayment = async (data) => {
           Old Clients
         </h2>
         <div className="bg-white dark:bg-[#030303] rounded-2xl border border-gray-200 dark:border-white/10 overflow-hidden shadow-sm transition-colors">
-          <div className="overflow-visible">
+          <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-gray-100 dark:border-white/5 text-[11px] uppercase tracking-widest text-gray-700 dark:text-gray-500 font-bold">

@@ -10,7 +10,9 @@ import {
   Alert,
   Platform,
   RefreshControl,
-  Image
+  Image,
+  Modal,
+  SafeAreaView
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -31,7 +33,8 @@ import {
   Calendar,
   TrendingUp,
   DollarSign,
-  AlertCircle
+  AlertCircle,
+  Bell
 } from 'lucide-react-native';
 
 // Helper to check if leave day (Sunday, explicitly on leave, or leave array match)
@@ -122,6 +125,10 @@ const DashboardScreen = ({ staffInfo: initialStaffInfo, token, onLogout, getApiU
   // Refresh
   const [refreshing, setRefreshing] = useState(false);
 
+  // Notifications states
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+
   const getProfilePicUrl = () => {
     if (!staffInfo.profilePic) return null;
     const base = getApiUrl('').replace('/api', '');
@@ -188,6 +195,45 @@ const DashboardScreen = ({ staffInfo: initialStaffInfo, token, onLogout, getApiU
     } catch (err) {
       console.error('[Upload Debug] Error during native upload:', err);
       Alert.alert('Error', 'Network error uploading profile image.');
+    }
+  };
+
+  const fetchNotifications = async () => {
+    const staffId = staffInfo.id || staffInfo._id;
+    if (!staffId) return;
+
+    try {
+      const response = await fetch(getApiUrl(`/notifications/staff/${staffId}`), {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const result = await response.json();
+      if (result.success) {
+        setNotifications(result.data || []);
+      }
+    } catch (err) {
+      console.error('[Notification Debug] Failed to fetch:', err);
+    }
+  };
+
+  const markAsRead = async (notificationId) => {
+    const staffId = staffInfo.id || staffInfo._id;
+    try {
+      const response = await fetch(getApiUrl(`/notifications/${notificationId}/read/${staffId}`), {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const result = await response.json();
+      if (result.success) {
+        setNotifications(prev => prev.map(n => 
+          n._id === notificationId ? { ...n, isRead: true } : n
+        ));
+      }
+    } catch (err) {
+      console.error('[Notification Debug] Failed to mark read:', err);
     }
   };
 
@@ -277,7 +323,7 @@ const DashboardScreen = ({ staffInfo: initialStaffInfo, token, onLogout, getApiU
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([fetchStaffInfo(), fetchReportees()]);
+    await Promise.all([fetchStaffInfo(), fetchReportees(), fetchNotifications()]);
     setRefreshing(false);
   };
 
@@ -285,6 +331,9 @@ const DashboardScreen = ({ staffInfo: initialStaffInfo, token, onLogout, getApiU
     syncStaffDataStates(staffInfo);
     fetchReportees();
     fetchStaffInfo();
+    fetchNotifications();
+
+    const intervalId = setInterval(fetchNotifications, 30000);
 
     // Load TL Master Pool
     const loadMasterPool = async () => {
@@ -300,6 +349,8 @@ const DashboardScreen = ({ staffInfo: initialStaffInfo, token, onLogout, getApiU
     if (staffInfo.role === 'Technical TL & Digital Marketing Specialist') {
       loadMasterPool();
     }
+
+    return () => clearInterval(intervalId);
   }, []);
 
   // Clock Actions
@@ -502,9 +553,21 @@ const DashboardScreen = ({ staffInfo: initialStaffInfo, token, onLogout, getApiU
       >
         <View style={styles.headerTop}>
           <Text style={styles.headerTitle}>RizeWorld Mobile</Text>
-          <TouchableOpacity onPress={onLogout} style={styles.logoutBtn}>
-            <LogOut size={18} color="#fff" />
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity onPress={() => setShowNotifications(true)} style={styles.headerActionBtn}>
+              <Bell size={18} color="#fff" />
+              {notifications.filter(n => !n.isRead).length > 0 && (
+                <View style={styles.bellBadge}>
+                  <Text style={styles.bellBadgeText}>
+                    {notifications.filter(n => !n.isRead).length}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity onPress={onLogout} style={styles.headerActionBtn}>
+              <LogOut size={18} color="#fff" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.profileContainer}>
@@ -848,6 +911,68 @@ const DashboardScreen = ({ staffInfo: initialStaffInfo, token, onLogout, getApiU
           </View>
         )}
       </ScrollView>
+
+      {/* Notifications Modal Popup */}
+      <Modal
+        visible={showNotifications}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => setShowNotifications(false)}
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <View>
+              <Text style={styles.modalTitle}>Notifications</Text>
+              <Text style={styles.modalSubtitle}>
+                {notifications.filter(n => !n.isRead).length} unread
+              </Text>
+            </View>
+            <TouchableOpacity onPress={() => setShowNotifications(false)} style={styles.closeModalBtn}>
+              <X size={20} color="#1e293b" />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView contentContainerStyle={styles.notificationsList}>
+            {notifications.length === 0 ? (
+              <View style={styles.emptyNotifications}>
+                <Bell size={48} color="#cbd5e1" style={{ marginBottom: 12 }} />
+                <Text style={styles.emptyNotificationsTitle}>No notifications yet</Text>
+                <Text style={styles.emptyNotificationsText}>We will let you know when something arrives!</Text>
+              </View>
+            ) : (
+              notifications.map((notif) => (
+                <TouchableOpacity
+                  key={notif._id}
+                  onPress={() => !notif.isRead && markAsRead(notif._id)}
+                  style={[
+                    styles.notifItem,
+                    notif.isRead ? styles.notifRead : styles.notifUnread
+                  ]}
+                  activeOpacity={notif.isRead ? 1 : 0.7}
+                >
+                  <View style={styles.notifContent}>
+                    <View style={styles.notifHeaderRow}>
+                      <Text style={[
+                        styles.notifItemTitle,
+                        !notif.isRead && styles.notifItemTitleUnread
+                      ]}>
+                        {notif.title}
+                      </Text>
+                      {!notif.isRead && (
+                        <View style={styles.unreadIndicatorDot} />
+                      )}
+                    </View>
+                    <Text style={styles.notifMessage}>{notif.message}</Text>
+                    <Text style={styles.notifTime}>
+                      {new Date(notif.createdAt).toLocaleString()}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              ))
+            )}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </View>
   );
 };
@@ -882,10 +1007,33 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1
   },
-  logoutBtn: {
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12
+  },
+  headerActionBtn: {
     padding: 8,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 12
+    borderRadius: 12,
+    position: 'relative'
+  },
+  bellBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#ef4444',
+    borderRadius: 10,
+    minWidth: 16,
+    height: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 2
+  },
+  bellBadgeText: {
+    color: '#fff',
+    fontSize: 8,
+    fontWeight: '950'
   },
   profileContainer: {
     flexDirection: 'row',
@@ -1349,6 +1497,114 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#94a3b8',
     fontStyle: 'italic'
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#f8fafc'
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+    backgroundColor: '#fff'
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: '#1e293b'
+  },
+  modalSubtitle: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#64748b',
+    marginTop: 2
+  },
+  closeModalBtn: {
+    padding: 8,
+    backgroundColor: '#f1f5f9',
+    borderRadius: 12
+  },
+  notificationsList: {
+    padding: 20,
+    gap: 12
+  },
+  emptyNotifications: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 80,
+    gap: 8
+  },
+  emptyNotificationsTitle: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#1e293b',
+    marginTop: 8
+  },
+  emptyNotificationsText: {
+    fontSize: 12,
+    color: '#64748b',
+    textAlign: 'center',
+    paddingHorizontal: 40
+  },
+  notifItem: {
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1
+  },
+  notifRead: {
+    borderColor: '#e2e8f0',
+    opacity: 0.8
+  },
+  notifUnread: {
+    borderColor: 'rgba(139, 92, 246, 0.2)',
+    backgroundColor: 'rgba(139, 92, 246, 0.02)',
+    borderLeftWidth: 4,
+    borderLeftColor: '#8b5cf6'
+  },
+  notifContent: {
+    gap: 6
+  },
+  notifHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  notifItemTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#64748b',
+    flex: 1
+  },
+  notifItemTitleUnread: {
+    color: '#1e293b',
+    fontWeight: '900'
+  },
+  unreadIndicatorDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#8b5cf6'
+  },
+  notifMessage: {
+    fontSize: 12,
+    color: '#334155',
+    lineHeight: 18
+  },
+  notifTime: {
+    fontSize: 10,
+    color: '#94a3b8',
+    fontWeight: 'bold',
+    marginTop: 2
   }
 });
 
