@@ -21,7 +21,8 @@ const {
   uploadDocument,
   deleteDocument,
   addExtraTask,
-  getMyReportees
+  getMyReportees,
+  updateProfilePic
 } = require('../controllers/staffController');
 const { protect } = require('../middleware/authMiddleware');
 const { requireOfficeWifi } = require('../middleware/officeWifi');
@@ -57,5 +58,6 @@ router.post('/:id/attendance', updateAttendance);
 // Document routes
 router.post('/:id/upload-document', upload.single('document'), uploadDocument);
 router.delete('/:id/document/:docId', deleteDocument);
+router.post('/:id/profile-pic', upload.single('profilePic'), updateProfilePic);
 
 module.exports = router;

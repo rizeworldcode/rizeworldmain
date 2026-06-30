@@ -136,6 +136,10 @@ const staffSchema = new mongoose.Schema({
     type: String,
     unique: true
   },
+  profilePic: {
+    type: String,
+    default: ''
+  },
   password: {
     type: String
   },

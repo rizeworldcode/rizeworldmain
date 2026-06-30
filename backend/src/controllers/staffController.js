@@ -1289,3 +1289,25 @@ exports.getMyReportees = async (req, res) => {
     });
   }
 };
+
+// Update profile picture for staff
+exports.updateProfilePic = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No image uploaded' });
+    }
+
+    const staff = await Staff.findById(req.params.id);
+    if (!staff) {
+      return res.status(404).json({ success: false, message: 'Staff not found' });
+    }
+
+    // Set the profile picture path
+    staff.profilePic = `/uploads/${req.file.filename}`;
+
+    const updatedStaff = await staff.save();
+    res.status(200).json({ success: true, data: updatedStaff });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
