@@ -65,37 +65,50 @@ const checkLeaveDay = (info) => {
   return false;
 };
 
-// Calculate payout salary based on attendance
+// Calculate payout salary based on actual hours worked from clock records
+const STANDARD_HOURS_PER_DAY = 8.5;
+const DAYS_IN_MONTH = 30;
+const EXPECTED_MONTHLY_HOURS = STANDARD_HOURS_PER_DAY * DAYS_IN_MONTH; // 255 hours
+
+const parseTotalHours = (totalHoursStr) => {
+  if (!totalHoursStr || totalHoursStr === '-') return 0;
+  let hours = 0;
+  let minutes = 0;
+  const hMatch = totalHoursStr.match(/(\d+)\s*h/i);
+  const mMatch = totalHoursStr.match(/(\d+)\s*m/i);
+  if (hMatch) hours = parseInt(hMatch[1], 10);
+  if (mMatch) minutes = parseInt(mMatch[1], 10);
+  return hours + (minutes / 60);
+};
+
 const calculatePayout = (info) => {
   const baseSalary = info.monthlySalary || 0;
-  const oneDaySalary = baseSalary / 30;
-  
+  const hourlyRate = baseSalary / EXPECTED_MONTHLY_HOURS;
+
   const today = new Date();
   const currentMonth = today.getMonth();
   const currentYear = today.getFullYear();
-  const daysInMonthSoFar = today.getDate();
-  
-  const monthlyAttendance = (info.attendance || []).filter(record => {
+
+  const monthlyClockRecords = (info.clock || []).filter(record => {
     const d = new Date(record.date);
     return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
   });
 
-  const presentDays = monthlyAttendance.filter(r => r.status === 'Present').length;
-  const halfDays = monthlyAttendance.filter(r => r.status === 'Half-Day').length;
-  const explicitlyOnLeave = monthlyAttendance.filter(r => r.status === 'On Leave').length;
+  let totalHoursWorked = 0;
+  monthlyClockRecords.forEach(record => {
+    totalHoursWorked += parseTotalHours(record.totalHours);
+  });
 
-  const daysRecorded = monthlyAttendance.length;
-  const absentDays = Math.max(0, daysInMonthSoFar - daysRecorded);
-  const totalFullLeaves = explicitlyOnLeave + absentDays;
+  const payout = Math.round(hourlyRate * totalHoursWorked);
+  const daysWorked = monthlyClockRecords.length;
 
-  const deductibleLeaves = Math.max(0, totalFullLeaves - 1);
-  const deduction = (deductibleLeaves * oneDaySalary) + (halfDays * (oneDaySalary / 2));
-  
-  const payout = Math.round(baseSalary - deduction);
   return {
     payout,
-    fullLeaves: totalFullLeaves,
-    halfDays
+    totalHoursWorked: Math.round(totalHoursWorked * 100) / 100,
+    daysWorked,
+    hourlyRate: Math.round(hourlyRate * 100) / 100,
+    fullLeaves: Math.max(0, today.getDate() - daysWorked),
+    halfDays: 0
   };
 };
 

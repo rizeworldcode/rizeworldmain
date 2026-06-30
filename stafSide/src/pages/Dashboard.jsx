@@ -31,43 +31,52 @@ import {
 import { cn } from '../utils';
 import { io } from 'socket.io-client';
 
-// Calculate payout salary based on attendance (same logic as admin side)
+// Calculate payout salary based on actual hours worked from clock records
+const STANDARD_HOURS_PER_DAY = 8.5;
+const DAYS_IN_MONTH = 30;
+const EXPECTED_MONTHLY_HOURS = STANDARD_HOURS_PER_DAY * DAYS_IN_MONTH; // 255 hours
+
+const parseTotalHours = (totalHoursStr) => {
+  if (!totalHoursStr || totalHoursStr === '-') return 0;
+  let hours = 0;
+  let minutes = 0;
+  const hMatch = totalHoursStr.match(/(\d+)\s*h/i);
+  const mMatch = totalHoursStr.match(/(\d+)\s*m/i);
+  if (hMatch) hours = parseInt(hMatch[1], 10);
+  if (mMatch) minutes = parseInt(mMatch[1], 10);
+  return hours + (minutes / 60);
+};
+
 const calculatePayout = (staffInfo) => {
   const baseSalary = staffInfo.monthlySalary || 0;
-  const oneDaySalary = baseSalary / 30;
-  
-  // Get current date details
+  const hourlyRate = baseSalary / EXPECTED_MONTHLY_HOURS;
+
   const today = new Date();
   const currentMonth = today.getMonth();
   const currentYear = today.getFullYear();
-  const daysInMonthSoFar = today.getDate(); // Calculation up to today
-  
-  const monthlyAttendance = (staffInfo.attendance || []).filter(record => {
+
+  // Filter clock records for current month
+  const monthlyClockRecords = (staffInfo.clock || []).filter(record => {
     const d = new Date(record.date);
     return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
   });
 
-  // Count present and half-days from recorded attendance
-  const presentDays = monthlyAttendance.filter(r => r.status === 'Present').length;
-  const halfDays = monthlyAttendance.filter(r => r.status === 'Half-Day').length;
-  const explicitlyOnLeave = monthlyAttendance.filter(r => r.status === 'On Leave').length;
+  // Sum total hours worked from each day's clock record
+  let totalHoursWorked = 0;
+  monthlyClockRecords.forEach(record => {
+    totalHoursWorked += parseTotalHours(record.totalHours);
+  });
 
-  // Days not clocked in at all
-  const daysRecorded = monthlyAttendance.length;
-  const absentDays = Math.max(0, daysInMonthSoFar - daysRecorded);
+  const payout = Math.round(hourlyRate * totalHoursWorked);
+  const daysWorked = monthlyClockRecords.length;
 
-  const totalFullLeaves = explicitlyOnLeave + absentDays;
-
-  // 1st leave is casual (no deduction)
-  const deductibleLeaves = Math.max(0, totalFullLeaves - 1);
-  const deduction = (deductibleLeaves * oneDaySalary) + (halfDays * (oneDaySalary / 2));
-  
-  const payout = Math.round(baseSalary - deduction);
   return {
     payout,
-    fullLeaves: totalFullLeaves,
-    halfDays,
-    isCasualUsed: totalFullLeaves > 0
+    totalHoursWorked: Math.round(totalHoursWorked * 100) / 100,
+    daysWorked,
+    hourlyRate: Math.round(hourlyRate * 100) / 100,
+    fullLeaves: Math.max(0, today.getDate() - daysWorked),
+    halfDays: 0
   };
 };
 
@@ -261,7 +270,7 @@ const Dashboard = () => {
   const [reportees, setReportees] = useState([]);
   const [loadingReportees, setLoadingReportees] = useState(false);
   const baseSalary = staffInfo.monthlySalary || 0;
-  const { payout, fullLeaves, halfDays } = calculatePayout(staffInfo);
+  const { payout, totalHoursWorked, daysWorked, hourlyRate, fullLeaves, halfDays } = calculatePayout(staffInfo);
   const chartData = generateChartData(staffInfo);
 
   // Check if today is a leave day or Sunday
@@ -2037,7 +2046,7 @@ const Dashboard = () => {
           isPositive={true} 
           icon={DollarSign}
           color="bg-[#8b5cf6]"
-          extra={`Payout: ₹${payout.toLocaleString()} | Leaves: ${fullLeaves} | Half Days: ${halfDays}`}
+          extra={`Payout: ₹${payout.toLocaleString()} | Hours: ${totalHoursWorked} | ₹${hourlyRate}/hr`}
         />
       </section>
 
