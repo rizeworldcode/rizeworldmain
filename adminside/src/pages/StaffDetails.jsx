@@ -254,7 +254,7 @@ const EditStaffModal = ({ isOpen, onClose, staffMember, onUpdate }) => {
 
             <div className="md:col-span-2 p-6 bg-black/5 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5 space-y-4">
               <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
-                <CreditCard size={14} className="text-blue-500" /> Account Details
+                <CreditCard size={14} /> Account Details
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -951,6 +951,7 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
                               {reportingPersonIds.length > 0 && (
                                 <span className="flex items-center gap-1 font-semibold text-gray-700 dark:text-gray-300" title={`IDs: ${reportingPersonIds.join(', ')}`}>
                                   Repo: {managerNames || '-'}
+                                
                                 </span>
                               )}
                               {/* Show admissions count if role is Counselor */}
@@ -979,25 +980,33 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
                         return (
                           <>
                             <div className="text-lg font-black text-emerald-600 dark:text-emerald-400">₹{payout.toLocaleString('en-IN')}</div>
-                            
+                            <div className="flex flex-col gap-0.5 mt-1">
+                              <span className="text-[9px] font-bold text-gray-500 uppercase tracking-tighter">Calculated Payout</span>
+                              <div className="flex flex-col gap-0.5 mt-0.5 text-[8px] text-gray-500">
+                                <span>Hours Worked: {totalHoursWorked} h</span>
+                                <span>Rate: ₹{hourlyRate}/h</span>
+                                <span>Days Worked: {daysWorked} | Absent: {fullLeaves} | Half-days: {halfDays}</span>
+                                {casualLeaveUsed && <span className="font-bold text-amber-600">1 Casual Leave Applied!</span>}
+                              </div>
+                            </div>
                           </>
                         );
                       })()}
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-xs text-gray-600 dark:text-gray-300 flex items-center gap-1 font-medium">
+                      <div className="flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-gray-300">
                         <Calendar size={12} /> {member.joiningDate ? new Date(member.joiningDate).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'N/A'}
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex flex-wrap gap-1">
                         {member.documents.map((doc, i) => (
-                          <span key={i} className="text-[10px] bg-black/5 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded px-1.5 py-0.5 text-gray-600 dark:text-gray-400">
+                          <span key={i} className="rounded border border-gray-200 bg-black/5 px-1.5 py-0.5 text-[10px] text-gray-600 dark:border-white/10 dark:bg-white/5 dark:text-gray-400">
                             {typeof doc === 'string' ? doc : doc.name}
                           </span>
                         ))}
                       </div>
-                      <div className="mt-1.5 flex items-center gap-1 text-[10px] text-gray-500 italic">
+                      <div className="mt-1.5 flex items-center gap-1 text-[10px] italic text-gray-500">
                         <CreditCard size={10} />
                         {member.bankName} - {member.accountNumber?.slice(-4).padStart(member.accountNumber.length, '*')}
                       </div>
@@ -1009,7 +1018,7 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
                             const { isLeave, reason } = isLeaveDayOrSunday(member);
                             if (isLeave) {
                               return (
-                                <div className="flex items-center gap-2 text-amber-500 bg-amber-500/5 px-4 py-2 rounded-xl border border-amber-500/10">
+                                <div className="flex items-center gap-2 rounded-xl border border-amber-500/10 bg-amber-500/5 px-4 py-2 text-amber-500">
                                   <Calendar size={16} />
                                   <span className="text-xs font-black uppercase tracking-widest">{reason}</span>
                                 </div>
@@ -1018,10 +1027,10 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
                               return (
                                 <button
                                   onClick={() => handleClockOut(member)}
-                                  className="px-4 py-2 bg-rose-500/10 hover:bg-rose-500 text-rose-600 hover:text-white rounded-xl transition-all border border-rose-500/20 shadow-lg shadow-rose-500/10 flex items-center gap-2 group/clockout"
+                                  className="group/clockout flex items-center gap-2 rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-2 text-rose-600 shadow-lg shadow-rose-500/10 transition-all hover:bg-rose-500 hover:text-white"
                                   title="Clock Out"
                                 >
-                                  <LogOut size={16} className="group-hover/clockout:scale-110 transition-transform" />
+                                  <LogOut size={16} className="transition-transform group-hover/clockout:scale-110" />
                                   <span className="text-xs font-black uppercase tracking-widest">Clock Out</span>
                                 </button>
                               );
@@ -1029,10 +1038,10 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
                               return (
                                 <button
                                   onClick={() => handleClockIn(member)}
-                                  className="px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-600 hover:text-white rounded-xl transition-all border border-emerald-500/20 shadow-lg shadow-emerald-500/10 flex items-center gap-2 group/clockin"
+                                  className="group/clockin flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-2 text-emerald-600 shadow-lg shadow-emerald-500/10 transition-all hover:bg-emerald-500 hover:text-white"
                                   title="Clock In"
                                 >
-                                  <LogIn size={16} className="group-hover/clockin:scale-110 transition-transform" />
+                                  <LogIn size={16} className="transition-transform group-hover/clockin:scale-110" />
                                   <span className="text-xs font-black uppercase tracking-widest">Clock In</span>
                                 </button>
                               );
@@ -1041,14 +1050,14 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
                           {member.salaryStatus === 'Pending' ? (
                             <button
                               onClick={() => handleClearSalary(member)}
-                              className="px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-600 hover:text-white rounded-xl transition-all border border-emerald-500/20 shadow-lg shadow-emerald-500/10 flex items-center gap-2 group/salary"
+                              className="group/salary flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-2 text-emerald-600 shadow-lg shadow-emerald-500/10 transition-all hover:bg-emerald-500 hover:text-white"
                               title="Clear Salary"
                             >
-                              <CheckCircle2 size={16} className="group-hover/salary:scale-110 transition-transform" />
+                              <CheckCircle2 size={16} className="transition-transform group-hover/salary:scale-110" />
                               <span className="text-xs font-black uppercase tracking-widest">Clear Salary</span>
                             </button>
                           ) : (
-                            <div className="flex items-center gap-2 text-emerald-500 bg-emerald-500/5 px-4 py-2 rounded-xl border border-emerald-500/10">
+                            <div className="flex items-center gap-2 rounded-xl border border-emerald-500/10 bg-emerald-500/5 px-4 py-2 text-emerald-500">
                               <CheckCircle2 size={16} />
                               <span className="text-xs font-black uppercase tracking-widest">Salary Paid</span>
                             </div>
