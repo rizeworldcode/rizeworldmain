@@ -41,9 +41,17 @@ exports.getDashboardStats = async (req, res) => {
       }
     });
 
-    // Calculate total paid salary
+    // Calculate total paid salary - use actual payout from salary history if available
     const paidStaff = await Staff.find({ salaryStatus: 'Paid' });
-    const totalPaidSalary = paidStaff.reduce((acc, staff) => acc + (staff.monthlySalary || 0), 0);
+    const totalPaidSalary = paidStaff.reduce((acc, staff) => {
+      // If we have salary history, use the latest payout, else use base salary
+      if (staff.salaryHistory && staff.salaryHistory.length > 0) {
+        // Get the latest salary entry
+        const latestSalary = staff.salaryHistory[staff.salaryHistory.length - 1];
+        return acc + (latestSalary.payoutSalary || 0);
+      }
+      return acc + (staff.monthlySalary || 0);
+    }, 0);
 
 
     // Net revenue after deducting salaries
@@ -107,7 +115,13 @@ exports.getRevenueAnalytics = async (req, res) => {
 
 
     const paidStaff = await Staff.find({ salaryStatus: 'Paid' });
-    const totalPaidSalary = paidStaff.reduce((acc, staff) => acc + (staff.monthlySalary || 0), 0);
+    const totalPaidSalary = paidStaff.reduce((acc, staff) => {
+      if (staff.salaryHistory && staff.salaryHistory.length > 0) {
+        const latestSalary = staff.salaryHistory[staff.salaryHistory.length - 1];
+        return acc + (latestSalary.payoutSalary || 0);
+      }
+      return acc + (staff.monthlySalary || 0);
+    }, 0);
     const totalClientRevenue = allPayments.reduce((acc, p) => acc + p.amount, 0);
     const totalRevenue = totalClientRevenue - totalPaidSalary;
 

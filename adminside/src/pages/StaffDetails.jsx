@@ -373,7 +373,141 @@ const EditStaffModal = ({ isOpen, onClose, staffMember, onUpdate }) => {
   );
 };
 
-// Helper functions for time calculation
+// Calculate payout salary based on actual hours worked from clock records
+const STANDARD_HOURS_PER_DAY = 8.5;
+const DAYS_IN_MONTH = 30;
+const EXPECTED_MONTHLY_HOURS = STANDARD_HOURS_PER_DAY * DAYS_IN_MONTH; // 255 hours
+
+const parseTotalHours = (totalHoursStr) => {
+  if (!totalHoursStr || totalHoursStr === '-') return 0;
+  let hours = 0;
+  let minutes = 0;
+  const hMatch = totalHoursStr.match(/(\d+)\s*h/i);
+  const mMatch = totalHoursStr.match(/(\d+)\s*m/i);
+  if (hMatch) hours = parseInt(hMatch[1], 10);
+  if (mMatch) minutes = parseInt(mMatch[1], 10);
+  return hours + (minutes / 60);
+};
+
+const calculatePayout = (staffInfo) => {
+  const baseSalary = staffInfo.monthlySalary || 0;
+  const hourlyRate = baseSalary / EXPECTED_MONTHLY_HOURS;
+
+  const today = new Date();
+  const currentMonth = today.getMonth();
+  const currentYear = today.getFullYear();
+
+  // Determine the start day: if employee was added to the website this month, start from that date; else day 1
+  const createdAt = staffInfo.createdAt ? new Date(staffInfo.createdAt) : null;
+  const startDay = (
+    createdAt &&
+    createdAt.getMonth() === currentMonth &&
+    createdAt.getFullYear() === currentYear
+  ) ? createdAt.getDate() : 1;
+
+  // --- Step 1: Sum actual hours from clock records ---
+  const monthlyClockRecords = (staffInfo.clock || []).filter(record => {
+    const d = new Date(record.date);
+    return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+  });
+
+  let totalHoursWorked = 0;
+  monthlyClockRecords.forEach(record => {
+    totalHoursWorked += parseTotalHours(record.totalHours);
+  });
+
+  // Build set of clocked dates (to avoid double-counting)
+  const creditedDates = new Set(
+    monthlyClockRecords.map(r => new Date(r.date).toDateString())
+  );
+
+  // --- Step 2: Credit 8.5 hrs for each SUNDAY in the month (from startDay up to today) ---
+  for (let day = startDay; day <= today.getDate(); day++) {
+    const d = new Date(currentYear, currentMonth, day);
+    if (d.getDay() === 0 && !creditedDates.has(d.toDateString())) {
+      totalHoursWorked += STANDARD_HOURS_PER_DAY;
+      creditedDates.add(d.toDateString());
+    }
+  }
+
+  // --- Step 3: Credit 8.5 hrs for each admin-declared leave day ---
+  (staffInfo.leaves || []).forEach(leave => {
+    const leaveDate = new Date(leave.date);
+    if (
+      leaveDate.getMonth() === currentMonth &&
+      leaveDate.getFullYear() === currentYear &&
+      leaveDate <= today &&
+      !creditedDates.has(leaveDate.toDateString())
+    ) {
+      totalHoursWorked += STANDARD_HOURS_PER_DAY;
+      creditedDates.add(leaveDate.toDateString());
+    }
+  });
+
+  // --- Step 4: Find truly absent days (from startDay, no clock, not Sunday, not admin leave) ---
+  const absentDays = [];
+  for (let day = startDay; day <= today.getDate(); day++) {
+    const d = new Date(currentYear, currentMonth, day);
+    if (!creditedDates.has(d.toDateString())) {
+      absentDays.push(d);
+    }
+  }
+
+  // --- Step 5: Find half-days from attendance records ---
+  const halfDayRecords = (staffInfo.attendance || []).filter(att => {
+    const d = new Date(att.date);
+    return (
+      att.status === 'Half-Day' &&
+      d.getMonth() === currentMonth &&
+      d.getFullYear() === currentYear &&
+      d <= today
+    );
+  });
+  // 2 half-days = 1 leave unit
+  const halfDayLeaveUnits = Math.floor(halfDayRecords.length / 2);
+
+  // --- Step 6: Apply 1 FREE casual leave per month ---
+  // Priority: 1st absent day → then 1st pair of half-days
+  let casualLeaveUsed = false;
+
+  if (absentDays.length > 0) {
+    // 1st absent day is auto casual leave → credit full 8.5 hrs
+    totalHoursWorked += STANDARD_HOURS_PER_DAY;
+    creditedDates.add(absentDays[0].toDateString());
+    casualLeaveUsed = true;
+  } else if (halfDayLeaveUnits > 0) {
+    // No absent days but 2+ half-days → use casual leave for 1st pair
+    // Top up each of those 2 half-days to 4.25 hrs (half of 8.5)
+    // so the pair together = 8.5 hrs (1 full day equivalent)
+    for (let i = 0; i < 2; i++) {
+      const hdDate = new Date(halfDayRecords[i].date);
+      const clockRecord = monthlyClockRecords.find(
+        r => new Date(r.date).toDateString() === hdDate.toDateString()
+      );
+      const actualHrs = clockRecord ? parseTotalHours(clockRecord.totalHours) : 0;
+      const halfTarget = STANDARD_HOURS_PER_DAY / 2; // 4.25 hrs
+      if (actualHrs < halfTarget) {
+        totalHoursWorked += halfTarget - actualHrs;
+      }
+    }
+    casualLeaveUsed = true;
+  }
+
+  const payout = Math.round(hourlyRate * totalHoursWorked);
+  const daysWorked = monthlyClockRecords.length;
+
+  return {
+    payout,
+    totalHoursWorked: Math.round(totalHoursWorked * 100) / 100,
+    daysWorked,
+    hourlyRate: Math.round(hourlyRate * 100) / 100,
+    fullLeaves: absentDays.length,
+    halfDays: halfDayRecords.length,
+    casualLeaveUsed
+  };
+};
+
+// Helper functions for time calculation (keep these for backward compatibility)
 const timeToMinutes = (timeStr) => {
   const [time, modifier] = timeStr.split(' ');
   let [hours, minutes] = time.split(':').map(Number);
@@ -602,78 +736,9 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
     setIsEditModalOpen(true);
   };
 
-  const calculatePayout = (member) => {
-    const baseSalary = member.monthlySalary || 0;
-    const oneDaySalary = baseSalary / 30;
-
-    // Get current date details
-    const today = new Date();
-    const currentMonth = today.getMonth();
-    const currentYear = today.getFullYear();
-    const daysInMonthSoFar = today.getDate(); // Calculation up to today
-
-    const monthlyAttendance = (member.attendance || []).filter(record => {
-      const d = new Date(record.date);
-      return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
-    });
-
-    let fullLeaves = 0;
-    let halfDays = 0;
-    let presents = 0;
-
-    // Loop through each day of the current month up to today
-    for (let day = 1; day <= daysInMonthSoFar; day++) {
-      const dateToCheck = new Date(currentYear, currentMonth, day);
-      const isSunday = dateToCheck.getDay() === 0; // 0 = Sunday
-
-      // Find attendance record for this day
-      const record = monthlyAttendance.find(r => {
-        const rd = new Date(r.date);
-        return rd.getDate() === day && rd.getMonth() === currentMonth && rd.getFullYear() === currentYear;
-      });
-
-      // Check if there is an explicit leave set by admin for this day
-      const hasAdminLeave = (member.leaves || []).some(l => {
-        const ld = new Date(l.date);
-        return ld.getDate() === day && ld.getMonth() === currentMonth && ld.getFullYear() === currentYear;
-      });
-
-      if (isSunday || hasAdminLeave || (record && record.status === 'On Leave')) {
-        // Sunday or admin-assigned leave is counted as Present!
-        presents++;
-      } else if (record) {
-        if (record.status === 'Half-Day') {
-          halfDays++;
-        } else if (record.status === 'Present') {
-          presents++;
-        } else {
-          // Treat other statuses (like 'Absent') as full leave
-          fullLeaves++;
-        }
-      } else {
-        // No record on a weekday
-        fullLeaves++;
-      }
-    }
-
-    // 1st leave is casual (no deduction)
-    const deductibleLeaves = Math.max(0, fullLeaves - 1);
-    const deduction = (deductibleLeaves * oneDaySalary) + (halfDays * (oneDaySalary / 2));
-
-    const payout = Math.round(baseSalary - deduction);
-    return {
-      payout,
-      fullLeaves,
-      halfDays,
-      isCasualUsed: fullLeaves > 0,
-      baseSalary,
-      oneDaySalary,
-      deduction
-    };
-  };
-
   const handleClearSalary = async (member) => {
-    const { payout, fullLeaves, halfDays, isCasualUsed } = calculatePayout(member);
+    const payoutData = calculatePayout(member);
+    const { payout, fullLeaves, halfDays, casualLeaveUsed } = payoutData;
     const currentMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
 
     if (window.confirm(`Are you sure you want to clear the salary (₹${payout.toLocaleString()}) for ${member.name} for ${currentMonth}?`)) {
@@ -687,7 +752,7 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
             payoutSalary: payout,
             totalLeaves: fullLeaves,
             totalHalfDays: halfDays,
-            casualLeaveUsed: isCasualUsed
+            casualLeaveUsed
           })
         });
         const result = await response.json();
@@ -909,15 +974,12 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
                     </td>
                      <td className="px-6 py-4">
                       {(() => {
-                        const { payout, fullLeaves, halfDays, isCasualUsed } = calculatePayout(member);
+                        const payoutData = calculatePayout(member);
+                        const { payout, totalHoursWorked, daysWorked, hourlyRate, fullLeaves, halfDays, casualLeaveUsed } = payoutData;
                         return (
                           <>
                             <div className="text-lg font-black text-emerald-600 dark:text-emerald-400">₹{payout.toLocaleString('en-IN')}</div>
-                            <div className="flex flex-col gap-0.5 mt-1">
-                              <span className="text-[9px] text-gray-500 uppercase font-bold tracking-tighter">Calculated Payout</span>
-                              <div className="flex gap-1.5 mt-0.5">
-                              </div>
-                            </div>
+
                           </>
                         );
                       })()}

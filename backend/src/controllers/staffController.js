@@ -450,6 +450,140 @@ const calculateTotalHours = (sessions) => {
   }
 };
 
+// ========== Payout Calculation Functions ==========
+const STANDARD_HOURS_PER_DAY = 8.5;
+const DAYS_IN_MONTH = 30;
+const EXPECTED_MONTHLY_HOURS = STANDARD_HOURS_PER_DAY * DAYS_IN_MONTH; // 255 hours
+
+const parseTotalHours = (totalHoursStr) => {
+  if (!totalHoursStr || totalHoursStr === '-') return 0;
+  let hours = 0;
+  let minutes = 0;
+  const hMatch = totalHoursStr.match(/(\d+)\s*h/i);
+  const mMatch = totalHoursStr.match(/(\d+)\s*m/i);
+  if (hMatch) hours = parseInt(hMatch[1], 10);
+  if (mMatch) minutes = parseInt(mMatch[1], 10);
+  return hours + (minutes / 60);
+};
+
+const calculatePayout = (staffInfo) => {
+  const baseSalary = staffInfo.monthlySalary || 0;
+  const hourlyRate = baseSalary / EXPECTED_MONTHLY_HOURS;
+
+  const today = new Date();
+  const currentMonth = today.getMonth();
+  const currentYear = today.getFullYear();
+
+  // Determine the start day: if employee was added to the website this month, start from that date; else day 1
+  const createdAt = staffInfo.createdAt ? new Date(staffInfo.createdAt) : null;
+  const startDay = (
+    createdAt &&
+    createdAt.getMonth() === currentMonth &&
+    createdAt.getFullYear() === currentYear
+  ) ? createdAt.getDate() : 1;
+
+  // --- Step 1: Sum actual hours from clock records ---
+  const monthlyClockRecords = (staffInfo.clock || []).filter(record => {
+    const d = new Date(record.date);
+    return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+  });
+
+  let totalHoursWorked = 0;
+  monthlyClockRecords.forEach(record => {
+    totalHoursWorked += parseTotalHours(record.totalHours);
+  });
+
+  // Build set of clocked dates (to avoid double-counting)
+  const creditedDates = new Set(
+    monthlyClockRecords.map(r => new Date(r.date).toDateString())
+  );
+
+  // --- Step 2: Credit 8.5 hrs for each SUNDAY in the month (from startDay up to today) ---
+  for (let day = startDay; day <= today.getDate(); day++) {
+    const d = new Date(currentYear, currentMonth, day);
+    if (d.getDay() === 0 && !creditedDates.has(d.toDateString())) {
+      totalHoursWorked += STANDARD_HOURS_PER_DAY;
+      creditedDates.add(d.toDateString());
+    }
+  }
+
+  // --- Step 3: Credit 8.5 hrs for each admin-declared leave day ---
+  (staffInfo.leaves || []).forEach(leave => {
+    const leaveDate = new Date(leave.date);
+    if (
+      leaveDate.getMonth() === currentMonth &&
+      leaveDate.getFullYear() === currentYear &&
+      leaveDate <= today &&
+      !creditedDates.has(leaveDate.toDateString())
+    ) {
+      totalHoursWorked += STANDARD_HOURS_PER_DAY;
+      creditedDates.add(leaveDate.toDateString());
+    }
+  });
+
+  // --- Step 4: Find truly absent days (from startDay, no clock, not Sunday, not admin leave) ---
+  const absentDays = [];
+  for (let day = startDay; day <= today.getDate(); day++) {
+    const d = new Date(currentYear, currentMonth, day);
+    if (!creditedDates.has(d.toDateString())) {
+      absentDays.push(d);
+    }
+  }
+
+  // --- Step 5: Find half-days from attendance records ---
+  const halfDayRecords = (staffInfo.attendance || []).filter(att => {
+    const d = new Date(att.date);
+    return (
+      att.status === 'Half-Day' &&
+      d.getMonth() === currentMonth &&
+      d.getFullYear() === currentYear &&
+      d <= today
+    );
+  });
+  // 2 half-days = 1 leave unit
+  const halfDayLeaveUnits = Math.floor(halfDayRecords.length / 2);
+
+  // --- Step 6: Apply 1 FREE casual leave per month ---
+  // Priority: 1st absent day → then 1st pair of half-days
+  let casualLeaveUsed = false;
+
+  if (absentDays.length > 0) {
+    // 1st absent day is auto casual leave → credit full 8.5 hrs
+    totalHoursWorked += STANDARD_HOURS_PER_DAY;
+    creditedDates.add(absentDays[0].toDateString());
+    casualLeaveUsed = true;
+  } else if (halfDayLeaveUnits > 0) {
+    // No absent days but 2+ half-days → use casual leave for 1st pair
+    // Top up each of those 2 half-days to 4.25 hrs (half of 8.5)
+    // so the pair together = 8.5 hrs (1 full day equivalent)
+    for (let i = 0; i < 2; i++) {
+      const hdDate = new Date(halfDayRecords[i].date);
+      const clockRecord = monthlyClockRecords.find(
+        r => new Date(r.date).toDateString() === hdDate.toDateString()
+      );
+      const actualHrs = clockRecord ? parseTotalHours(clockRecord.totalHours) : 0;
+      const halfTarget = STANDARD_HOURS_PER_DAY / 2; // 4.25 hrs
+      if (actualHrs < halfTarget) {
+        totalHoursWorked += halfTarget - actualHrs;
+      }
+    }
+    casualLeaveUsed = true;
+  }
+
+  const payout = Math.round(hourlyRate * totalHoursWorked);
+  const daysWorked = monthlyClockRecords.length;
+
+  return {
+    payout,
+    totalHoursWorked: Math.round(totalHoursWorked * 100) / 100,
+    daysWorked,
+    hourlyRate: Math.round(hourlyRate * 100) / 100,
+    fullLeaves: absentDays.length,
+    halfDays: halfDayRecords.length,
+    casualLeaveUsed
+  };
+};
+
 // Clock In staff
 exports.clockInStaff = async (req, res) => {
   try {
