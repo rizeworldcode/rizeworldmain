@@ -1,16 +1,22 @@
 const express = require('express');
 const router = express.Router();
 const {
+  getMasterPool,
   addMasterPoolItem,
-  getMasterPoolItems,
-  deleteMasterPoolItem,
+  deleteMasterPoolItem
 } = require('../controllers/masterPoolController');
 const { protect } = require('../middleware/authMiddleware');
 
-router.use(protect); // All master pool routes are protected
+// All routes are protected
+router.use(protect);
 
+// Get master pool for a staff member
+router.get('/:staffId', getMasterPool);
+
+// Add item to master pool
 router.post('/', addMasterPoolItem);
-router.get('/:staffId', getMasterPoolItems);
+
+// Delete item from master pool
 router.delete('/:id', deleteMasterPoolItem);
 
 module.exports = router;

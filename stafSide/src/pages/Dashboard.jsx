@@ -1238,7 +1238,7 @@ const Dashboard = () => {
     }
 
     // Fetch master pool items if user is Technical TL or Digital Marketing Specialist
-    const allowedRolesForMasterPool = ['technical tl', 'digital marketing specialist'];
+    const allowedRolesForMasterPool = ['technical tl', 'digital marketing specialist', 'technical tl & digital marketing specialist'];
     if (allowedRolesForMasterPool.includes(staffInfoLocal.role?.toLowerCase())) {
       fetchMasterPoolItems();
     }
@@ -1656,6 +1656,7 @@ const Dashboard = () => {
             {greeting}, {JSON.parse(localStorage.getItem('staffInfo') || '{}')?.name || 'Alex'}
           </motion.h2>
           <p className="text-black font-bold mt-2 text-sm sm:text-base">Here's what's happening with your work today.</p>
+          <p className="text-xs text-gray-500 font-medium mt-1">Role: {staffInfo.role || 'Not set'}</p>
         </div>
 
         <div className="flex items-center gap-3 sm:gap-4">
@@ -2391,7 +2392,7 @@ const Dashboard = () => {
                     handleToggleTask(index);
                   }}
                   className={`p-1.5 rounded-lg transition-all ${
-                    ['technical tl', 'digital marketing'].includes(staffInfo.role?.toLowerCase())
+                    ['technical tl', 'digital marketing specialist', 'technical tl & digital marketing specialist'].includes(staffInfo.role?.toLowerCase())
                       ? 'cursor-pointer hover:scale-105 active:scale-95'
                       : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                   } ${
@@ -2399,7 +2400,7 @@ const Dashboard = () => {
                       ? 'bg-emerald-500/20 text-emerald-600' 
                       : 'bg-gray-500/20 text-black'
                   }`}
-                  title={['technical tl', 'digital marketing'].includes(staffInfo.role?.toLowerCase()) ? 'Toggle complete' : 'Approval by admin only'}
+                  title={['technical tl', 'digital marketing specialist', 'technical tl & digital marketing specialist'].includes(staffInfo.role?.toLowerCase()) ? 'Toggle complete' : 'Approval by admin only'}
                 >
                   {task.completed ? (
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
@@ -2443,7 +2444,7 @@ const Dashboard = () => {
       </motion.section>
 
       {/* TL Checklist Manager Section - Only for Technical TL & Digital Marketing Specialist */}
-      {['technical tl', 'digital marketing'].includes(staffInfo.role?.toLowerCase()) && (
+      {['technical tl', 'digital marketing specialist', 'technical tl & digital marketing specialist'].includes(staffInfo.role?.toLowerCase()) && (
         <motion.section 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

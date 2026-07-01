@@ -1,77 +1,71 @@
-const MasterPoolItem = require('../models/MasterPoolItem');
-const Staff = require('../models/Staff');
-const catchAsync = require('../utils/catchAsync');
-const AppError = require('../utils/AppError');
+const MasterPool = require('../models/MasterPool');
 
-// @desc    Add a new master pool item
-// @route   POST /api/masterpool
-// @access  Private (Staff)
-exports.addMasterPoolItem = catchAsync(async (req, res, next) => {
-  const { name, staffId, staffRole } = req.body;
-
-  if (!name || !staffId || !staffRole) {
-    return next(new AppError('Please provide name, staffId, and staffRole', 400));
+// Get all master pool items for a staff member
+exports.getMasterPool = async (req, res) => {
+  try {
+    const { staffId } = req.params;
+    const items = await MasterPool.find({ staffId }).sort({ createdAt: -1 });
+    res.json({ success: true, data: items });
+  } catch (error) {
+    console.error('Error fetching master pool:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch master pool' });
   }
+};
 
-  const staff = await Staff.findById(staffId);
-  if (!staff) {
-    return next(new AppError('Staff not found', 404));
+// Add a new item to master pool
+exports.addMasterPoolItem = async (req, res) => {
+  try {
+    const { name, staffId, staffRole } = req.body;
+    
+    if (!name || !staffId || !staffRole) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Name, staffId, and staffRole are required' 
+      });
+    }
+
+    const newItem = new MasterPool({
+      name,
+      staffId,
+      staffRole
+    });
+
+    const savedItem = await newItem.save();
+    res.status(201).json({ success: true, data: savedItem });
+  } catch (error) {
+    console.error('Error adding master pool item:', error);
+    res.status(500).json({ success: false, message: 'Failed to add item' });
   }
+};
 
-  // Ensure only authorized roles can add items
-  const allowedRoles = ['technical tl', 'digital marketing specialist'];
-  if (!allowedRoles.includes(staffRole.toLowerCase())) {
-    return next(new AppError('Unauthorized: Only Technical TL and Digital Marketing Specialist can add master pool items', 403));
+// Delete an item from master pool
+exports.deleteMasterPoolItem = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { staffId } = req.body;
+    
+    if (!staffId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'staffId is required' 
+      });
+    }
+
+    const deletedItem = await MasterPool.findOneAndDelete({ 
+      _id: id, 
+      staffId 
+    });
+    
+    if (!deletedItem) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Item not found' 
+      });
+    }
+
+    res.json({ success: true, message: 'Item deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting master pool item:', error);
+    res.status(500).json({ success: false, message: 'Failed to delete item' });
   }
-
-  const newItem = await MasterPoolItem.create({
-    name,
-    staffId,
-    staffRole,
-  });
-
-  res.status(201).json({
-    success: true,
-    data: newItem,
-  });
-});
-
-// @desc    Get all master pool items for a specific staff member
-// @route   GET /api/masterpool/:staffId
-// @access  Private (Staff)
-exports.getMasterPoolItems = catchAsync(async (req, res, next) => {
-  const { staffId } = req.params;
-
-  const items = await MasterPoolItem.find({ staffId }).sort('name');
-
-  res.status(200).json({
-    success: true,
-    data: items,
-  });
-});
-
-// @desc    Delete a master pool item
-// @route   DELETE /api/masterpool/:id
-// @access  Private (Staff)
-exports.deleteMasterPoolItem = catchAsync(async (req, res, next) => {
-  const { id } = req.params;
-  const { staffId } = req.body; // Assuming staffId is sent in body for authorization
-
-  const item = await MasterPoolItem.findById(id);
-
-  if (!item) {
-    return next(new AppError('Master pool item not found', 404));
-  }
-
-  // Ensure only the owner can delete their item
-  if (item.staffId.toString() !== staffId) {
-    return next(new AppError('Unauthorized: You can only delete your own master pool items', 403));
-  }
-
-  await item.deleteOne();
-
-  res.status(200).json({
-    success: true,
-    message: 'Master pool item deleted successfully',
-  });
-});
+};
