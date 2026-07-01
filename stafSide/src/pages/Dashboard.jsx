@@ -17,7 +17,8 @@ import {
   X,
   Camera,
   RefreshCw,
-  CreditCard
+  CreditCard,
+  GraduationCap
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -55,17 +56,101 @@ const calculatePayout = (staffInfo) => {
   const currentMonth = today.getMonth();
   const currentYear = today.getFullYear();
 
-  // Filter clock records for current month
+  // Determine the start day: if employee was added to the website this month, start from that date; else day 1
+  const createdAt = staffInfo.createdAt ? new Date(staffInfo.createdAt) : null;
+  const startDay = (
+    createdAt &&
+    createdAt.getMonth() === currentMonth &&
+    createdAt.getFullYear() === currentYear
+  ) ? createdAt.getDate() : 1;
+
+  // --- Step 1: Sum actual hours from clock records ---
   const monthlyClockRecords = (staffInfo.clock || []).filter(record => {
     const d = new Date(record.date);
     return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
   });
 
-  // Sum total hours worked from each day's clock record
   let totalHoursWorked = 0;
   monthlyClockRecords.forEach(record => {
     totalHoursWorked += parseTotalHours(record.totalHours);
   });
+
+  // Build set of clocked dates (to avoid double-counting)
+  const creditedDates = new Set(
+    monthlyClockRecords.map(r => new Date(r.date).toDateString())
+  );
+
+  // --- Step 2: Credit 8.5 hrs for each SUNDAY in the month (from startDay up to today) ---
+  for (let day = startDay; day <= today.getDate(); day++) {
+    const d = new Date(currentYear, currentMonth, day);
+    if (d.getDay() === 0 && !creditedDates.has(d.toDateString())) {
+      totalHoursWorked += STANDARD_HOURS_PER_DAY;
+      creditedDates.add(d.toDateString());
+    }
+  }
+
+  // --- Step 3: Credit 8.5 hrs for each admin-declared leave day ---
+  (staffInfo.leaves || []).forEach(leave => {
+    const leaveDate = new Date(leave.date);
+    if (
+      leaveDate.getMonth() === currentMonth &&
+      leaveDate.getFullYear() === currentYear &&
+      leaveDate <= today &&
+      !creditedDates.has(leaveDate.toDateString())
+    ) {
+      totalHoursWorked += STANDARD_HOURS_PER_DAY;
+      creditedDates.add(leaveDate.toDateString());
+    }
+  });
+
+  // --- Step 4: Find truly absent days (from startDay, no clock, not Sunday, not admin leave) ---
+  const absentDays = [];
+  for (let day = startDay; day <= today.getDate(); day++) {
+    const d = new Date(currentYear, currentMonth, day);
+    if (!creditedDates.has(d.toDateString())) {
+      absentDays.push(d);
+    }
+  }
+
+  // --- Step 5: Find half-days from attendance records ---
+  const halfDayRecords = (staffInfo.attendance || []).filter(att => {
+    const d = new Date(att.date);
+    return (
+      att.status === 'Half-Day' &&
+      d.getMonth() === currentMonth &&
+      d.getFullYear() === currentYear &&
+      d <= today
+    );
+  });
+  // 2 half-days = 1 leave unit
+  const halfDayLeaveUnits = Math.floor(halfDayRecords.length / 2);
+
+  // --- Step 6: Apply 1 FREE casual leave per month ---
+  // Priority: 1st absent day → then 1st pair of half-days
+  let casualLeaveUsed = false;
+
+  if (absentDays.length > 0) {
+    // 1st absent day is auto casual leave → credit full 8.5 hrs
+    totalHoursWorked += STANDARD_HOURS_PER_DAY;
+    creditedDates.add(absentDays[0].toDateString());
+    casualLeaveUsed = true;
+  } else if (halfDayLeaveUnits > 0) {
+    // No absent days but 2+ half-days → use casual leave for 1st pair
+    // Top up each of those 2 half-days to 4.25 hrs (half of 8.5)
+    // so the pair together = 8.5 hrs (1 full day equivalent)
+    for (let i = 0; i < 2; i++) {
+      const hdDate = new Date(halfDayRecords[i].date);
+      const clockRecord = monthlyClockRecords.find(
+        r => new Date(r.date).toDateString() === hdDate.toDateString()
+      );
+      const actualHrs = clockRecord ? parseTotalHours(clockRecord.totalHours) : 0;
+      const halfTarget = STANDARD_HOURS_PER_DAY / 2; // 4.25 hrs
+      if (actualHrs < halfTarget) {
+        totalHoursWorked += halfTarget - actualHrs;
+      }
+    }
+    casualLeaveUsed = true;
+  }
 
   const payout = Math.round(hourlyRate * totalHoursWorked);
   const daysWorked = monthlyClockRecords.length;
@@ -75,8 +160,9 @@ const calculatePayout = (staffInfo) => {
     totalHoursWorked: Math.round(totalHoursWorked * 100) / 100,
     daysWorked,
     hourlyRate: Math.round(hourlyRate * 100) / 100,
-    fullLeaves: Math.max(0, today.getDate() - daysWorked),
-    halfDays: 0
+    fullLeaves: absentDays.length,
+    halfDays: halfDayRecords.length,
+    casualLeaveUsed
   };
 };
 
@@ -231,7 +317,8 @@ const Dashboard = () => {
   const [newTaskInput, setNewTaskInput] = useState('');
   const [checklistText, setChecklistText] = useState('');
   const [isUpdatingChecklist, setIsUpdatingChecklist] = useState(false);
-  const [masterPool, setMasterPool] = useState(JSON.parse(localStorage.getItem('tlMasterPool') || '[]'));
+  const [masterPool, setMasterPool] = useState([]);
+  const [masterPoolLoading, setMasterPoolLoading] = useState(false);
   const [newPoolItem, setNewPoolItem] = useState('');
   const [isLeaveDay, setIsLeaveDay] = useState(false);
   const [attendanceStatus, setAttendanceStatus] = useState({
@@ -257,6 +344,9 @@ const Dashboard = () => {
     extraName: ''
   });
   const [delayWorkLoading, setDelayWorkLoading] = useState(false);
+  // Admissions State
+  const [admissionsCount, setAdmissionsCount] = useState(0);
+  const [admissionsLoading, setAdmissionsLoading] = useState(false);
 
   const getApiUrl = (endpoint) => {
     const base = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
@@ -387,6 +477,100 @@ const Dashboard = () => {
       }
     } catch (err) {
       console.error('Failed to fetch staff info:', err);
+    }
+  };
+
+  const fetchAdmissionsCount = async () => {
+    const staffId = staffInfo.id || staffInfo._id;
+    if (!staffId) return;
+    setAdmissionsLoading(true);
+    try {
+      const response = await fetch(getApiUrl(`/staff/admissions?counselorId=${staffId}`));
+      const result = await response.json();
+      if (result.success) {
+        setAdmissionsCount(result.data.length);
+      }
+    } catch (error) {
+      console.error('Failed to fetch admissions count:', error);
+    } finally {
+      setAdmissionsLoading(false);
+    }
+  };
+
+  const fetchMasterPoolItems = async () => {
+    const staffId = staffInfo.id || staffInfo._id;
+    const staffToken = localStorage.getItem('staffToken');
+    if (!staffId || !staffToken) return;
+
+    setMasterPoolLoading(true);
+    try {
+      const response = await fetch(getApiUrl(`/masterpool/${staffId}`), {
+        headers: {
+          'Authorization': `Bearer ${staffToken}`
+        }
+      });
+      const result = await response.json();
+      if (result.success) {
+        setMasterPool(result.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch master pool items:', err);
+    } finally {
+      setMasterPoolLoading(false);
+    }
+  };
+
+  const addMasterPoolItem = async (itemName) => {
+    const staffId = staffInfo.id || staffInfo._id;
+    const staffToken = localStorage.getItem('staffToken');
+    const staffRole = staffInfo.role;
+    if (!staffId || !staffToken || !staffRole) return;
+
+    try {
+      const response = await fetch(getApiUrl('/masterpool'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${staffToken}`
+        },
+        body: JSON.stringify({ name: itemName, staffId, staffRole })
+      });
+      const result = await response.json();
+      if (result.success) {
+        setMasterPool(prev => [...prev, result.data]);
+        setNewPoolItem('');
+      } else {
+        alert(result.message || 'Failed to add item to master pool');
+      }
+    } catch (err) {
+      console.error('Failed to add master pool item:', err);
+      alert('Network error: Could not add item to master pool.');
+    }
+  };
+
+  const deleteMasterPoolItem = async (itemId) => {
+    const staffId = staffInfo.id || staffInfo._id;
+    const staffToken = localStorage.getItem('staffToken');
+    if (!staffId || !staffToken) return;
+
+    try {
+      const response = await fetch(getApiUrl(`/masterpool/${itemId}`), {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${staffToken}`
+        },
+        body: JSON.stringify({ staffId }) // Send staffId for authorization check on backend
+      });
+      const result = await response.json();
+      if (result.success) {
+        setMasterPool(prev => prev.filter(item => item._id !== itemId));
+      } else {
+        alert(result.message || 'Failed to delete item from master pool');
+      }
+    } catch (err) {
+      console.error('Failed to delete master pool item:', err);
+      alert('Network error: Could not delete item from master pool.');
     }
   };
 
@@ -1047,6 +1231,17 @@ const Dashboard = () => {
     // Fetch latest staff data from backend on mount/reload
     fetchStaffInfo();
     fetchReportees();
+    
+    // Fetch admissions count if user is Counselor
+    if (staffInfoLocal.role?.toLowerCase() === 'counselor') {
+      fetchAdmissionsCount();
+    }
+
+    // Fetch master pool items if user is Technical TL or Digital Marketing Specialist
+    const allowedRolesForMasterPool = ['technical tl', 'digital marketing specialist'];
+    if (allowedRolesForMasterPool.includes(staffInfoLocal.role?.toLowerCase())) {
+      fetchMasterPoolItems();
+    }
 
     // Initialize Socket.IO connection
     const socketBase = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
@@ -1322,22 +1517,16 @@ const Dashboard = () => {
 
   const handleAddToPool = () => {
     if (!newPoolItem.trim()) return;
-    const updatedPool = [...masterPool, newPoolItem.trim()];
-    setMasterPool(updatedPool);
-    localStorage.setItem('tlMasterPool', JSON.stringify(updatedPool));
-    setNewPoolItem('');
+    addMasterPoolItem(newPoolItem.trim());
   };
 
-  const handleRemoveFromPool = (index) => {
-    const itemToRemove = masterPool[index];
-    const updatedPool = masterPool.filter((_, i) => i !== index);
-    setMasterPool(updatedPool);
-    localStorage.setItem('tlMasterPool', JSON.stringify(updatedPool));
+  const handleRemoveFromPool = (itemId, itemName) => {
+    deleteMasterPoolItem(itemId);
     
     // Also remove from today's work if it was selected
-    const isSelected = todayTasks.some(t => t.name === itemToRemove);
+    const isSelected = todayTasks.some(t => t.name === itemName);
     if (isSelected) {
-      handleToggleSelectTask(itemToRemove, false);
+      handleToggleSelectTask(itemName, false);
     }
   };
 
@@ -1979,6 +2168,27 @@ const Dashboard = () => {
               </div>
               <div className="absolute -right-4 -bottom-4 w-24 h-24 blur-3xl opacity-0 group-hover:opacity-20 transition-opacity rounded-full bg-[#f472b6]" />
             </motion.div>
+
+            {/* Admissions (Only for Counselor) */}
+            {staffInfo.role?.toLowerCase() === 'counselor' && (
+              <motion.div 
+                whileHover={{ y: -5, scale: 1.02 }}
+                className="clay-card p-4 sm:p-6 space-y-3 sm:space-y-4 text-left w-full relative overflow-hidden group transition-all"
+              >
+                <div className="flex justify-between items-start">
+                  <div className="p-3 sm:p-4 rounded-2xl clay-inset bg-[#10b981]">
+                    <GraduationCap size={20} className="text-white" />
+                  </div>
+                </div>
+                <div>
+                  <p className="text-[10px] sm:text-xs font-black text-black uppercase tracking-widest">Total Admissions</p>
+                  <h3 className="text-2xl sm:text-3xl font-black mt-1 tracking-tight text-black">
+                    {admissionsLoading ? '...' : admissionsCount}
+                  </h3>
+                </div>
+                <div className="absolute -right-4 -bottom-4 w-24 h-24 blur-3xl opacity-0 group-hover:opacity-20 transition-opacity rounded-full bg-[#10b981]" />
+              </motion.div>
+            )}
           </div>
         </div>
       </motion.section>
@@ -2173,22 +2383,23 @@ const Dashboard = () => {
               >
                 <div 
                   onClick={() => {
-                    if (staffInfo.role === 'Technical TL & Digital Marketing Specialist') {
-                      alert("Tasks for Technical TL role can only be completed/approved by the Admin.");
+                    const allowedRolesToComplete = ['technical tl', 'digital marketing'];
+                    if (!allowedRolesToComplete.includes(staffInfo.role?.toLowerCase())) {
+                      alert("Only Technical TL and Digital Marketing roles can complete/approve tasks.");
                       return;
                     }
                     handleToggleTask(index);
                   }}
                   className={`p-1.5 rounded-lg transition-all ${
-                    staffInfo.role === 'Technical TL & Digital Marketing Specialist'
-                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                      : 'cursor-pointer hover:scale-105 active:scale-95'
+                    ['technical tl', 'digital marketing'].includes(staffInfo.role?.toLowerCase())
+                      ? 'cursor-pointer hover:scale-105 active:scale-95'
+                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                   } ${
                     task.completed 
                       ? 'bg-emerald-500/20 text-emerald-600' 
                       : 'bg-gray-500/20 text-black'
                   }`}
-                  title={staffInfo.role === 'Technical TL & Digital Marketing Specialist' ? 'Approval by admin only' : 'Toggle complete'}
+                  title={['technical tl', 'digital marketing'].includes(staffInfo.role?.toLowerCase()) ? 'Toggle complete' : 'Approval by admin only'}
                 >
                   {task.completed ? (
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
@@ -2232,7 +2443,7 @@ const Dashboard = () => {
       </motion.section>
 
       {/* TL Checklist Manager Section - Only for Technical TL & Digital Marketing Specialist */}
-      {staffInfo.role === 'Technical TL & Digital Marketing Specialist' && (
+      {['technical tl', 'digital marketing'].includes(staffInfo.role?.toLowerCase()) && (
         <motion.section 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -2270,15 +2481,19 @@ const Dashboard = () => {
           {/* List of Pool Items with Checkboxes to SELECT Today's Work */}
           <div className="space-y-3">
             <h4 className="text-[10px] font-black text-black uppercase tracking-widest border-b border-black/5 pb-1">Select Work For Today</h4>
-            {masterPool.length > 0 ? (
+            {masterPoolLoading ? (
+              <div className="text-center py-6 bg-black/5 rounded-2xl border border-dashed border-gray-200">
+                <p className="text-xs text-gray-500 font-bold">Loading master pool...</p>
+              </div>
+            ) : masterPool.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {masterPool.map((item, idx) => {
-                  const isSelected = todayTasks.some(t => t.name === item);
+                {masterPool.map((item) => {
+                  const isSelected = todayTasks.some(t => t.name === item.name);
                   return (
-                    <div key={idx} className="flex items-center justify-between p-3.5 rounded-2xl border border-gray-200 bg-white/50 relative group">
+                    <div key={item._id} className="flex items-center justify-between p-3.5 rounded-2xl border border-gray-200 bg-white/50 relative group">
                       <div className="flex items-center gap-3 flex-1">
                         <button
-                          onClick={() => handleToggleSelectTask(item, !isSelected)}
+                          onClick={() => handleToggleSelectTask(item.name, !isSelected)}
                           className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all border ${
                             isSelected 
                               ? 'bg-[#8b5cf6] border-[#8b5cf6] text-white shadow-md shadow-purple-500/20' 
@@ -2290,11 +2505,11 @@ const Dashboard = () => {
                           </svg>
                         </button>
                         <span className="text-sm font-bold text-black">
-                          {item}
+                          {item.name}
                         </span>
                       </div>
                       <button
-                        onClick={() => handleRemoveFromPool(idx)}
+                        onClick={() => handleRemoveFromPool(item._id, item.name)}
                         className="p-1.5 rounded-lg text-gray-400 hover:bg-red-500/10 hover:text-red-600 transition-all opacity-0 group-hover:opacity-100"
                         title="Remove from pool"
                       >

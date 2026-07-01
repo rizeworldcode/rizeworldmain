@@ -13,7 +13,8 @@ import {
   UserPlus,
   MapPin,
   Camera,
-  CreditCard
+  CreditCard,
+  GraduationCap
 } from 'lucide-react';
 
 const navItems = [

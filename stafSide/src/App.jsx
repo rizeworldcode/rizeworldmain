@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { LogOut } from 'lucide-react';
+import { LogOut, GraduationCap, LayoutDashboard } from 'lucide-react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import StaffLogin from './pages/StaffLogin';
 import HearingManagement from './pages/HearingManagement';
+import StudentAdmissions from './pages/StudentAdmissions';
 
 const MainLayout = ({ onLogout }) => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const staffInfo = JSON.parse(localStorage.getItem('staffInfo') || '{}');
   const isHR = staffInfo.role?.toLowerCase() === 'hr';
+  const isCounselor = staffInfo.role?.toLowerCase() === 'counselor';
 
   return (
     <div className="min-h-screen bg-[#eef2f6] flex flex-col relative overflow-hidden">
@@ -69,6 +71,32 @@ const MainLayout = ({ onLogout }) => {
               </button>
             </div>
           )}
+          {isCounselor && (
+            <div className="flex items-center gap-2 bg-[#eef2f6] p-1 rounded-2xl clay-inset ml-2">
+              <button 
+                onClick={() => setActiveTab('dashboard')}
+                className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all ${
+                  activeTab === 'dashboard'
+                    ? 'clay-flat text-[#8b5cf6] font-bold shadow-md shadow-purple-500/10'
+                    : 'text-[#64748b] hover:text-[#8b5cf6]'
+                }`}
+              >
+                <LayoutDashboard size={16} className="inline mr-1" />
+                Dashboard
+              </button>
+              <button 
+                onClick={() => setActiveTab('admissions')}
+                className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all ${
+                  activeTab === 'admissions'
+                    ? 'clay-flat text-[#8b5cf6] font-bold shadow-md shadow-purple-500/10'
+                    : 'text-[#64748b] hover:text-[#8b5cf6]'
+                }`}
+              >
+                <GraduationCap size={16} className="inline mr-1" />
+                Admissions
+              </button>
+            </div>
+          )}
         </div>
         <button 
           onClick={onLogout}
@@ -80,7 +108,9 @@ const MainLayout = ({ onLogout }) => {
       
       {/* Main Content */}
       <main className="flex-1 p-4 md:p-10 relative z-10">
-        {activeTab === 'dashboard' ? <Dashboard /> : <HearingManagement />}
+        {activeTab === 'dashboard' && <Dashboard />}
+        {activeTab === 'hearing' && isHR && <HearingManagement />}
+        {activeTab === 'admissions' && isCounselor && <StudentAdmissions onBack={() => setActiveTab('dashboard')} />}
       </main>
     </div>
   );

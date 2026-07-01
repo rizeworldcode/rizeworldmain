@@ -3,6 +3,7 @@ const router = express.Router();
 const {
   createStaff,
   getAllStaff,
+  getAllCounselors,
   getStaffById,
   updateStaff,
   deleteStaff,
@@ -22,7 +23,11 @@ const {
   deleteDocument,
   addExtraTask,
   getMyReportees,
-  updateProfilePic
+  updateProfilePic,
+  createAdmission,
+  getAllAdmissions,
+  updateAdmission,
+  deleteAdmission
 } = require('../controllers/staffController');
 const { protect } = require('../middleware/authMiddleware');
 const { requireOfficeWifi } = require('../middleware/officeWifi');
@@ -34,7 +39,14 @@ router.use(protect);
 
 router.post('/', createStaff);
 router.get('/', getAllStaff);
+router.get('/counselors', getAllCounselors);
 router.get('/my-reportees', getMyReportees);
+
+// Admission routes
+router.post('/admissions', createAdmission);
+router.get('/admissions', getAllAdmissions);
+router.put('/admissions/:id', updateAdmission);
+router.delete('/admissions/:id', deleteAdmission);
 
 // Static/literal routes first
 router.get('/reports', getWorkReports);

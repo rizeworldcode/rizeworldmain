@@ -1,4 +1,6 @@
 const Staff = require('../models/Staff');
+const Client = require('../models/Client');
+const StudentAdmission = require('../models/StudentAdmission');
 const AssignedWorkReport = require('../models/AssignedWorkReport');
 const jwt = require('jsonwebtoken');
 const upload = require('../middleware/upload');
@@ -126,13 +128,130 @@ exports.createStaff = async (req, res) => {
 exports.getAllStaff = async (req, res) => {
   try {
     const staff = await Staff.find().sort({ createdAt: -1 });
+    
+    // For each staff member, if they are a counselor, get their admissions count
+    const staffWithCounts = await Promise.all(
+      staff.map(async (staffMember) => {
+        const staffObj = staffMember.toObject();
+        if (staffObj.role === 'Counselor') {
+          const admissionsCount = await StudentAdmission.countDocuments({ counselorId: staffObj._id });
+          staffObj.admissionsCount = admissionsCount;
+        }
+        return staffObj;
+      })
+    );
+
     res.status(200).json({
       success: true,
       count: staff.length,
-      data: staff
+      data: staffWithCounts
     });
   } catch (error) {
     res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// Get all counselors
+exports.getAllCounselors = async (req, res) => {
+  try {
+    const counselors = await Staff.find({ role: 'Counselor' })
+      .select('name employeeId email')
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: counselors.length,
+      data: counselors
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// Create student admission
+exports.createAdmission = async (req, res) => {
+  try {
+    const admission = new StudentAdmission(req.body);
+    await admission.save();
+    res.status(201).json({
+      success: true,
+      data: admission
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// Get all admissions
+exports.getAllAdmissions = async (req, res) => {
+  try {
+    // If counselorId is provided, filter by that counselor
+    const filter = req.query.counselorId ? { counselorId: req.query.counselorId } : {};
+    const admissions = await StudentAdmission.find(filter).sort({ createdAt: -1 });
+    res.status(200).json({
+      success: true,
+      count: admissions.length,
+      data: admissions
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// Update admission
+exports.updateAdmission = async (req, res) => {
+  try {
+    const admission = await StudentAdmission.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    );
+    if (!admission) {
+      return res.status(404).json({
+        success: false,
+        message: 'Admission not found'
+      });
+    }
+    res.status(200).json({
+      success: true,
+      data: admission
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// Delete admission
+exports.deleteAdmission = async (req, res) => {
+  try {
+    const admission = await StudentAdmission.findByIdAndDelete(req.params.id);
+    if (!admission) {
+      return res.status(404).json({
+        success: false,
+        message: 'Admission not found'
+      });
+    }
+    res.status(200).json({
+      success: true,
+      message: 'Admission deleted successfully'
+    });
+  } catch (error) {
+    res.status(400).json({
       success: false,
       message: error.message
     });

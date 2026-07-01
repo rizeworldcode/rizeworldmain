@@ -16,7 +16,7 @@ import {
   Hash
 } from 'lucide-react';
 
-const PREDEFINED_ROLES = ['HR', 'Client Support', 'Admin', 'Data Analyst', 'Sales Team'];
+const PREDEFINED_ROLES = ['Counselor', 'HR', 'Client Support', 'Admin', 'Data Analyst', 'Sales Team'];
 
 const AddStaff = ({ onBack }) => {
   const [formData, setFormData] = useState({
@@ -254,6 +254,7 @@ const AddStaff = ({ onBack }) => {
                         }
                       }}
                     >
+                      <option value="Counselor" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Counselor</option>
                       <option value="HR" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">HR</option>
                       <option value="Client Support" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Client Support</option>
                       <option value="Admin" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Admin</option>

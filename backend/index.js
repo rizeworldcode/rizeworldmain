@@ -118,6 +118,10 @@ app.use('/api/location', locationRoutes);
 const visitingCardRoutes = require('./src/routes/visitingCardRoutes');
 app.use('/api/visiting-card', visitingCardRoutes);
 
+// Master Pool routes
+const masterPoolRoutes = require('./src/routes/masterPoolRoutes');
+app.use('/api/masterpool', masterPoolRoutes);
+
 // Secure proxy endpoint to stream files from backend/public
 // Usage: /public-file?path=uploads/filename.pdf
 const { protect } = require('./src/middleware/authMiddleware');

@@ -9,6 +9,7 @@ const staffSchema = new mongoose.Schema({
   },
   role: {
     type: String,
+    default: 'Other'
   },
   reportingPerson: {
     type: [String],

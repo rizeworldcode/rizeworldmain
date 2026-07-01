@@ -251,71 +251,109 @@ const StaffPerformance = ({ staffId, onBack }) => {
 
     if (!isCurrentMonthPaid) {
       const baseSalary = staff.monthlySalary || 0;
-      const dailyRate = baseSalary / 30;
-      
+      const STANDARD_HOURS_PER_DAY = 8.5;
+      const EXPECTED_MONTHLY_HOURS = STANDARD_HOURS_PER_DAY * 30; // 255 hrs
+      const hourlyRate = baseSalary / EXPECTED_MONTHLY_HOURS;
+
       const today = new Date();
       const currentMonth = today.getMonth();
       const currentYear = today.getFullYear();
-      const daysInMonthSoFar = today.getDate();
 
-      const monthlyAttendance = (staff.attendance || []).filter(record => {
-        const d = new Date(record.date);
+      // Start from createdAt date if added this month, else day 1
+      const createdAt = staff.createdAt ? new Date(staff.createdAt) : null;
+      const startDay = (
+        createdAt &&
+        createdAt.getMonth() === currentMonth &&
+        createdAt.getFullYear() === currentYear
+      ) ? createdAt.getDate() : 1;
+
+      const parseTotalHours = (str) => {
+        if (!str || str === '-') return 0;
+        const h = str.match(/(\d+)\s*h/i);
+        const m = str.match(/(\d+)\s*m/i);
+        return (h ? parseInt(h[1]) : 0) + (m ? parseInt(m[1]) / 60 : 0);
+      };
+
+      // Step 1: Sum actual clock hours
+      const monthlyClockRecords = (staff.clock || []).filter(r => {
+        const d = new Date(r.date);
         return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
       });
+      let totalHoursWorked = 0;
+      monthlyClockRecords.forEach(r => { totalHoursWorked += parseTotalHours(r.totalHours); });
 
-      let fullLeaves = 0;
-      let halfDays = 0;
-      let presents = 0;
+      const creditedDates = new Set(monthlyClockRecords.map(r => new Date(r.date).toDateString()));
 
-      // Loop through each day of the current month up to today
-      for (let day = 1; day <= daysInMonthSoFar; day++) {
-        const dateToCheck = new Date(currentYear, currentMonth, day);
-        const isSunday = dateToCheck.getDay() === 0; // 0 = Sunday
-
-        // Find attendance record for this day
-        const record = monthlyAttendance.find(r => {
-          const rd = new Date(r.date);
-          return rd.getDate() === day && rd.getMonth() === currentMonth && rd.getFullYear() === currentYear;
-        });
-
-        // Check if there is an explicit leave set by admin for this day
-        const hasAdminLeave = (staff.leaves || []).some(l => {
-          const ld = new Date(l.date);
-          return ld.getDate() === day && ld.getMonth() === currentMonth && ld.getFullYear() === currentYear;
-        });
-
-        if (isSunday || hasAdminLeave || (record && record.status === 'On Leave')) {
-          // Sunday or admin-assigned leave is counted as Present!
-          presents++;
-        } else if (record) {
-          if (record.status === 'Half-Day') {
-            halfDays++;
-          } else if (record.status === 'Present') {
-            presents++;
-          } else {
-            // Treat other statuses (like 'Absent') as full leave
-            fullLeaves++;
-          }
-        } else {
-          // No record on a weekday
-          fullLeaves++;
+      // Step 2: Credit Sundays
+      for (let day = startDay; day <= today.getDate(); day++) {
+        const d = new Date(currentYear, currentMonth, day);
+        if (d.getDay() === 0 && !creditedDates.has(d.toDateString())) {
+          totalHoursWorked += STANDARD_HOURS_PER_DAY;
+          creditedDates.add(d.toDateString());
         }
       }
 
-      const deductibleLeaves = Math.max(0, fullLeaves - 1);
-      const deduction = (deductibleLeaves * dailyRate) + (halfDays * (dailyRate / 2));
-      const finalPayout = Math.round(baseSalary - deduction);
-      const attendancePercentage = Math.round(((daysInMonthSoFar - fullLeaves - (halfDays * 0.5)) / daysInMonthSoFar) * 100);
+      // Step 3: Credit admin-declared leaves
+      (staff.leaves || []).forEach(leave => {
+        const ld = new Date(leave.date);
+        if (ld.getMonth() === currentMonth && ld.getFullYear() === currentYear && ld <= today && !creditedDates.has(ld.toDateString())) {
+          totalHoursWorked += STANDARD_HOURS_PER_DAY;
+          creditedDates.add(ld.toDateString());
+        }
+      });
+
+      // Step 4: Find absent days
+      const absentDaysList = [];
+      for (let day = startDay; day <= today.getDate(); day++) {
+        const d = new Date(currentYear, currentMonth, day);
+        if (!creditedDates.has(d.toDateString())) absentDaysList.push(d);
+      }
+
+      // Step 5: Find half-days from attendance
+      const halfDayRecords = (staff.attendance || []).filter(att => {
+        const d = new Date(att.date);
+        return att.status === 'Half-Day' && d.getMonth() === currentMonth && d.getFullYear() === currentYear && d <= today;
+      });
+      const halfDayLeaveUnits = Math.floor(halfDayRecords.length / 2);
+
+      // Step 6: Apply 1 free casual leave
+      let casualLeaveUsed = false;
+      if (absentDaysList.length > 0) {
+        totalHoursWorked += STANDARD_HOURS_PER_DAY;
+        creditedDates.add(absentDaysList[0].toDateString());
+        casualLeaveUsed = true;
+      } else if (halfDayLeaveUnits > 0) {
+        for (let i = 0; i < 2; i++) {
+          const hdDate = new Date(halfDayRecords[i].date);
+          const cr = monthlyClockRecords.find(r => new Date(r.date).toDateString() === hdDate.toDateString());
+          const actualHrs = cr ? parseTotalHours(cr.totalHours) : 0;
+          const halfTarget = STANDARD_HOURS_PER_DAY / 2;
+          if (actualHrs < halfTarget) totalHoursWorked += halfTarget - actualHrs;
+        }
+        casualLeaveUsed = true;
+      }
+
+      const finalPayout = Math.round(hourlyRate * totalHoursWorked);
+      const deduction = Math.max(0, baseSalary - finalPayout);
+      const daysWorked = monthlyClockRecords.length;
+      const presents = daysWorked;
+      const fullLeaves = absentDaysList.length;
+      const halfDays = halfDayRecords.length;
+      const attendancePercentage = Math.round((totalHoursWorked / EXPECTED_MONTHLY_HOURS) * 100);
 
       history.push({
         month: currentMonthName + " (Current)",
-        presents: presents,
+        presents,
         leaves: fullLeaves,
-        halfDays: halfDays,
-        casualLeaveUsed: fullLeaves > 0,
+        halfDays,
+        casualLeaveUsed,
         deduction,
         finalPayout,
-        attendancePercentage
+        attendancePercentage,
+        // hours-based extras for display
+        totalHoursWorked: Math.round(totalHoursWorked * 100) / 100,
+        hourlyRate: Math.round(hourlyRate * 100) / 100,
+        baseSalary
       });
     }
 
@@ -550,14 +588,17 @@ const StaffPerformance = ({ staffId, onBack }) => {
 
             <div className="p-4 bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 rounded-2xl relative z-10 text-[10px] text-gray-500 dark:text-gray-400 font-medium space-y-1">
               <p className="text-[9px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1.5 border-b border-gray-100 dark:border-white/5 pb-1">Salary Calculation Formula:</p>
-              <p>Base Salary: ₹{(staff.monthlySalary || 0).toLocaleString('en-IN')}</p>
-              <p>Daily Rate (Base / 30): ₹{Math.round((staff.monthlySalary || 0) / 30).toLocaleString('en-IN')}</p>
-              <p>Deductible Leaves: {Math.max(0, report.leaves - 1)} day(s) (Total {report.leaves} leaves, 1 casual leave free)</p>
-              <p>Half Days Deduction: {report.halfDays} × 50% rate = {report.halfDays * 0.5} day(s)</p>
+              <p>Base Salary: ₹{(report.baseSalary || staff.monthlySalary || 0).toLocaleString('en-IN')}</p>
+              <p>Standard Hours/Day: 8.5 hrs × 30 days = 255 hrs/month</p>
+              <p>Hourly Rate: ₹{report.hourlyRate ?? Math.round((staff.monthlySalary || 0) / 255)} /hr</p>
+              <p>Total Hours Worked (incl. overtime): {report.totalHoursWorked ?? '-'} hrs</p>
+              <p>Sundays & Admin Leaves → credited as 8.5 hrs each ✅</p>
+              <p>1st Absent Day → auto Casual Leave → 8.5 hrs credited ✅</p>
+              <p>2 Half-Days = 1 leave unit (topped up to 4.25 hrs each if &lt; 4.25) ✅</p>
               <p className="font-bold text-rose-500 pt-1.5 mt-1 border-t border-gray-100 dark:border-white/5">
-                Deduction: (Deductible Leaves + Half Days × 0.5) × Daily Rate = -₹{Math.round(report.deduction).toLocaleString('en-IN')}
+                Payout = Hourly Rate × Total Credited Hrs = ₹{report.finalPayout.toLocaleString('en-IN')}
               </p>
-              <p className="text-[8px] text-gray-400 dark:text-gray-500 italic leading-tight">(Sundays & admin-marked leaves counted as Present)</p>
+              <p className="text-[8px] text-gray-400 dark:text-gray-500 italic leading-tight">(Overtime hours are included — extra hrs beyond 8.5 increase payout)</p>
             </div>
 
             <div className="flex justify-between items-center pt-4 border-t border-gray-100 dark:border-white/5 relative z-10">

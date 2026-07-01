@@ -888,6 +888,13 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
                                   Repo: {managerNames || '-'}
                                 </span>
                               )}
+                              {/* Show admissions count if role is Counselor */}
+                              {member.role === 'Counselor' && (
+                                <span className="flex items-center gap-1 font-semibold text-amber-600 dark:text-amber-400">
+                                  <Users size={12} className="text-amber-500" /> 
+                                  Admissions: {member.admissionsCount || 0}
+                                </span>
+                              )}
                             </div>
                           </div>
                         );

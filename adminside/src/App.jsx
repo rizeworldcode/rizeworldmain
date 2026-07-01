@@ -96,6 +96,7 @@ function App() {
                 else if (tab === 'todayWork') navigate('/today-work');
                 else if (tab === 'staffDetail') navigate('/staff');
                 else if (tab === 'addStaff') navigate('/staff/add');
+                else if (tab === 'studentAdmissions') navigate('/staff/admissions');
                 else if (tab === 'clients') navigate('/clients');
                 else if (tab === 'wallet') navigate('/wallet');
                 else if (tab === 'salesTracking') navigate('/tracking');
@@ -130,6 +131,7 @@ function App() {
                       else if (tab === 'todayWork') navigate('/today-work');
                       else if (tab === 'staffDetail') navigate('/staff');
                       else if (tab === 'addStaff') navigate('/staff/add');
+                      else if (tab === 'studentAdmissions') navigate('/staff/admissions');
                       else if (tab === 'clients') navigate('/clients');
                       else if (tab === 'wallet') navigate('/wallet');
                       else if (tab === 'salesTracking') navigate('/tracking');
@@ -174,11 +176,11 @@ function App() {
                       />
                     } />
                     <Route path="/staff/add" element={
-                      <AddStaff onBack={() => navigate('/staff')} />
-                    } />
-                    <Route path="/clients" element={
-                      <Clients onClientClick={(client) => navigate(`/clients/${client._id || client.id}`)} theme={theme} />
-                    } />
+                  <AddStaff onBack={() => navigate('/staff')} />
+                } />
+                <Route path="/clients" element={
+                  <Clients onClientClick={(client) => navigate(`/clients/${client._id || client.id}`)} theme={theme} />
+                } />
                     <Route path="/clients/:id" element={
                       <ClientProjects onBack={() => navigate('/clients')} />
                     } />
