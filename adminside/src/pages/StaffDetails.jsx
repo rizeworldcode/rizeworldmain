@@ -979,7 +979,7 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
                         return (
                           <>
                             <div className="text-lg font-black text-emerald-600 dark:text-emerald-400">₹{payout.toLocaleString('en-IN')}</div>
-
+                            
                           </>
                         );
                       })()}
