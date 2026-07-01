@@ -7,6 +7,8 @@ module.exports = {
     io = socketIo(server, {
       cors: {
         origin: [
+          'https://admin.rizeworld.in',
+          'https://employee.rizeworld.in',
           'http://localhost:5173',
           'http://localhost:5174',
           'http://localhost:5175',
