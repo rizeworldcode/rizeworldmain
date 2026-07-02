@@ -3,6 +3,7 @@ const router = express.Router();
 const {
   createStaff,
   getAllStaff,
+  getRemovedStaff,
   getAllCounselors,
   getStaffById,
   updateStaff,
@@ -39,6 +40,7 @@ router.use(protect);
 
 router.post('/', createStaff);
 router.get('/', getAllStaff);
+router.get('/removed', getRemovedStaff);
 router.get('/counselors', getAllCounselors);
 router.get('/my-reportees', getMyReportees);
 

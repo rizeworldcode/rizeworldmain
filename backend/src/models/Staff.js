@@ -56,7 +56,10 @@ const staffSchema = new mongoose.Schema({
     totalLeaves: Number,
     totalHalfDays: Number,
     casualLeavesUsed: { type: Number, default: 0 },
-    paidAt: { type: Date, default: Date.now }
+    paidAt: { type: Date, default: Date.now },
+    mode: { type: String, enum: ['cash', 'online'], required: true },
+    method: { type: String, enum: ['phonepe', 'paytm', 'google_pay', 'bank_transfer', 'cash'], required: true },
+    utrNumber: { type: String }
   }],
   clock: [{
     date: {
@@ -146,6 +149,14 @@ const staffSchema = new mongoose.Schema({
   },
   authToken: {
     type: String
+  },
+  isRemoved: {
+    type: Boolean,
+    default: false
+  },
+  removedAt: {
+    type: Date,
+    default: null
   },
   totalCasualLeaves: { type: Number, default: 0 },
   leaves: [{

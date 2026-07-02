@@ -2,6 +2,7 @@ const Staff = require('../models/Staff');
 const Client = require('../models/Client');
 const StudentAdmission = require('../models/StudentAdmission');
 const AssignedWorkReport = require('../models/AssignedWorkReport');
+const Transaction = require('../models/Transaction');
 const jwt = require('jsonwebtoken');
 const upload = require('../middleware/upload');
 const socketUtil = require('../../socket');
@@ -11,7 +12,7 @@ exports.loginStaff = async (req, res) => {
   try {
     const { employeeId, password } = req.body;
 
-    const staff = await Staff.findOne({ employeeId });
+    const staff = await Staff.findOne({ employeeId, isRemoved: { $ne: true } });
     if (!staff) {
       return res.status(401).json({ success: false, message: 'Invalid Employee ID' });
     }
@@ -127,7 +128,7 @@ exports.createStaff = async (req, res) => {
 // Get all staff
 exports.getAllStaff = async (req, res) => {
   try {
-    const staff = await Staff.find().sort({ createdAt: -1 });
+    const staff = await Staff.find({ isRemoved: { $ne: true } }).sort({ createdAt: -1 });
     
     // For each staff member, if they are a counselor, get their admissions count
     const staffWithCounts = await Promise.all(
@@ -154,10 +155,28 @@ exports.getAllStaff = async (req, res) => {
   }
 };
 
+// Get removed staff
+exports.getRemovedStaff = async (req, res) => {
+  try {
+    const staff = await Staff.find({ isRemoved: true }).sort({ removedAt: -1, createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: staff.length,
+      data: staff
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
 // Get all counselors
 exports.getAllCounselors = async (req, res) => {
   try {
-    const counselors = await Staff.find({ role: 'Counselor' })
+    const counselors = await Staff.find({ role: 'Counselor', isRemoved: { $ne: true } })
       .select('name employeeId email')
       .sort({ createdAt: -1 });
 
@@ -261,7 +280,7 @@ exports.deleteAdmission = async (req, res) => {
 // Get single staff by ID
 exports.getStaffById = async (req, res) => {
   try {
-    const staff = await Staff.findById(req.params.id);
+    const staff = await Staff.findOne({ _id: req.params.id, isRemoved: { $ne: true } });
     if (!staff) {
       return res.status(404).json({
         success: false,
@@ -322,7 +341,7 @@ exports.getStaffById = async (req, res) => {
 // Update staff
 exports.updateStaff = async (req, res) => {
   try {
-    const staff = await Staff.findById(req.params.id);
+    const staff = await Staff.findOne({ _id: req.params.id, isRemoved: { $ne: true } });
     if (!staff) {
       return res.status(404).json({
         success: false,
@@ -372,16 +391,24 @@ exports.updateStaff = async (req, res) => {
 // Delete staff
 exports.deleteStaff = async (req, res) => {
   try {
-    const staff = await Staff.findByIdAndDelete(req.params.id);
+    const staff = await Staff.findOne({ _id: req.params.id, isRemoved: { $ne: true } });
     if (!staff) {
       return res.status(404).json({
         success: false,
         message: 'Staff not found'
       });
     }
+
+    staff.isRemoved = true;
+    staff.removedAt = new Date();
+    staff.authToken = undefined;
+    staff.clock_status = 'clock_out';
+    await staff.save();
+
     res.status(200).json({
       success: true,
-      message: 'Staff deleted successfully'
+      message: 'Staff moved to removed employees successfully',
+      data: staff
     });
   } catch (error) {
     res.status(400).json({
@@ -1195,7 +1222,7 @@ exports.submitAllReports = async (req, res) => {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    const allStaff = await Staff.find({});
+    const allStaff = await Staff.find({ isRemoved: { $ne: true } });
     const results = [];
 
     for (const staff of allStaff) {
@@ -1300,9 +1327,13 @@ exports.clearSalary = async (req, res) => {
       payoutSalary,
       totalLeaves,
       totalHalfDays,
-      casualLeaveUsed
+      casualLeaveUsed,
+      mode,
+      method,
+      utrNumber
     } = req.body;
 
+    // Update staff
     const staff = await Staff.findByIdAndUpdate(
       req.params.id,
       {
@@ -1315,7 +1346,10 @@ exports.clearSalary = async (req, res) => {
             totalLeaves,
             totalHalfDays,
             casualLeaveUsed,
-            paidAt: new Date()
+            paidAt: new Date(),
+            mode,
+            method,
+            utrNumber
           }
         }
       },
@@ -1329,9 +1363,23 @@ exports.clearSalary = async (req, res) => {
       });
     }
 
+    // Create transaction record
+    await Transaction.create({
+      type: 'salary',
+      name: staff.name,
+      amount: payoutSalary,
+      date: new Date(),
+      mode,
+      method,
+      utrNumber,
+      referenceId: staff._id,
+      referenceModel: 'Staff',
+      description: `Salary payment for ${month}`
+    });
+
     res.status(200).json({
       success: true,
-      message: 'Salary cleared and history saved successfully',
+      message: 'Salary cleared, history saved, and transaction recorded successfully',
       data: staff
     });
   } catch (error) {
@@ -1432,7 +1480,7 @@ exports.markLeave = async (req, res) => {
 // Get all staff leaves
 exports.getStaffLeaves = async (req, res) => {
   try {
-    const staff = await Staff.find({}, 'name employeeId leaves totalCasualLeaves');
+    const staff = await Staff.find({ isRemoved: { $ne: true } }, 'name employeeId leaves totalCasualLeaves');
     res.status(200).json({
       success: true,
       count: staff.length,
@@ -1500,7 +1548,7 @@ exports.getMyReportees = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Manager employee ID not found' });
     }
 
-    const reportees = await Staff.find({ reportingPerson: managerId })
+    const reportees = await Staff.find({ reportingPerson: managerId, isRemoved: { $ne: true } })
       .select('name employeeId department role jobType status clock work attendance');
 
     const today = new Date();

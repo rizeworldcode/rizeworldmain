@@ -129,6 +129,64 @@ exports.getClientById = async (req, res) => {
   }
 };
 
+exports.updateClient = async (req, res) => {
+  try {
+    const client = await Client.findById(req.params.id);
+    if (!client) {
+      return res.status(404).json({
+        success: false,
+        message: 'Client not found'
+      });
+    }
+
+    const {
+      name,
+      email,
+      phone,
+      department,
+      package: packageName,
+      workDetail,
+      totalAmount,
+      totalPrice,
+      startDate,
+      deadline,
+      status
+    } = req.body;
+
+    if (name !== undefined) client.name = name;
+    if (email !== undefined) client.email = email;
+    if (phone !== undefined) client.phone = phone;
+    if (department !== undefined) client.department = department;
+    if (packageName !== undefined) client.package = packageName;
+    if (workDetail !== undefined) client.workDetail = workDetail;
+    if (status !== undefined) client.status = status;
+    if (startDate !== undefined) client.startDate = startDate ? new Date(startDate) : null;
+    if (deadline !== undefined) client.deadline = deadline ? new Date(deadline) : null;
+
+    if (totalAmount !== undefined || totalPrice !== undefined) {
+      const nextTotal = parseFloat(totalAmount ?? totalPrice);
+      if (!Number.isNaN(nextTotal)) {
+        client.totalPrice = nextTotal;
+        client.pendingAmount = Math.max(nextTotal - (client.paidAmount || 0), 0);
+      }
+    }
+
+    const updatedClient = await client.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Client updated successfully',
+      data: updatedClient
+    });
+  } catch (error) {
+    console.error('Error updating client:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Error updating client'
+    });
+  }
+};
+
 exports.updateClientTasks = async (req, res) => {
   try {
     const { tasks, extraTasks } = req.body;

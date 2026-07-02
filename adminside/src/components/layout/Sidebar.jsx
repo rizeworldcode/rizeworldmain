@@ -6,15 +6,13 @@ import {
   Users2,
   Users,
   Wallet,
-  Settings,
   ChevronLeft,
   ChevronRight,
-  Sparkles,
   UserPlus,
+  Trash2,
   MapPin,
   Camera,
-  CreditCard,
-  GraduationCap
+  CreditCard
 } from 'lucide-react';
 
 const navItems = [
@@ -22,6 +20,7 @@ const navItems = [
   { icon: CalendarCheck, label: 'Today assigned work', id: 'todayWork' },
   { icon: Users2, label: 'Employee Detail', id: 'staffDetail' },
   { icon: UserPlus, label: 'Add Employee', id: 'addStaff' },
+  { icon: Trash2, label: 'Removed Employees', id: 'removedEmployees' },
   { icon: Users, label: 'Clients', id: 'clients' },
   { icon: Wallet, label: 'Wallet', id: 'wallet' },
   { icon: MapPin, label: 'Sales Tracking', id: 'salesTracking' },

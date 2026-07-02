@@ -10,7 +10,6 @@ import {
   CreditCard,
   FileText,
   Clock,
-  MoreVertical,
   Plus,
   Search,
   Filter,
@@ -18,8 +17,6 @@ import {
   Edit3,
   X,
   Upload,
-  Image as ImageIcon,
-  ListTodo,
   CheckCircle2,
   TrendingUp,
   LogIn,
@@ -556,8 +553,8 @@ const calculateCurrentMonthTotalHours = (clockRecords) => {
 const getCurrentMonthExpectedHours = () => {
   const now = new Date();
   const daysPassed = now.getDate(); // Current day of month = days passed so far
-  // Assuming 9 hours per day
-  return daysPassed * 9 * 60;
+  // Assuming 8.5 hours per day (8h 30m)
+  return daysPassed * 8.5 * 60;
 };
 
 // Helper function to check if today is Sunday or leave day for staff
@@ -602,6 +599,15 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
   const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedStaffForPerformance, setSelectedStaffForPerformance] = useState(null);
+  
+  // Salary modal state
+  const [isSalaryModalOpen, setIsSalaryModalOpen] = useState(false);
+  const [selectedStaffForSalary, setSelectedStaffForSalary] = useState(null);
+  const [salaryPaymentDetails, setSalaryPaymentDetails] = useState({
+    mode: 'online',
+    method: 'phonepe',
+    utrNumber: ''
+  });
 
   // Fetch staff from backend
   useEffect(() => {
@@ -655,14 +661,17 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
   };
 
   const handleDeleteStaff = async (id) => {
-    if (window.confirm('Are you sure you want to delete this staff member?')) {
+    if (window.confirm('Are you sure you want to remove this employee? It will move them to the Removed Employees page.')) {
       try {
+        const token = localStorage.getItem('adminToken');
         const response = await fetch(`http://localhost:45000/api/staff/${id}`, {
-          method: 'DELETE'
+          method: 'DELETE',
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
         const result = await response.json();
         if (result.success) {
           setStaff(staff.filter(member => member._id !== id));
+          alert('Employee moved to Removed Employees successfully');
         }
       } catch (error) {
         console.error('Error deleting staff:', error);
@@ -736,36 +745,60 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
     setIsEditModalOpen(true);
   };
 
-  const handleClearSalary = async (member) => {
-    const payoutData = calculatePayout(member);
+  const openSalaryModal = (member) => {
+    setSelectedStaffForSalary(member);
+    setSalaryPaymentDetails({
+      mode: 'online',
+      method: 'phonepe',
+      utrNumber: ''
+    });
+    setIsSalaryModalOpen(true);
+  };
+
+  const handleConfirmClearSalary = async () => {
+    if (!selectedStaffForSalary) return;
+
+    // Validate UTR if online mode
+    if (salaryPaymentDetails.mode === 'online') {
+      const utrTrimmed = salaryPaymentDetails.utrNumber.trim();
+      if (utrTrimmed.length < 12 || utrTrimmed.length > 16) {
+        alert('UTR number must be between 12 and 16 characters.');
+        return;
+      }
+    }
+
+    const payoutData = calculatePayout(selectedStaffForSalary);
     const { payout, fullLeaves, halfDays, casualLeaveUsed } = payoutData;
     const currentMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
 
-    if (window.confirm(`Are you sure you want to clear the salary (₹${payout.toLocaleString()}) for ${member.name} for ${currentMonth}?`)) {
-      try {
-        const response = await fetch(`http://localhost:45000/api/staff/${member._id}/clear-salary`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            month: currentMonth,
-            baseSalary: member.monthlySalary,
-            payoutSalary: payout,
-            totalLeaves: fullLeaves,
-            totalHalfDays: halfDays,
-            casualLeaveUsed
-          })
-        });
-        const result = await response.json();
-        if (result.success) {
-          setStaff(staff.map(m =>
-            m._id === member._id ? result.data : m
-          ));
-          alert('Salary cleared and record saved successfully');
-        }
-      } catch (error) {
-        console.error('Error clearing salary:', error);
-        alert('Failed to clear salary');
+    try {
+      const response = await fetch(`http://localhost:45000/api/staff/${selectedStaffForSalary._id}/clear-salary`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          month: currentMonth,
+          baseSalary: selectedStaffForSalary.monthlySalary,
+          payoutSalary: payout,
+          totalLeaves: fullLeaves,
+          totalHalfDays: halfDays,
+          casualLeaveUsed,
+          mode: salaryPaymentDetails.mode,
+          method: salaryPaymentDetails.mode === 'cash' ? 'cash' : salaryPaymentDetails.method,
+          utrNumber: salaryPaymentDetails.mode === 'online' ? salaryPaymentDetails.utrNumber : undefined
+        })
+      });
+      const result = await response.json();
+      if (result.success) {
+        setStaff(staff.map(m =>
+          m._id === selectedStaffForSalary._id ? result.data : m
+        ));
+        setIsSalaryModalOpen(false);
+        setSelectedStaffForSalary(null);
+        alert('Salary cleared, record saved, and transaction recorded successfully');
       }
+    } catch (error) {
+      console.error('Error clearing salary:', error);
+      alert('Failed to clear salary');
     }
   };
 
@@ -1049,7 +1082,7 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
                           })()}
                           {member.salaryStatus === 'Pending' ? (
                             <button
-                              onClick={() => handleClearSalary(member)}
+                              onClick={() => openSalaryModal(member)}
                               className="group/salary flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-2 text-emerald-600 shadow-lg shadow-emerald-500/10 transition-all hover:bg-emerald-500 hover:text-white"
                               title="Clear Salary"
                             >
@@ -1062,6 +1095,16 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
                               <span className="text-xs font-black uppercase tracking-widest">Salary Paid</span>
                             </div>
                           )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleDeleteStaff(member._id)}
+                            className="group/remove flex items-center gap-2 rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-2 text-rose-600 shadow-lg shadow-rose-500/10 transition-all hover:bg-rose-500 hover:text-white"
+                            title="Remove Employee"
+                          >
+                            <Trash2 size={16} className="transition-transform group-hover/remove:scale-110" />
+                            <span className="text-xs font-black uppercase tracking-widest">Remove</span>
+                          </button>
                         </div>
                       </div>
                     </td>
@@ -1081,6 +1124,132 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
             staffMember={editingStaff}
             onUpdate={handleUpdateStaff}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Salary Payment Modal */}
+      <AnimatePresence>
+        {isSalaryModalOpen && selectedStaffForSalary && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsSalaryModalOpen(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative w-full max-w-md bg-white dark:bg-[#030303] rounded-3xl border border-gray-200 dark:border-white/10 p-8 shadow-2xl overflow-y-auto max-h-[90vh]"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  <CreditCard className="text-emerald-500" /> Clear Salary
+                </h3>
+                <button
+                  onClick={() => setIsSalaryModalOpen(false)}
+                  className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl text-gray-500"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {/* Employee Name & Payout */}
+                <div className="p-4 rounded-2xl bg-black/5 dark:bg-white/5">
+                  <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Employee</p>
+                  <p className="text-lg font-bold text-gray-900 dark:text-white">{selectedStaffForSalary.name}</p>
+                  <p className="text-2xl font-black text-emerald-600 mt-2">
+                    ₹{calculatePayout(selectedStaffForSalary).payout.toLocaleString('en-IN')}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    for {new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}
+                  </p>
+                </div>
+
+                {/* Payment Mode */}
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block mb-1.5">
+                    Payment Mode
+                  </label>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setSalaryPaymentDetails({ ...salaryPaymentDetails, mode: 'cash', method: 'cash' })}
+                      className={`flex-1 px-4 py-3 rounded-xl text-sm font-bold transition-all ${
+                        salaryPaymentDetails.mode === 'cash'
+                          ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20'
+                          : 'bg-black/5 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-700 dark:text-gray-300'
+                      }`}
+                    >
+                      Cash
+                    </button>
+                    <button
+                      onClick={() => setSalaryPaymentDetails({ ...salaryPaymentDetails, mode: 'online' })}
+                      className={`flex-1 px-4 py-3 rounded-xl text-sm font-bold transition-all ${
+                        salaryPaymentDetails.mode === 'online'
+                          ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
+                          : 'bg-black/5 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-700 dark:text-gray-300'
+                      }`}
+                    >
+                      Online
+                    </button>
+                  </div>
+                </div>
+
+                {salaryPaymentDetails.mode === 'online' && (
+                  <>
+                    {/* Payment Method */}
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block mb-1.5">
+                        Payment Method
+                      </label>
+                      <select
+                        value={salaryPaymentDetails.method}
+                        onChange={(e) => setSalaryPaymentDetails({ ...salaryPaymentDetails, method: e.target.value })}
+                        className="w-full bg-black/5 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white focus:border-blue-500 outline-none transition-all"
+                      >
+                        <option value="phonepe">PhonePe</option>
+                        <option value="paytm">Paytm</option>
+                        <option value="google_pay">Google Pay</option>
+                        <option value="bank_transfer">Bank Transfer</option>
+                      </select>
+                    </div>
+
+                    {/* UTR Number */}
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block mb-1.5">
+                        UTR Number
+                      </label>
+                      <input
+                        type="text"
+                        value={salaryPaymentDetails.utrNumber}
+                        onChange={(e) => setSalaryPaymentDetails({ ...salaryPaymentDetails, utrNumber: e.target.value })}
+                        className="w-full bg-black/5 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white focus:border-blue-500 outline-none transition-all"
+                        placeholder="Enter 12-16 digit UTR number"
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="flex gap-3 mt-8">
+                <button
+                  onClick={() => setIsSalaryModalOpen(false)}
+                  className="flex-1 px-6 py-3 rounded-xl border border-gray-200 dark:border-white/10 text-gray-700 dark:text-gray-300 font-bold hover:bg-black/5 dark:hover:bg-white/5 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmClearSalary}
+                  className="flex-1 px-6 py-3 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20"
+                >
+                  Confirm Payment
+                </button>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </motion.div>

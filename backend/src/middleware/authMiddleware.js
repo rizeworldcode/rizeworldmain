@@ -65,6 +65,15 @@ exports.protect = catchAsync(async (req, res, next) => {
         );
     }
 
+    if (currentUser.isRemoved) {
+        return next(
+            new AppError(
+                'This account has been removed. Please contact admin.',
+                401
+            )
+        );
+    }
+
     // 4) Check if user changed password after the token was issued (Optional)
     // if (currentUser.changedPasswordAfter(decoded.iat)) {
     //   return next(new AppError('User recently changed password! Please log in again.', 401));

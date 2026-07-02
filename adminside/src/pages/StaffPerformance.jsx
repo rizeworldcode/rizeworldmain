@@ -56,8 +56,8 @@ const calculateCurrentMonthTotalHours = (clockRecords) => {
 const getCurrentMonthExpectedHours = () => {
   const now = new Date();
   const daysPassed = now.getDate(); // Current day of month = days passed so far
-  // Assuming 9 hours per day
-  return daysPassed * 9 * 60;
+  // Assuming 8.5 hours per day (8h 30m)
+  return daysPassed * 8.5 * 60;
 };
 
 const StaffPerformance = ({ staffId, onBack }) => {
@@ -499,7 +499,7 @@ const StaffPerformance = ({ staffId, onBack }) => {
                 <div className="p-4 bg-blue-500/5 border border-blue-500/10 rounded-2xl">
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Expected Hours</p>
                   <p className="text-xl font-black text-blue-600 dark:text-blue-400">{expectedFormatted}</p>
-                  <p className="text-[10px] text-gray-500 mt-1">9h/day × {daysPassed} days so far</p>
+                  <p className="text-[10px] text-gray-500 mt-1">8.5h/day × {daysPassed} days so far</p>
                 </div>
                 <div className="p-4 bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 rounded-2xl">
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Actual Hours Worked</p>
@@ -519,7 +519,7 @@ const StaffPerformance = ({ staffId, onBack }) => {
               <div className="p-4 bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 rounded-2xl">
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Calculation Formula:</p>
                 <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
-                  <p><strong>Expected Hours:</strong> 9 hours/day × Days passed this month = {9}h/day × {daysPassed} days = {expectedFormatted}</p>
+                  <p><strong>Expected Hours:</strong> 8.5 hours/day × Days passed this month = {8.5}h/day × {daysPassed} days = {expectedFormatted}</p>
                   <p><strong>Actual Hours:</strong> Sum of daily hours from clock records up to today = {currentMonthTotalFormatted}</p>
                   <p><strong>Difference:</strong> Actual Hours - Expected Hours = {differenceMinutes > 0 ? '+' : ''}{differenceFormatted}</p>
                 </div>

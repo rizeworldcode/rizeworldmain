@@ -8,6 +8,7 @@ router.use(protect);
 router.post('/', clientController.createClient);
 router.get('/', clientController.getAllClients);
 router.get('/:id', clientController.getClientById);
+router.put('/:id', clientController.updateClient);
 router.put('/:id/tasks', clientController.updateClientTasks);
 router.put('/:id/renew', clientController.renewClientPackage);
 

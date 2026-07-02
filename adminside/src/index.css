@@ -21,7 +21,7 @@ body {
 
 /* Glassmorphism utility */
 .glass {
-  @apply bg-white/60 backdrop-blur-xl border border-gray-200;
+  @apply bg-white/95 backdrop-blur-xl border border-gray-200;
 }
 
 .dark .glass {

@@ -28,7 +28,9 @@ import {
   RefreshCw,
   CreditCard,
   Download,
-  ChevronDown
+  ChevronDown,
+  Edit3,
+  User
 } from 'lucide-react';
 
 // Helper to parse work detail into tasks for UI fallback
@@ -79,6 +81,349 @@ const calculateProjectProgress = (project) => {
   const primaryTotal = primaryTasks.reduce((acc, t) => acc + t.total, 0) || 1;
   const totalCompleted = [...primaryTasks, ...extraTasks].reduce((acc, t) => acc + t.completed, 0);
   return Math.round((totalCompleted / primaryTotal) * 100);
+};
+
+const CLIENT_DEPARTMENTS = ['SEO', 'SMM', 'PPC', 'Graphic Design', 'Video Editing', 'WEB DEvlopment', 'Email Marketing', 'Ai Marketing'];
+const PACKAGE_ENABLED_DEPARTMENTS = ['SEO', 'Graphic Design', 'Video Editing'];
+const PROJECT_STATUS_OPTIONS = ['Pending', 'In Progress', 'On Hold', 'Completed'];
+
+const PACKAGE_DETAILS = {
+  'Bronze Package Service': {
+    fee: 10000,
+    gst: 18,
+    details: '• Account management - Instagram\n• Hashtag Research\n• Content Strategy Creation\n• Page Creation\n• Cover and Profile pic Creation\n• Page Optimization\n• Total Posting 8 ( 4 Reel & 4 Post )\n• Page Monitoring\n• Call To Action Button Creation\n• 1 Professional shoot\n• Views 10k +'
+  },
+  'Sliver Package Service': {
+    fee: 15000,
+    gst: 18,
+    details: '• Setting Goals\n• Account Management – 2 (Facebook , Instagram )\n• Hashtag Research\n• Content Strategy Creation\n• Page Creation\n• Facebook Cover And Profile Picture Creation\n• Page Optimization\n• Posting Per Month 14 - 16 ( 8 - 10 Reels & 6 Post )\n• Facebook Story Creation\n• Video Posting(Provided By Client)\n• Page Monitoring\n• Responding To Comments\n• 1 Month GMB Free (Google My Business)\n• 3 Professional shoot\n• Views 20k +'
+  },
+  'Platinum Package Service': {
+    fee: 25000,
+    gst: 18,
+    details: '• Setting Goals\n• Account Management – 3 (Facebook , Instagram & Youtube )\n• Hashtag Research\n• Content Strategy Creation\n• Page Creation\n• Facebook Cover And Profile Picture Creation\n• Page Optimization\n• Posting Per Month 20 - 23 ( 12 - 15 Reels & 8 Post )\n• Facebook Story Creation\n• Video Posting(Provided By Client)\n• Page Monitoring\n• Responding To Comments\n• 2 Month GMB Free (Google My Business)\n• 5 Professional shoot\n• Views 25k +'
+  },
+  'Gold Package Service': {
+    fee: 35000,
+    gst: 18,
+    details: '• Setting Goals\n• Account Management – 3 (Facebook , Instagram & Youtube )\n• Hashtag Research\n• Content Strategy Creation\n• Page Creation\n• Facebook Cover And Profile Picture Creation\n• Page Optimization\n• Posting Per Month 24 - 30 ( 16 - 20 Reels & 10 Post )\n• Facebook Story Creation\n• Video Posting(Provided By Client)\n• Page Monitoring\n• Responding To Comments\n• GMB Life Time Free (Google My Business)\n• 10+ Professional shoot\n• Views 50k +'
+  }
+};
+
+const normalizePhoneDigits = (phoneValue = '') => {
+  let digits = phoneValue.replace(/[^\d]/g, '');
+  if (digits.length === 12 && digits.startsWith('91')) {
+    digits = digits.slice(2);
+  }
+  return digits.slice(0, 10);
+};
+
+const EditClientModal = ({ isOpen, onClose, client, onSave }) => {
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: ''
+  });
+
+  useEffect(() => {
+    if (client && isOpen) {
+      setFormData({
+        name: client.name || '',
+        email: client.email || '',
+        phone: normalizePhoneDigits(client.phone || '')
+      });
+    }
+  }, [client, isOpen]);
+
+  if (!isOpen || !client) return null;
+
+  const handleSubmit = () => {
+    const cleanPhone = normalizePhoneDigits(formData.phone);
+    const phonePattern = /^[6-9]\d{9}$/;
+
+    if (!formData.name.trim() || !formData.email.trim()) {
+      alert('Please fill client name and email.');
+      return;
+    }
+
+    if (cleanPhone.length !== 10 || !phonePattern.test(cleanPhone)) {
+      alert('Please enter a valid 10-digit Indian phone number.');
+      return;
+    }
+
+    onSave({
+      name: formData.name.trim(),
+      email: formData.email.trim(),
+      phone: `+91 ${cleanPhone}`
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-black/60 backdrop-blur-md" />
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.9, opacity: 0 }}
+        className="relative w-full max-w-xl bg-white dark:bg-[#030303] rounded-3xl border border-gray-200 dark:border-white/10 p-8 shadow-2xl"
+      >
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-xl font-bold text-black dark:text-white flex items-center gap-2">
+            <User className="text-blue-500" /> Edit Client Details
+          </h3>
+          <button onClick={onClose} className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl text-gray-500">
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Client Name</label>
+            <input
+              type="text"
+              className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Email Address</label>
+            <input
+              type="email"
+              className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Phone Number</label>
+            <input
+              type="text"
+              maxLength={10}
+              className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all"
+              value={formData.phone}
+              onChange={(e) => setFormData({ ...formData, phone: normalizePhoneDigits(e.target.value) })}
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-3 mt-8">
+          <button onClick={onClose} className="flex-1 px-6 py-3 rounded-xl border border-gray-200 dark:border-white/10 text-black dark:text-white font-bold hover:bg-gray-100 dark:hover:bg-white/5 transition-all">Cancel</button>
+          <button onClick={handleSubmit} className="flex-1 px-6 py-3 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20">
+            Save Client
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+const EditProjectModal = ({ isOpen, onClose, project, onSave }) => {
+  const [formData, setFormData] = useState({
+    department: 'WEB DEvlopment',
+    package: '',
+    workDetail: '',
+    totalAmount: '',
+    startDate: '',
+    deadline: '',
+    status: 'In Progress'
+  });
+
+  useEffect(() => {
+    if (project && isOpen) {
+      setFormData({
+        department: project.department || 'WEB DEvlopment',
+        package: project.package || '',
+        workDetail: project.workDetail || '',
+        totalAmount: project.totalPrice?.toString() || '',
+        startDate: project.startDate ? new Date(project.startDate).toISOString().split('T')[0] : '',
+        deadline: project.deadline ? new Date(project.deadline).toISOString().split('T')[0] : '',
+        status: project.status || 'In Progress'
+      });
+    }
+  }, [project, isOpen]);
+
+  if (!isOpen || !project) return null;
+
+  const showPackages = PACKAGE_ENABLED_DEPARTMENTS.includes(formData.department);
+
+  const handleDepartmentChange = (department) => {
+    if (PACKAGE_ENABLED_DEPARTMENTS.includes(department)) {
+      const defaultPackage = 'Sliver Package Service';
+      const packageDetails = PACKAGE_DETAILS[defaultPackage];
+      setFormData({
+        ...formData,
+        department,
+        package: defaultPackage,
+        workDetail: packageDetails.details,
+        totalAmount: (packageDetails.fee * 1.18).toFixed(0)
+      });
+      return;
+    }
+
+    setFormData({
+      ...formData,
+      department,
+      package: '',
+      workDetail: '',
+      totalAmount: ''
+    });
+  };
+
+  const handlePackageChange = (packageName) => {
+    const packageDetails = PACKAGE_DETAILS[packageName];
+    setFormData({
+      ...formData,
+      package: packageName,
+      workDetail: packageDetails.details,
+      totalAmount: (packageDetails.fee * (1 + packageDetails.gst / 100)).toFixed(0)
+    });
+  };
+
+  const handleSubmit = () => {
+    if (!formData.department || !formData.totalAmount) {
+      alert('Please fill department and total amount.');
+      return;
+    }
+
+    onSave({
+      department: formData.department,
+      package: formData.package,
+      workDetail: formData.workDetail,
+      totalAmount: formData.totalAmount,
+      startDate: formData.startDate,
+      deadline: formData.deadline,
+      status: formData.status
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-black/60 backdrop-blur-md" />
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.9, opacity: 0 }}
+        className="relative w-full max-w-2xl bg-white dark:bg-[#030303] rounded-3xl border border-gray-200 dark:border-white/10 p-8 shadow-2xl max-h-[90vh] overflow-y-auto"
+      >
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-xl font-bold text-black dark:text-white flex items-center gap-2">
+            <Edit3 className="text-purple-500" /> Edit Project Details
+          </h3>
+          <button onClick={onClose} className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl text-gray-500">
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Department</label>
+              <select
+                className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-purple-500 outline-none transition-all"
+                value={formData.department}
+                onChange={(e) => handleDepartmentChange(e.target.value)}
+              >
+                {CLIENT_DEPARTMENTS.map((department) => (
+                  <option key={department} value={department} className="bg-white dark:bg-[#030303] text-black dark:text-white">
+                    {department}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Status</label>
+              <select
+                className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-purple-500 outline-none transition-all"
+                value={formData.status}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+              >
+                {PROJECT_STATUS_OPTIONS.map((status) => (
+                  <option key={status} value={status} className="bg-white dark:bg-[#030303] text-black dark:text-white">
+                    {status}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {showPackages ? (
+            <div>
+              <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Package</label>
+              <select
+                className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-purple-500 outline-none transition-all"
+                value={formData.package}
+                onChange={(e) => handlePackageChange(e.target.value)}
+              >
+                {Object.keys(PACKAGE_DETAILS).map((packageName) => (
+                  <option key={packageName} value={packageName} className="bg-white dark:bg-[#030303] text-black dark:text-white">
+                    {packageName}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <div>
+              <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Package Name</label>
+              <input
+                type="text"
+                className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-purple-500 outline-none transition-all"
+                value={formData.package}
+                onChange={(e) => setFormData({ ...formData, package: e.target.value })}
+              />
+            </div>
+          )}
+
+          <div>
+            <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Work Detail</label>
+            <textarea
+              rows={5}
+              className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-purple-500 outline-none transition-all"
+              value={formData.workDetail}
+              onChange={(e) => setFormData({ ...formData, workDetail: e.target.value })}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Total Amount (₹)</label>
+              <input
+                type="number"
+                className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-purple-500 outline-none transition-all"
+                value={formData.totalAmount}
+                onChange={(e) => setFormData({ ...formData, totalAmount: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Start Date</label>
+              <input
+                type="date"
+                className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-purple-500 outline-none transition-all"
+                value={formData.startDate}
+                onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Deadline</label>
+              <input
+                type="date"
+                className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-purple-500 outline-none transition-all"
+                value={formData.deadline}
+                onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-3 mt-8">
+          <button onClick={onClose} className="flex-1 px-6 py-3 rounded-xl border border-gray-200 dark:border-white/10 text-black dark:text-white font-bold hover:bg-gray-100 dark:hover:bg-white/5 transition-all">Cancel</button>
+          <button onClick={handleSubmit} className="flex-1 px-6 py-3 rounded-xl bg-purple-600 text-white font-bold hover:bg-purple-700 transition-all shadow-lg shadow-purple-600/20">
+            Save Project
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
 };
 
 const ProjectSection = ({
@@ -1156,6 +1501,8 @@ const ClientProjects = ({ onBack }) => {
   const [currentProjectMenuOpen, setCurrentProjectMenuOpen] = useState(false);
   const [delayWorkStartDate, setDelayWorkStartDate] = useState('');
   const [delayWorkEndDate, setDelayWorkEndDate] = useState('');
+  const [isEditClientOpen, setIsEditClientOpen] = useState(false);
+  const [isEditProjectOpen, setIsEditProjectOpen] = useState(false);
 
   const fetchClientData = useCallback(async () => {
     if (!clientId) return;
@@ -1181,6 +1528,14 @@ const ClientProjects = ({ onBack }) => {
   useEffect(() => {
     fetchClientData();
   }, [fetchClientData]);
+
+  const getRequestHeaders = () => {
+    const token = localStorage.getItem('adminToken');
+    return {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    };
+  };
 
   const openUpdateModal = (project) => {
     const projectToUpdate = JSON.parse(JSON.stringify(project));
@@ -1226,6 +1581,52 @@ const ClientProjects = ({ onBack }) => {
       }
     } catch (error) {
       console.error('Error updating progress:', error);
+    }
+  };
+
+  const handleClientDetailsSubmit = async (clientData) => {
+    try {
+      const response = await fetch(`http://localhost:45000/api/clients/${clientId}`, {
+        method: 'PUT',
+        headers: getRequestHeaders(),
+        body: JSON.stringify(clientData)
+      });
+      const result = await response.json();
+      if (result.success) {
+        setProjects([result.data]);
+        setIsEditClientOpen(false);
+        alert('Client details updated successfully');
+      } else {
+        alert(result.message || 'Failed to update client details');
+      }
+    } catch (error) {
+      console.error('Error updating client details:', error);
+      alert('Failed to update client details');
+    }
+  };
+
+  const handleProjectDetailsSubmit = async (projectData) => {
+    try {
+      const response = await fetch(`http://localhost:45000/api/clients/${clientId}`, {
+        method: 'PUT',
+        headers: getRequestHeaders(),
+        body: JSON.stringify(projectData)
+      });
+      const result = await response.json();
+      if (result.success) {
+        const updatedClient = result.data;
+        if (!updatedClient.tasks || updatedClient.tasks.length === 0) {
+          updatedClient.tasks = parseWorkDetailToTasks(updatedClient.workDetail);
+        }
+        setProjects([updatedClient]);
+        setIsEditProjectOpen(false);
+        alert('Project details updated successfully');
+      } else {
+        alert(result.message || 'Failed to update project details');
+      }
+    } catch (error) {
+      console.error('Error updating project details:', error);
+      alert('Failed to update project details');
     }
   };
 
@@ -1386,9 +1787,25 @@ const ClientProjects = ({ onBack }) => {
             </div>
           </div>
           {projects.length > 0 && (
-            <div className="flex flex-col md:flex-row md:flex-wrap lg:flex-nowrap items-stretch md:items-center gap-3 w-full lg:w-auto justify-end">
+            <div className="flex flex-wrap sm:flex-row items-stretch sm:items-center gap-3 w-full justify-end">
+              <button
+                onClick={() => setIsEditClientOpen(true)}
+                className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white font-bold text-sm transition-all hover:bg-gray-50 dark:hover:bg-white/10 w-full md:w-auto"
+              >
+                <User size={18} />
+                <span className="whitespace-nowrap">Edit Client</span>
+              </button>
+
+              <button
+                onClick={() => setIsEditProjectOpen(true)}
+                className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm transition-all shadow-lg shadow-purple-600/20 w-full md:w-auto"
+              >
+                <Edit3 size={18} />
+                <span className="whitespace-nowrap">Edit Project</span>
+              </button>
+
               {/* Delay Work Download Section */}
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full md:w-auto">
+              <div className="flex flex-wrap sm:flex-row items-stretch sm:items-center gap-2 w-full">
                 <input
                   type="date"
                   value={delayWorkStartDate}
@@ -1564,6 +1981,29 @@ const ClientProjects = ({ onBack }) => {
           )}
         </div>
       )}
+
+      {/* Update Progress Modal */}
+      <AnimatePresence>
+        {isEditClientOpen && (
+          <EditClientModal
+            isOpen={isEditClientOpen}
+            onClose={() => setIsEditClientOpen(false)}
+            client={projects[0]}
+            onSave={handleClientDetailsSubmit}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isEditProjectOpen && (
+          <EditProjectModal
+            isOpen={isEditProjectOpen}
+            onClose={() => setIsEditProjectOpen(false)}
+            project={projects[0]}
+            onSave={handleProjectDetailsSubmit}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Update Progress Modal */}
       <AnimatePresence>

@@ -7,6 +7,7 @@ import Overview from './pages/Overview';
 import Clients from './pages/Clients';
 import ClientProjects from './pages/ClientProjects';
 import StaffDetails from './pages/StaffDetails';
+import RemovedEmployees from './pages/RemovedEmployees';
 import TodayAssignedWork from './pages/TodayAssignedWork';
 import AddStaff from './pages/AddStaff';
 import WalletPage from './pages/Wallet';
@@ -46,6 +47,7 @@ function App() {
     if (pathname === '/' || pathname === '/dashboard') return 'dashboard';
     if (pathname.startsWith('/today-work')) return 'todayWork';
     if (pathname === '/staff/add') return 'addStaff';
+    if (pathname === '/staff/removed') return 'removedEmployees';
     if (pathname.startsWith('/staff')) return 'staffDetail';
     if (pathname.startsWith('/clients')) return 'clients';
     if (pathname.startsWith('/wallet')) return 'wallet';
@@ -96,6 +98,7 @@ function App() {
                 else if (tab === 'todayWork') navigate('/today-work');
                 else if (tab === 'staffDetail') navigate('/staff');
                 else if (tab === 'addStaff') navigate('/staff/add');
+                else if (tab === 'removedEmployees') navigate('/staff/removed');
                 else if (tab === 'studentAdmissions') navigate('/staff/admissions');
                 else if (tab === 'clients') navigate('/clients');
                 else if (tab === 'wallet') navigate('/wallet');
@@ -131,6 +134,7 @@ function App() {
                       else if (tab === 'todayWork') navigate('/today-work');
                       else if (tab === 'staffDetail') navigate('/staff');
                       else if (tab === 'addStaff') navigate('/staff/add');
+                      else if (tab === 'removedEmployees') navigate('/staff/removed');
                       else if (tab === 'studentAdmissions') navigate('/staff/admissions');
                       else if (tab === 'clients') navigate('/clients');
                       else if (tab === 'wallet') navigate('/wallet');
@@ -178,6 +182,9 @@ function App() {
                     <Route path="/staff/add" element={
                   <AddStaff onBack={() => navigate('/staff')} />
                 } />
+                    <Route path="/staff/removed" element={
+                      <RemovedEmployees />
+                    } />
                 <Route path="/clients" element={
                   <Clients onClientClick={(client) => navigate(`/clients/${client._id || client.id}`)} theme={theme} />
                 } />
