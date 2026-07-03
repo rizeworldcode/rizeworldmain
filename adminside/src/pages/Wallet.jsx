@@ -103,7 +103,7 @@ const WalletPage = () => {
     .filter(t => t.type === 'client_payment' || t.type === 'income' || t.source === 'client_payment')
     .reduce((sum, t) => sum + t.amount, 0);
   const totalExpense = transactions
-    .filter(t => t.type === 'salary')
+    .filter(t => t.type === 'salary' || t.type === 'other_expenses' || t.source === 'salary' || t.source === 'other_expenses')
     .reduce((sum, t) => sum + t.amount, 0);
 
   return (
@@ -186,7 +186,7 @@ const WalletPage = () => {
       <div className="flex items-center gap-4">
         <Filter size={20} className="text-gray-500" />
         <div className="flex gap-2">
-          {['all', 'client_payment', 'salary'].map((source) => (
+          {['all', 'client_payment', 'salary', 'other_expenses'].map((source) => (
             <button
               key={source}
               onClick={() => setFilterType(source)}
@@ -196,7 +196,13 @@ const WalletPage = () => {
                   : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-white/5'
               }`}
             >
-              {source === 'all' ? 'All' : source === 'client_payment' ? 'Client Payments' : 'Salary'}
+              {source === 'all'
+                ? 'All'
+                : source === 'client_payment'
+                ? 'Client Payments'
+                : source === 'salary'
+                ? 'Salary'
+                : 'Other Expenses'}
             </button>
           ))}
         </div>
@@ -266,7 +272,11 @@ const WalletPage = () => {
                             : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'
                         }`}
                       >
-                        {transaction.source === 'client_payment' ? 'income' : 'Expense'}
+                        {transaction.source === 'client_payment'
+                          ? 'Income'
+                          : transaction.source === 'salary'
+                          ? 'Salary Expense'
+                          : 'Other Expense'}
                       </span>
                     </td>
                     <td className="px-6 py-4">
@@ -329,11 +339,12 @@ const WalletPage = () => {
                   >
                     <option value="client_payment" className="text-gray-900 dark:bg-gray-800 dark:text-white">Client Payment</option>
                     <option value="salary" className="text-gray-900 dark:bg-gray-800 dark:text-white">Salary Payment</option>
+                    <option value="other_expenses" className="text-gray-900 dark:bg-gray-800 dark:text-white">Other Expenses</option>
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Name
+                    {newTransaction.source === 'other_expenses' ? 'Expense Name / Payee' : 'Name'}
                   </label>
                   <input
                     type="text"
@@ -341,7 +352,7 @@ const WalletPage = () => {
                     value={newTransaction.name}
                     onChange={(e) => setNewTransaction({ ...newTransaction, name: e.target.value })}
                     className="w-full px-4 py-3 rounded-xl bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white"
-                    placeholder="e.g., John Doe"
+                    placeholder={newTransaction.source === 'other_expenses' ? 'e.g., Office Rent, Internet' : 'e.g., John Doe'}
                   />
                 </div>
                 <div>
@@ -429,7 +440,7 @@ const WalletPage = () => {
                     value={newTransaction.description}
                     onChange={(e) => setNewTransaction({ ...newTransaction, description: e.target.value })}
                     className="w-full px-4 py-3 rounded-xl bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white"
-                    placeholder="e.g., June salary"
+                    placeholder={newTransaction.source === 'other_expenses' ? 'e.g., Office maintenance, software licenses' : 'e.g., June salary'}
                   />
                 </div>
               </div>

@@ -280,7 +280,16 @@ const StaffPerformance = ({ staffId, onBack }) => {
         return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
       });
       let totalHoursWorked = 0;
-      monthlyClockRecords.forEach(r => { totalHoursWorked += parseTotalHours(r.totalHours); });
+      monthlyClockRecords.forEach(r => {
+        const actualHrs = parseTotalHours(r.totalHours);
+        if (actualHrs > 9) {
+          totalHoursWorked += 8.5 + (actualHrs - 9);
+        } else if (actualHrs >= 8.5) {
+          totalHoursWorked += 8.5;
+        } else {
+          totalHoursWorked += actualHrs;
+        }
+      });
 
       const creditedDates = new Set(monthlyClockRecords.map(r => new Date(r.date).toDateString()));
 
@@ -598,7 +607,7 @@ const StaffPerformance = ({ staffId, onBack }) => {
               <p className="font-bold text-rose-500 pt-1.5 mt-1 border-t border-gray-100 dark:border-white/5">
                 Payout = Hourly Rate × Total Credited Hrs = ₹{report.finalPayout.toLocaleString('en-IN')}
               </p>
-              <p className="text-[8px] text-gray-400 dark:text-gray-500 italic leading-tight">(Overtime hours are included — extra hrs beyond 8.5 increase payout)</p>
+              <p className="text-[8px] text-gray-400 dark:text-gray-500 italic leading-tight">(Overtime hours are included — extra hrs beyond 9 increase payout; hours between 8.5 and 9 are not credited)</p>
             </div>
 
             <div className="flex justify-between items-center pt-4 border-t border-gray-100 dark:border-white/5 relative z-10">

@@ -105,7 +105,14 @@ const calculatePayout = (info) => {
 
   let totalHoursWorked = 0;
   monthlyClockRecords.forEach(record => {
-    totalHoursWorked += parseTotalHours(record.totalHours);
+    const actualHrs = parseTotalHours(record.totalHours);
+    if (actualHrs > 9) {
+      totalHoursWorked += 8.5 + (actualHrs - 9);
+    } else if (actualHrs >= 8.5) {
+      totalHoursWorked += 8.5;
+    } else {
+      totalHoursWorked += actualHrs;
+    }
   });
 
   // Build set of credited dates
