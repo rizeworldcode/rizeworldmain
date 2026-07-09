@@ -168,9 +168,21 @@ const RevenueChart = () => {
                 className="text-center"
               >
                 <p className="text-[8px] sm:text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-[0.1em] sm:tracking-[0.2em] mb-0.5">Total Revenue</p>
-                <h4 className="text-base sm:text-3xl font-black text-gray-900 dark:text-white tracking-tighter leading-none">
-                  ₹{(totalRevenue || 0).toLocaleString('en-IN')}
-                </h4>
+                {(() => {
+                  const formattedRevenue = `₹${(totalRevenue || 0).toLocaleString('en-IN')}`;
+                  const getFontSize = (val) => {
+                    const len = val.length;
+                    if (len > 15) return 'text-[10px] sm:text-base md:text-lg';
+                    if (len > 12) return 'text-xs sm:text-lg md:text-xl';
+                    if (len > 10) return 'text-sm sm:text-xl md:text-2xl';
+                    return 'text-base sm:text-3xl md:text-3xl';
+                  };
+                  return (
+                    <h4 className={`font-black text-gray-900 dark:text-white tracking-tighter leading-none ${getFontSize(formattedRevenue)}`}>
+                      {formattedRevenue}
+                    </h4>
+                  );
+                })()}
                 <div className="mt-0.5 sm:mt-2 flex items-center gap-1 justify-center">
                   <div className="w-1 sm:w-1.5 h-1 sm:h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                   <span className="text-[8px] sm:text-[10px] font-bold text-emerald-600 dark:text-emerald-500 uppercase">Live</span>

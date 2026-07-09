@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { IndianRupee, Users, Briefcase, Wallet, Calendar, X } from 'lucide-react';
 import StatsCard from '../components/dashboard/StatsCard';
@@ -8,6 +9,8 @@ import StaffList from '../components/dashboard/StaffList';
 import { getDashboardStats, getAllStaff, markStaffLeave } from '../api';
 
 const Overview = ({ onViewClient, onViewStaff }) => {
+  const navigate = useNavigate();
+
   const getAdminNameFromEmail = () => {
     const email = localStorage.getItem('currentAdminEmail');
     if (!email || email === 'Admin') return 'Alex';
@@ -125,6 +128,7 @@ const Overview = ({ onViewClient, onViewStaff }) => {
           icon={IndianRupee}
           gradient="from-blue-600 to-indigo-600"
           loading={loading}
+          onClick={() => navigate('/wallet')}
         />
         <StatsCard 
           title="Total Client" 
@@ -132,6 +136,7 @@ const Overview = ({ onViewClient, onViewStaff }) => {
           icon={Users}
           gradient="from-purple-600 to-pink-600"
           loading={loading}
+          onClick={() => navigate('/clients')}
         />
         <StatsCard 
           title="Total Projects" 
@@ -139,6 +144,7 @@ const Overview = ({ onViewClient, onViewStaff }) => {
           icon={Briefcase}
           gradient="from-emerald-600 to-teal-600"
           loading={loading}
+          onClick={() => navigate('/clients')}
         />
         <StatsCard 
           title="Paid Salary (Monthly)" 
@@ -146,6 +152,7 @@ const Overview = ({ onViewClient, onViewStaff }) => {
           icon={Wallet}
           gradient="from-orange-500 to-rose-500"
           loading={loading}
+          onClick={() => navigate('/wallet?filter=salary')}
         />
       </section>
 

@@ -1,12 +1,21 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Wallet, Plus, IndianRupee, CreditCard, Filter, Edit2, Trash2 } from 'lucide-react';
 import { getWalletTransactions, addWalletTransaction, updateWalletTransaction, deleteWalletTransaction } from '../api';
 
 const WalletPage = () => {
+  const [searchParams] = useSearchParams();
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filterType, setFilterType] = useState('all');
+  const [filterType, setFilterType] = useState(searchParams.get('filter') || 'all');
+
+  useEffect(() => {
+    const filterFromUrl = searchParams.get('filter');
+    if (filterFromUrl) {
+      setFilterType(filterFromUrl);
+    }
+  }, [searchParams]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newTransaction, setNewTransaction] = useState({
     source: 'client_payment',
