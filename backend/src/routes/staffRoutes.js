@@ -31,7 +31,11 @@ const {
   updateAdmission,
   deleteAdmission,
   verifySalaryPassword,
-  getSalarySheet
+  getSalarySheet,
+  createSale,
+  getAllSales,
+  updateSale,
+  deleteSale
 } = require('../controllers/staffController');
 const { protect } = require('../middleware/authMiddleware');
 const { requireOfficeWifi } = require('../middleware/officeWifi');
@@ -56,6 +60,12 @@ router.post('/admissions', createAdmission);
 router.get('/admissions', getAllAdmissions);
 router.put('/admissions/:id', updateAdmission);
 router.delete('/admissions/:id', deleteAdmission);
+
+// Sales routes
+router.post('/sales', createSale);
+router.get('/sales', getAllSales);
+router.put('/sales/:id', updateSale);
+router.delete('/sales/:id', deleteSale);
 
 // Static/literal routes first
 router.get('/reports', getWorkReports);

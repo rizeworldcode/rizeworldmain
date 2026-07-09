@@ -992,6 +992,13 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
                                   Admissions: {member.admissionsCount || 0}
                                 </span>
                               )}
+                              {/* Show sales count if role is Sales Team */}
+                              {(member.role === 'Sales Team' || member.role === 'Sales') && (
+                                <span className="flex items-center gap-1 font-semibold text-purple-600 dark:text-purple-400">
+                                  <TrendingUp size={12} className="text-purple-500" />
+                                  Sales: {member.salesCount || 0}
+                                </span>
+                              )}
                             </div>
                           </div>
                         );

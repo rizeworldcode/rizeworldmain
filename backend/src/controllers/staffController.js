@@ -1,6 +1,7 @@
 const Staff = require('../models/Staff');
 const Client = require('../models/Client');
 const StudentAdmission = require('../models/StudentAdmission');
+const Sale = require('../models/Sale');
 const AssignedWorkReport = require('../models/AssignedWorkReport');
 const Transaction = require('../models/Transaction');
 const jwt = require('jsonwebtoken');
@@ -130,13 +131,17 @@ exports.getAllStaff = async (req, res) => {
   try {
     const staff = await Staff.find({ isRemoved: { $ne: true } }).sort({ createdAt: -1 });
     
-    // For each staff member, if they are a counselor, get their admissions count
+    // For each staff member, if they are a counselor, get their admissions count; if they are sales team, get sales count
     const staffWithCounts = await Promise.all(
       staff.map(async (staffMember) => {
         const staffObj = staffMember.toObject();
         if (staffObj.role === 'Counselor') {
           const admissionsCount = await StudentAdmission.countDocuments({ counselorId: staffObj._id });
           staffObj.admissionsCount = admissionsCount;
+        }
+        if (staffObj.role === 'Sales Team' || staffObj.role === 'Sales') {
+          const salesCount = await Sale.countDocuments({ salesPersonId: staffObj._id });
+          staffObj.salesCount = salesCount;
         }
         return staffObj;
       })
@@ -316,6 +321,90 @@ exports.deleteAdmission = async (req, res) => {
     });
   }
 };
+
+// Create sale
+exports.createSale = async (req, res) => {
+  try {
+    const sale = new Sale(req.body);
+    await sale.save();
+    res.status(201).json({
+      success: true,
+      data: sale
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// Get all sales
+exports.getAllSales = async (req, res) => {
+  try {
+    const filter = req.query.salesPersonId ? { salesPersonId: req.query.salesPersonId } : {};
+    const sales = await Sale.find(filter).sort({ saleDate: -1 });
+    res.status(200).json({
+      success: true,
+      count: sales.length,
+      data: sales
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// Update sale
+exports.updateSale = async (req, res) => {
+  try {
+    const sale = await Sale.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    );
+    if (!sale) {
+      return res.status(404).json({
+        success: false,
+        message: 'Sale not found'
+      });
+    }
+    res.status(200).json({
+      success: true,
+      data: sale
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// Delete sale
+exports.deleteSale = async (req, res) => {
+  try {
+    const sale = await Sale.findByIdAndDelete(req.params.id);
+    if (!sale) {
+      return res.status(404).json({
+        success: false,
+        message: 'Sale not found'
+      });
+    }
+    res.status(200).json({
+      success: true,
+      message: 'Sale deleted successfully'
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
 
 // Get single staff by ID
 exports.getStaffById = async (req, res) => {
