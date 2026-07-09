@@ -8,6 +8,7 @@ const {
   getStaffById,
   updateStaff,
   deleteStaff,
+  rejoinStaff,
   clockOutStaff,
   clockInStaff,
   clearSalary,
@@ -60,6 +61,7 @@ router.post('/mark-leave', markLeave);
 router.get('/:id', getStaffById);
 router.put('/:id', updateStaff);
 router.delete('/:id', deleteStaff);
+router.patch('/:id/rejoin', rejoinStaff);
 router.patch('/:id/clock-out', requireOfficeWifi, clockOutStaff);
 router.patch('/:id/clock-in', requireOfficeWifi, clockInStaff);
 router.patch('/:id/today-work', updateTodayWork);

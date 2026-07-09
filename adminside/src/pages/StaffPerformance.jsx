@@ -14,8 +14,15 @@ import {
   X,
   Save,
   Upload,
-  Trash2
+  Trash2,
+  Calendar,
+  LogIn,
+  LogOut,
+  CheckCircle2,
+  Download
 } from 'lucide-react';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 // Helper functions for time calculation
 const calculateTotalMinutesFromDuration = (durationStr) => {
@@ -30,8 +37,9 @@ const calculateTotalMinutesFromDuration = (durationStr) => {
 };
 
 const formatHoursMinutes = (totalMinutes) => {
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
+  const rounded = Math.round(totalMinutes);
+  const hours = Math.floor(rounded / 60);
+  const minutes = rounded % 60;
   return `${hours}h ${minutes}m`;
 };
 
@@ -60,8 +68,518 @@ const getCurrentMonthExpectedHours = () => {
   return daysPassed * 8.5 * 60;
 };
 
+const getTodayDateString = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getLocalDateString = (dateInput) => {
+  if (!dateInput) return '';
+  return new Date(dateInput).toDateString();
+};
+
+const getLocalDateStringFromInput = (dateInputStr) => {
+  if (!dateInputStr) return '';
+  const [year, month, day] = dateInputStr.split('-').map(Number);
+  return new Date(year, month - 1, day).toDateString();
+};
+
+const formatSelectedDateNice = (dateInputStr) => {
+  if (!dateInputStr) return '';
+  const [year, month, day] = dateInputStr.split('-').map(Number);
+  const d = new Date(year, month - 1, day);
+  return d.toLocaleDateString('default', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+};
+
+const calculateMonthPerformance = (staff, monthStr) => {
+  if (!staff || !monthStr) return null;
+
+  const match = monthStr.match(/([A-Za-z]+)\s+(\d+)/);
+  if (!match) return null;
+  const monthName = match[1];
+  const year = parseInt(match[2]);
+  const monthIndex = new Date(Date.parse(monthName + " 1, 2012")).getMonth();
+
+  const today = new Date();
+  const isCurrentMonth = today.getMonth() === monthIndex && today.getFullYear() === year;
+
+  // Days to calculate for
+  let daysToCount = new Date(year, monthIndex + 1, 0).getDate();
+  if (isCurrentMonth) {
+    daysToCount = today.getDate();
+  }
+
+  const STANDARD_HOURS_PER_DAY = 8.5;
+  const expectedMinutes = daysToCount * STANDARD_HOURS_PER_DAY * 60;
+
+  // Filter clock records for this month
+  const monthlyClockRecords = (staff.clock || []).filter(r => {
+    const d = new Date(r.date);
+    return d.getMonth() === monthIndex && d.getFullYear() === year;
+  });
+
+  const parseTotalHours = (str) => {
+    if (!str || str === '-') return 0;
+    const h = str.match(/(\d+)\s*h/i);
+    const m = str.match(/(\d+)\s*m/i);
+    return (h ? parseInt(h[1]) : 0) + (m ? parseInt(m[1]) / 60 : 0);
+  };
+
+  let totalHoursWorked = 0;
+  monthlyClockRecords.forEach(r => {
+    const actualHrs = parseTotalHours(r.totalHours);
+    if (actualHrs > 9) {
+      totalHoursWorked += 8.5 + (actualHrs - 9);
+    } else if (actualHrs >= 8.5) {
+      totalHoursWorked += 8.5;
+    } else {
+      totalHoursWorked += actualHrs;
+    }
+  });
+
+  const creditedDates = new Set(monthlyClockRecords.map(r => new Date(r.date).toDateString()));
+
+  // Start day (if added this month)
+  const createdAt = staff.createdAt ? new Date(staff.createdAt) : null;
+  const startDay = (
+    createdAt &&
+    createdAt.getMonth() === monthIndex &&
+    createdAt.getFullYear() === year
+  ) ? createdAt.getDate() : 1;
+
+  // Credit Sundays
+  const endDay = isCurrentMonth ? today.getDate() : new Date(year, monthIndex + 1, 0).getDate();
+  for (let day = startDay; day <= endDay; day++) {
+    const d = new Date(year, monthIndex, day);
+    if (d.getDay() === 0 && !creditedDates.has(d.toDateString())) {
+      totalHoursWorked += STANDARD_HOURS_PER_DAY;
+      creditedDates.add(d.toDateString());
+    }
+  }
+
+  // Credit admin-declared leaves
+  (staff.leaves || []).forEach(leave => {
+    const ld = new Date(leave.date);
+    if (ld.getMonth() === monthIndex && ld.getFullYear() === year) {
+      if (isCurrentMonth && ld > today) return;
+      if (!creditedDates.has(ld.toDateString())) {
+        totalHoursWorked += STANDARD_HOURS_PER_DAY;
+        creditedDates.add(ld.toDateString());
+      }
+    }
+  });
+
+  const totalMinutes = totalHoursWorked * 60;
+  const differenceMinutes = totalMinutes - expectedMinutes;
+
+  return {
+    expectedMinutes,
+    actualMinutes: totalMinutes,
+    differenceMinutes,
+    daysToCount,
+    isCurrentMonth
+  };
+};
+
+const calculateMonthMetrics = (staff, monthStr) => {
+  if (!staff || !monthStr) return null;
+
+  const cleanMonth = monthStr.replace(/\s*\(Current\)/i, '').trim();
+
+  const paidHistory = (staff.salaryHistory || []).find(h => {
+    const hCleaned = h.month.replace(/\s*\(Current\)/i, '').trim();
+    return hCleaned === cleanMonth;
+  });
+
+  if (paidHistory) {
+    return {
+      month: monthStr,
+      presents: 30 - (paidHistory.totalLeaves + paidHistory.totalHalfDays),
+      leaves: paidHistory.totalLeaves,
+      halfDays: paidHistory.totalHalfDays,
+      casualLeaveUsed: paidHistory.casualLeavesUsed ? 'Yes' : 'No',
+      deduction: paidHistory.baseSalary - paidHistory.payoutSalary,
+      finalPayout: paidHistory.payoutSalary,
+      attendancePercentage: Math.round(((30 - paidHistory.totalLeaves - (paidHistory.totalHalfDays * 0.5)) / 30) * 100),
+      totalHoursWorked: '-',
+      hourlyRate: Math.round((paidHistory.baseSalary / 255) * 100) / 100,
+      baseSalary: paidHistory.baseSalary
+    };
+  }
+
+  const match = cleanMonth.match(/([A-Za-z]+)\s+(\d+)/);
+  if (!match) return null;
+  const monthName = match[1];
+  const year = parseInt(match[2]);
+  const monthIndex = new Date(Date.parse(monthName + " 1, 2012")).getMonth();
+
+  const today = new Date();
+  const isCurrentMonth = today.getMonth() === monthIndex && today.getFullYear() === year;
+
+  const baseSalary = staff.monthlySalary || 0;
+  const STANDARD_HOURS_PER_DAY = 8.5;
+  const EXPECTED_MONTHLY_HOURS = STANDARD_HOURS_PER_DAY * 30;
+  const hourlyRate = baseSalary / EXPECTED_MONTHLY_HOURS;
+
+  const monthlyClockRecords = (staff.clock || []).filter(r => {
+    const d = new Date(r.date);
+    return d.getMonth() === monthIndex && d.getFullYear() === year;
+  });
+
+  const parseTotalHours = (str) => {
+    if (!str || str === '-') return 0;
+    const h = str.match(/(\d+)\s*h/i);
+    const m = str.match(/(\d+)\s*m/i);
+    return (h ? parseInt(h[1]) : 0) + (m ? parseInt(m[1]) / 60 : 0);
+  };
+
+  let totalHoursWorked = 0;
+  monthlyClockRecords.forEach(r => {
+    const actualHrs = parseTotalHours(r.totalHours);
+    if (actualHrs > 9) {
+      totalHoursWorked += 8.5 + (actualHrs - 9);
+    } else if (actualHrs >= 8.5) {
+      totalHoursWorked += 8.5;
+    } else {
+      totalHoursWorked += actualHrs;
+    }
+  });
+
+  const creditedDates = new Set(monthlyClockRecords.map(r => new Date(r.date).toDateString()));
+
+  const createdAt = staff.createdAt ? new Date(staff.createdAt) : null;
+  const startDay = (
+    createdAt &&
+    createdAt.getMonth() === monthIndex &&
+    createdAt.getFullYear() === year
+  ) ? createdAt.getDate() : 1;
+
+  const endDay = isCurrentMonth ? today.getDate() : new Date(year, monthIndex + 1, 0).getDate();
+  for (let day = startDay; day <= endDay; day++) {
+    const d = new Date(year, monthIndex, day);
+    if (d.getDay() === 0 && !creditedDates.has(d.toDateString())) {
+      totalHoursWorked += STANDARD_HOURS_PER_DAY;
+      creditedDates.add(d.toDateString());
+    }
+  }
+
+  (staff.leaves || []).forEach(leave => {
+    const ld = new Date(leave.date);
+    if (ld.getMonth() === monthIndex && ld.getFullYear() === year) {
+      if (isCurrentMonth && ld > today) return;
+      if (!creditedDates.has(ld.toDateString())) {
+        totalHoursWorked += STANDARD_HOURS_PER_DAY;
+        creditedDates.add(ld.toDateString());
+      }
+    }
+  });
+
+  let halfDays = 0;
+  let fullLeaves = 0;
+  let casualLeaveUsed = 0;
+
+  (staff.attendance || []).forEach(att => {
+    const ad = new Date(att.date);
+    if (ad.getMonth() === monthIndex && ad.getFullYear() === year) {
+      if (att.status === 'Half-Day') halfDays++;
+      else if (att.status === 'On Leave') {
+        fullLeaves++;
+        if (att.leaveType === 'CL') casualLeaveUsed++;
+      }
+    }
+  });
+
+  if (!isCurrentMonth) {
+    const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+    for (let day = 1; day <= daysInMonth; day++) {
+      const d = new Date(year, monthIndex, day);
+      if (d.getDay() === 0) continue;
+
+      const dateStr = d.toDateString();
+      const hasClock = (staff.clock || []).some(r => new Date(r.date).toDateString() === dateStr);
+      const hasAtt = (staff.attendance || []).some(a => new Date(a.date).toDateString() === dateStr);
+      const hasLeave = (staff.leaves || []).some(l => new Date(l.date).toDateString() === dateStr);
+
+      if (!hasClock && !hasAtt && !hasLeave) {
+        fullLeaves++;
+      }
+    }
+  } else {
+    for (let day = startDay; day <= today.getDate(); day++) {
+      const d = new Date(year, monthIndex, day);
+      if (d.getDay() === 0) continue;
+
+      const dateStr = d.toDateString();
+      const hasClock = (staff.clock || []).some(r => new Date(r.date).toDateString() === dateStr);
+      const hasAtt = (staff.attendance || []).some(a => new Date(a.date).toDateString() === dateStr);
+      const hasLeave = (staff.leaves || []).some(l => new Date(l.date).toDateString() === dateStr);
+
+      if (!hasClock && !hasAtt && !hasLeave) {
+        fullLeaves++;
+      }
+    }
+  }
+
+  const presents = monthlyClockRecords.length;
+  const finalPayout = Math.round(hourlyRate * totalHoursWorked);
+  const deduction = Math.max(0, baseSalary - finalPayout);
+  const attendancePercentage = Math.round((totalHoursWorked / EXPECTED_MONTHLY_HOURS) * 100);
+
+  return {
+    month: monthStr,
+    presents,
+    leaves: fullLeaves,
+    halfDays,
+    casualLeaveUsed: casualLeaveUsed > 0 ? 'Yes' : 'No',
+    deduction,
+    finalPayout,
+    attendancePercentage: Math.min(100, attendancePercentage),
+    totalHoursWorked: Math.round(totalHoursWorked * 100) / 100,
+    hourlyRate: Math.round(hourlyRate * 100) / 100,
+    baseSalary
+  };
+};
+
+const htmlToPDF = async (html, filename) => {
+  const iframe = document.createElement('iframe');
+  iframe.style.cssText = 'position:fixed; top:-9999px; left:-9999px; width:794px; height:1123px; border:none;';
+  document.body.appendChild(iframe);
+  iframe.contentDocument.open();
+  iframe.contentDocument.write(html);
+  iframe.contentDocument.close();
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  try {
+    const canvas = await html2canvas(iframe.contentDocument.body, {
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: '#ffffff',
+      width: 794,
+      windowWidth: 794,
+    });
+    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
+    const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+    let yOffset = 0;
+    while (yOffset < imgHeight) {
+      if (yOffset > 0) pdf.addPage();
+      pdf.addImage(imgData, 'JPEG', 0, -yOffset, pdfWidth, imgHeight);
+      yOffset += pdfHeight;
+    }
+    pdf.save(filename);
+  } finally {
+    document.body.removeChild(iframe);
+  }
+};
+
+const generateMonthlyReportHTML = (staff, selectedMonthStr) => {
+  const monthReport = calculateMonthMetrics(staff, selectedMonthStr);
+  const match = selectedMonthStr.match(/([A-Za-z]+)\s+(\d+)/);
+  const monthName = match ? match[1] : '';
+  const year = match ? parseInt(match[2]) : new Date().getFullYear();
+  const monthIndex = new Date(Date.parse(monthName + " 1, 2012")).getMonth();
+  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+
+  // Generate Daily Logs HTML
+  let dailyRowsHTML = '';
+  for (let day = 1; day <= daysInMonth; day++) {
+    const d = new Date(year, monthIndex, day);
+    const dateStr = d.toDateString();
+    
+    // Stop listing future dates beyond today if it's the current month
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    if (d > today) break;
+
+    const clockRecord = (staff.clock || []).find(r => new Date(r.date).toDateString() === dateStr);
+    const attRecord = (staff.attendance || []).find(a => new Date(a.date).toDateString() === dateStr);
+    const leaveRecord = (staff.leaves || []).find(l => new Date(l.date).toDateString() === dateStr);
+    const workRecord = (staff.work || []).find(w => new Date(w.date).toDateString() === dateStr);
+    
+    const isSunday = d.getDay() === 0;
+
+    let status = 'Absent';
+    let statusClass = 'color: #ef4444; font-weight: bold;'; // absent = red
+    
+    if (clockRecord) {
+      const active = clockRecord.sessions.some(s => !s.clockOut);
+      status = active ? 'Active' : (attRecord?.status || 'Present');
+      statusClass = status === 'Half-Day' ? 'color: #f59e0b; font-weight: bold;' : 'color: #10b981; font-weight: bold;';
+    } else if (isSunday) {
+      status = 'Sunday (Holiday)';
+      statusClass = 'color: #3b82f6; font-weight: bold;';
+    } else if (leaveRecord) {
+      status = `Leave (${leaveRecord.type || 'Casual'})`;
+      statusClass = 'color: #8b5cf6; font-weight: bold;';
+    } else if (attRecord) {
+      status = attRecord.status;
+      if (status === 'On Leave') statusClass = 'color: #8b5cf6; font-weight: bold;';
+      else if (status === 'Half-Day') statusClass = 'color: #f59e0b; font-weight: bold;';
+      else if (status === 'Present') statusClass = 'color: #10b981; font-weight: bold;';
+    }
+
+    // Sessions text
+    let sessionsText = '-';
+    if (clockRecord && clockRecord.sessions && clockRecord.sessions.length > 0) {
+      sessionsText = clockRecord.sessions.map((s, i) => 
+        `S${i+1}: ${s.clockIn} - ${s.clockOut || 'Active'} (${s.duration || '-'})`
+      ).join('<br>');
+    }
+
+    // Tasks text
+    let tasksText = '-';
+    if (workRecord && workRecord.tasks && workRecord.tasks.length > 0) {
+      tasksText = workRecord.tasks.map(t => 
+        `<div style="margin-bottom: 2px; font-size: 10px;">
+          ${t.completed ? '<span style="color:#10b981;">[✓]</span>' : '<span style="color:#ef4444;">[✗]</span>'} 
+          ${t.name} ${t.isExtra ? '<span style="color:#3b82f6; font-size:8px; font-weight:bold;">(EXTRA)</span>' : ''}
+        </div>`
+      ).join('');
+    }
+
+    const totalHours = clockRecord ? clockRecord.totalHours : '-';
+
+    dailyRowsHTML += `
+      <tr style="border-bottom: 1px solid #e5e7eb; font-size: 11px;">
+        <td style="padding: 8px; vertical-align: top;">${d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', weekday: 'short' })}</td>
+        <td style="padding: 8px; vertical-align: top; ${statusClass}">${status}</td>
+        <td style="padding: 8px; vertical-align: top; font-weight: bold; text-align: center;">${totalHours}</td>
+        <td style="padding: 8px; vertical-align: top; font-size: 10px; line-height: 1.4;">${sessionsText}</td>
+        <td style="padding: 8px; vertical-align: top;">${tasksText}</td>
+      </tr>
+    `;
+  }
+
+  const baseSalary = monthReport?.baseSalary ?? staff.monthlySalary ?? 0;
+  const payout = monthReport?.finalPayout ?? 0;
+  const deduction = monthReport?.deduction ?? 0;
+  const presents = monthReport?.presents ?? 0;
+  const leaves = monthReport?.leaves ?? 0;
+  const halfDays = monthReport?.halfDays ?? 0;
+  const efficiency = monthReport?.attendancePercentage ?? 0;
+  const totalHoursWorked = monthReport?.totalHoursWorked ?? 0;
+  const hourlyRate = monthReport?.hourlyRate ?? 0;
+  const clUsed = monthReport?.casualLeaveUsed ? 'Yes' : 'No';
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Monthly Performance Report - ${staff.name}</title>
+    </head>
+    <body style="margin: 0; padding: 25px; background: #fff; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #1f2937;">
+      
+      <div style="width: 190mm; margin: 0 auto; background: #fff;">
+        
+        <!-- HEADER -->
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px;">
+          <tr>
+            <td style="vertical-align: top;">
+              <div style="font-size: 22px; font-weight: 800; letter-spacing: -0.5px; color: #1e3a8a;">RIZE WORLD DIGITAL MARKETING</div>
+              <div style="font-size: 11px; color: #6b7280; font-weight: bold; text-transform: uppercase; margin-top: 3px; letter-spacing: 1px;">Monthly Performance & Payout Report</div>
+            </td>
+            <td style="text-align: right; vertical-align: top;">
+              <div style="font-size: 16px; font-weight: 800; color: #0d9488;">${selectedMonthStr}</div>
+              <div style="font-size: 10px; color: #9ca3af; margin-top: 3px;">Generated on: ${new Date().toLocaleDateString('en-IN')}</div>
+            </td>
+          </tr>
+        </table>
+
+        <!-- PROFILE AND CALCULATIONS GRID -->
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px;">
+          <tr>
+            <!-- Employee Details Card -->
+            <td style="width: 48%; vertical-align: top; padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;">
+              <div style="font-size: 10px; font-weight: bold; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Employee Profile</div>
+              <div style="font-size: 16px; font-weight: 800; color: #0f172a; margin-bottom: 6px;">${staff.name}</div>
+              <table style="width: 100%; font-size: 11px; line-height: 1.6;">
+                <tr><td style="color:#64748b; width: 35%;">ID:</td><td style="font-weight:bold;">${staff.employeeId || '-'}</td></tr>
+                <tr><td style="color:#64748b;">Department:</td><td style="font-weight:bold;">${staff.department}</td></tr>
+                <tr><td style="color:#64748b;">Role:</td><td style="font-weight:bold;">${staff.role || 'Employee'}</td></tr>
+                <tr><td style="color:#64748b;">Job Type:</td><td style="font-weight:bold;">${staff.jobType}</td></tr>
+                <tr><td style="color:#64748b;">Email:</td><td>${staff.email}</td></tr>
+                <tr><td style="color:#64748b;">Phone:</td><td>${staff.phone}</td></tr>
+              </table>
+            </td>
+            
+            <td style="width: 4%;"></td>
+
+            <!-- Payout Summary Card -->
+            <td style="width: 48%; vertical-align: top; padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;">
+              <div style="font-size: 10px; font-weight: bold; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Payout Summary</div>
+              <div style="font-size: 20px; font-weight: 800; color: #10b981; margin-bottom: 6px;">₹${payout.toLocaleString('en-IN')}</div>
+              <table style="width: 100%; font-size: 11px; line-height: 1.6;">
+                <tr><td style="color:#64748b; width: 45%;">Base Salary:</td><td style="font-weight:bold;">₹${baseSalary.toLocaleString('en-IN')}</td></tr>
+                <tr><td style="color:#64748b;">Hourly Rate:</td><td style="font-weight:bold;">₹${hourlyRate} / hr</td></tr>
+                <tr><td style="color:#64748b;">Hours Worked:</td><td style="font-weight:bold;">${totalHoursWorked} hrs</td></tr>
+                <tr><td style="color:#64748b;">Deductions:</td><td style="font-weight:bold; color:#ef4444;">- ₹${deduction.toLocaleString('en-IN')}</td></tr>
+                <tr><td style="color:#64748b;">Efficiency:</td><td style="font-weight:bold; color:#2563eb;">${efficiency}%</td></tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+
+        <!-- ATTENDANCE BREAKDOWN CARDS -->
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px;">
+          <tr>
+            <td style="width: 23%; padding: 10px; text-align: center; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px;">
+              <div style="font-size: 9px; font-weight: bold; color: #15803d; text-transform: uppercase; letter-spacing: 0.5px;">Presents</div>
+              <div style="font-size: 18px; font-weight: 800; color: #166534; margin-top: 4px;">${presents} <span style="font-size: 10px; font-weight: 500; color: #15803d;">Days</span></div>
+            </td>
+            <td style="width: 2%;"></td>
+            <td style="width: 23%; padding: 10px; text-align: center; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px;">
+              <div style="font-size: 9px; font-weight: bold; color: #b91c1c; text-transform: uppercase; letter-spacing: 0.5px;">Full Leaves</div>
+              <div style="font-size: 18px; font-weight: 800; color: #991b1b; margin-top: 4px;">${leaves} <span style="font-size: 10px; font-weight: 500; color: #b91c1c;">Days</span></div>
+            </td>
+            <td style="width: 2%;"></td>
+            <td style="width: 23%; padding: 10px; text-align: center; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 8px;">
+              <div style="font-size: 9px; font-weight: bold; color: #b45309; text-transform: uppercase; letter-spacing: 0.5px;">Half-Days</div>
+              <div style="font-size: 18px; font-weight: 800; color: #92400e; margin-top: 4px;">${halfDays} <span style="font-size: 10px; font-weight: 500; color: #b45309;">Days</span></div>
+            </td>
+            <td style="width: 2%;"></td>
+            <td style="width: 23%; padding: 10px; text-align: center; background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 8px;">
+              <div style="font-size: 9px; font-weight: bold; color: #6d28d9; text-transform: uppercase; letter-spacing: 0.5px;">CL Applied</div>
+              <div style="font-size: 18px; font-weight: 800; color: #5b21b6; margin-top: 4px;">${clUsed}</div>
+            </td>
+          </tr>
+        </table>
+
+        <!-- DAILY LOG TITLE -->
+        <div style="font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 12px; color: #1e3a8a;">
+          Daily Clock Cycle & Task Log
+        </div>
+
+        <!-- DAILY LOGS TABLE -->
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+          <thead>
+            <tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1; font-size: 10px; font-weight: bold; text-transform: uppercase; color: #475569; text-align: left;">
+              <th style="padding: 8px; width: 15%;">Date</th>
+              <th style="padding: 8px; width: 22%;">Status</th>
+              <th style="padding: 8px; width: 13%; text-align: center;">Hours</th>
+              <th style="padding: 8px; width: 25%;">Sessions Details</th>
+              <th style="padding: 8px; width: 25%;">Working Tasks</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${dailyRowsHTML}
+          </tbody>
+        </table>
+
+      </div>
+
+    </body>
+    </html>
+  `;
+};
+
 const StaffPerformance = ({ staffId, onBack }) => {
   const [staff, setStaff] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(getTodayDateString());
   const [allStaff, setAllStaff] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -369,6 +887,272 @@ const StaffPerformance = ({ staffId, onBack }) => {
     return history.reverse();
   }, [staff]);
 
+  const [selectedReportMonth, setSelectedReportMonth] = useState('');
+
+  const availableMonths = useMemo(() => {
+    if (!staff) return [];
+    
+    const months = new Set();
+    
+    const now = new Date();
+    const currentMonthName = now.toLocaleString('default', { month: 'long', year: 'numeric' });
+    months.add(currentMonthName);
+
+    (staff.clock || []).forEach(r => {
+      if (r.date) {
+        const d = new Date(r.date);
+        months.add(d.toLocaleString('default', { month: 'long', year: 'numeric' }));
+      }
+    });
+
+    (staff.salaryHistory || []).forEach(h => {
+      if (h.month) {
+        const cleaned = h.month.replace(/\s*\(Current\)/i, '').trim();
+        months.add(cleaned);
+      }
+    });
+
+    (staff.attendance || []).forEach(a => {
+      if (a.date) {
+        const d = new Date(a.date);
+        months.add(d.toLocaleString('default', { month: 'long', year: 'numeric' }));
+      }
+    });
+
+    (staff.leaves || []).forEach(l => {
+      if (l.date) {
+        const d = new Date(l.date);
+        months.add(d.toLocaleString('default', { month: 'long', year: 'numeric' }));
+      }
+    });
+
+    (staff.work || []).forEach(w => {
+      if (w.date) {
+        const d = new Date(w.date);
+        months.add(d.toLocaleString('default', { month: 'long', year: 'numeric' }));
+      }
+    });
+
+    const sortedMonths = Array.from(months).sort((a, b) => {
+      const dateA = new Date(Date.parse(a + " 1"));
+      const dateB = new Date(Date.parse(b + " 1"));
+      return dateB.getTime() - dateA.getTime();
+    });
+
+    return sortedMonths;
+  }, [staff]);
+
+  useEffect(() => {
+    if (availableMonths && availableMonths.length > 0 && !selectedReportMonth) {
+      setSelectedReportMonth(availableMonths[0]);
+    }
+  }, [availableMonths, selectedReportMonth]);
+
+  useEffect(() => {
+    if (selectedReportMonth) {
+      const match = selectedReportMonth.match(/([A-Za-z]+)\s+(\d+)/);
+      if (match) {
+        const monthName = match[1];
+        const year = parseInt(match[2]);
+        const monthIndex = new Date(Date.parse(monthName + " 1, 2012")).getMonth();
+        
+        const today = new Date();
+        if (today.getMonth() === monthIndex && today.getFullYear() === year) {
+          setSelectedDate(getTodayDateString());
+        } else {
+          const monthStr = String(monthIndex + 1).padStart(2, '0');
+          setSelectedDate(`${year}-${monthStr}-01`);
+        }
+      }
+    }
+  }, [selectedReportMonth]);
+
+  const handleDownloadMonthlyReport = async () => {
+    if (!staff || !selectedReportMonth) return;
+    try {
+      const filename = `Monthly_Report_${staff.name.replace(/\s+/g, '_')}_${selectedReportMonth.replace(/\s+/g, '_')}.pdf`;
+      const html = generateMonthlyReportHTML(staff, selectedReportMonth);
+      
+      alert('Generating monthly report PDF, please wait...');
+      await htmlToPDF(html, filename);
+    } catch (err) {
+      console.error('Error generating PDF:', err);
+      alert('Failed to generate PDF monthly report: ' + err.message);
+    }
+  };
+
+  const renderDailyClockCycle = () => {
+    if (!staff) return null;
+
+    const selectedLocalDateStr = getLocalDateStringFromInput(selectedDate);
+    
+    // Find daily records
+    const dailyClockRecord = (staff.clock || []).find(
+      r => getLocalDateString(r.date) === selectedLocalDateStr
+    );
+    const dailyAttendanceRecord = (staff.attendance || []).find(
+      a => getLocalDateString(a.date) === selectedLocalDateStr
+    );
+    const dailyLeaveRecord = (staff.leaves || []).find(
+      l => getLocalDateString(l.date) === selectedLocalDateStr
+    );
+
+    const [year, month, day] = selectedDate.split('-').map(Number);
+    const dateObj = new Date(year, month - 1, day);
+    const isSunday = dateObj.getDay() === 0;
+
+    const niceDate = formatSelectedDateNice(selectedDate);
+
+    // Determine status badge
+    let statusText = "No Record";
+    let statusColor = "bg-gray-100 text-gray-500 dark:bg-white/5 dark:text-gray-400";
+    
+    if (dailyClockRecord) {
+      const hasActiveSession = dailyClockRecord.sessions.some(s => !s.clockOut);
+      if (hasActiveSession) {
+        statusText = "Active Now";
+        statusColor = "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 animate-pulse";
+      } else {
+        statusText = dailyAttendanceRecord?.status || "Present";
+        if (statusText === "Half-Day") {
+          statusColor = "bg-amber-500/20 text-amber-600 dark:text-amber-400";
+        } else {
+          statusColor = "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400";
+        }
+      }
+    } else if (isSunday) {
+      statusText = "Sunday (Paid)";
+      statusColor = "bg-blue-500/20 text-blue-600 dark:text-blue-400";
+    } else if (dailyLeaveRecord) {
+      statusText = `Leave (${dailyLeaveRecord.type || 'Casual'})`;
+      statusColor = "bg-purple-500/20 text-purple-600 dark:text-purple-400";
+    } else if (dailyAttendanceRecord) {
+      statusText = dailyAttendanceRecord.status;
+      if (statusText === "Absent") {
+        statusColor = "bg-rose-500/20 text-rose-600 dark:text-rose-400";
+      } else if (statusText === "On Leave") {
+        statusText = "On Leave";
+        statusColor = "bg-purple-500/20 text-purple-600 dark:text-purple-400";
+      } else if (statusText === "Half-Day") {
+        statusColor = "bg-amber-500/20 text-amber-600 dark:text-amber-400";
+      }
+    } else {
+      // Check if date is in the future
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      if (dateObj > today) {
+        statusText = "Scheduled";
+        statusColor = "bg-gray-100 text-gray-500 dark:bg-white/5 dark:text-gray-400";
+      } else {
+        statusText = "Absent (Unmarked)";
+        statusColor = "bg-rose-500/10 text-rose-500/70";
+      }
+    }
+
+    return (
+      <div className="space-y-4">
+        {/* Day Header Info */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5 gap-3">
+          <div>
+            <h4 className="text-sm font-black text-gray-400 uppercase tracking-wider">Selected Date</h4>
+            <p className="text-base sm:text-lg font-black text-gray-900 dark:text-white mt-0.5">{niceDate}</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${statusColor}`}>
+              {statusText}
+            </span>
+            {dailyClockRecord && (
+              <span className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-blue-500/20 text-blue-600 dark:text-blue-400">
+                Total: {dailyClockRecord.totalHours || '-'}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Sessions list */}
+        {dailyClockRecord && dailyClockRecord.sessions && dailyClockRecord.sessions.length > 0 ? (
+          <div className="relative border-l-2 border-blue-500/20 ml-4 pl-6 space-y-6 py-2">
+            {dailyClockRecord.sessions.map((session, idx) => (
+              <div key={session._id || idx} className="relative group">
+                {/* Timeline Dot Icon */}
+                <div className="absolute -left-[35px] top-0.5 w-6.5 h-6.5 rounded-full bg-blue-500/10 dark:bg-blue-500/20 border-2 border-white dark:border-[#111] flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform">
+                  <Clock size={12} className="text-blue-500" />
+                </div>
+                
+                {/* Session Card */}
+                <div className="bg-gray-50 dark:bg-white/5 p-4 rounded-2xl border border-gray-100 dark:border-white/5 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-black text-blue-500 uppercase tracking-widest">Session {idx + 1}</span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${session.clockOut ? 'bg-gray-200 text-gray-600 dark:bg-white/10 dark:text-gray-300' : 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'}`}>
+                      {session.clockOut ? 'Completed' : 'In Progress'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {/* Clock In */}
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-500">
+                        <LogIn size={16} />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Clock In</p>
+                        <p className="text-sm font-black text-gray-900 dark:text-white">{session.clockIn}</p>
+                      </div>
+                    </div>
+
+                    {/* Clock Out */}
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-xl ${session.clockOut ? 'bg-rose-500/10 text-rose-500' : 'bg-gray-100 dark:bg-white/5 text-gray-400'}`}>
+                        <LogOut size={16} />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Clock Out</p>
+                        <p className="text-sm font-black text-gray-900 dark:text-white">{session.clockOut || '-'}</p>
+                      </div>
+                    </div>
+
+                    {/* Duration */}
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-xl bg-blue-500/10 text-blue-500">
+                        <Clock size={16} />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Duration</p>
+                        <p className="text-sm font-black text-gray-900 dark:text-white">{session.duration || '-'}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          /* Empty / Holiday / Absent State */
+          <div className="flex flex-col items-center justify-center p-8 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5 text-center space-y-3">
+            <div className="p-4 rounded-full bg-gray-100 dark:bg-white/5 text-gray-400 dark:text-gray-500">
+              <Calendar size={36} />
+            </div>
+            <div>
+              <p className="text-base font-black text-gray-900 dark:text-white">No Clock Cycle Record</p>
+              <p className="text-xs font-bold text-gray-400 dark:text-gray-500 mt-1 max-w-sm">
+                {isSunday 
+                  ? "This date falls on a Sunday, which is a paid holiday. No attendance or clock-in records are expected." 
+                  : dailyLeaveRecord 
+                    ? `The employee is marked on leave (${dailyLeaveRecord.type || 'Casual'}) for this date.` 
+                    : dailyAttendanceRecord?.status === "On Leave"
+                      ? "The employee is marked on leave for this date."
+                      : dailyAttendanceRecord?.status === "Absent"
+                        ? "The employee has been marked as absent for this date."
+                        : "No clock-in or clock-out sessions exist for this day."
+                }
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // Update edit form when modal opens or staff changes
   useEffect(() => {
     if (isEditModalOpen && staff) {
@@ -417,13 +1201,33 @@ const StaffPerformance = ({ staffId, onBack }) => {
             <h1 className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white uppercase tracking-tight">Performance Report</h1>
             <p className="text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-widest">Monthly Salary & Attendance Breakdown</p>
           </div>
-          <button
-            onClick={() => setIsEditModalOpen(true)}
-            className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white px-4 py-2.5 rounded-lg text-sm font-bold shadow-md hover:shadow-lg transition-all shrink-0"
-          >
-            <Edit3 size={16} />
-            Edit Details
-          </button>
+          <div className="flex flex-wrap items-center gap-3 shrink-0">
+            <select
+              value={selectedReportMonth}
+              onChange={(e) => setSelectedReportMonth(e.target.value)}
+              className="bg-black/5 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-700 dark:text-gray-200 focus:outline-none focus:border-blue-500 cursor-pointer"
+            >
+              {availableMonths.map(m => (
+                <option key={m} value={m} className="text-gray-900 dark:bg-gray-900 dark:text-white">
+                  {m}
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={handleDownloadMonthlyReport}
+              className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-4 py-2.5 rounded-lg text-sm font-bold shadow-md hover:shadow-lg transition-all"
+            >
+              <Download size={16} />
+              Download Report
+            </button>
+            <button
+              onClick={() => setIsEditModalOpen(true)}
+              className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white px-4 py-2.5 rounded-lg text-sm font-bold shadow-md hover:shadow-lg transition-all"
+            >
+              <Edit3 size={16} />
+              Edit Details
+            </button>
+          </div>
         </div>
       </div>
 
@@ -486,6 +1290,31 @@ const StaffPerformance = ({ staffId, onBack }) => {
         </div>
       </div>
 
+      {/* Daily Clock Cycle (Individual Clock Cycle of Selected Date) */}
+      <div className="bg-white dark:bg-[#111] p-6 sm:p-8 rounded-3xl sm:rounded-[2.5rem] border border-gray-100 dark:border-white/5 shadow-sm space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h3 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white flex items-center gap-2">
+              <Clock className="text-blue-500" size={24} />
+              Daily Clock Cycle
+            </h3>
+            <p className="text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-widest mt-1">Select a date to view detailed log</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Calendar size={18} className="text-gray-400" />
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
+            />
+          </div>
+        </div>
+
+        {/* Selected Date Details */}
+        {renderDailyClockCycle()}
+      </div>
+
       {/* Working Hours Calculation Breakdown */}
       <div className="bg-white dark:bg-[#111] p-6 sm:p-8 rounded-3xl sm:rounded-[2.5rem] border border-gray-100 dark:border-white/5 shadow-sm">
         <h3 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white mb-6 flex items-center gap-2">
@@ -493,14 +1322,12 @@ const StaffPerformance = ({ staffId, onBack }) => {
           Working Hours Calculation
         </h3>
         {(() => {
-          const now = new Date();
-          const daysPassed = now.getDate();
-          const currentMonthTotalMinutes = calculateCurrentMonthTotalHours(staff.clock || []);
-          const expectedMinutes = getCurrentMonthExpectedHours();
-          const differenceMinutes = currentMonthTotalMinutes - expectedMinutes;
-          const currentMonthTotalFormatted = formatHoursMinutes(currentMonthTotalMinutes);
-          const expectedFormatted = formatHoursMinutes(expectedMinutes);
-          const differenceFormatted = formatHoursMinutes(Math.abs(differenceMinutes));
+          const perf = calculateMonthPerformance(staff, selectedReportMonth);
+          if (!perf) return null;
+
+          const currentMonthTotalFormatted = formatHoursMinutes(perf.actualMinutes);
+          const expectedFormatted = formatHoursMinutes(perf.expectedMinutes);
+          const differenceFormatted = formatHoursMinutes(Math.abs(perf.differenceMinutes));
           
           return (
             <div className="space-y-4">
@@ -508,19 +1335,19 @@ const StaffPerformance = ({ staffId, onBack }) => {
                 <div className="p-4 bg-blue-500/5 border border-blue-500/10 rounded-2xl">
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Expected Hours</p>
                   <p className="text-xl font-black text-blue-600 dark:text-blue-400">{expectedFormatted}</p>
-                  <p className="text-[10px] text-gray-500 mt-1">8.5h/day × {daysPassed} days so far</p>
+                  <p className="text-[10px] text-gray-500 mt-1">8.5h/day × {perf.daysToCount} days {perf.isCurrentMonth ? 'so far' : 'in month'}</p>
                 </div>
                 <div className="p-4 bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 rounded-2xl">
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Actual Hours Worked</p>
                   <p className="text-xl font-black text-gray-900 dark:text-white">{currentMonthTotalFormatted}</p>
                 </div>
-                <div className={`p-4 border rounded-2xl ${differenceMinutes > 0 ? 'bg-emerald-500/5 border-emerald-500/10' : differenceMinutes < 0 ? 'bg-rose-500/5 border-rose-500/10' : 'bg-gray-50 dark:bg-white/5 border-gray-100 dark:border-white/5'}`}>
+                <div className={`p-4 border rounded-2xl ${perf.differenceMinutes > 0 ? 'bg-emerald-500/5 border-emerald-500/10' : perf.differenceMinutes < 0 ? 'bg-rose-500/5 border-rose-500/10' : 'bg-gray-50 dark:bg-white/5 border-gray-100 dark:border-white/5'}`}>
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Difference</p>
-                  <p className={`text-xl font-black ${differenceMinutes > 0 ? 'text-emerald-600 dark:text-emerald-400' : differenceMinutes < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-gray-900 dark:text-white'}`}>
-                    {differenceMinutes > 0 ? '+' : ''}{differenceFormatted}
+                  <p className={`text-xl font-black ${perf.differenceMinutes > 0 ? 'text-emerald-600 dark:text-emerald-400' : perf.differenceMinutes < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-gray-900 dark:text-white'}`}>
+                    {perf.differenceMinutes > 0 ? '+' : ''}{differenceFormatted}
                   </p>
-                  <p className={`text-[10px] mt-1 ${differenceMinutes > 0 ? 'text-emerald-500' : differenceMinutes < 0 ? 'text-rose-500' : 'text-gray-500'}`}>
-                    {differenceMinutes > 0 ? 'Extra Hours' : differenceMinutes < 0 ? 'Less Hours' : 'On Track'}
+                  <p className={`text-[10px] mt-1 ${perf.differenceMinutes > 0 ? 'text-emerald-500' : perf.differenceMinutes < 0 ? 'text-rose-500' : 'text-gray-500'}`}>
+                    {perf.differenceMinutes > 0 ? 'Extra Hours' : perf.differenceMinutes < 0 ? 'Less Hours' : 'On Track'}
                   </p>
                 </div>
               </div>
@@ -528,9 +1355,9 @@ const StaffPerformance = ({ staffId, onBack }) => {
               <div className="p-4 bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 rounded-2xl">
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Calculation Formula:</p>
                 <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
-                  <p><strong>Expected Hours:</strong> 8.5 hours/day × Days passed this month = {8.5}h/day × {daysPassed} days = {expectedFormatted}</p>
-                  <p><strong>Actual Hours:</strong> Sum of daily hours from clock records up to today = {currentMonthTotalFormatted}</p>
-                  <p><strong>Difference:</strong> Actual Hours - Expected Hours = {differenceMinutes > 0 ? '+' : ''}{differenceFormatted}</p>
+                  <p><strong>Expected Hours:</strong> 8.5 hours/day × Days = 8.5h/day × {perf.daysToCount} days = {expectedFormatted}</p>
+                  <p><strong>Actual Hours:</strong> Sum of daily hours from clock records = {currentMonthTotalFormatted}</p>
+                  <p><strong>Difference:</strong> Actual Hours - Expected Hours = {perf.differenceMinutes > 0 ? '+' : ''}{differenceFormatted}</p>
                 </div>
               </div>
             </div>

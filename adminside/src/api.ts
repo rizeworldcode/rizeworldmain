@@ -131,6 +131,15 @@ export const addWalletTransaction = (transactionData: any) =>
     method: 'POST',
     body: JSON.stringify(transactionData),
   });
+export const updateWalletTransaction = (id: string, transactionData: any) =>
+  apiRequest(`/transactions/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(transactionData),
+  });
+export const deleteWalletTransaction = (id: string) =>
+  apiRequest(`/transactions/${id}`, {
+    method: 'DELETE',
+  });
 
 export const toggleStaffTask = (staffId: string, taskIndex: number) =>
   apiRequest(`/staff/${staffId}/toggle-task`, {
@@ -184,6 +193,8 @@ export default {
   adminLogout,
   getWalletTransactions,
   addWalletTransaction,
+  updateWalletTransaction,
+  deleteWalletTransaction,
   toggleStaffTask,
   addStaffExtraTask,
   submitStaffReport,

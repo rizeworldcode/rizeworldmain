@@ -418,6 +418,59 @@ exports.deleteStaff = async (req, res) => {
   }
 };
 
+// Rejoin staff
+exports.rejoinStaff = async (req, res) => {
+  try {
+    const staff = await Staff.findById(req.params.id);
+    if (!staff) {
+      return res.status(404).json({
+        success: false,
+        message: 'Staff not found'
+      });
+    }
+
+    staff.isRemoved = false;
+    staff.removedAt = null;
+
+    // Clean request body - remove empty strings and undefined values
+    const updateData = {};
+    Object.keys(req.body).forEach(key => {
+      const value = req.body[key];
+      if (value !== '' && value !== undefined && value !== null) {
+        updateData[key] = value;
+      }
+    });
+
+    // Process documents
+    if (updateData.documents && Array.isArray(updateData.documents)) {
+      updateData.documents = updateData.documents.map(doc => {
+        if (typeof doc === 'string') {
+          return { name: doc, path: '' };
+        }
+        return doc;
+      });
+    }
+
+    // Apply updates
+    Object.keys(updateData).forEach(key => {
+      staff[key] = updateData[key];
+    });
+
+    const updatedStaff = await staff.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Staff member rejoined successfully',
+      data: updatedStaff
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
 // Helper function to format time
 const formatTime = (date) => {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Wallet, Plus, IndianRupee, CreditCard, Filter } from 'lucide-react';
-import { getWalletTransactions, addWalletTransaction } from '../api';
+import { Wallet, Plus, IndianRupee, CreditCard, Filter, Edit2, Trash2 } from 'lucide-react';
+import { getWalletTransactions, addWalletTransaction, updateWalletTransaction, deleteWalletTransaction } from '../api';
 
 const WalletPage = () => {
   const [transactions, setTransactions] = useState([]);
@@ -18,6 +18,12 @@ const WalletPage = () => {
     utrNumber: '',
     description: '',
   });
+
+  const [editingTransaction, setEditingTransaction] = useState(null);
+
+  const editUtrTrimmed = (editingTransaction?.utrNumber || '').trim();
+  const isEditUtrInvalid = editingTransaction?.mode === 'online' && (editUtrTrimmed.length < 12 || editUtrTrimmed.length > 16);
+  const showEditUtrError = editingTransaction?.mode === 'online' && editingTransaction?.utrNumber !== '' && (editUtrTrimmed.length < 12 || editUtrTrimmed.length > 16);
 
   useEffect(() => {
     fetchTransactions();
@@ -77,6 +83,62 @@ const WalletPage = () => {
       }
     } catch (error) {
       console.error('Error adding transaction:', error);
+    }
+  };
+
+  const handleOpenEditModal = (transaction) => {
+    const formattedDate = new Date(transaction.date).toISOString().split('T')[0];
+    setEditingTransaction({
+      ...transaction,
+      date: formattedDate,
+      utrNumber: transaction.utrNumber || '',
+    });
+  };
+
+  const handleUpdateTransaction = async (e) => {
+    e.preventDefault();
+    if (editingTransaction.mode === 'online') {
+      const utrVal = (editingTransaction.utrNumber || '').trim();
+      if (!utrVal || utrVal.length < 12 || utrVal.length > 16) {
+        alert('Error: UTR number must be between 12 and 16 characters.');
+        return;
+      }
+    }
+    try {
+      const payload = {
+        ...editingTransaction,
+        type: editingTransaction.source,
+        amount: parseFloat(editingTransaction.amount),
+      };
+      if (payload.mode === 'cash') {
+        payload.method = 'cash';
+        payload.utrNumber = '';
+      }
+      const result = await updateWalletTransaction(editingTransaction._id, payload);
+      if (result.success) {
+        setEditingTransaction(null);
+        fetchTransactions();
+      } else {
+        alert(result.message || 'Failed to update transaction');
+      }
+    } catch (error) {
+      console.error('Error updating transaction:', error);
+      alert('Error updating transaction');
+    }
+  };
+
+  const handleDeleteTransaction = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this transaction?')) return;
+    try {
+      const result = await deleteWalletTransaction(id);
+      if (result.success) {
+        fetchTransactions();
+      } else {
+        alert(result.message || 'Failed to delete transaction');
+      }
+    } catch (error) {
+      console.error('Error deleting transaction:', error);
+      alert('Error deleting transaction');
     }
   };
 
@@ -235,18 +297,21 @@ const WalletPage = () => {
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">
                   UTR
                 </th>
+                <th className="px-6 py-4 text-right text-sm font-semibold text-gray-700 dark:text-gray-300">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-white/10">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
                     Loading transactions...
                   </td>
                 </tr>
               ) : transactions.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
                     No transactions yet
                   </td>
                 </tr>
@@ -302,6 +367,24 @@ const WalletPage = () => {
                     </td>
                     <td className="px-6 py-4 text-gray-500 font-mono">
                       {transaction.utrNumber || '-'}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex justify-end gap-2">
+                        <button
+                          onClick={() => handleOpenEditModal(transaction)}
+                          className="p-2 text-blue-600 hover:bg-blue-50 dark:text-blue-450 dark:hover:bg-white/10 rounded-lg transition-colors"
+                          title="Edit Transaction"
+                        >
+                          <Edit2 size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteTransaction(transaction._id)}
+                          className="p-2 text-rose-600 hover:bg-rose-50 dark:text-rose-455 dark:hover:bg-white/10 rounded-lg transition-colors"
+                          title="Delete Transaction"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -462,6 +545,171 @@ const WalletPage = () => {
                   }`}
                 >
                   Add Transaction
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Edit Transaction Modal */}
+      {editingTransaction && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setEditingTransaction(null)}
+          />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="relative glass p-6 sm:p-8 rounded-2xl max-w-md w-full mx-auto max-h-[90vh] flex flex-col shadow-2xl overflow-hidden"
+          >
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 shrink-0">
+              Edit Transaction
+            </h2>
+            <form onSubmit={handleUpdateTransaction} className="flex-1 flex flex-col min-h-0">
+              <div className="space-y-4 overflow-y-auto pr-1 flex-1 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Type
+                  </label>
+                  {editingTransaction.source === 'client_payment' ? (
+                    <div className="w-full px-4 py-3 rounded-xl bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-500 dark:text-gray-400 font-semibold">
+                      Client Payment (Income)
+                    </div>
+                  ) : (
+                    <select
+                      value={editingTransaction.source}
+                      onChange={(e) => setEditingTransaction({ ...editingTransaction, source: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white"
+                    >
+                      <option value="salary" className="text-gray-900 dark:bg-gray-800 dark:text-white">Salary Payment</option>
+                      <option value="other_expenses" className="text-gray-900 dark:bg-gray-800 dark:text-white">Other Expenses</option>
+                      <option value="income" className="text-gray-900 dark:bg-gray-800 dark:text-white">Other Income</option>
+                    </select>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    {editingTransaction.source === 'client_payment' ? 'Client Name (Read-Only)' : editingTransaction.source === 'other_expenses' ? 'Expense Name / Payee' : 'Name'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    disabled={editingTransaction.source === 'client_payment'}
+                    value={editingTransaction.name}
+                    onChange={(e) => setEditingTransaction({ ...editingTransaction, name: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white disabled:opacity-60"
+                    placeholder="e.g., John Doe"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Amount
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    value={editingTransaction.amount}
+                    onChange={(e) => setEditingTransaction({ ...editingTransaction, amount: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white"
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Date
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={editingTransaction.date}
+                    onChange={(e) => setEditingTransaction({ ...editingTransaction, date: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Mode
+                  </label>
+                  <select
+                    value={editingTransaction.mode}
+                    onChange={(e) => setEditingTransaction({ ...editingTransaction, mode: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white"
+                  >
+                    <option value="online" className="text-gray-900 dark:bg-gray-800 dark:text-white">Online</option>
+                    <option value="cash" className="text-gray-900 dark:bg-gray-800 dark:text-white">Cash</option>
+                  </select>
+                </div>
+                {editingTransaction.mode === 'online' && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Method
+                      </label>
+                      <select
+                        value={editingTransaction.method}
+                        onChange={(e) => setEditingTransaction({ ...editingTransaction, method: e.target.value })}
+                        className="w-full px-4 py-3 rounded-xl bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white"
+                      >
+                        <option value="phonepe" className="text-gray-900 dark:bg-gray-800 dark:text-white">PhonePe</option>
+                        <option value="paytm" className="text-gray-900 dark:bg-gray-800 dark:text-white">Paytm</option>
+                        <option value="google_pay" className="text-gray-900 dark:bg-gray-800 dark:text-white">Google Pay</option>
+                        <option value="bank_transfer" className="text-gray-900 dark:bg-gray-800 dark:text-white">Bank Transfer</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        UTR Number
+                      </label>
+                      <input
+                        type="text"
+                        value={editingTransaction.utrNumber}
+                        onChange={(e) => setEditingTransaction({ ...editingTransaction, utrNumber: e.target.value })}
+                        className={`w-full px-4 py-3 rounded-xl bg-white dark:bg-white/5 border text-gray-900 dark:text-white ${
+                          showEditUtrError ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-200 dark:border-white/10'
+                        }`}
+                        placeholder="e.g., 123456789012"
+                      />
+                      {showEditUtrError && (
+                        <p className="text-[11px] text-red-500 font-semibold mt-1">
+                          UTR number must be between 12 and 16 characters. (Current length: {editUtrTrimmed.length})
+                        </p>
+                      )}
+                    </div>
+                  </>
+                )}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Description (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={editingTransaction.description || ''}
+                    onChange={(e) => setEditingTransaction({ ...editingTransaction, description: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white"
+                    placeholder="Enter description"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-white/10 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setEditingTransaction(null)}
+                  className="flex-1 px-6 py-3 rounded-xl border border-gray-200 dark:border-white/10 text-gray-700 dark:text-gray-300 font-semibold hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isEditUtrInvalid}
+                  className={`flex-1 px-6 py-3 rounded-xl font-semibold shadow-lg transition-all ${
+                    isEditUtrInvalid
+                      ? 'bg-gray-300 dark:bg-white/10 text-gray-500 dark:text-gray-400 cursor-not-allowed shadow-none'
+                      : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-blue-500/20 hover:shadow-blue-500/30'
+                  }`}
+                >
+                  Save Changes
                 </button>
               </div>
             </form>
