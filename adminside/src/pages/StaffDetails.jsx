@@ -448,6 +448,21 @@ const calculatePayout = (staffInfo) => {
     }
   });
 
+  // Credit 8.5 hrs for manual daily attendance marked as 'On Leave'
+  (staffInfo.attendance || []).forEach(att => {
+    const attDate = new Date(att.date);
+    if (
+      att.status === 'On Leave' &&
+      attDate.getMonth() === currentMonth &&
+      attDate.getFullYear() === currentYear &&
+      attDate <= today &&
+      !creditedDates.has(attDate.toDateString())
+    ) {
+      totalHoursWorked += STANDARD_HOURS_PER_DAY;
+      creditedDates.add(attDate.toDateString());
+    }
+  });
+
   // --- Step 4: Find truly absent days (from startDay, no clock, not Sunday, not admin leave) ---
   const absentDays = [];
   for (let day = startDay; day <= today.getDate(); day++) {

@@ -94,97 +94,7 @@ const formatSelectedDateNice = (dateInputStr) => {
   return d.toLocaleDateString('default', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 };
 
-const calculateMonthPerformance = (staff, monthStr) => {
-  if (!staff || !monthStr) return null;
-
-  const match = monthStr.match(/([A-Za-z]+)\s+(\d+)/);
-  if (!match) return null;
-  const monthName = match[1];
-  const year = parseInt(match[2]);
-  const monthIndex = new Date(Date.parse(monthName + " 1, 2012")).getMonth();
-
-  const today = new Date();
-  const isCurrentMonth = today.getMonth() === monthIndex && today.getFullYear() === year;
-
-  // Days to calculate for
-  let daysToCount = new Date(year, monthIndex + 1, 0).getDate();
-  if (isCurrentMonth) {
-    daysToCount = today.getDate();
-  }
-
-  const STANDARD_HOURS_PER_DAY = 8.5;
-  const expectedMinutes = daysToCount * STANDARD_HOURS_PER_DAY * 60;
-
-  // Filter clock records for this month
-  const monthlyClockRecords = (staff.clock || []).filter(r => {
-    const d = new Date(r.date);
-    return d.getMonth() === monthIndex && d.getFullYear() === year;
-  });
-
-  const parseTotalHours = (str) => {
-    if (!str || str === '-') return 0;
-    const h = str.match(/(\d+)\s*h/i);
-    const m = str.match(/(\d+)\s*m/i);
-    return (h ? parseInt(h[1]) : 0) + (m ? parseInt(m[1]) / 60 : 0);
-  };
-
-  let totalHoursWorked = 0;
-  monthlyClockRecords.forEach(r => {
-    const actualHrs = parseTotalHours(r.totalHours);
-    if (actualHrs > 9) {
-      totalHoursWorked += 8.5 + (actualHrs - 9);
-    } else if (actualHrs >= 8.5) {
-      totalHoursWorked += 8.5;
-    } else {
-      totalHoursWorked += actualHrs;
-    }
-  });
-
-  const creditedDates = new Set(monthlyClockRecords.map(r => new Date(r.date).toDateString()));
-
-  // Start day (if added this month)
-  const createdAt = staff.createdAt ? new Date(staff.createdAt) : null;
-  const startDay = (
-    createdAt &&
-    createdAt.getMonth() === monthIndex &&
-    createdAt.getFullYear() === year
-  ) ? createdAt.getDate() : 1;
-
-  // Credit Sundays
-  const endDay = isCurrentMonth ? today.getDate() : new Date(year, monthIndex + 1, 0).getDate();
-  for (let day = startDay; day <= endDay; day++) {
-    const d = new Date(year, monthIndex, day);
-    if (d.getDay() === 0 && !creditedDates.has(d.toDateString())) {
-      totalHoursWorked += STANDARD_HOURS_PER_DAY;
-      creditedDates.add(d.toDateString());
-    }
-  }
-
-  // Credit admin-declared leaves
-  (staff.leaves || []).forEach(leave => {
-    const ld = new Date(leave.date);
-    if (ld.getMonth() === monthIndex && ld.getFullYear() === year) {
-      if (isCurrentMonth && ld > today) return;
-      if (!creditedDates.has(ld.toDateString())) {
-        totalHoursWorked += STANDARD_HOURS_PER_DAY;
-        creditedDates.add(ld.toDateString());
-      }
-    }
-  });
-
-  const totalMinutes = totalHoursWorked * 60;
-  const differenceMinutes = totalMinutes - expectedMinutes;
-
-  return {
-    expectedMinutes,
-    actualMinutes: totalMinutes,
-    differenceMinutes,
-    daysToCount,
-    isCurrentMonth
-  };
-};
-
-const calculateMonthMetrics = (staff, monthStr) => {
+const calculateDetailedMonthData = (staff, monthStr) => {
   if (!staff || !monthStr) return null;
 
   const cleanMonth = monthStr.replace(/\s*\(Current\)/i, '').trim();
@@ -194,21 +104,10 @@ const calculateMonthMetrics = (staff, monthStr) => {
     return hCleaned === cleanMonth;
   });
 
-  if (paidHistory) {
-    return {
-      month: monthStr,
-      presents: 30 - (paidHistory.totalLeaves + paidHistory.totalHalfDays),
-      leaves: paidHistory.totalLeaves,
-      halfDays: paidHistory.totalHalfDays,
-      casualLeaveUsed: paidHistory.casualLeavesUsed ? 'Yes' : 'No',
-      deduction: paidHistory.baseSalary - paidHistory.payoutSalary,
-      finalPayout: paidHistory.payoutSalary,
-      attendancePercentage: Math.round(((30 - paidHistory.totalLeaves - (paidHistory.totalHalfDays * 0.5)) / 30) * 100),
-      totalHoursWorked: '-',
-      hourlyRate: Math.round((paidHistory.baseSalary / 255) * 100) / 100,
-      baseSalary: paidHistory.baseSalary
-    };
-  }
+  const baseSalary = paidHistory ? paidHistory.baseSalary : (staff.monthlySalary || 0);
+  const STANDARD_HOURS_PER_DAY = 8.5;
+  const EXPECTED_MONTHLY_HOURS = STANDARD_HOURS_PER_DAY * 30;
+  const hourlyRate = baseSalary / EXPECTED_MONTHLY_HOURS;
 
   const match = cleanMonth.match(/([A-Za-z]+)\s+(\d+)/);
   if (!match) return null;
@@ -219,10 +118,39 @@ const calculateMonthMetrics = (staff, monthStr) => {
   const today = new Date();
   const isCurrentMonth = today.getMonth() === monthIndex && today.getFullYear() === year;
 
-  const baseSalary = staff.monthlySalary || 0;
-  const STANDARD_HOURS_PER_DAY = 8.5;
-  const EXPECTED_MONTHLY_HOURS = STANDARD_HOURS_PER_DAY * 30;
-  const hourlyRate = baseSalary / EXPECTED_MONTHLY_HOURS;
+  let daysToCount = new Date(year, monthIndex + 1, 0).getDate();
+  if (isCurrentMonth) {
+    daysToCount = today.getDate();
+  }
+
+  const expectedMinutes = daysToCount * STANDARD_HOURS_PER_DAY * 60;
+
+  if (paidHistory) {
+    const presents = 30 - (paidHistory.totalLeaves + paidHistory.totalHalfDays);
+    const leaves = paidHistory.totalLeaves;
+    const halfDays = paidHistory.totalHalfDays;
+    const finalPayout = paidHistory.payoutSalary;
+    const deduction = baseSalary - finalPayout;
+    const attendancePercentage = Math.round(((30 - leaves - (halfDays * 0.5)) / 30) * 100);
+
+    return {
+      expectedMinutes,
+      actualMinutes: presents * STANDARD_HOURS_PER_DAY * 60,
+      differenceMinutes: 0,
+      daysToCount,
+      isCurrentMonth,
+      presents,
+      leaves,
+      halfDays,
+      casualLeaveUsed: paidHistory.casualLeavesUsed ? 'Yes' : 'No',
+      deduction,
+      finalPayout,
+      attendancePercentage: Math.min(100, attendancePercentage),
+      totalHoursWorked: '-',
+      hourlyRate: Math.round(hourlyRate * 100) / 100,
+      baseSalary
+    };
+  }
 
   const monthlyClockRecords = (staff.clock || []).filter(r => {
     const d = new Date(r.date);
@@ -277,50 +205,44 @@ const calculateMonthMetrics = (staff, monthStr) => {
     }
   });
 
-  let halfDays = 0;
-  let fullLeaves = 0;
-  let casualLeaveUsed = 0;
-
   (staff.attendance || []).forEach(att => {
-    const ad = new Date(att.date);
-    if (ad.getMonth() === monthIndex && ad.getFullYear() === year) {
-      if (att.status === 'Half-Day') halfDays++;
-      else if (att.status === 'On Leave') {
-        fullLeaves++;
-        if (att.leaveType === 'CL') casualLeaveUsed++;
+    const ld = new Date(att.date);
+    if (att.status === 'On Leave' && ld.getMonth() === monthIndex && ld.getFullYear() === year) {
+      if (isCurrentMonth && ld > today) return;
+      if (!creditedDates.has(ld.toDateString())) {
+        totalHoursWorked += STANDARD_HOURS_PER_DAY;
+        creditedDates.add(ld.toDateString());
       }
     }
   });
 
-  if (!isCurrentMonth) {
-    const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
-    for (let day = 1; day <= daysInMonth; day++) {
-      const d = new Date(year, monthIndex, day);
-      if (d.getDay() === 0) continue;
+  const absentDaysList = [];
+  for (let day = startDay; day <= endDay; day++) {
+    const d = new Date(year, monthIndex, day);
+    if (d.getDay() === 0) continue;
+    if (!creditedDates.has(d.toDateString())) absentDaysList.push(d);
+  }
 
-      const dateStr = d.toDateString();
-      const hasClock = (staff.clock || []).some(r => new Date(r.date).toDateString() === dateStr);
-      const hasAtt = (staff.attendance || []).some(a => new Date(a.date).toDateString() === dateStr);
-      const hasLeave = (staff.leaves || []).some(l => new Date(l.date).toDateString() === dateStr);
+  const halfDayRecords = (staff.attendance || []).filter(att => {
+    const d = new Date(att.date);
+    return att.status === 'Half-Day' && d.getMonth() === monthIndex && d.getFullYear() === year && (!isCurrentMonth || d <= today);
+  });
+  const halfDayLeaveUnits = Math.floor(halfDayRecords.length / 2);
 
-      if (!hasClock && !hasAtt && !hasLeave) {
-        fullLeaves++;
-      }
+  let casualLeaveUsed = false;
+  if (absentDaysList.length > 0) {
+    totalHoursWorked += STANDARD_HOURS_PER_DAY;
+    creditedDates.add(absentDaysList[0].toDateString());
+    casualLeaveUsed = true;
+  } else if (halfDayLeaveUnits > 0) {
+    for (let i = 0; i < 2; i++) {
+      const hdDate = new Date(halfDayRecords[i].date);
+      const cr = monthlyClockRecords.find(r => new Date(r.date).toDateString() === hdDate.toDateString());
+      const actualHrs = cr ? parseTotalHours(cr.totalHours) : 0;
+      const halfTarget = STANDARD_HOURS_PER_DAY / 2;
+      if (actualHrs < halfTarget) totalHoursWorked += halfTarget - actualHrs;
     }
-  } else {
-    for (let day = startDay; day <= today.getDate(); day++) {
-      const d = new Date(year, monthIndex, day);
-      if (d.getDay() === 0) continue;
-
-      const dateStr = d.toDateString();
-      const hasClock = (staff.clock || []).some(r => new Date(r.date).toDateString() === dateStr);
-      const hasAtt = (staff.attendance || []).some(a => new Date(a.date).toDateString() === dateStr);
-      const hasLeave = (staff.leaves || []).some(l => new Date(l.date).toDateString() === dateStr);
-
-      if (!hasClock && !hasAtt && !hasLeave) {
-        fullLeaves++;
-      }
-    }
+    casualLeaveUsed = true;
   }
 
   const presents = monthlyClockRecords.length;
@@ -329,11 +251,15 @@ const calculateMonthMetrics = (staff, monthStr) => {
   const attendancePercentage = Math.round((totalHoursWorked / EXPECTED_MONTHLY_HOURS) * 100);
 
   return {
-    month: monthStr,
+    expectedMinutes,
+    actualMinutes: totalHoursWorked * 60,
+    differenceMinutes: (totalHoursWorked * 60) - expectedMinutes,
+    daysToCount,
+    isCurrentMonth,
     presents,
-    leaves: fullLeaves,
-    halfDays,
-    casualLeaveUsed: casualLeaveUsed > 0 ? 'Yes' : 'No',
+    leaves: Math.max(0, absentDaysList.length - (casualLeaveUsed && absentDaysList.length > 0 ? 1 : 0)),
+    halfDays: halfDayRecords.length,
+    casualLeaveUsed: casualLeaveUsed ? 'Yes' : 'No',
     deduction,
     finalPayout,
     attendancePercentage: Math.min(100, attendancePercentage),
@@ -341,6 +267,14 @@ const calculateMonthMetrics = (staff, monthStr) => {
     hourlyRate: Math.round(hourlyRate * 100) / 100,
     baseSalary
   };
+};
+
+const calculateMonthPerformance = (staff, monthStr) => {
+  return calculateDetailedMonthData(staff, monthStr);
+};
+
+const calculateMonthMetrics = (staff, monthStr) => {
+  return calculateDetailedMonthData(staff, monthStr);
 };
 
 const htmlToPDF = async (html, filename) => {
@@ -826,6 +760,21 @@ const StaffPerformance = ({ staffId, onBack }) => {
         if (ld.getMonth() === currentMonth && ld.getFullYear() === currentYear && ld <= today && !creditedDates.has(ld.toDateString())) {
           totalHoursWorked += STANDARD_HOURS_PER_DAY;
           creditedDates.add(ld.toDateString());
+        }
+      });
+
+      // Credit 8.5 hrs for manual daily attendance marked as 'On Leave'
+      (staff.attendance || []).forEach(att => {
+        const attDate = new Date(att.date);
+        if (
+          att.status === 'On Leave' &&
+          attDate.getMonth() === currentMonth &&
+          attDate.getFullYear() === currentYear &&
+          attDate <= today &&
+          !creditedDates.has(attDate.toDateString())
+        ) {
+          totalHoursWorked += STANDARD_HOURS_PER_DAY;
+          creditedDates.add(attDate.toDateString());
         }
       });
 
