@@ -155,6 +155,46 @@ exports.getAllStaff = async (req, res) => {
   }
 };
 
+// Verify salary sheet password
+exports.verifySalaryPassword = async (req, res) => {
+  try {
+    const { password } = req.body;
+    const correctPassword = process.env.SALARY_SHEET_PASSWORD;
+
+    if (!correctPassword) {
+      return res.status(500).json({ success: false, message: 'Salary sheet password not configured on server.' });
+    }
+
+    if (password !== correctPassword) {
+      return res.status(401).json({ success: false, message: 'Incorrect password. Access denied.' });
+    }
+
+    res.status(200).json({ success: true, message: 'Access granted.' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Get salary sheet (all active staff base salaries + payout data)
+exports.getSalarySheet = async (req, res) => {
+  try {
+    const staff = await Staff.find({ isRemoved: { $ne: true } })
+      .select('name employeeId department jobType monthlySalary joiningDate clock attendance leaves createdAt')
+      .sort({ department: 1, name: 1 });
+
+    const totalPayroll = staff.reduce((sum, s) => sum + (s.monthlySalary || 0), 0);
+
+    res.status(200).json({
+      success: true,
+      count: staff.length,
+      totalPayroll,
+      data: staff
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // Get removed staff
 exports.getRemovedStaff = async (req, res) => {
   try {

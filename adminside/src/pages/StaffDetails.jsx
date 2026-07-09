@@ -134,16 +134,6 @@ const EditStaffModal = ({ isOpen, onClose, staffMember, onUpdate }) => {
               </div>
             </div>
 
-            {/* Editable fields */}
-            <div>
-              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block mb-1.5">Monthly Salary (₹)</label>
-              <input
-                type="number"
-                className="w-full bg-black/5 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:border-blue-500 outline-none transition-all"
-                value={formData.monthlySalary}
-                onChange={(e) => setFormData({ ...formData, monthlySalary: e.target.value })}
-              />
-            </div>
 
             <div>
               <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block mb-1.5">Department</label>
@@ -225,17 +215,6 @@ const EditStaffModal = ({ isOpen, onClose, staffMember, onUpdate }) => {
               />
             </div>
 
-            <div>
-              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block mb-1.5">Salary Status</label>
-              <select
-                className="w-full bg-black/5 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:border-blue-500 outline-none transition-all"
-                value={formData.salaryStatus}
-                onChange={(e) => setFormData({ ...formData, salaryStatus: e.target.value })}
-              >
-                <option value="Paid" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Paid</option>
-                <option value="Pending" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Pending</option>
-              </select>
-            </div>
 
             <div>
               <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block mb-1.5">
@@ -621,7 +600,7 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
   const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedStaffForPerformance, setSelectedStaffForPerformance] = useState(null);
-  
+
   // Salary modal state
   const [isSalaryModalOpen, setIsSalaryModalOpen] = useState(false);
   const [selectedStaffForSalary, setSelectedStaffForSalary] = useState(null);
@@ -706,7 +685,7 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
       const token = localStorage.getItem('adminToken');
       const response = await fetch(`http://localhost:45000/api/staff/${member._id}/clock-in`, {
         method: 'PATCH',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         }
@@ -740,7 +719,7 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
       const token = localStorage.getItem('adminToken');
       const response = await fetch(`http://localhost:45000/api/staff/${member._id}/clock-out`, {
         method: 'PATCH',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
@@ -894,8 +873,6 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {[
           { label: 'Total Staff', value: filteredStaff.length, icon: Users, color: 'blue' },
-          { label: 'Total Monthly Salary', value: `₹${filteredStaff.reduce((acc, curr) => acc + curr.monthlySalary, 0)}`, icon: IndianRupee, color: 'emerald' },
-          { label: 'Pending Salaries', value: filteredStaff.filter(s => s.salaryStatus === 'Pending').length, icon: Clock, color: 'orange' },
         ].map((stat, index) => (stat && (
           <div key={index} className="glass p-6 rounded-3xl border border-gray-200 dark:border-white/10 transition-colors">
             <div className="flex items-center gap-4">
@@ -937,8 +914,7 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
               <tr className="border-b border-gray-100 dark:border-white/10 bg-black/5 dark:bg-white/5">
                 <th className="px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Employee Info</th>
                 <th className="px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Department & Role</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Base Salary</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-emerald-500 dark:text-emerald-400 uppercase tracking-widest">Payout Salary</th>
+
                 {/* <th className="px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Current Month Hours</th> */}
                 <th className="px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Joining Date</th>
                 <th className="px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Documents</th>
@@ -976,7 +952,7 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
                         </div>
                       </div>
                     </td>
-                     <td className="px-6 py-4">
+                    <td className="px-6 py-4">
                       {(() => {
                         const reportingPersonIds = Array.isArray(member.reportingPerson)
                           ? member.reportingPerson
@@ -1006,45 +982,18 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
                               {reportingPersonIds.length > 0 && (
                                 <span className="flex items-center gap-1 font-semibold text-gray-700 dark:text-gray-300" title={`IDs: ${reportingPersonIds.join(', ')}`}>
                                   Repo: {managerNames || '-'}
-                                
+
                                 </span>
                               )}
                               {/* Show admissions count if role is Counselor */}
                               {member.role === 'Counselor' && (
                                 <span className="flex items-center gap-1 font-semibold text-amber-600 dark:text-amber-400">
-                                  <Users size={12} className="text-amber-500" /> 
+                                  <Users size={12} className="text-amber-500" />
                                   Admissions: {member.admissionsCount || 0}
                                 </span>
                               )}
                             </div>
                           </div>
-                        );
-                      })()}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-bold text-gray-900 dark:text-white">₹{member.monthlySalary}</div>
-                      <div className={`text-[10px] font-bold uppercase tracking-wider mt-1 ${member.salaryStatus === 'Paid' ? 'text-emerald-600 dark:text-emerald-500' : 'text-orange-600 dark:text-orange-500'
-                        }`}>
-                        {member.salaryStatus}
-                      </div>
-                    </td>
-                     <td className="px-6 py-4">
-                      {(() => {
-                        const payoutData = calculatePayout(member);
-                        const { payout, totalHoursWorked, daysWorked, hourlyRate, fullLeaves, halfDays, casualLeaveUsed } = payoutData;
-                        return (
-                          <>
-                            <div className="text-lg font-black text-emerald-600 dark:text-emerald-400">₹{payout.toLocaleString('en-IN')}</div>
-                            <div className="flex flex-col gap-0.5 mt-1">
-                              <span className="text-[9px] font-bold text-gray-500 uppercase tracking-tighter">Calculated Payout</span>
-                              <div className="flex flex-col gap-0.5 mt-0.5 text-[8px] text-gray-500">
-                                <span>Hours Worked: {totalHoursWorked} h</span>
-                                <span>Rate: ₹{hourlyRate}/h</span>
-                                <span>Days Worked: {daysWorked} | Absent: {fullLeaves} | Half-days: {halfDays}</span>
-                                {casualLeaveUsed && <span className="font-bold text-amber-600">1 Casual Leave Applied!</span>}
-                              </div>
-                            </div>
-                          </>
                         );
                       })()}
                     </td>
@@ -1199,21 +1148,19 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
                   <div className="flex gap-2">
                     <button
                       onClick={() => setSalaryPaymentDetails({ ...salaryPaymentDetails, mode: 'cash', method: 'cash' })}
-                      className={`flex-1 px-4 py-3 rounded-xl text-sm font-bold transition-all ${
-                        salaryPaymentDetails.mode === 'cash'
+                      className={`flex-1 px-4 py-3 rounded-xl text-sm font-bold transition-all ${salaryPaymentDetails.mode === 'cash'
                           ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20'
                           : 'bg-black/5 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-700 dark:text-gray-300'
-                      }`}
+                        }`}
                     >
                       Cash
                     </button>
                     <button
                       onClick={() => setSalaryPaymentDetails({ ...salaryPaymentDetails, mode: 'online' })}
-                      className={`flex-1 px-4 py-3 rounded-xl text-sm font-bold transition-all ${
-                        salaryPaymentDetails.mode === 'online'
+                      className={`flex-1 px-4 py-3 rounded-xl text-sm font-bold transition-all ${salaryPaymentDetails.mode === 'online'
                           ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
                           : 'bg-black/5 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-700 dark:text-gray-300'
-                      }`}
+                        }`}
                     >
                       Online
                     </button>

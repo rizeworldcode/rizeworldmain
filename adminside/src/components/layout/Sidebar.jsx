@@ -12,7 +12,8 @@ import {
   Trash2,
   MapPin,
   Camera,
-  CreditCard
+  CreditCard,
+  ShieldCheck
 } from 'lucide-react';
 
 const navItems = [
@@ -26,6 +27,7 @@ const navItems = [
   { icon: MapPin, label: 'Sales Tracking', id: 'salesTracking' },
   { icon: Camera, label: 'Sales Photos', id: 'salesPhotos' },
   { icon: CreditCard, label: 'Visiting Cards', id: 'visitingCards' },
+  { icon: ShieldCheck, label: 'Salary Sheet', id: 'salarySheet' },
   // { icon: Settings, label: 'Settings', id: 'settings' },
 ];
 

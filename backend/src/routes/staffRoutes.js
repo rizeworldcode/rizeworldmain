@@ -29,13 +29,19 @@ const {
   createAdmission,
   getAllAdmissions,
   updateAdmission,
-  deleteAdmission
+  deleteAdmission,
+  verifySalaryPassword,
+  getSalarySheet
 } = require('../controllers/staffController');
 const { protect } = require('../middleware/authMiddleware');
 const { requireOfficeWifi } = require('../middleware/officeWifi');
 const upload = require('../middleware/upload');
 
 router.post('/login', loginStaff);
+
+// Salary sheet routes (password-verified, no JWT needed for verify)
+router.post('/salary-sheet/verify', verifySalaryPassword);
+router.get('/salary-sheet', protect, getSalarySheet);
 
 router.use(protect);
 

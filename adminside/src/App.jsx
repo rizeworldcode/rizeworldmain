@@ -15,6 +15,7 @@ import AdminLogin from './pages/AdminLogin';
 import SalesTracking from './pages/SalesTracking';
 import SalesPhotos from './pages/SalesPhotos';
 import VisitingCards from './pages/VisitingCards';
+import SalarySheet from './pages/SalarySheet';
 import { adminLogout } from './api';
 
 
@@ -54,6 +55,7 @@ function App() {
     if (pathname.startsWith('/tracking/photos')) return 'salesPhotos';
     if (pathname.startsWith('/tracking/cards')) return 'visitingCards';
     if (pathname.startsWith('/tracking')) return 'salesTracking';
+    if (pathname.startsWith('/salary-sheet')) return 'salarySheet';
     if (pathname.startsWith('/settings')) return 'settings';
     return '';
   };
@@ -105,6 +107,7 @@ function App() {
                 else if (tab === 'salesTracking') navigate('/tracking');
                 else if (tab === 'salesPhotos') navigate('/tracking/photos');
                 else if (tab === 'visitingCards') navigate('/tracking/cards');
+                else if (tab === 'salarySheet') navigate('/salary-sheet');
                 else if (tab === 'settings') navigate('/settings');
               }}
             />
@@ -141,6 +144,7 @@ function App() {
                       else if (tab === 'salesTracking') navigate('/tracking');
                       else if (tab === 'salesPhotos') navigate('/tracking/photos');
                       else if (tab === 'visitingCards') navigate('/tracking/cards');
+                      else if (tab === 'salarySheet') navigate('/salary-sheet');
                       else if (tab === 'settings') navigate('/settings');
                       setIsMobileMenuOpen(false);
                     }}
@@ -202,6 +206,9 @@ function App() {
                     } />
                     <Route path="/tracking/cards" element={
                       <VisitingCards />
+                    } />
+                    <Route path="/salary-sheet" element={
+                      <SalarySheet />
                     } />
                     <Route path="/settings" element={
                       <motion.div

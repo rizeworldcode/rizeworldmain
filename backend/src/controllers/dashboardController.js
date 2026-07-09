@@ -1,64 +1,70 @@
 const Client = require('../models/Client');
 const Staff = require('../models/Staff');
+const Transaction = require('../models/Transaction');
+
+const getUnifiedTransactions = async () => {
+  // 1. Fetch from Transaction model
+  const transactions = await Transaction.find();
+
+  // 2. Fetch client payment history
+  let clientPayments = [];
+  const clients = await Client.find({}, 'name email payments');
+
+  clients.forEach(client => {
+    (client.payments || []).forEach(payment => {
+      clientPayments.push({
+        _id: payment._id,
+        type: 'client_payment',
+        name: client.name,
+        amount: payment.amount,
+        date: payment.date,
+        mode: payment.mode,
+        method: payment.mode?.toLowerCase() === 'online' ? 'bank_transfer' : 'cash',
+        utrNumber: payment.utr || null,
+        referenceId: client._id,
+        referenceModel: 'Client',
+        description: `Payment from client: ${client.name}`,
+        source: 'client_payment',
+        createdAt: payment.date,
+      });
+    });
+  });
+
+  // 3. Merge and sort by date descending
+  return [
+    ...transactions.map(t => ({ ...t.toObject(), source: t.type })),
+    ...clientPayments,
+  ].sort((a, b) => new Date(b.date) - new Date(a.date));
+};
 
 exports.getDashboardStats = async (req, res) => {
   try {
     // Get total clients count
     const totalClients = await Client.countDocuments();
 
-    // Get total projects count (this might be same as clients if 1 client = 1 project,
-    // but the user's dashboard separates them. Let's assume projects = active clients or similar)
-    // Looking at Overview.jsx, it has Total Revenue, Total Client, Total Projects.
+    // Get total projects count
     const clients = await Client.find();
-    const totalProjects = clients.length; // Based on current implementation
-    
-    // Calculate total client revenue from payments (not from totalPrice)
-    let totalClientRevenue = 0;
-    let totalReceived = 0;
-    let allPayments = [];
+    const totalProjects = clients.length;
 
-    clients.forEach(client => {
-      // Current client payments
-      if (client.payments && client.payments.length > 0) {
-        allPayments = [...allPayments, ...client.payments];
-      }
+    // Get unified transactions
+    const allTransactions = await getUnifiedTransactions();
 
-      // History payments
-      if (client.history && client.history.length > 0) {
-        client.history.forEach(h => {
-          if (h.payments && h.payments.length > 0) {
-            allPayments = [...allPayments, ...h.payments];
-          }
-        });
-      }
-      
-      // Also add paidAmount for totalReceived (as before)
-      totalReceived += (client.paidAmount || 0);
-      if (client.history && client.history.length > 0) {
-        client.history.forEach(h => {
-          totalReceived += (h.paidAmount || 0);
-        });
-      }
-    });
+    // Calculate total income (client payments + other income)
+    const totalIncome = allTransactions
+      .filter(t => t.type === 'client_payment' || t.type === 'income' || t.source === 'client_payment')
+      .reduce((sum, t) => sum + t.amount, 0);
 
-    // Calculate total paid salary - use actual payout from salary history if available
-    const paidStaff = await Staff.find({ salaryStatus: 'Paid' });
-    const totalPaidSalary = paidStaff.reduce((acc, staff) => {
-      // If we have salary history, use the latest payout, else use base salary
-      if (staff.salaryHistory && staff.salaryHistory.length > 0) {
-        // Get the latest salary entry
-        const latestSalary = staff.salaryHistory[staff.salaryHistory.length - 1];
-        return acc + (latestSalary.payoutSalary || 0);
-      }
-      return acc + (staff.monthlySalary || 0);
-    }, 0);
+    // Calculate total expenses (salaries + other expenses)
+    const totalExpense = allTransactions
+      .filter(t => t.type === 'salary' || t.type === 'other_expenses' || t.source === 'salary' || t.source === 'other_expenses')
+      .reduce((sum, t) => sum + t.amount, 0);
 
+    const totalPaidSalary = allTransactions
+      .filter(t => t.type === 'salary' || t.source === 'salary')
+      .reduce((sum, t) => sum + t.amount, 0);
 
-    // Net revenue after deducting salaries
-    const totalRevenue =  Math.max(0, totalReceived-totalPaidSalary);
-
-
-
+    // Net balance = total income - total expense
+    const totalRevenue = totalIncome - totalExpense;
 
     res.status(200).json({
       success: true,
@@ -66,8 +72,8 @@ exports.getDashboardStats = async (req, res) => {
         totalClients,
         totalProjects,
         totalRevenue,
-        totalClientRevenue,
-        totalReceived,
+        totalClientRevenue: totalIncome,
+        totalReceived: totalIncome,
         totalPaidSalary
       }
     });
@@ -85,45 +91,23 @@ exports.getRevenueAnalytics = async (req, res) => {
     const validPeriods = ['day', 'week', 'month'];
     const selectedPeriod = validPeriods.includes(period) ? period : 'month';
 
-    const clients = await Client.find();
-    let allPayments = [];
+    const allTransactions = await getUnifiedTransactions();
 
-    clients.forEach(client => {
-      if (client.payments && client.payments.length > 0) {
-        client.payments.forEach(p => {
-          allPayments.push({
-            amount: p.amount || 0,
-            date: new Date(p.date) // force convert here
-          });
-        });
-      }
+    // Calculate total income (client payments + other income)
+    const totalIncome = allTransactions
+      .filter(t => t.type === 'client_payment' || t.type === 'income' || t.source === 'client_payment')
+      .reduce((sum, t) => sum + t.amount, 0);
 
-      if (client.history && client.history.length > 0) {
-        client.history.forEach(h => {
-          if (h.payments && h.payments.length > 0) {
-            h.payments.forEach(p => {
-              allPayments.push({
-                amount: p.amount || 0,
-                date: new Date(p.date) // force convert here too
-              });
-            });
-          }
-        });
-      }
-    });
+    // Calculate total expenses (salaries + other expenses)
+    const totalExpense = allTransactions
+      .filter(t => t.type === 'salary' || t.type === 'other_expenses' || t.source === 'salary' || t.source === 'other_expenses')
+      .reduce((sum, t) => sum + t.amount, 0);
 
+    const totalRevenue = totalIncome - totalExpense;
 
-
-    const paidStaff = await Staff.find({ salaryStatus: 'Paid' });
-    const totalPaidSalary = paidStaff.reduce((acc, staff) => {
-      if (staff.salaryHistory && staff.salaryHistory.length > 0) {
-        const latestSalary = staff.salaryHistory[staff.salaryHistory.length - 1];
-        return acc + (latestSalary.payoutSalary || 0);
-      }
-      return acc + (staff.monthlySalary || 0);
-    }, 0);
-    const totalClientRevenue = allPayments.reduce((acc, p) => acc + p.amount, 0);
-    const totalRevenue = totalClientRevenue - totalPaidSalary;
+    const totalPaidSalary = allTransactions
+      .filter(t => t.type === 'salary' || t.source === 'salary')
+      .reduce((sum, t) => sum + t.amount, 0);
 
     let chartData = [];
 
@@ -137,9 +121,15 @@ exports.getRevenueAnalytics = async (req, res) => {
         const date = new Date();
         date.setDate(date.getDate() - i);
 
-        const dayRevenue = allPayments
-          .filter(p => !isNaN(p.date) && isSameDay(p.date, date))
-          .reduce((acc, p) => acc + p.amount, 0);
+        // Sum income transactions on this day
+        const dayRevenue = allTransactions
+          .filter(t => {
+            const tDate = new Date(t.date);
+            return !isNaN(tDate) &&
+              (t.type === 'client_payment' || t.type === 'income' || t.source === 'client_payment') &&
+              isSameDay(tDate, date);
+          })
+          .reduce((acc, t) => acc + t.amount, 0);
 
         chartData.push({
           name: date.toLocaleDateString('en-IN', { weekday: 'short' }),
@@ -158,9 +148,15 @@ exports.getRevenueAnalytics = async (req, res) => {
 
         const weekLabel = `${weekStart.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} - ${weekEnd.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`;
 
-        const weekRevenue = allPayments
-          .filter(p => !isNaN(p.date) && p.date >= weekStart && p.date <= weekEnd)
-          .reduce((acc, p) => acc + p.amount, 0);
+        // Sum income transactions in this week
+        const weekRevenue = allTransactions
+          .filter(t => {
+            const tDate = new Date(t.date);
+            return !isNaN(tDate) &&
+              (t.type === 'client_payment' || t.type === 'income' || t.source === 'client_payment') &&
+              tDate >= weekStart && tDate <= weekEnd;
+          })
+          .reduce((acc, t) => acc + t.amount, 0);
 
         chartData.push({ name: weekLabel, revenue: weekRevenue });
       }
@@ -174,22 +170,26 @@ exports.getRevenueAnalytics = async (req, res) => {
         const monthIndex = date.getMonth();
         const year = date.getFullYear();
 
-        const monthRevenue = allPayments
-          .filter(p => !isNaN(p.date) &&
-            p.date.getMonth() === monthIndex &&
-            p.date.getFullYear() === year)
-          .reduce((acc, p) => acc + p.amount, 0);
+        // Sum income transactions in this month
+        const monthRevenue = allTransactions
+          .filter(t => {
+            const tDate = new Date(t.date);
+            return !isNaN(tDate) &&
+              (t.type === 'client_payment' || t.type === 'income' || t.source === 'client_payment') &&
+              tDate.getMonth() === monthIndex &&
+              tDate.getFullYear() === year;
+          })
+          .reduce((acc, t) => acc + t.amount, 0);
 
         chartData.push({ name: monthNames[monthIndex], revenue: monthRevenue });
       }
     }
 
-
     res.status(200).json({
       success: true,
       data: {
-        totalRevenue: Math.max(0, totalRevenue),
-        totalClientRevenue,
+        totalRevenue: totalRevenue,
+        totalClientRevenue: totalIncome,
         totalPaidSalary,
         chartData,
         period: selectedPeriod
@@ -204,3 +204,4 @@ exports.getRevenueAnalytics = async (req, res) => {
     });
   }
 };
+
