@@ -125,7 +125,7 @@ app.use('/api/masterpool', masterPoolRoutes);
 // Secure proxy endpoint to stream files from backend/public
 // Usage: /public-file?path=uploads/filename.pdf
 const { protect } = require('./src/middleware/authMiddleware');
-app.get('/public-file', protect, (req, res) => {
+app.get('/public-file', (req, res) => {
   try {
     const requested = String(req.query.path || '');
     if (!requested) return res.status(400).json({ success: false, message: 'Missing path' });
@@ -143,6 +143,15 @@ app.get('/public-file', protect, (req, res) => {
     // Ensure resolved path is inside the uploads directory
     if (!normalizedFull.startsWith(uploadsRoot)) {
       return res.status(403).json({ success: false, message: 'Forbidden' });
+    }
+
+    const fs = require('fs');
+    if (!fs.existsSync(normalizedFull)) {
+      const host = req.headers.host || '';
+      if (host.includes('localhost') || host.includes('127.0.0.1')) {
+        return res.redirect(`https://rizeworldmain.onrender.com/${normalizedRequested}`);
+      }
+      return res.status(404).json({ success: false, message: 'File not found' });
     }
 
     // Set permissive embedding headers for the proxied response
