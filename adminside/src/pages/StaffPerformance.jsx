@@ -1755,7 +1755,7 @@ const StaffPerformance = ({ staffId, onBack }) => {
                         </div>
                         <div className="flex items-center gap-2">
                           <a
-                            href={`http://localhost:45000${doc.path}`}
+                            href={doc.path.startsWith('http') ? doc.path : `${window.location.protocol}//${window.location.hostname === 'localhost' ? 'localhost:45000' : 'rizeworldmain.onrender.com'}${doc.path}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"

@@ -2,6 +2,8 @@ const EmployeeLiveLocation = require('../models/EmployeeLiveLocation');
 const EmployeeLocationHistory = require('../models/EmployeeLocationHistory');
 const Staff = require('../models/Staff');
 const socketUtil = require('../../socket');
+const fs = require('fs');
+const cloudinary = require('../config/cloudinary');
 
 // Helper to validate coordinates
 const isValidCoordinates = (lat, lng) => {
@@ -197,7 +199,22 @@ exports.uploadPhotoLocation = async (req, res) => {
 
     const name = employeeName || employee.name;
     const timeVal = timestamp ? new Date(timestamp) : new Date();
-    const photoUrl = `/uploads/${req.file.filename}`;
+
+    // Upload to Cloudinary
+    const result = await cloudinary.uploader.upload(req.file.path, {
+      folder: 'sales_photos',
+      resource_type: 'auto'
+    });
+    const photoUrl = result.secure_url;
+
+    // Clean up local temp file
+    try {
+      if (fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+    } catch (unlinkError) {
+      console.error(`Failed to delete local temp file ${req.file.path}:`, unlinkError);
+    }
 
     // Add to Location History with photoUrl
     const newRecord = await EmployeeLocationHistory.create({

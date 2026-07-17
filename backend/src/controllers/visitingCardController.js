@@ -3,6 +3,7 @@ const Staff = require('../models/Staff');
 const socketUtil = require('../../socket');
 const path = require('path');
 const fs = require('fs');
+const cloudinary = require('../config/cloudinary');
 
 // Helper to validate coordinates
 const isValidCoordinates = (lat, lng) => {
@@ -56,7 +57,22 @@ exports.uploadVisitingCard = async (req, res) => {
 
     const name = employeeName || employee.name;
     const timeVal = timestamp ? new Date(timestamp) : new Date();
-    const photoUrl = `/uploads/${req.file.filename}`;
+
+    // Upload to Cloudinary
+    const result = await cloudinary.uploader.upload(req.file.path, {
+      folder: 'visiting_cards',
+      resource_type: 'auto'
+    });
+    const photoUrl = result.secure_url;
+
+    // Clean up local temp file
+    try {
+      if (fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+    } catch (unlinkError) {
+      console.error(`Failed to delete local temp file ${req.file.path}:`, unlinkError);
+    }
 
     // Create record
     const newRecord = await VisitingCard.create({

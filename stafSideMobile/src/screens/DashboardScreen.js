@@ -237,6 +237,9 @@ const DashboardScreen = ({ staffInfo: initialStaffInfo, token, onLogout, getApiU
 
   const getProfilePicUrl = () => {
     if (!staffInfo.profilePic) return null;
+    if (staffInfo.profilePic.startsWith('http://') || staffInfo.profilePic.startsWith('https://')) {
+      return staffInfo.profilePic;
+    }
     const base = getApiUrl('').replace('/api', '');
     return `${base}${staffInfo.profilePic}`;
   };

@@ -4,6 +4,8 @@ const StudentAdmission = require('../models/StudentAdmission');
 const Sale = require('../models/Sale');
 const AssignedWorkReport = require('../models/AssignedWorkReport');
 const Transaction = require('../models/Transaction');
+const fs = require('fs');
+const cloudinary = require('../config/cloudinary');
 const jwt = require('jsonwebtoken');
 const upload = require('../middleware/upload');
 const socketUtil = require('../../socket');
@@ -1707,21 +1709,44 @@ exports.uploadDocument = async (req, res) => {
 
     const staff = await Staff.findById(req.params.id);
     if (!staff) {
+      // Clean up local file even on error
+      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
       return res.status(404).json({ success: false, message: 'Staff not found' });
     }
 
     // Get document name from request or use original filename
     const documentName = req.body.name || req.file.originalname;
 
+    // Upload to Cloudinary
+    const result = await cloudinary.uploader.upload(req.file.path, {
+      folder: 'documents',
+      resource_type: 'auto'
+    });
+    const documentPath = result.secure_url;
+
+    // Clean up local temp file
+    try {
+      if (fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+    } catch (unlinkError) {
+      console.error(`Failed to delete local temp file ${req.file.path}:`, unlinkError);
+    }
+
     // Add document to staff
     staff.documents.push({
       name: documentName,
-      path: `/uploads/${req.file.filename}`
+      path: documentPath
     });
 
     const updatedStaff = await staff.save();
     res.status(200).json({ success: true, data: updatedStaff });
   } catch (error) {
+    if (req.file && fs.existsSync(req.file.path)) {
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (err) {}
+    }
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -1804,15 +1829,38 @@ exports.updateProfilePic = async (req, res) => {
 
     const staff = await Staff.findById(req.params.id);
     if (!staff) {
+      // Clean up local file even on error
+      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
       return res.status(404).json({ success: false, message: 'Staff not found' });
     }
 
+    // Upload to Cloudinary
+    const result = await cloudinary.uploader.upload(req.file.path, {
+      folder: 'profile_pics',
+      resource_type: 'auto'
+    });
+    const profilePicUrl = result.secure_url;
+
+    // Clean up local temp file
+    try {
+      if (fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+    } catch (unlinkError) {
+      console.error(`Failed to delete local temp file ${req.file.path}:`, unlinkError);
+    }
+
     // Set the profile picture path
-    staff.profilePic = `/uploads/${req.file.filename}`;
+    staff.profilePic = profilePicUrl;
 
     const updatedStaff = await staff.save();
     res.status(200).json({ success: true, data: updatedStaff });
   } catch (error) {
+    if (req.file && fs.existsSync(req.file.path)) {
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (err) {}
+    }
     res.status(500).json({ success: false, message: error.message });
   }
 };

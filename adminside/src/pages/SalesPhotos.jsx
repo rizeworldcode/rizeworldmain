@@ -52,6 +52,9 @@ export default function SalesPhotos() {
 
   const getImageUrl = (photoUrl) => {
     if (!photoUrl) return '';
+    if (photoUrl.startsWith('http://') || photoUrl.startsWith('https://')) {
+      return photoUrl;
+    }
     const baseUrl = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
       ? 'http://localhost:45000'
       : 'https://rizeworldmain.onrender.com';

@@ -324,11 +324,16 @@ const SalesTracking = () => {
       el.className = 'w-10 h-10 rounded-full border-2 border-white flex items-center justify-center shadow-lg cursor-pointer bg-blue-500 hover:bg-blue-600 transition-all z-20';
       el.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path><circle cx="12" cy="13" r="3"></circle></svg>';
 
-      const baseUrl = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-        ? 'http://localhost:45000'
-        : 'https://rizeworldmain.onrender.com';
-      const photoPath = p.photoUrl.startsWith('/') ? p.photoUrl.slice(1) : p.photoUrl;
-      const imgUrl = `${baseUrl}/public-file?path=${photoPath}`;
+      let imgUrl;
+      if (p.photoUrl.startsWith('http://') || p.photoUrl.startsWith('https://')) {
+        imgUrl = p.photoUrl;
+      } else {
+        const baseUrl = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+          ? 'http://localhost:45000'
+          : 'https://rizeworldmain.onrender.com';
+        const photoPath = p.photoUrl.startsWith('/') ? p.photoUrl.slice(1) : p.photoUrl;
+        imgUrl = `${baseUrl}/public-file?path=${photoPath}`;
+      }
 
       const popup = new mapboxgl.Popup({ offset: 25, closeButton: true, className: 'photo-popup' }).setHTML(`
         <div class="p-2 space-y-2 min-w-[200px]">

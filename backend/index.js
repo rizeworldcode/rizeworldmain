@@ -125,7 +125,7 @@ app.use('/api/masterpool', masterPoolRoutes);
 // Secure proxy endpoint to stream files from backend/public
 // Usage: /public-file?path=uploads/filename.pdf
 const { protect } = require('./src/middleware/authMiddleware');
-app.get('/public-file', (req, res) => {
+app.get('/public-file', async (req, res) => {
   try {
     const requested = String(req.query.path || '');
     if (!requested) return res.status(400).json({ success: false, message: 'Missing path' });
@@ -149,9 +149,31 @@ app.get('/public-file', (req, res) => {
     if (!fs.existsSync(normalizedFull)) {
       const host = req.headers.host || '';
       if (host.includes('localhost') || host.includes('127.0.0.1')) {
-        return res.redirect(`https://rizeworldmain.onrender.com/${normalizedRequested}`);
+        const axios = require('axios');
+        const prodUrl = `https://rizeworldmain.onrender.com/${normalizedRequested}`;
+        try {
+          // Fetch the file from production backend
+          const response = await axios({
+            method: 'get',
+            url: prodUrl,
+            responseType: 'stream'
+          });
+
+          // Create write stream to save the file locally
+          const writer = fs.createWriteStream(normalizedFull);
+          response.data.pipe(writer);
+
+          await new Promise((resolve, reject) => {
+            writer.on('finish', resolve);
+            writer.on('error', reject);
+          });
+        } catch (downloadErr) {
+          console.error(`Failed to download missing file from production fallback: ${prodUrl}`, downloadErr.message);
+          return res.status(404).json({ success: false, message: 'File not found' });
+        }
+      } else {
+        return res.status(404).json({ success: false, message: 'File not found' });
       }
-      return res.status(404).json({ success: false, message: 'File not found' });
     }
 
     // Set permissive embedding headers for the proxied response
