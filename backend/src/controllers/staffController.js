@@ -828,7 +828,24 @@ exports.clockInStaff = async (req, res) => {
 
     const now = new Date();
     const istNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
-    const clockInTime = formatTime(istNow);
+    
+    let clockInTime;
+    if (req.body.clockInTime) {
+      let rawTime = req.body.clockInTime.trim();
+      // Check if it's in 24-hour format (e.g. "09:30")
+      const time24Pattern = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
+      if (time24Pattern.test(rawTime)) {
+        const [h, m] = rawTime.split(':').map(Number);
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        const displayH = h % 12 || 12;
+        const displayM = m < 10 ? `0${m}` : m;
+        clockInTime = `${displayH}:${displayM} ${ampm}`;
+      } else {
+        clockInTime = rawTime;
+      }
+    } else {
+      clockInTime = formatTime(istNow);
+    }
     console.log('Clock in time:', clockInTime);
 
     const staff = await Staff.findById(req.params.id);
@@ -984,7 +1001,7 @@ exports.clockOutStaff = async (req, res) => {
     const istNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
 
     let clockOutTime;
-    if (req.role === 'admin' && req.body.clockOutTime) {
+    if (req.body.clockOutTime) {
       let rawTime = req.body.clockOutTime.trim();
       // Check if it's in 24-hour format (e.g. "17:30")
       const time24Pattern = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;

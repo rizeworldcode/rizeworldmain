@@ -84,7 +84,7 @@ const calculateProjectProgress = (project) => {
 };
 
 const CLIENT_DEPARTMENTS = ['SEO', 'SMM', 'PPC', 'Graphic Design', 'Video Editing', 'WEB DEvlopment', 'Email Marketing', 'Ai Marketing'];
-const PACKAGE_ENABLED_DEPARTMENTS = ['SEO', 'Graphic Design', 'Video Editing'];
+const PACKAGE_ENABLED_DEPARTMENTS = CLIENT_DEPARTMENTS;
 const PROJECT_STATUS_OPTIONS = ['Pending', 'In Progress', 'On Hold', 'Completed'];
 
 const PACKAGE_DETAILS = {

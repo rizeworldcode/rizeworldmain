@@ -226,10 +226,10 @@ const AddProjectModal = ({ isOpen, onClose, onAdd }) => {
     deadline: ''
   });
 
-  const showPackages = ['SEO', 'Graphic Design', 'Video Editing'].includes(formData.department);
+  const showPackages = ['SEO', 'SMM', 'PPC', 'Graphic Design', 'Video Editing', 'WEB DEvlopment', 'Email Marketing', 'Ai Marketing'].includes(formData.department);
 
   const handleDepartmentChange = (dept) => {
-    const isPackageDept = ['SEO', 'Graphic Design', 'Video Editing'].includes(dept);
+    const isPackageDept = ['SEO', 'SMM', 'PPC', 'Graphic Design', 'Video Editing', 'WEB DEvlopment', 'Email Marketing', 'Ai Marketing'].includes(dept);
     if (isPackageDept) {
       const pkg = 'Sliver Package Service';
       setFormData({
@@ -545,6 +545,167 @@ const AddOldClientModal = ({ isOpen, onClose, onAdd }) => {
   );
 };
 
+const EditOldClientModal = ({ isOpen, onClose, onEdit, client }) => {
+  const [formData, setFormData] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    projectDetail: '',
+    startDate: '',
+    deliveredDate: '',
+    totalAmount: '',
+    paidAmount: '',
+    address: ''
+  });
+
+  useEffect(() => {
+    if (client) {
+      setFormData({
+        name: client.name || '',
+        phone: client.phone ? client.phone.replace('+91 ', '') : '',
+        email: client.email || '',
+        projectDetail: client.projectDetail || '',
+        startDate: client.startDate ? new Date(client.startDate).toISOString().split('T')[0] : '',
+        deliveredDate: client.deliveredDate ? new Date(client.deliveredDate).toISOString().split('T')[0] : '',
+        totalAmount: client.totalAmount || '',
+        paidAmount: client.paidAmount || '',
+        address: client.address || ''
+      });
+    }
+  }, [client]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-black/60 backdrop-blur-md" />
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.9, opacity: 0 }}
+        className="relative w-full max-w-2xl bg-white dark:bg-[#030303] rounded-3xl border border-gray-200 dark:border-white/10 p-8 shadow-2xl max-h-[90vh] overflow-y-auto"
+      >
+        <h3 className="text-xl font-bold text-black dark:text-white mb-6 flex items-center gap-2">
+          <Edit3 className="text-amber-500" /> Edit Old Client
+        </h3>
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Client Name</label>
+              <input
+                type="text"
+                className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-amber-500 outline-none transition-all placeholder:text-gray-400"
+                placeholder="Client Name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Phone Number</label>
+              <input
+                type="text"
+                maxLength={10}
+                className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-amber-500 outline-none transition-all placeholder:text-gray-400"
+                placeholder="e.g. 9876543210"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/[^\d]/g, '').slice(0, 10) })}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Email Address</label>
+            <input
+              type="email"
+              className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-amber-500 outline-none transition-all placeholder:text-gray-400"
+              placeholder="client@example.com"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            />
+          </div>
+
+          <div>
+            <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Project Detail</label>
+            <textarea
+              rows={3}
+              className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-amber-500 outline-none transition-all placeholder:text-gray-400"
+              placeholder="Describe the project"
+              value={formData.projectDetail}
+              onChange={(e) => setFormData({ ...formData, projectDetail: e.target.value })}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Start Date</label>
+              <input
+                type="date"
+                className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-amber-500 outline-none transition-all"
+                value={formData.startDate}
+                onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Delivered Date</label>
+              <input
+                type="date"
+                className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-amber-500 outline-none transition-all"
+                value={formData.deliveredDate}
+                onChange={(e) => setFormData({ ...formData, deliveredDate: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Total Amount (₹)</label>
+              <input
+                type="number"
+                className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-amber-500 outline-none transition-all placeholder:text-gray-400"
+                placeholder="Total Amount"
+                value={formData.totalAmount}
+                onChange={(e) => setFormData({ ...formData, totalAmount: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Paid Amount (₹)</label>
+              <input
+                type="number"
+                className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-amber-500 outline-none transition-all placeholder:text-gray-400"
+                placeholder="Paid Amount"
+                value={formData.paidAmount}
+                onChange={(e) => setFormData({ ...formData, paidAmount: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Address</label>
+            <textarea
+              rows={2}
+              className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-amber-500 outline-none transition-all placeholder:text-gray-400"
+              placeholder="Client Address"
+              value={formData.address}
+              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+            />
+          </div>
+
+          <div className="flex gap-3 mt-8">
+            <button onClick={onClose} className="flex-1 px-6 py-3 rounded-xl border border-gray-200 dark:border-white/10 text-black dark:text-white font-bold hover:bg-gray-100 dark:hover:bg-white/5 transition-all">Cancel</button>
+            <button
+              onClick={() => onEdit(client._id, formData)}
+              className="flex-1 px-6 py-3 rounded-xl bg-amber-600 text-white font-bold hover:bg-amber-700 transition-all shadow-lg shadow-amber-600/20"
+            >
+              Save Changes
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+
 const StatusDropdown = ({ currentStatus, onStatusChange }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [coords, setCoords] = useState({ top: 0, left: 0 });
@@ -822,6 +983,10 @@ const Clients = ({ onClientClick, theme }) => {
   const [isAddProjectOpen, setIsAddProjectOpen] = useState(false);
   const [isAddOldClientOpen, setIsAddOldClientOpen] = useState(false);
   const [activeClientId, setActiveClientId] = useState(null);
+  const [editingOldClient, setEditingOldClient] = useState(null);
+  const [isEditOldClientOpen, setIsEditOldClientOpen] = useState(false);
+  const [isAddOldPaymentOpen, setIsAddOldPaymentOpen] = useState(false);
+  const [activeOldClientId, setActiveOldClientId] = useState(null);
 
   const fetchClients = async () => {
     try {
@@ -1009,6 +1174,98 @@ const handleAddPayment = async (data) => {
     }
   };
 
+  const handleEditOldClient = async (id, data) => {
+    // Extract only digits from phone input
+    let cleanPhone = (data.phone || '').replace(/[^\d]/g, '');
+    
+    // If user entered 12 digits starting with 91, strip the country code
+    if (cleanPhone.length === 12 && cleanPhone.startsWith('91')) {
+      cleanPhone = cleanPhone.slice(2);
+    }
+
+    const phonePattern = /^[6-9]\d{9}$/;
+    if (cleanPhone.length !== 10 || !phonePattern.test(cleanPhone)) {
+      alert('Please enter a valid 10-digit Indian phone number.');
+      return;
+    }
+
+    try {
+      const submitData = { ...data, phone: `+91 ${cleanPhone}` };
+
+      const response = await fetch(`http://localhost:45000/api/old-clients/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(submitData)
+      });
+      const result = await response.json();
+      if (result.success) {
+        alert('Old client updated successfully!');
+        fetchOldClients(); // Refresh old clients list
+        setIsEditOldClientOpen(false);
+        setEditingOldClient(null);
+      } else {
+        alert(`Error: ${result.message}`);
+      }
+    } catch (error) {
+      console.error('Error updating old client:', error);
+      alert('Failed to update old client. Please try again.');
+    }
+  };
+
+  const handleAddOldClientPayment = async (data) => {
+    const activeOldClient = oldClients.find(c => c._id === activeOldClientId);
+    if (!activeOldClient) return;
+
+    const amount = parseFloat(data.amount);
+    const maxAmount = (activeOldClient.totalAmount || 0) - (activeOldClient.paidAmount || 0);
+
+    if (amount > maxAmount) {
+      alert(`Error: Payment amount (₹${amount.toLocaleString('en-IN')}) cannot exceed the pending amount (₹${maxAmount.toLocaleString('en-IN')})`);
+      return;
+    }
+
+    if (data.mode === 'Online') {
+      const utrVal = (data.utr || '').trim();
+      if (!utrVal || utrVal.length < 12 || utrVal.length > 16) {
+        alert('Error: UTR number must be between 12 and 16 characters for online payments.');
+        return;
+      }
+    }
+
+    try {
+      const updatedPaidAmount = (activeOldClient.paidAmount || 0) + amount;
+      const submitData = {
+        ...activeOldClient,
+        paidAmount: updatedPaidAmount
+      };
+
+      const response = await fetch(`http://localhost:45000/api/old-clients/${activeOldClientId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(submitData)
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        alert('Payment added successfully!');
+        fetchOldClients(); // Refresh from backend to sync latest data
+        setIsAddOldPaymentOpen(false);
+      } else {
+        alert(`Error: ${result.message}`);
+      }
+    } catch (error) {
+      console.error('Error adding old client payment:', error);
+      alert('Failed to add payment. Please try again.');
+    }
+  };
+
+
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -1044,6 +1301,30 @@ const handleAddPayment = async (data) => {
             isOpen={isAddOldClientOpen}
             onClose={() => setIsAddOldClientOpen(false)}
             onAdd={handleAddOldClient}
+          />
+        )}
+        {isEditOldClientOpen && (
+          <EditOldClientModal
+            isOpen={isEditOldClientOpen}
+            onClose={() => {
+              setIsEditOldClientOpen(false);
+              setEditingOldClient(null);
+            }}
+            onEdit={handleEditOldClient}
+            client={editingOldClient}
+          />
+        )}
+        {isAddOldPaymentOpen && (
+          <AddPaymentModal
+            isOpen={isAddOldPaymentOpen}
+            onClose={() => setIsAddOldPaymentOpen(false)}
+            onAdd={handleAddOldClientPayment}
+            maxAmount={
+              (() => {
+                const client = oldClients.find(c => c._id === activeOldClientId);
+                return client ? (client.totalAmount || 0) - (client.paidAmount || 0) : 0;
+              })()
+            }
           />
         )}
       </AnimatePresence>
@@ -1218,12 +1499,13 @@ const handleAddPayment = async (data) => {
                   <th className="py-5 px-6 text-right">Paid Amount</th>
                   <th className="py-5 px-6 text-right">Pending Amount</th>
                   <th className="py-5 px-6">Address</th>
+                  <th className="py-5 px-6 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {oldClientsLoading ? (
                   <tr>
-                    <td className="py-20 text-center" colSpan={9}>
+                    <td className="py-20 text-center" colSpan={10}>
                       <div className="flex flex-col items-center gap-4">
                         <div className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
                         <p className="text-sm font-bold text-gray-500 uppercase tracking-widest">Loading Old Clients...</p>
@@ -1232,7 +1514,7 @@ const handleAddPayment = async (data) => {
                   </tr>
                 ) : oldClients.length === 0 ? (
                   <tr>
-                    <td className="py-20 text-center" colSpan={9}>
+                    <td className="py-20 text-center" colSpan={10}>
                       <p className="text-sm font-bold text-gray-500 uppercase tracking-widest">No Old Clients Found</p>
                     </td>
                   </tr>
@@ -1282,12 +1564,37 @@ const handleAddPayment = async (data) => {
                         <td className="py-6 px-6 max-w-xs">
                           <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2">{oldClient.address}</p>
                         </td>
+                        <td className="py-6 px-6 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => {
+                                setActiveOldClientId(oldClient._id);
+                                setIsAddOldPaymentOpen(true);
+                              }}
+                              className="p-2 hover:bg-emerald-500/10 rounded-lg text-emerald-500 transition-colors"
+                              title="Add Payment"
+                            >
+                              <CreditCard size={18} />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setEditingOldClient(oldClient);
+                                setIsEditOldClientOpen(true);
+                              }}
+                              className="p-2 hover:bg-amber-500/10 rounded-lg text-amber-500 transition-colors"
+                              title="Edit Client"
+                            >
+                              <Edit3 size={18} />
+                            </button>
+                          </div>
+                        </td>
                       </motion.tr>
                     );
                   })
                 )}
               </tbody>
             </table>
+
           </div>
         </div>
       </div>

@@ -28,6 +28,9 @@ exports.createDelayWork = async (req, res) => {
       ...req.body,
       clientId
     });
+    if (req.body.createdAt) {
+      delayWork.createdAt = new Date(req.body.createdAt);
+    }
     await delayWork.save();
     // Populate the saved delay work
     await delayWork.populate('clientId', 'name email phone');

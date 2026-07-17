@@ -58,6 +58,11 @@ export const deleteClient = (clientId: string | number) =>
 
 // Old Clients Endpoints
 export const getAllOldClients = () => apiRequest('/old-clients');
+export const updateOldClient = (oldClientId: string | number, clientData: any) =>
+  apiRequest(`/old-clients/${oldClientId}`, {
+    method: 'PUT',
+    body: JSON.stringify(clientData),
+  });
 
 // Projects Endpoints
 export const addProject = (projectData: any) =>

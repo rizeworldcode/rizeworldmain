@@ -105,6 +105,15 @@ const StaffList = ({ onViewAll }) => {
   };
 
   const handleClockIn = async (id) => {
+    const member = staffMembers.find(s => s._id === id);
+    const defaultTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+    const inputTime = prompt(`Enter clock-in time for ${member ? member.name : 'staff'} (e.g. "09:30 AM" or "09:30"):`, defaultTime);
+    if (inputTime === null) return;
+    if (!inputTime.trim()) {
+      alert('Invalid time');
+      return;
+    }
+
     try {
       const token = localStorage.getItem('adminToken');
       const response = await fetch(`http://localhost:45000/api/staff/${id}/clock-in`, {
@@ -112,7 +121,8 @@ const StaffList = ({ onViewAll }) => {
         headers: { 
           'Content-Type': 'application/json',
           ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        }
+        },
+        body: JSON.stringify({ clockInTime: inputTime.trim() })
       });
       const result = await response.json();
       if (result.success) {

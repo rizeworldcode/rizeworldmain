@@ -18,7 +18,11 @@ import {
   Camera,
   RefreshCw,
   CreditCard,
-  GraduationCap
+  GraduationCap,
+  Minus,
+  ListChecks,
+  Sparkles,
+  CheckCircle2
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -340,6 +344,10 @@ const Dashboard = () => {
   const [delayWork, setDelayWork] = useState([]);
   const [clients, setClients] = useState([]);
   const [isAddDelayWorkOpen, setIsAddDelayWorkOpen] = useState(false);
+  const [isClientTaskUpdateOpen, setIsClientTaskUpdateOpen] = useState(false);
+  const [selectedClientForTasks, setSelectedClientForTasks] = useState(null);
+  const [isUpdateProgressOpen, setIsUpdateProgressOpen] = useState(false);
+  const [tempProjectData, setTempProjectData] = useState(null);
   const [delayWorkForm, setDelayWorkForm] = useState({
     type: 'reel',
     publishedLink: '',
@@ -348,7 +356,8 @@ const Dashboard = () => {
     clientEmail: '',
     extra: false,
     count: 1,
-    extraName: ''
+    extraName: '',
+    date: new Date().toISOString().split('T')[0]
   });
   const [delayWorkLoading, setDelayWorkLoading] = useState(false);
   // Admissions State
@@ -1290,6 +1299,8 @@ const Dashboard = () => {
     if (staffInfo.role?.toLowerCase() === 'data analyst') {
       fetchDelayWork();
       fetchClients();
+    } else if (staffInfo.role?.toLowerCase() === 'senior graphic designer & tl') {
+      fetchClients();
     }
     // Refresh notifications every 5 minutes
     const notificationTimer = setInterval(fetchNotifications, 300000);
@@ -1425,6 +1436,49 @@ const Dashboard = () => {
     }
   };
 
+  const handleTempTaskUpdate = (taskIndex, change, isExtra = false) => {
+    const taskType = isExtra ? 'extraTasks' : 'tasks';
+    const newTasks = [...(tempProjectData[taskType] || [])];
+    const task = { ...newTasks[taskIndex] };
+    const newCount = (task.completed || 0) + change;
+    if (newCount < 0 || newCount > task.total) return;
+    task.completed = newCount;
+    if (task.completed === task.total) task.status = 'Completed';
+    else if (task.completed > 0) task.status = 'In Progress';
+    else task.status = 'Pending';
+    newTasks[taskIndex] = task;
+    setTempProjectData({ ...tempProjectData, [taskType]: newTasks });
+  };
+
+  const handleProgressSubmit = async () => {
+    try {
+      const id = tempProjectData.id;
+      const response = await fetch(getApiUrl(`/clients/${id}/tasks`), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tasks: tempProjectData.tasks,
+          extraTasks: tempProjectData.extraTasks
+        })
+      });
+      const result = await response.json();
+      if (result.success) {
+        setClients(prevClients => prevClients.map(c =>
+          (c._id || c.id) === id ? result.data : c
+        ));
+        setIsUpdateProgressOpen(false);
+        setTempProjectData(null);
+        alert('Task progress updated successfully!');
+      } else {
+        alert(result.message || 'Failed to update task progress');
+      }
+    } catch (error) {
+      console.error('Error updating progress:', error);
+      alert('Failed to update task progress');
+    }
+  };
+
+
   const handleAddDelayWork = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
     const staffInfo = JSON.parse(localStorage.getItem('staffInfo') || '{}');
@@ -1450,6 +1504,7 @@ const Dashboard = () => {
       type: delayWorkForm.type,
       clientEmail: delayWorkForm.clientEmail,
       extra: delayWorkForm.type === 'extra' ? true : delayWorkForm.extra,
+      createdAt: delayWorkForm.date
     };
     
     if (delayWorkForm.type === 'extra') {
@@ -1486,7 +1541,8 @@ const Dashboard = () => {
           clientEmail: '',
           extra: false,
           count: 1,
-          extraName: ''
+          extraName: '',
+          date: new Date().toISOString().split('T')[0]
         });
       } else {
         alert(result.message || 'Failed to add daily work');
@@ -1792,6 +1848,26 @@ const Dashboard = () => {
             <h4 className="text-base font-black">MERN GPS Tracking Active</h4>
             <p className="text-sm font-semibold mt-0.5 opacity-90">Your live coordinates are securely shared with the administration team.</p>
           </div>
+        </motion.div>
+      )}
+
+      {/* Client Task Update for Senior Graphic Designer & TL */}
+      {staffInfo.role?.toLowerCase() === 'senior graphic designer & tl' && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6 flex flex-col sm:flex-row gap-4"
+        >
+          <button 
+            type="button"
+            onClick={() => {
+              setIsClientTaskUpdateOpen(true);
+            }}
+            className="clay-card p-5 rounded-3xl flex-1 flex items-center justify-center gap-3 transition-all cursor-pointer font-black text-lg text-left outline-none border-none bg-gradient-to-r from-amber-500 to-orange-600 text-white hover:shadow-lg hover:-translate-y-1"
+          >
+            <ListChecks size={24} />
+            Client Task Update
+          </button>
         </motion.div>
       )}
 
@@ -2788,6 +2864,16 @@ const Dashboard = () => {
                   <option value="extra">Extra</option>
                 </select>
               </div>
+              <div>
+                <label className="text-[10px] font-black text-black uppercase tracking-widest block mb-1 sm:mb-2">Date</label>
+                <input 
+                  type="date"
+                  className="w-full p-3 sm:p-4 clay-inset rounded-2xl text-sm font-bold text-black focus:outline-none"
+                  value={delayWorkForm.date}
+                  onChange={(e) => setDelayWorkForm({ ...delayWorkForm, date: e.target.value })}
+                />
+              </div>
+
 
               {delayWorkForm.type !== 'extra' && (
                 <div className="flex gap-6 py-1">
@@ -2883,6 +2969,177 @@ const Dashboard = () => {
           </div>
         </div>
       )}
+
+      {/* Client List for Task Update */}
+      {isClientTaskUpdateOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="clay-card w-full max-w-4xl p-6 sm:p-8 relative max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => setIsClientTaskUpdateOpen(false)}
+              className="absolute top-4 right-4 sm:top-6 sm:right-6 w-10 h-10 sm:w-12 sm:h-12 clay-flat rounded-2xl flex items-center justify-center text-black hover:clay-inset hover:text-rose-500 transition-all border-none cursor-pointer"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+
+            <h3 className="text-xl sm:text-2xl font-black text-black mb-6 sm:mb-8 flex items-center gap-2">
+              <ListChecks className="text-purple-500" />
+              Client Task Update
+            </h3>
+
+            {clients.length === 0 ? (
+              <p className="text-center text-gray-500 py-8 font-bold">No clients found.</p>
+            ) : (
+              <div className="space-y-4">
+                {clients.map((client) => (
+                  <div key={client._id || client.id} className="p-4 rounded-2xl bg-gray-50 dark:bg-white/[0.02] border border-gray-200 dark:border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                      <h4 className="text-lg font-black text-black">{client.name}</h4>
+                      <p className="text-xs text-gray-500 font-bold">{client.email} • {client.department}</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                        client.status === 'Completed' ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' :
+                        client.status === 'In Progress' ? 'bg-blue-500/10 text-blue-600 border border-blue-500/20' :
+                        client.status === 'On Hold' ? 'bg-amber-500/10 text-amber-600 border border-amber-500/20' :
+                        'bg-rose-500/10 text-rose-600 border border-rose-500/20'
+                      }`}>
+                        {client.status}
+                      </span>
+                      <button
+                        onClick={() => {
+                          setSelectedClientForTasks(client);
+                          setTempProjectData({
+                            id: client._id || client.id,
+                            tasks: JSON.parse(JSON.stringify(client.tasks || [])),
+                            extraTasks: JSON.parse(JSON.stringify(client.extraTasks || []))
+                          });
+                          setIsUpdateProgressOpen(true);
+                        }}
+                        className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs transition-all shadow-md hover:shadow-purple-500/20 flex items-center gap-1.5 border-none cursor-pointer"
+                      >
+                        <ListChecks size={14} />
+                        Update Tasks
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Update Progress Modal */}
+      {isUpdateProgressOpen && tempProjectData && (
+        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
+          <div className="clay-card w-full max-w-4xl p-6 sm:p-8 relative max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => {
+                setIsUpdateProgressOpen(false);
+                setTempProjectData(null);
+              }}
+              className="absolute top-4 right-4 sm:top-6 sm:right-6 w-10 h-10 sm:w-12 sm:h-12 clay-flat rounded-2xl flex items-center justify-center text-black hover:clay-inset hover:text-rose-500 transition-all border-none cursor-pointer"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+
+            <h3 className="text-xl sm:text-2xl font-black text-black mb-6 sm:mb-8 flex items-center gap-2">
+              <ListChecks className="text-blue-500" />
+              Update Progress
+            </h3>
+
+            {/* Primary Tasks */}
+            <div className="space-y-4 mb-8">
+              <h4 className="text-sm font-black text-black uppercase tracking-widest flex items-center gap-2">
+                <CheckCircle2 size={16} className="text-blue-500" /> Primary Tasks
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {tempProjectData.tasks?.map((task, index) => (
+                  <div key={index} className="p-4 rounded-2xl bg-gray-50 dark:bg-white/[0.02] border border-gray-200 dark:border-white/10">
+                    <p className="text-sm font-bold text-black mb-2">{task.name}</p>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => handleTempTaskUpdate(index, -1)}
+                        disabled={task.completed <= 0}
+                        className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold hover:bg-blue-200 dark:hover:bg-blue-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed border-none cursor-pointer"
+                      >
+                        <Minus size={16} />
+                      </button>
+                      <span className="text-lg font-black text-black flex-1 text-center">{task.completed} / {task.total}</span>
+                      <button
+                        onClick={() => handleTempTaskUpdate(index, 1)}
+                        disabled={task.completed >= task.total}
+                        className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed border-none cursor-pointer"
+                      >
+                        <Plus size={16} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Extra Tasks */}
+            {tempProjectData.extraTasks && tempProjectData.extraTasks.length > 0 && (
+              <div className="space-y-4 mb-8">
+                <h4 className="text-sm font-black text-emerald-900 uppercase tracking-widest flex items-center gap-2">
+                  <Sparkles size={16} className="text-emerald-500" /> Extra Tasks
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {tempProjectData.extraTasks?.map((task, index) => (
+                    <div key={index} className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20">
+                      <p className="text-sm font-bold text-emerald-950 mb-2">{task.name}</p>
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => handleTempTaskUpdate(index, -1, true)}
+                          disabled={task.completed <= 0}
+                          className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold hover:bg-emerald-200 dark:hover:bg-emerald-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed border-none cursor-pointer"
+                        >
+                          <Minus size={16} />
+                        </button>
+                        <span className="text-lg font-black text-emerald-950 flex-1 text-center">{task.completed} / {task.total}</span>
+                        <button
+                          onClick={() => handleTempTaskUpdate(index, 1, true)}
+                          disabled={task.completed >= task.total}
+                          className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold hover:bg-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed border-none cursor-pointer"
+                        >
+                          <Plus size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-3 mt-8">
+              <button
+                onClick={() => {
+                  setIsUpdateProgressOpen(false);
+                  setTempProjectData(null);
+                }}
+                className="flex-1 py-2.5 sm:py-3 rounded-2xl border border-gray-200 text-black font-bold hover:bg-gray-50 transition-all cursor-pointer bg-white"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleProgressSubmit}
+                className="flex-1 py-2.5 sm:py-3 rounded-2xl bg-blue-600 text-white font-black hover:shadow-lg hover:shadow-blue-500/20 transition-all cursor-pointer border-none"
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+
 
 
     </div>
