@@ -109,9 +109,12 @@ exports.uploadVisitingCard = async (req, res) => {
 // GET /api/visiting-card/all
 exports.getAllVisitingCards = async (req, res) => {
   try {
-    if (req.role !== 'admin') {
-      return res.status(403).json({ success: false, message: 'Unauthorized: Admins only' });
+    const actualRole = req.role === 'admin' ? 'admin' : (req.user?.role || '');
+    if (req.role !== 'admin' && actualRole.toLowerCase() !== 'data analyst') {
+      return res.status(403).json({ success: false, message: 'Unauthorized: Admins or Data Analysts only' });
     }
+
+
 
     const cards = await VisitingCard.find().sort({ timestamp: -1 });
     res.status(200).json({ success: true, data: cards });

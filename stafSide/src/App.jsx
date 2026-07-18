@@ -1,19 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { LogOut, GraduationCap, LayoutDashboard, TrendingUp } from 'lucide-react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { LogOut, GraduationCap, LayoutDashboard, TrendingUp, CreditCard, Users } from 'lucide-react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import StaffLogin from './pages/StaffLogin';
 import HearingManagement from './pages/HearingManagement';
 import StudentAdmissions from './pages/StudentAdmissions';
 import SalesTeam from './pages/SalesTeam';
+import VisitingCards from './pages/VisitingCards';
+import Clients from './pages/Clients';
+import ClientProjects from './pages/ClientProjects';
+
+
 
 const MainLayout = ({ onLogout }) => {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { id: clientId } = useParams();
+  const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'dashboard');
   const staffInfo = JSON.parse(localStorage.getItem('staffInfo') || '{}');
   const isHR = staffInfo.role?.toLowerCase() === 'hr';
   const isCounselor = staffInfo.role?.toLowerCase() === 'counselor';
   const isSalesTeam = staffInfo.role?.toLowerCase() === 'sales team' || staffInfo.role?.toLowerCase() === 'sales';
+  const isDataAnalyst = staffInfo.role?.toLowerCase() === 'data analyst';
+  const isVisitingCardsAllowed = ['admin', 'data analyst'].includes(staffInfo.role?.toLowerCase());
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    navigate(`/dashboard?tab=${tab}`);
+  };
+
+
+
 
   return (
     <div className="min-h-screen bg-[#eef2f6] flex flex-col relative overflow-hidden">
@@ -125,6 +143,43 @@ const MainLayout = ({ onLogout }) => {
               </button>
             </div>
           )}
+          {isVisitingCardsAllowed && (
+            <div className="flex items-center gap-2 bg-[#eef2f6] p-1 rounded-2xl clay-inset ml-2">
+              <button 
+                onClick={() => handleTabChange('dashboard')}
+                className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all ${
+                  activeTab === 'dashboard'
+                    ? 'clay-flat text-[#8b5cf6] font-bold shadow-md shadow-purple-500/10'
+                    : 'text-[#64748b] hover:text-[#8b5cf6]'
+                }`}
+              >
+                <LayoutDashboard size={16} className="inline mr-1" />
+                Dashboard
+              </button>
+              <button 
+                onClick={() => handleTabChange('clients')}
+                className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all ${
+                  activeTab === 'clients'
+                    ? 'clay-flat text-[#8b5cf6] font-bold shadow-md shadow-purple-500/10'
+                    : 'text-[#64748b] hover:text-[#8b5cf6]'
+                }`}
+              >
+                <Users size={16} className="inline mr-1" />
+                Clients
+              </button>
+              <button 
+                onClick={() => handleTabChange('visitingCards')}
+                className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all ${
+                  activeTab === 'visitingCards'
+                    ? 'clay-flat text-[#8b5cf6] font-bold shadow-md shadow-purple-500/10'
+                    : 'text-[#64748b] hover:text-[#8b5cf6]'
+                }`}
+              >
+                <CreditCard size={16} className="inline mr-1" />
+                Visiting Cards
+              </button>
+            </div>
+          )}
         </div>
         <button 
           onClick={onLogout}
@@ -136,12 +191,21 @@ const MainLayout = ({ onLogout }) => {
       
       {/* Main Content */}
       <main className="flex-1 p-4 md:p-10 relative z-10">
-        {activeTab === 'dashboard' && <Dashboard />}
-        {activeTab === 'hearing' && isHR && <HearingManagement />}
-        {activeTab === 'admissions' && isCounselor && <StudentAdmissions onBack={() => setActiveTab('dashboard')} />}
-        {activeTab === 'sales' && isSalesTeam && <SalesTeam onBack={() => setActiveTab('dashboard')} />}
+        {clientId ? (
+          <ClientProjects onBack={() => navigate('/dashboard?tab=clients')} />
+        ) : (
+          <>
+            {activeTab === 'dashboard' && <Dashboard />}
+            {activeTab === 'hearing' && isHR && <HearingManagement />}
+            {activeTab === 'admissions' && isCounselor && <StudentAdmissions onBack={() => handleTabChange('dashboard')} />}
+            {activeTab === 'sales' && isSalesTeam && <SalesTeam onBack={() => handleTabChange('dashboard')} />}
+            {activeTab === 'visitingCards' && isVisitingCardsAllowed && <VisitingCards onBack={() => handleTabChange('dashboard')} />}
+            {activeTab === 'clients' && isVisitingCardsAllowed && <Clients onClientClick={(client) => navigate(`/clients/${client._id || client.id}`)} />}
+          </>
+        )}
       </main>
     </div>
+
   );
 };
 
@@ -176,6 +240,17 @@ const App = () => {
         {/* Dashboard Route */}
         <Route 
           path="/dashboard" 
+          element={
+            isAuthenticated ? (
+              <MainLayout onLogout={handleLogout} />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        />
+
+        <Route 
+          path="/clients/:id" 
           element={
             isAuthenticated ? (
               <MainLayout onLogout={handleLogout} />
