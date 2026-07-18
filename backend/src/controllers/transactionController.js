@@ -1,6 +1,7 @@
 const Transaction = require('../models/Transaction');
 const Staff = require('../models/Staff');
 const Client = require('../models/Client');
+const OldClient = require('../models/OldClient');
 
 exports.createTransaction = async (req, res) => {
   try {
@@ -98,6 +99,7 @@ exports.getAllTransactions = async (req, res) => {
     let clientPayments = [];
     if (!type || type === 'income' || type === 'client_payment') {
       const clients = await Client.find({}, 'name email payments');
+      const oldClients = await OldClient.find({}, 'name email payments');
 
       clients.forEach(client => {
         (client.payments || []).forEach(payment => {
@@ -119,6 +121,32 @@ exports.getAllTransactions = async (req, res) => {
             referenceId: client._id,
             referenceModel: 'Client',
             description: `Payment from client: ${client.name}`,
+            source: 'client_payment', // flag to distinguish in frontend
+            createdAt: payment.date,
+          });
+        });
+      });
+
+      oldClients.forEach(client => {
+        (client.payments || []).forEach(payment => {
+          const paymentDate = new Date(payment.date);
+
+          // Apply date filter if provided
+          if (startDate && paymentDate < new Date(startDate)) return;
+          if (endDate && paymentDate > new Date(endDate + 'T23:59:59.999Z')) return;
+
+          clientPayments.push({
+            _id: payment._id,
+            type: 'client_payment',
+            name: client.name,
+            amount: payment.amount,
+            date: payment.date,
+            mode: payment.mode,
+            method: payment.mode?.toLowerCase() === 'online' ? 'bank_transfer' : 'cash',
+            utrNumber: payment.utr || null,
+            referenceId: client._id,
+            referenceModel: 'OldClient',
+            description: `Payment from old client: ${client.name}`,
             source: 'client_payment', // flag to distinguish in frontend
             createdAt: payment.date,
           });

@@ -40,7 +40,13 @@ const oldClientSchema = new mongoose.Schema({
   },
   address: {
     type: String
-  }
+  },
+  payments: [{
+    date: { type: Date, default: Date.now },
+    amount: { type: Number, required: true },
+    mode: { type: String, enum: ['Online', 'Cash'], default: 'Online' },
+    utr: { type: String }
+  }]
 }, {
   timestamps: true
 });

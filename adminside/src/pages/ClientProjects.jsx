@@ -87,7 +87,15 @@ const CLIENT_DEPARTMENTS = ['SEO', 'SMM', 'PPC', 'Graphic Design', 'Video Editin
 const PACKAGE_ENABLED_DEPARTMENTS = CLIENT_DEPARTMENTS;
 const PROJECT_STATUS_OPTIONS = ['Pending', 'In Progress', 'On Hold', 'Completed'];
 
+const SMM_PACKAGE_FIELDS = {
+  'Bronze Package Service': { reels: '4', posts: '4', shoots: '1', accountsCount: '1', accountsList: 'Instagram' },
+  'Sliver Package Service': { reels: '10', posts: '6', shoots: '3', accountsCount: '2', accountsList: 'Facebook, Instagram' },
+  'Platinum Package Service': { reels: '15', posts: '8', shoots: '5', accountsCount: '3', accountsList: 'Facebook, Instagram, Youtube' },
+  'Gold Package Service': { reels: '20', posts: '10', shoots: '10', accountsCount: '3', accountsList: 'Facebook, Instagram, Youtube' }
+};
+
 const PACKAGE_DETAILS = {
+
   'Bronze Package Service': {
     fee: 10000,
     gst: 18,
@@ -107,6 +115,21 @@ const PACKAGE_DETAILS = {
     fee: 35000,
     gst: 18,
     details: '• Setting Goals\n• Account Management – 3 (Facebook , Instagram & Youtube )\n• Hashtag Research\n• Content Strategy Creation\n• Page Creation\n• Facebook Cover And Profile Picture Creation\n• Page Optimization\n• Posting Per Month 24 - 30 ( 16 - 20 Reels & 10 Post )\n• Facebook Story Creation\n• Video Posting(Provided By Client)\n• Page Monitoring\n• Responding To Comments\n• GMB Life Time Free (Google My Business)\n• 10+ Professional shoot\n• Views 50k +'
+  },
+  'Starter Package': {
+    fee: 10000,
+    gst: 18,
+    details: '• Website Audit\n• On-Page Optimization (up to 5 pages)\n• Keyword Research (up to 10 keywords)\n• Meta Tags Optimization (Title & Description)\n• Google Analytics & Search Console Setup\n• Monthly Reporting'
+  },
+  'Growth Package': {
+    fee: 20000,
+    gst: 18,
+    details: '• Website Audit\n• On-Page Optimization (up to 15 pages)\n• Keyword Research (up to 30 keywords)\n• Content Optimization (3 Blog Posts)\n• Backlink Building (5 high-quality backlinks)\n• Competitor Analysis\n• Speed Optimization suggestions\n• Monthly Reporting'
+  },
+  'Elite Package': {
+    fee: 35000,
+    gst: 18,
+    details: '• Website Audit\n• On-Page Optimization (up to 30 pages)\n• Keyword Research (up to 100 keywords)\n• Content Optimization (8 Blog Posts)\n• Backlink Building (15 high-quality backlinks)\n• Technical SEO Fixes\n• Local SEO optimization\n• Dedicated SEO Manager\n• Monthly Reporting'
   }
 };
 
@@ -218,6 +241,38 @@ const EditClientModal = ({ isOpen, onClose, client, onSave }) => {
   );
 };
 
+const parseSmmWorkDetail = (workDetail = '') => {
+  const result = { reels: '', posts: '', shoots: '', accountsCount: '', accountsList: '' };
+  if (!workDetail) return result;
+
+  const lines = workDetail.split('\n');
+  for (const line of lines) {
+    const postingMatch = line.match(/(?:Total\s+Posting|Posting\s+Per\s+Month)\s+\d+[\-\d\s]*\(\s*(\d+)[\-\d\s]*Reels?\s*&\s*(\d+)[\-\d\s]*Posts?\s*\)/i);
+    if (postingMatch) {
+      result.reels = postingMatch[1];
+      result.posts = postingMatch[2];
+    }
+
+    const shootMatch = line.match(/(\d+)\+?\s*Professional\s*shoots?/i);
+    if (shootMatch) {
+      result.shoots = shootMatch[1];
+    }
+
+    const accountsMatch = line.match(/Accounts\s+Handled:\s*(\d+)\s*\(([^)]+)\)/i);
+    if (accountsMatch) {
+      result.accountsCount = accountsMatch[1];
+      result.accountsList = accountsMatch[2];
+    }
+  }
+  return result;
+};
+
+const parseSeoWorkDetail = (workDetail = '') => {
+  if (!workDetail) return [''];
+  const items = workDetail.split('\n').map(line => line.replace(/^•\s*/, '').trim()).filter(Boolean);
+  return items.length > 0 ? items : [''];
+};
+
 const EditProjectModal = ({ isOpen, onClose, project, onSave }) => {
   const [formData, setFormData] = useState({
     department: 'WEB DEvlopment',
@@ -228,11 +283,20 @@ const EditProjectModal = ({ isOpen, onClose, project, onSave }) => {
     deadline: '',
     status: 'In Progress'
   });
+  const [smmFields, setSmmFields] = useState({
+    reels: '',
+    posts: '',
+    shoots: '',
+    accountsCount: '',
+    accountsList: ''
+  });
+  const [workDetailsList, setWorkDetailsList] = useState(['']);
 
   useEffect(() => {
     if (project && isOpen) {
+      const dept = project.department || 'WEB DEvlopment';
       setFormData({
-        department: project.department || 'WEB DEvlopment',
+        department: dept,
         package: project.package || '',
         workDetail: project.workDetail || '',
         totalAmount: project.totalPrice?.toString() || '',
@@ -240,6 +304,16 @@ const EditProjectModal = ({ isOpen, onClose, project, onSave }) => {
         deadline: project.deadline ? new Date(project.deadline).toISOString().split('T')[0] : '',
         status: project.status || 'In Progress'
       });
+      if (dept === 'SMM') {
+        setSmmFields(parseSmmWorkDetail(project.workDetail));
+        setWorkDetailsList(['']);
+      } else if (dept === 'SEO' || dept === 'PPC') {
+        setWorkDetailsList(parseSeoWorkDetail(project.workDetail));
+        setSmmFields({ reels: '', posts: '', shoots: '', accountsCount: '', accountsList: '' });
+      } else {
+        setWorkDetailsList(['']);
+        setSmmFields({ reels: '', posts: '', shoots: '', accountsCount: '', accountsList: '' });
+      }
     }
   }, [project, isOpen]);
 
@@ -247,16 +321,58 @@ const EditProjectModal = ({ isOpen, onClose, project, onSave }) => {
 
   const showPackages = PACKAGE_ENABLED_DEPARTMENTS.includes(formData.department);
 
+  const handleSmmFieldChange = (key, value, currentSmmFields = smmFields, currentFormData = formData) => {
+    const updatedFields = {
+      ...currentSmmFields,
+      [key]: value
+    };
+    setSmmFields(updatedFields);
+
+    const reelsVal = updatedFields.reels || '0';
+    const postsVal = updatedFields.posts || '0';
+    const shootsVal = updatedFields.shoots || '0';
+    const countVal = updatedFields.accountsCount || '0';
+    const listVal = updatedFields.accountsList || '';
+    const lines = [
+      `Total Posting ${parseInt(reelsVal || '0') + parseInt(postsVal || '0')} ( ${reelsVal} Reel & ${postsVal} Post )`,
+      `${shootsVal} Professional shoot`,
+      `Accounts Handled: ${countVal} (${listVal})`
+    ];
+
+    setFormData({
+      ...currentFormData,
+      workDetail: lines.join('\n')
+    });
+  };
+
   const handleDepartmentChange = (department) => {
     if (PACKAGE_ENABLED_DEPARTMENTS.includes(department)) {
-      const defaultPackage = 'Sliver Package Service';
-      const packageDetails = PACKAGE_DETAILS[defaultPackage];
+      const defaultPackage = (department === 'SEO' || department === 'PPC') ? 'Starter Package' : 'Sliver Package Service';
+      let initialWorkDetail = '';
+      if (department === 'SMM') {
+        const fields = SMM_PACKAGE_FIELDS[defaultPackage];
+        setSmmFields(fields);
+        const reelsVal = fields.reels || '0';
+        const postsVal = fields.posts || '0';
+        const shootsVal = fields.shoots || '0';
+        const countVal = fields.accountsCount || '0';
+        const listVal = fields.accountsList || '';
+        initialWorkDetail = [
+          `Total Posting ${parseInt(reelsVal) + parseInt(postsVal)} ( ${reelsVal} Reel & ${postsVal} Post )`,
+          `${shootsVal} Professional shoot`,
+          `Accounts Handled: ${countVal} (${listVal})`
+        ].join('\n');
+      } else {
+        const packageDetails = PACKAGE_DETAILS[defaultPackage];
+        initialWorkDetail = (department === 'SEO' || department === 'PPC') ? '' : packageDetails.details;
+      }
+
       setFormData({
         ...formData,
         department,
         package: defaultPackage,
-        workDetail: packageDetails.details,
-        totalAmount: (packageDetails.fee * 1.18).toFixed(0)
+        workDetail: initialWorkDetail,
+        totalAmount: (PACKAGE_DETAILS[defaultPackage].fee * 1.18).toFixed(0)
       });
       return;
     }
@@ -268,16 +384,38 @@ const EditProjectModal = ({ isOpen, onClose, project, onSave }) => {
       workDetail: '',
       totalAmount: ''
     });
+    setSmmFields({ reels: '', posts: '', shoots: '', accountsCount: '', accountsList: '' });
   };
 
   const handlePackageChange = (packageName) => {
     const packageDetails = PACKAGE_DETAILS[packageName];
-    setFormData({
-      ...formData,
-      package: packageName,
-      workDetail: packageDetails.details,
-      totalAmount: (packageDetails.fee * (1 + packageDetails.gst / 100)).toFixed(0)
-    });
+    if (formData.department === 'SMM') {
+      const fields = SMM_PACKAGE_FIELDS[packageName] || { reels: '', posts: '', shoots: '', accountsCount: '', accountsList: '' };
+      setSmmFields(fields);
+      const reelsVal = fields.reels || '0';
+      const postsVal = fields.posts || '0';
+      const shootsVal = fields.shoots || '0';
+      const countVal = fields.accountsCount || '0';
+      const listVal = fields.accountsList || '';
+      const lines = [
+        `Total Posting ${parseInt(reelsVal || '0') + parseInt(postsVal || '0')} ( ${reelsVal} Reel & ${postsVal} Post )`,
+        `${shootsVal} Professional shoot`,
+        `Accounts Handled: ${countVal} (${listVal})`
+      ];
+      setFormData({
+        ...formData,
+        package: packageName,
+        workDetail: lines.join('\n'),
+        totalAmount: (packageDetails.fee * (1 + packageDetails.gst / 100)).toFixed(0)
+      });
+    } else {
+      setFormData({
+        ...formData,
+        package: packageName,
+        workDetail: (formData.department === 'SEO' || formData.department === 'PPC') ? '' : packageDetails.details,
+        totalAmount: (packageDetails.fee * (1 + packageDetails.gst / 100)).toFixed(0)
+      });
+    }
   };
 
   const handleSubmit = () => {
@@ -355,11 +493,17 @@ const EditProjectModal = ({ isOpen, onClose, project, onSave }) => {
                 value={formData.package}
                 onChange={(e) => handlePackageChange(e.target.value)}
               >
-                {Object.keys(PACKAGE_DETAILS).map((packageName) => (
-                  <option key={packageName} value={packageName} className="bg-white dark:bg-[#030303] text-black dark:text-white">
-                    {packageName}
-                  </option>
-                ))}
+                {Object.keys(PACKAGE_DETAILS)
+                  .filter((packageName) => {
+                    const isSeoOrPpcPkg = ['Starter Package', 'Growth Package', 'Elite Package'].includes(packageName);
+                    return (formData.department === 'SEO' || formData.department === 'PPC') ? isSeoOrPpcPkg : !isSeoOrPpcPkg;
+                  })
+                  .map((packageName) => (
+                    <option key={packageName} value={packageName} className="bg-white dark:bg-[#030303] text-black dark:text-white">
+                      {packageName}
+                    </option>
+                  ))
+                }
               </select>
             </div>
           ) : (
@@ -374,15 +518,123 @@ const EditProjectModal = ({ isOpen, onClose, project, onSave }) => {
             </div>
           )}
 
-          <div>
-            <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Work Detail</label>
-            <textarea
-              rows={5}
-              className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-purple-500 outline-none transition-all"
-              value={formData.workDetail}
-              onChange={(e) => setFormData({ ...formData, workDetail: e.target.value })}
-            />
-          </div>
+          {formData.department === 'SMM' ? (
+            <div className="space-y-4 bg-gray-50 dark:bg-white/5 p-5 rounded-2xl border border-gray-200/50 dark:border-white/5">
+              <h4 className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block">SMM Campaign Requirements</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block mb-1">Number of Reels</label>
+                  <input
+                    type="number"
+                    className="w-full bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-black dark:text-white focus:border-purple-500 outline-none transition-all"
+                    placeholder="e.g. 10"
+                    value={smmFields.reels}
+                    onChange={(e) => handleSmmFieldChange('reels', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block mb-1">Number of Posts</label>
+                  <input
+                    type="number"
+                    className="w-full bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-black dark:text-white focus:border-purple-500 outline-none transition-all"
+                    placeholder="e.g. 6"
+                    value={smmFields.posts}
+                    onChange={(e) => handleSmmFieldChange('posts', e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block mb-1">Number of Shoots</label>
+                  <input
+                    type="number"
+                    className="w-full bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-black dark:text-white focus:border-purple-500 outline-none transition-all"
+                    placeholder="e.g. 3"
+                    value={smmFields.shoots}
+                    onChange={(e) => handleSmmFieldChange('shoots', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block mb-1">Accounts Handled</label>
+                  <input
+                    type="number"
+                    className="w-full bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-black dark:text-white focus:border-purple-500 outline-none transition-all"
+                    placeholder="e.g. 2"
+                    value={smmFields.accountsCount}
+                    onChange={(e) => handleSmmFieldChange('accountsCount', e.target.value)}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block mb-1">Which Platforms / Accounts</label>
+                <input
+                  type="text"
+                  className="w-full bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-black dark:text-white focus:border-purple-500 outline-none transition-all"
+                  placeholder="e.g. Facebook, Instagram"
+                  value={smmFields.accountsList}
+                  onChange={(e) => handleSmmFieldChange('accountsList', e.target.value)}
+                />
+              </div>
+            </div>
+          ) : (formData.department === 'SEO' || formData.department === 'PPC') ? (
+            <div>
+              <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Work Details (Enter One by One)</label>
+              <div className="space-y-2">
+                {workDetailsList.map((detail, index) => (
+                  <div key={index} className="flex gap-2 items-center">
+                    <input
+                      type="text"
+                      className="flex-1 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-purple-500 outline-none transition-all placeholder:text-gray-400"
+                      placeholder={`Work Detail #${index + 1}`}
+                      value={detail}
+                      onChange={(e) => {
+                        const newList = [...workDetailsList];
+                        newList[index] = e.target.value;
+                        setWorkDetailsList(newList);
+                        setFormData({
+                          ...formData,
+                          workDetail: newList.map(item => `• ${item.trim()}`).filter(item => item !== '• ').join('\n')
+                        });
+                      }}
+                    />
+                    {workDetailsList.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newList = workDetailsList.filter((_, i) => i !== index);
+                          setWorkDetailsList(newList);
+                          setFormData({
+                            ...formData,
+                            workDetail: newList.map(item => `• ${item.trim()}`).filter(item => item !== '• ').join('\n')
+                          });
+                        }}
+                        className="p-2.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-all border-none bg-transparent cursor-pointer"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setWorkDetailsList([...workDetailsList, ''])}
+                  className="px-4 py-2.5 rounded-xl border border-dashed border-gray-300 dark:border-white/20 text-xs font-bold text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-all flex items-center gap-1 cursor-pointer bg-transparent"
+                >
+                  <Plus size={14} /> Add Work Detail
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Work Detail</label>
+              <textarea
+                rows={5}
+                className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-purple-500 outline-none transition-all"
+                value={formData.workDetail}
+                onChange={(e) => setFormData({ ...formData, workDetail: e.target.value })}
+              />
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>

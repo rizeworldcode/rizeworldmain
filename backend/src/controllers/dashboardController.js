@@ -1,4 +1,5 @@
 const Client = require('../models/Client');
+const OldClient = require('../models/OldClient');
 const Staff = require('../models/Staff');
 const Transaction = require('../models/Transaction');
 
@@ -9,6 +10,7 @@ const getUnifiedTransactions = async () => {
   // 2. Fetch client payment history
   let clientPayments = [];
   const clients = await Client.find({}, 'name email payments');
+  const oldClients = await OldClient.find({}, 'name email payments');
 
   clients.forEach(client => {
     (client.payments || []).forEach(payment => {
@@ -24,6 +26,26 @@ const getUnifiedTransactions = async () => {
         referenceId: client._id,
         referenceModel: 'Client',
         description: `Payment from client: ${client.name}`,
+        source: 'client_payment',
+        createdAt: payment.date,
+      });
+    });
+  });
+
+  oldClients.forEach(client => {
+    (client.payments || []).forEach(payment => {
+      clientPayments.push({
+        _id: payment._id,
+        type: 'client_payment',
+        name: client.name,
+        amount: payment.amount,
+        date: payment.date,
+        mode: payment.mode,
+        method: payment.mode?.toLowerCase() === 'online' ? 'bank_transfer' : 'cash',
+        utrNumber: payment.utr || null,
+        referenceId: client._id,
+        referenceModel: 'OldClient',
+        description: `Payment from old client: ${client.name}`,
         source: 'client_payment',
         createdAt: payment.date,
       });

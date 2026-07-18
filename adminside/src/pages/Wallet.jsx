@@ -1,8 +1,24 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Wallet, Plus, IndianRupee, CreditCard, Filter, Edit2, Trash2 } from 'lucide-react';
-import { getWalletTransactions, addWalletTransaction, updateWalletTransaction, deleteWalletTransaction } from '../api';
+import { 
+  AreaChart, 
+  Area, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer 
+} from 'recharts';
+import { 
+  getWalletTransactions, 
+  addWalletTransaction, 
+  updateWalletTransaction, 
+  deleteWalletTransaction,
+  getAllClients,
+  getAllOldClients
+} from '../api';
 
 const WalletPage = () => {
   const [searchParams] = useSearchParams();
@@ -29,6 +45,7 @@ const WalletPage = () => {
   });
 
   const [editingTransaction, setEditingTransaction] = useState(null);
+  const [pendingDues, setPendingDues] = useState(0);
 
   const editUtrTrimmed = (editingTransaction?.utrNumber || '').trim();
   const isEditUtrInvalid = editingTransaction?.mode === 'online' && (editUtrTrimmed.length < 12 || editUtrTrimmed.length > 16);
@@ -42,6 +59,33 @@ const WalletPage = () => {
   const isUtrInvalid = newTransaction.mode === 'online' && (utrTrimmed.length < 12 || utrTrimmed.length > 16);
   const showUtrError = newTransaction.mode === 'online' && newTransaction.utrNumber !== '' && (utrTrimmed.length < 12 || utrTrimmed.length > 16);
 
+  const fetchPendingDues = async () => {
+    try {
+      const [newClientsRes, oldClientsRes] = await Promise.all([
+        getAllClients(),
+        getAllOldClients()
+      ]);
+      
+      let totalPending = 0;
+      if (newClientsRes.success && Array.isArray(newClientsRes.data)) {
+        newClientsRes.data.forEach(client => {
+          totalPending += parseFloat(client.pendingAmount || 0);
+        });
+      }
+      if (oldClientsRes.success && Array.isArray(oldClientsRes.data)) {
+        oldClientsRes.data.forEach(client => {
+          const clientPending = parseFloat(client.totalAmount || 0) - parseFloat(client.paidAmount || 0);
+          if (clientPending > 0) {
+            totalPending += clientPending;
+          }
+        });
+      }
+      setPendingDues(totalPending);
+    } catch (error) {
+      console.error('Error fetching pending dues:', error);
+    }
+  };
+
   const fetchTransactions = async () => {
     try {
       setLoading(true);
@@ -49,12 +93,37 @@ const WalletPage = () => {
       if (result.success) {
         setTransactions(result.data);
       }
+      await fetchPendingDues();
     } catch (error) {
       console.error('Error fetching transactions:', error);
     } finally {
       setLoading(false);
     }
   };
+
+  const chartData = useMemo(() => {
+    if (!transactions || transactions.length === 0) return [];
+    
+    // Sort chronologically (oldest first)
+    const sorted = [...transactions].sort((a, b) => new Date(a.date) - new Date(b.date));
+    
+    let runningBalance = 0;
+    return sorted.map((t) => {
+      const isIncome = t.type === 'client_payment' || t.type === 'income' || t.source === 'client_payment';
+      if (isIncome) {
+        runningBalance += t.amount;
+      } else {
+        runningBalance -= t.amount;
+      }
+      return {
+        date: new Date(t.date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }),
+        balance: runningBalance,
+        amount: t.amount,
+        type: isIncome ? 'Income' : 'Expense',
+        name: t.name
+      };
+    });
+  }, [transactions]);
 
   const handleAddTransaction = async (e) => {
     e.preventDefault();
@@ -210,48 +279,96 @@ const WalletPage = () => {
         </motion.div>
       </section>
 
-      {/* Stats Cards */}
-      <section className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-        <div className="glass p-6 rounded-2xl">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-500 font-medium mb-1">Total Balance</p>
-              <h3 className="text-3xl font-bold text-gray-900 dark:text-white">
-                ₹{(totalIncome - totalExpense).toLocaleString('en-IN')}
-              </h3>
-            </div>
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 flex items-center justify-center">
-              <Wallet className="text-white" size={24} />
+      {/* Overview Grid */}
+      <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Balance Trajectory Chart Card */}
+        <div className="lg:col-span-2 glass rounded-3xl p-6 border border-gray-200/50 dark:border-white/5 shadow-xl flex flex-col justify-between">
+          <div>
+            <h3 className="text-gray-400 dark:text-gray-500 text-xs font-semibold uppercase tracking-wider mb-1">Balance Trajectory</h3>
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-extrabold text-gray-900 dark:text-white">
+                ₹{((totalIncome - totalExpense) || 0).toLocaleString('en-IN')}
+              </span>
+              <span className="text-xs font-medium text-gray-400">Current Balance</span>
             </div>
           </div>
+          
+          <div className="h-48 mt-6">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorBalance" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4}/>
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(229, 231, 235, 0.1)" />
+                <XAxis dataKey="date" stroke="#9ca3af" fontSize={10} tickLine={false} />
+                <YAxis stroke="#9ca3af" fontSize={10} tickLine={false} axisLine={false} />
+                <Tooltip
+                  content={({ active, payload }) => {
+                    if (active && payload && payload.length) {
+                      const data = payload[0].payload;
+                      return (
+                        <div className="glass p-4 rounded-xl border border-gray-200 dark:border-white/10 shadow-2xl backdrop-blur-md text-left">
+                          <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1">{data.date}</p>
+                          <p className="text-sm font-extrabold text-gray-900 dark:text-white mb-0.5">Balance: ₹{data.balance.toLocaleString('en-IN')}</p>
+                          <p className="text-xs text-gray-500">{data.name}: <span className={data.type === 'Income' ? 'text-emerald-500' : 'text-rose-500'}>{data.type === 'Income' ? '+' : '-'}₹{data.amount}</span></p>
+                        </div>
+                      );
+                    }
+                    return null;
+                  }}
+                />
+                <Area type="monotone" dataKey="balance" stroke="#3b82f6" strokeWidth={2.5} fillOpacity={1} fill="url(#colorBalance)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
         </div>
-        <div className="glass p-6 rounded-2xl">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-500 font-medium mb-1">Total Income</p>
-              <h3 className="text-3xl font-bold text-emerald-600">
-                ₹{totalIncome.toLocaleString('en-IN')}
-              </h3>
+
+        {/* Quick Stats Stack */}
+        <div className="space-y-6 flex flex-col justify-between">
+          {/* Income Card */}
+          <div className="glass rounded-3xl p-6 border border-gray-200/50 dark:border-white/5 shadow-xl flex items-center justify-between">
+            <div className="space-y-1">
+              <span className="text-gray-400 dark:text-gray-500 text-xs font-semibold uppercase tracking-wider block">Total Income</span>
+              <span className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 block">
+                ₹{(totalIncome || 0).toLocaleString('en-IN')}
+              </span>
             </div>
             <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 flex items-center justify-center">
               <IndianRupee className="text-white" size={24} />
             </div>
           </div>
-        </div>
-        <div className="glass p-6 rounded-2xl">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-500 font-medium mb-1">Total Expense</p>
-              <h3 className="text-3xl font-bold text-rose-600">
-                ₹{totalExpense.toLocaleString('en-IN')}
-              </h3>
+
+          {/* Expense Card */}
+          <div className="glass rounded-3xl p-6 border border-gray-200/50 dark:border-white/5 shadow-xl flex items-center justify-between">
+            <div className="space-y-1">
+              <span className="text-gray-400 dark:text-gray-500 text-xs font-semibold uppercase tracking-wider block">Total Expense</span>
+              <span className="text-2xl font-extrabold text-rose-600 block">
+                ₹{(totalExpense || 0).toLocaleString('en-IN')}
+              </span>
             </div>
             <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-rose-500 to-orange-500 flex items-center justify-center">
               <CreditCard className="text-white" size={24} />
             </div>
           </div>
+
+          {/* Pending Dues Card */}
+          <div className="glass rounded-3xl p-6 border border-gray-200/50 dark:border-white/5 shadow-xl flex items-center justify-between">
+            <div className="space-y-1">
+              <span className="text-gray-400 dark:text-gray-500 text-xs font-semibold uppercase tracking-wider block">Pending Dues</span>
+              <span className="text-2xl font-extrabold text-amber-600 dark:text-amber-400 block">
+                ₹{(pendingDues || 0).toLocaleString('en-IN')}
+              </span>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 flex items-center justify-center">
+              <Wallet className="text-white" size={24} />
+            </div>
+          </div>
         </div>
       </section>
+
 
       {/* Filters */}
       <div className="flex items-center gap-4">
