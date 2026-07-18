@@ -105,7 +105,7 @@ const WalletPage = () => {
     if (!transactions || transactions.length === 0) return [];
     
     // Sort chronologically (oldest first)
-    const sorted = [...transactions].sort((a, b) => new Date(a.date) - new Date(b.date));
+    const sorted = [...transactions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     
     let runningBalance = 0;
     return sorted.map((t) => {
