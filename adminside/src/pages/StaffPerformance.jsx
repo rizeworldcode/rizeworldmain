@@ -1609,9 +1609,8 @@ const StaffPerformance = ({ staffId, onBack }) => {
                       <option value="">Select Department</option>
                       <option value="WEB Development">WEB Development</option>
                       <option value="SEO">SEO</option>
-                      <option value="Graphic Design">Graphic Design</option>
+                      <option value="Graphic Design & Video Editing">Graphic Design & Video Editing</option>
                       <option value="SMM">SMM</option>
-                      <option value="Video Editing">Video Editing</option>
                     </select>
                   </div>
                   <div className="space-y-2">

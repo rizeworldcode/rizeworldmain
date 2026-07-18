@@ -184,14 +184,14 @@ function App() {
                       />
                     } />
                     <Route path="/staff/add" element={
-                  <AddStaff onBack={() => navigate('/staff')} />
-                } />
+                      <AddStaff onBack={() => navigate('/staff')} />
+                    } />
                     <Route path="/staff/removed" element={
                       <RemovedEmployees />
                     } />
-                <Route path="/clients" element={
-                  <Clients onClientClick={(client) => navigate(`/clients/${client._id || client.id}`)} theme={theme} />
-                } />
+                    <Route path="/clients" element={
+                      <Clients onClientClick={(client) => navigate(`/clients/${client._id || client.id}`)} theme={theme} />
+                    } />
                     <Route path="/clients/:id" element={
                       <ClientProjects onBack={() => navigate('/clients')} />
                     } />

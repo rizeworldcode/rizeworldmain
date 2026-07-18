@@ -83,8 +83,8 @@ const calculateProjectProgress = (project) => {
   return Math.round((totalCompleted / primaryTotal) * 100);
 };
 
-const CLIENT_DEPARTMENTS = ['SEO', 'SMM', 'PPC', 'Graphic Design', 'Video Editing', 'WEB DEvlopment', 'Email Marketing', 'Ai Marketing'];
-const PACKAGE_ENABLED_DEPARTMENTS = CLIENT_DEPARTMENTS.filter(d => d !== 'Graphic Design' && d !== 'Video Editing');
+const CLIENT_DEPARTMENTS = ['SEO', 'SMM', 'PPC', 'Graphic Design & Video Editing', 'WEB DEvlopment'];
+const PACKAGE_ENABLED_DEPARTMENTS = CLIENT_DEPARTMENTS.filter(d => d !== 'Graphic Design & Video Editing');
 const PROJECT_STATUS_OPTIONS = ['Pending', 'In Progress', 'On Hold', 'Completed'];
 
 const SMM_PACKAGE_FIELDS = {
@@ -130,6 +130,16 @@ const PACKAGE_DETAILS = {
     fee: 35000,
     gst: 18,
     details: '• Website Audit\n• On-Page Optimization (up to 30 pages)\n• Keyword Research (up to 100 keywords)\n• Content Optimization (8 Blog Posts)\n• Backlink Building (15 high-quality backlinks)\n• Technical SEO Fixes\n• Local SEO optimization\n• Dedicated SEO Manager\n• Monthly Reporting'
+  },
+  'Informative Website': {
+    fee: 15000,
+    gst: 18,
+    details: 'Informative Website'
+  },
+  'E-Commerce Website': {
+    fee: 25000,
+    gst: 18,
+    details: 'E-Commerce Website'
   }
 };
 
@@ -308,6 +318,12 @@ const parseGraphicWorkDetail = (workDetail = '') => {
   return result;
 };
 
+const parseWebPagesWorkDetail = (workDetail = '') => {
+  if (!workDetail) return '';
+  const match = workDetail.match(/\((\d+)\s*Pages?\)/i);
+  return match ? match[1] : '';
+};
+
 const EditProjectModal = ({ isOpen, onClose, project, onSave }) => {
   const [formData, setFormData] = useState({
     department: 'WEB DEvlopment',
@@ -334,6 +350,7 @@ const EditProjectModal = ({ isOpen, onClose, project, onSave }) => {
     perShootAmount: ''
   });
   const [workDetailsList, setWorkDetailsList] = useState(['']);
+  const [webPages, setWebPages] = useState('');
 
   useEffect(() => {
     if (project && isOpen) {
@@ -351,18 +368,27 @@ const EditProjectModal = ({ isOpen, onClose, project, onSave }) => {
         setSmmFields(parseSmmWorkDetail(project.workDetail));
         setWorkDetailsList(['']);
         setGraphicFields({ reels: '', posts: '', shoots: '', perReelAmount: '', perPostAmount: '', perShootAmount: '' });
+        setWebPages('');
       } else if (dept === 'SEO' || dept === 'PPC') {
         setWorkDetailsList(parseSeoWorkDetail(project.workDetail));
         setSmmFields({ reels: '', posts: '', shoots: '', accountsCount: '', accountsList: '' });
         setGraphicFields({ reels: '', posts: '', shoots: '', perReelAmount: '', perPostAmount: '', perShootAmount: '' });
-      } else if (dept === 'Graphic Design' || dept === 'Video Editing') {
+        setWebPages('');
+      } else if (dept === 'Graphic Design & Video Editing') {
         setGraphicFields(parseGraphicWorkDetail(project.workDetail));
         setWorkDetailsList(['']);
         setSmmFields({ reels: '', posts: '', shoots: '', accountsCount: '', accountsList: '' });
+        setWebPages('');
+      } else if (dept === 'WEB DEvlopment') {
+        setWebPages(parseWebPagesWorkDetail(project.workDetail));
+        setWorkDetailsList(['']);
+        setSmmFields({ reels: '', posts: '', shoots: '', accountsCount: '', accountsList: '' });
+        setGraphicFields({ reels: '', posts: '', shoots: '', perReelAmount: '', perPostAmount: '', perShootAmount: '' });
       } else {
         setWorkDetailsList(['']);
         setSmmFields({ reels: '', posts: '', shoots: '', accountsCount: '', accountsList: '' });
         setGraphicFields({ reels: '', posts: '', shoots: '', perReelAmount: '', perPostAmount: '', perShootAmount: '' });
+        setWebPages('');
       }
     }
   }, [project, isOpen]);
@@ -432,9 +458,21 @@ const EditProjectModal = ({ isOpen, onClose, project, onSave }) => {
     });
   };
 
+  const handleWebPagesChange = (pagesVal, currentPkg = formData.package, currentFormData = formData) => {
+    setWebPages(pagesVal);
+    const detailStr = `${currentPkg || 'Website'} (${pagesVal || '0'} Pages)`;
+    setFormData({
+      ...currentFormData,
+      workDetail: detailStr
+    });
+  };
+
   const handleDepartmentChange = (department) => {
     if (PACKAGE_ENABLED_DEPARTMENTS.includes(department)) {
-      const defaultPackage = (department === 'SEO' || department === 'PPC') ? 'Starter Package' : 'Sliver Package Service';
+      let defaultPackage = (department === 'SEO' || department === 'PPC') ? 'Starter Package' : 'Sliver Package Service';
+      if (department === 'WEB DEvlopment') {
+        defaultPackage = 'Informative Website';
+      }
       let initialWorkDetail = '';
       if (department === 'SMM') {
         const fields = SMM_PACKAGE_FIELDS[defaultPackage];
@@ -449,6 +487,9 @@ const EditProjectModal = ({ isOpen, onClose, project, onSave }) => {
           `${shootsVal} Professional shoot`,
           `Accounts Handled: ${countVal} (${listVal})`
         ].join('\n');
+      } else if (department === 'WEB DEvlopment') {
+        initialWorkDetail = 'Informative Website (0 Pages)';
+        setWebPages('');
       } else {
         const packageDetails = PACKAGE_DETAILS[defaultPackage];
         initialWorkDetail = (department === 'SEO' || department === 'PPC') ? '' : packageDetails.details;
@@ -463,6 +504,7 @@ const EditProjectModal = ({ isOpen, onClose, project, onSave }) => {
       });
       setSmmFields({ reels: '', posts: '', shoots: '', accountsCount: '', accountsList: '' });
       setGraphicFields({ reels: '', posts: '', shoots: '', perReelAmount: '', perPostAmount: '', perShootAmount: '' });
+      setWebPages('');
       return;
     }
 
@@ -475,6 +517,7 @@ const EditProjectModal = ({ isOpen, onClose, project, onSave }) => {
     });
     setSmmFields({ reels: '', posts: '', shoots: '', accountsCount: '', accountsList: '' });
     setGraphicFields({ reels: '', posts: '', shoots: '', perReelAmount: '', perPostAmount: '', perShootAmount: '' });
+    setWebPages('');
   };
 
   const handlePackageChange = (packageName) => {
@@ -496,6 +539,15 @@ const EditProjectModal = ({ isOpen, onClose, project, onSave }) => {
         ...formData,
         package: packageName,
         workDetail: lines.join('\n'),
+        totalAmount: (packageDetails.fee * (1 + packageDetails.gst / 100)).toFixed(0)
+      });
+    } else if (formData.department === 'WEB DEvlopment') {
+      const pagesVal = webPages || '0';
+      const detailStr = `${packageName} (${pagesVal} Pages)`;
+      setFormData({
+        ...formData,
+        package: packageName,
+        workDetail: detailStr,
         totalAmount: (packageDetails.fee * (1 + packageDetails.gst / 100)).toFixed(0)
       });
     } else {
@@ -585,8 +637,13 @@ const EditProjectModal = ({ isOpen, onClose, project, onSave }) => {
               >
                 {Object.keys(PACKAGE_DETAILS)
                   .filter((packageName) => {
-                    const isSeoOrPpcPkg = ['Starter Package', 'Growth Package', 'Elite Package'].includes(packageName);
-                    return (formData.department === 'SEO' || formData.department === 'PPC') ? isSeoOrPpcPkg : !isSeoOrPpcPkg;
+                    if (formData.department === 'SEO' || formData.department === 'PPC') {
+                      return ['Starter Package', 'Growth Package', 'Elite Package'].includes(packageName);
+                    }
+                    if (formData.department === 'WEB DEvlopment') {
+                      return ['Informative Website', 'E-Commerce Website'].includes(packageName);
+                    }
+                    return !['Starter Package', 'Growth Package', 'Elite Package', 'Informative Website', 'E-Commerce Website'].includes(packageName);
                   })
                   .map((packageName) => (
                     <option key={packageName} value={packageName} className="bg-white dark:bg-[#030303] text-black dark:text-white">
@@ -714,7 +771,7 @@ const EditProjectModal = ({ isOpen, onClose, project, onSave }) => {
                 </button>
               </div>
             </div>
-          ) : (formData.department === 'Graphic Design' || formData.department === 'Video Editing') ? (
+          ) : formData.department === 'Graphic Design & Video Editing' ? (
             <div className="space-y-4 bg-gray-50 dark:bg-white/5 p-5 rounded-2xl border border-gray-200/50 dark:border-white/5">
               <h4 className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block">{formData.department} Campaign Details</h4>
               <div className="grid grid-cols-3 gap-4">
@@ -782,6 +839,17 @@ const EditProjectModal = ({ isOpen, onClose, project, onSave }) => {
                   />
                 </div>
               </div>
+            </div>
+          ) : formData.department === 'WEB DEvlopment' ? (
+            <div>
+              <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Number of Pages</label>
+              <input
+                type="number"
+                className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-purple-500 outline-none transition-all placeholder:text-gray-400"
+                placeholder="e.g. 5"
+                value={webPages}
+                onChange={(e) => handleWebPagesChange(e.target.value)}
+              />
             </div>
           ) : (
             <div>
@@ -1069,8 +1137,7 @@ const generateInvoiceHTML = (project, client, includeGST = true) => {
   // HSN/SAC code based on department/service
   let hsnCode = '998365'; // default for digital services
   if (project.department === 'SEO') hsnCode = '998364';
-  if (project.department === 'Graphic Design') hsnCode = '998361';
-  if (project.department === 'Video Editing') hsnCode = '998362';
+  if (project.department === 'Graphic Design & Video Editing') hsnCode = '998361';
   if (project.department === 'Web Development') hsnCode = '998363';
 
   // Amount in words function
@@ -1379,8 +1446,7 @@ const generateAllProjectsInvoiceHTML = (projects, client, includeGST = true) => 
   // HSN/SAC code based on department/service
   let hsnCode = '998365';
   if (projects[0]?.department === 'SEO') hsnCode = '998364';
-  if (projects[0]?.department === 'Graphic Design') hsnCode = '998361';
-  if (projects[0]?.department === 'Video Editing') hsnCode = '998362';
+  if (projects[0]?.department === 'Graphic Design & Video Editing') hsnCode = '998361';
   if (projects[0]?.department === 'Web Development') hsnCode = '998363';
 
   // Amount in words function
@@ -1707,8 +1773,7 @@ const generatePDFInvoice = async (project, client, includeGST = true) => {
     // HSN/SAC code based on department/service
     let hsnCode = '998365';
     if (project.department === 'SEO') hsnCode = '998364';
-    if (project.department === 'Graphic Design') hsnCode = '998361';
-    if (project.department === 'Video Editing') hsnCode = '998362';
+    if (project.department === 'Graphic Design & Video Editing') hsnCode = '998361';
     if (project.department === 'Web Development') hsnCode = '998363';
 
     // Amount in words function

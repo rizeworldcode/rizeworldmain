@@ -235,7 +235,60 @@ const PACKAGE_DETAILS = {
     fee: 35000,
     gst: 18,
     details: '• Website Audit\n• On-Page Optimization (up to 30 pages)\n• Keyword Research (up to 100 keywords)\n• Content Optimization (8 Blog Posts)\n• Backlink Building (15 high-quality backlinks)\n• Technical SEO Fixes\n• Local SEO optimization\n• Dedicated SEO Manager\n• Monthly Reporting'
+  },
+  'Informative Website': {
+    fee: 15000,
+    gst: 18,
+    details: 'Informative Website'
+  },
+  'E-Commerce Website': {
+    fee: 25000,
+    gst: 18,
+    details: 'E-Commerce Website'
   }
+};
+
+
+// ─── Department colour config ────────────────────────────────────────────────
+const DEPT_CONFIG = {
+  'SMM':                        { color: 'blue',   label: 'SMM' },
+  'SEO':                        { color: 'emerald', label: 'SEO' },
+  'PPC':                        { color: 'orange', label: 'PPC' },
+  'Graphic Design & Video Editing': { color: 'purple', label: 'Graphic Design & Video Editing' },
+  'WEB DEvlopment':             { color: 'rose',   label: 'Web Development' },
+};
+const ALL_DEPTS = Object.keys(DEPT_CONFIG);
+
+// Default per-dept data factory
+const makeDeptData = (dept) => {
+  if (dept === 'SMM') {
+    const pkg = 'Sliver Package Service';
+    const f = SMM_PACKAGE_FIELDS[pkg];
+    return {
+      package: pkg,
+      smmFields: { ...f },
+      workDetail: [
+        `Total Posting ${parseInt(f.reels) + parseInt(f.posts)} ( ${f.reels} Reel & ${f.posts} Post )`,
+        `${f.shoots} Professional shoot`,
+        `Accounts Handled: ${f.accountsCount} (${f.accountsList})`
+      ].join('\n'),
+      amount: (PACKAGE_DETAILS[pkg].fee * 1.18).toFixed(0)
+    };
+  }
+  if (dept === 'SEO' || dept === 'PPC') {
+    return { package: 'Starter Package', workDetailsList: [''], workDetail: '', amount: (PACKAGE_DETAILS['Starter Package'].fee * 1.18).toFixed(0) };
+  }
+  if (dept === 'Graphic Design & Video Editing') {
+    return {
+      graphicFields: { reels: '', posts: '', shoots: '', perReelAmount: '', perPostAmount: '', perShootAmount: '' },
+      workDetail: '',
+      amount: '0'
+    };
+  }
+  if (dept === 'WEB DEvlopment') {
+    return { package: 'Informative Website', webPages: '', workDetail: 'Informative Website (0 Pages)', amount: (PACKAGE_DETAILS['Informative Website'].fee * 1.18).toFixed(0) };
+  }
+  return { workDetail: '', amount: '0' };
 };
 
 const AddProjectModal = ({ isOpen, onClose, onAdd }) => {
@@ -243,181 +296,153 @@ const AddProjectModal = ({ isOpen, onClose, onAdd }) => {
     name: '',
     email: '',
     phone: '',
-    workDetail: '',
-    totalAmount: '',
-    package: '',
-    department: 'WEB DEvlopment',
     startDate: new Date().toISOString().split('T')[0],
     deadline: ''
   });
-  const [workDetailsList, setWorkDetailsList] = useState(['']);
-  const [smmFields, setSmmFields] = useState({
-    reels: '',
-    posts: '',
-    shoots: '',
-    accountsCount: '',
-    accountsList: ''
-  });
-  const [graphicFields, setGraphicFields] = useState({
-    reels: '',
-    posts: '',
-    shoots: '',
-    perReelAmount: '',
-    perPostAmount: '',
-    perShootAmount: ''
-  });
+  // Array of selected departments (order preserved)
+  const [selectedDepts, setSelectedDepts] = useState([]);
+  // Per-dept data keyed by department name
+  const [deptWorkData, setDeptWorkData] = useState({});
 
   useEffect(() => {
     if (!isOpen) {
-      setWorkDetailsList(['']);
-      setSmmFields({ reels: '', posts: '', shoots: '', accountsCount: '', accountsList: '' });
-      setGraphicFields({ reels: '', posts: '', shoots: '', perReelAmount: '', perPostAmount: '', perShootAmount: '' });
+      setFormData({ name: '', email: '', phone: '', startDate: new Date().toISOString().split('T')[0], deadline: '' });
+      setSelectedDepts([]);
+      setDeptWorkData({});
     }
   }, [isOpen]);
 
-  const showPackages = ['SEO', 'SMM', 'PPC', 'WEB DEvlopment', 'Email Marketing', 'Ai Marketing'].includes(formData.department);
+  // Compute total from all depts
+  const computeTotal = (data) =>
+    Object.values(data).reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
 
-  const handleSmmFieldChange = (key, value, currentSmmFields = smmFields, currentFormData = formData) => {
-    const updatedFields = {
-      ...currentSmmFields,
-      [key]: value
-    };
-    setSmmFields(updatedFields);
-
-    const reelsVal = updatedFields.reels || '0';
-    const postsVal = updatedFields.posts || '0';
-    const shootsVal = updatedFields.shoots || '0';
-    const countVal = updatedFields.accountsCount || '0';
-    const listVal = updatedFields.accountsList || '';
-    const lines = [
-      `Total Posting ${parseInt(reelsVal || '0') + parseInt(postsVal || '0')} ( ${reelsVal} Reel & ${postsVal} Post )`,
-      `${shootsVal} Professional shoot`,
-      `Accounts Handled: ${countVal} (${listVal})`
-    ];
-
-    setFormData({
-      ...currentFormData,
-      workDetail: lines.join('\n')
-    });
-  };
-
-  const handleDepartmentChange = (dept) => {
-    const isPackageDept = ['SEO', 'SMM', 'PPC', 'WEB DEvlopment', 'Email Marketing', 'Ai Marketing'].includes(dept);
-    if (isPackageDept) {
-      const pkg = (dept === 'SEO' || dept === 'PPC') ? 'Starter Package' : 'Sliver Package Service';
-      let initialWorkDetail = '';
-      if (dept === 'SMM') {
-        const fields = SMM_PACKAGE_FIELDS[pkg];
-        setSmmFields(fields);
-        const reelsVal = fields.reels || '0';
-        const postsVal = fields.posts || '0';
-        const shootsVal = fields.shoots || '0';
-        const countVal = fields.accountsCount || '0';
-        const listVal = fields.accountsList || '';
-        initialWorkDetail = [
-          `Total Posting ${parseInt(reelsVal) + parseInt(postsVal)} ( ${reelsVal} Reel & ${postsVal} Post )`,
-          `${shootsVal} Professional shoot`,
-          `Accounts Handled: ${countVal} (${listVal})`
-        ].join('\n');
-      } else if (dept === 'SEO' || dept === 'PPC') {
-        initialWorkDetail = '';
-        setWorkDetailsList(['']);
+  const toggleDept = (dept) => {
+    setSelectedDepts(prev => {
+      if (prev.includes(dept)) {
+        // Remove
+        const next = prev.filter(d => d !== dept);
+        setDeptWorkData(wd => {
+          const updated = { ...wd };
+          delete updated[dept];
+          return updated;
+        });
+        return next;
       } else {
-        initialWorkDetail = PACKAGE_DETAILS[pkg].details;
-        setWorkDetailsList(['']);
+        // Add
+        const next = [...prev, dept];
+        setDeptWorkData(wd => ({ ...wd, [dept]: makeDeptData(dept) }));
+        return next;
       }
-
-      setFormData({
-        ...formData,
-        department: dept,
-        package: pkg,
-        workDetail: initialWorkDetail,
-        totalAmount: (PACKAGE_DETAILS[pkg].fee * 1.18).toFixed(0)
-      });
-    } else {
-      setFormData({
-        ...formData,
-        department: dept,
-        package: '',
-        workDetail: '',
-        totalAmount: ''
-      });
-      setWorkDetailsList(['']);
-      setSmmFields({ reels: '', posts: '', shoots: '', accountsCount: '', accountsList: '' });
-      setGraphicFields({ reels: '', posts: '', shoots: '', perReelAmount: '', perPostAmount: '', perShootAmount: '' });
-    }
-  };
-  
-  const handleGraphicFieldChange = (field, value, currentGraphicFields = graphicFields, currentFormData = formData) => {
-    const updatedFields = {
-      ...currentGraphicFields,
-      [field]: value
-    };
-    setGraphicFields(updatedFields);
-
-    const reelsCount = parseInt(updatedFields.reels || '0');
-    const postsCount = parseInt(updatedFields.posts || '0');
-    const shootsCount = parseInt(updatedFields.shoots || '0');
-    
-    const reelsRate = parseFloat(updatedFields.perReelAmount || '0');
-    const postsRate = parseFloat(updatedFields.perPostAmount || '0');
-    const shootsRate = parseFloat(updatedFields.perShootAmount || '0');
-
-    const lines = [];
-    if (reelsCount > 0 || postsCount > 0) {
-      lines.push(`Total Posting ${reelsCount + postsCount} ( ${reelsCount} Reel & ${postsCount} Post )`);
-    }
-    if (shootsCount > 0) {
-      lines.push(`${shootsCount} Professional shoot`);
-    }
-    
-    if (reelsRate > 0) lines.push(`Rate Per Reel: ₹${reelsRate}`);
-    if (postsRate > 0) lines.push(`Rate Per Post: ₹${postsRate}`);
-    if (shootsRate > 0) lines.push(`Rate Per Shoot: ₹${shootsRate}`);
-
-    const subtotal = (reelsCount * reelsRate) + (postsCount * postsRate) + (shootsCount * shootsRate);
-    const totalAmountWithGst = (subtotal * 1.18).toFixed(0);
-
-    setFormData({
-      ...currentFormData,
-      workDetail: lines.join('\n'),
-      totalAmount: subtotal > 0 ? totalAmountWithGst : currentFormData.totalAmount
     });
   };
 
-  const handlePackageChange = (pkgName) => {
-    const details = PACKAGE_DETAILS[pkgName];
-    if (formData.department === 'SMM') {
-      const fields = SMM_PACKAGE_FIELDS[pkgName] || { reels: '', posts: '', shoots: '', accountsCount: '', accountsList: '' };
-      setSmmFields(fields);
-      const reelsVal = fields.reels || '0';
-      const postsVal = fields.posts || '0';
-      const shootsVal = fields.shoots || '0';
-      const countVal = fields.accountsCount || '0';
-      const listVal = fields.accountsList || '';
-      const lines = [
-        `Total Posting ${parseInt(reelsVal || '0') + parseInt(postsVal || '0')} ( ${reelsVal} Reel & ${postsVal} Post )`,
-        `${shootsVal} Professional shoot`,
-        `Accounts Handled: ${countVal} (${listVal})`
-      ];
-      setFormData({
-        ...formData,
-        package: pkgName,
-        workDetail: lines.join('\n'),
-        totalAmount: (details.fee * (1 + details.gst / 100)).toFixed(0)
-      });
-    } else {
-      setFormData({
-        ...formData,
-        package: pkgName,
-        workDetail: (formData.department === 'SEO' || formData.department === 'PPC') ? '' : details.details,
-        totalAmount: (details.fee * (1 + details.gst / 100)).toFixed(0)
-      });
-      setWorkDetailsList(['']);
-    }
+  const updateDeptData = (dept, patch) => {
+    setDeptWorkData(prev => ({ ...prev, [dept]: { ...prev[dept], ...patch } }));
+  };
+
+  // SMM handler
+  const handleSmmField = (dept, key, value) => {
+    const cur = deptWorkData[dept]?.smmFields || {};
+    const updated = { ...cur, [key]: value };
+    const r = updated.reels || '0'; const p = updated.posts || '0';
+    const s = updated.shoots || '0'; const c = updated.accountsCount || '0';
+    const l = updated.accountsList || '';
+    const workDetail = [
+      `Total Posting ${parseInt(r) + parseInt(p)} ( ${r} Reel & ${p} Post )`,
+      `${s} Professional shoot`,
+      `Accounts Handled: ${c} (${l})`
+    ].join('\n');
+    const pkg = deptWorkData[dept]?.package || 'Sliver Package Service';
+    const fee = PACKAGE_DETAILS[pkg]?.fee || 0;
+    updateDeptData(dept, { smmFields: updated, workDetail, amount: (fee * 1.18).toFixed(0) });
+  };
+
+  const handleSmmPackage = (dept, pkgName) => {
+    const fields = SMM_PACKAGE_FIELDS[pkgName] || { reels: '', posts: '', shoots: '', accountsCount: '', accountsList: '' };
+    const r = fields.reels || '0'; const p = fields.posts || '0';
+    const s = fields.shoots || '0'; const c = fields.accountsCount || '0';
+    const l = fields.accountsList || '';
+    const workDetail = [
+      `Total Posting ${parseInt(r) + parseInt(p)} ( ${r} Reel & ${p} Post )`,
+      `${s} Professional shoot`,
+      `Accounts Handled: ${c} (${l})`
+    ].join('\n');
+    const fee = (PACKAGE_DETAILS[pkgName]?.fee || 0);
+    updateDeptData(dept, { package: pkgName, smmFields: fields, workDetail, amount: (fee * 1.18).toFixed(0) });
+  };
+
+  // SEO/PPC handler
+  const handleSeoList = (dept, list) => {
+    const workDetail = list.map(i => `• ${i.trim()}`).filter(i => i !== '• ').join('\n');
+    updateDeptData(dept, { workDetailsList: list, workDetail });
+  };
+
+  const handleSeoPackage = (dept, pkgName) => {
+    const fee = (PACKAGE_DETAILS[pkgName]?.fee || 0);
+    updateDeptData(dept, { package: pkgName, amount: (fee * 1.18).toFixed(0) });
+  };
+
+  // Graphic handler
+  const handleGraphicField = (dept, field, value) => {
+    const cur = deptWorkData[dept]?.graphicFields || {};
+    const updated = { ...cur, [field]: value };
+    const rc = parseInt(updated.reels || '0'); const pc = parseInt(updated.posts || '0');
+    const sc = parseInt(updated.shoots || '0');
+    const rr = parseFloat(updated.perReelAmount || '0'); const pr = parseFloat(updated.perPostAmount || '0');
+    const sr = parseFloat(updated.perShootAmount || '0');
+    const lines = [];
+    if (rc > 0 || pc > 0) lines.push(`Total Posting ${rc + pc} ( ${rc} Reel & ${pc} Post )`);
+    if (sc > 0) lines.push(`${sc} Professional shoot`);
+    if (rr > 0) lines.push(`Rate Per Reel: ₹${rr}`);
+    if (pr > 0) lines.push(`Rate Per Post: ₹${pr}`);
+    if (sr > 0) lines.push(`Rate Per Shoot: ₹${sr}`);
+    const subtotal = rc * rr + pc * pr + sc * sr;
+    updateDeptData(dept, { graphicFields: updated, workDetail: lines.join('\n'), amount: (subtotal * 1.18).toFixed(0) });
+  };
+
+  // Web handler
+  const handleWebPages = (dept, pages) => {
+    const pkg = deptWorkData[dept]?.package || 'Informative Website';
+    updateDeptData(dept, { webPages: pages, workDetail: `${pkg} (${pages || '0'} Pages)` });
+  };
+
+  const handleWebPackage = (dept, pkgName) => {
+    const pages = deptWorkData[dept]?.webPages || '0';
+    const fee = (PACKAGE_DETAILS[pkgName]?.fee || 0);
+    updateDeptData(dept, { package: pkgName, workDetail: `${pkgName} (${pages} Pages)`, amount: (fee * 1.18).toFixed(0) });
+  };
+
+  const handleSubmit = () => {
+    if (selectedDepts.length === 0) return;
+    // Combine all dept work details with section headers
+    const combinedWorkDetail = selectedDepts.map(d => {
+      const label = DEPT_CONFIG[d]?.label || d;
+      const detail = deptWorkData[d]?.workDetail || '';
+      return `--- ${label} ---\n${detail}`;
+    }).join('\n\n');
+    const combinedDept = selectedDepts.join(', ');
+    const combinedPkgs = selectedDepts.map(d => deptWorkData[d]?.package || '').filter(Boolean).join(', ');
+    const total = computeTotal(deptWorkData);
+    onAdd({
+      ...formData,
+      department: combinedDept,
+      package: combinedPkgs,
+      workDetail: combinedWorkDetail,
+      totalAmount: total.toFixed(0)
+    });
   };
 
   if (!isOpen) return null;
+
+  const totalAmount = computeTotal(deptWorkData);
+
+  const colorClasses = {
+    blue:   { pill: 'bg-blue-100 dark:bg-blue-500/20 border-blue-400 text-blue-700 dark:text-blue-300', check: 'bg-blue-500', border: 'border-blue-400', header: 'bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/30' },
+    emerald:{ pill: 'bg-emerald-100 dark:bg-emerald-500/20 border-emerald-400 text-emerald-700 dark:text-emerald-300', check: 'bg-emerald-500', border: 'border-emerald-400', header: 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30' },
+    orange: { pill: 'bg-orange-100 dark:bg-orange-500/20 border-orange-400 text-orange-700 dark:text-orange-300', check: 'bg-orange-500', border: 'border-orange-400', header: 'bg-orange-50 dark:bg-orange-500/10 border-orange-200 dark:border-orange-500/30' },
+    purple: { pill: 'bg-purple-100 dark:bg-purple-500/20 border-purple-400 text-purple-700 dark:text-purple-300', check: 'bg-purple-500', border: 'border-purple-400', header: 'bg-purple-50 dark:bg-purple-500/10 border-purple-200 dark:border-purple-500/30' },
+    rose:   { pill: 'bg-rose-100 dark:bg-rose-500/20 border-rose-400 text-rose-700 dark:text-rose-300', check: 'bg-rose-500', border: 'border-rose-400', header: 'bg-rose-50 dark:bg-rose-500/10 border-rose-200 dark:border-rose-500/30' },
+  };
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
@@ -431,312 +456,237 @@ const AddProjectModal = ({ isOpen, onClose, onAdd }) => {
         <h3 className="text-xl font-bold text-black dark:text-white mb-6 flex items-center gap-2">
           <FolderPlus className="text-blue-500" /> Add New Client
         </h3>
-        <div className="space-y-4">
+        <div className="space-y-5">
+          {/* Basic Info */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Client Name</label>
-              <input
-                type="text"
-                className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all placeholder:text-gray-400"
-                placeholder="Client/Project Name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              />
+              <input type="text" className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all placeholder:text-gray-400" placeholder="Client/Project Name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
             </div>
             <div>
               <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Email Address</label>
-              <input
-                type="email"
-                className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all placeholder:text-gray-400"
-                placeholder="client@example.com"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              />
+              <input type="email" className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all placeholder:text-gray-400" placeholder="client@example.com" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Phone Number</label>
-              <input
-                type="text"
-                maxLength={10}
-                className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all placeholder:text-gray-400"
-                placeholder="e.g. 9876543210"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/[^\d]/g, '').slice(0, 10) })}
-              />
+              <input type="text" maxLength={10} className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all placeholder:text-gray-400" placeholder="e.g. 9876543210" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/[^\d]/g, '').slice(0, 10) })} />
             </div>
-            <div>
-              <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Select Department</label>
-              <select
-                className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all appearance-none cursor-pointer"
-                value={formData.department}
-                onChange={(e) => handleDepartmentChange(e.target.value)}
-              >
-                <option value="SEO" className="bg-white dark:bg-[#030303] text-black dark:text-white">SEO</option>
-                <option value="SMM" className="bg-white dark:bg-[#030303] text-black dark:text-white">SMM</option>
-                <option value="PPC" className="bg-white dark:bg-[#030303] text-black dark:text-white">PPC</option>
-                <option value="Graphic Design" className="bg-white dark:bg-[#030303] text-black dark:text-white">Graphic Design</option>
-                <option value="Video Editing" className="bg-white dark:bg-[#030303] text-black dark:text-white">Video Editing</option>
-                <option value="WEB DEvlopment" className="bg-white dark:bg-[#030303] text-black dark:text-white">Web Development</option>
-                <option value="Email Marketing" className="bg-white dark:bg-[#030303] text-black dark:text-white">Email Marketing</option>
-                <option value="Ai Marketing" className="bg-white dark:bg-[#030303] text-black dark:text-white">Ai Marketing</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Project Start Date</label>
-              <input
-                type="date"
-                className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all"
-                value={formData.startDate}
-                onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Project Deadline</label>
-              <input
-                type="date"
-                className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all"
-                value={formData.deadline}
-                onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-              />
+              <input type="date" className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all" value={formData.startDate} onChange={(e) => setFormData({ ...formData, startDate: e.target.value })} />
             </div>
           </div>
-
-          {showPackages && (
-            <div>
-              <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Select Package</label>
-              <select
-                className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all"
-                value={formData.package}
-                onChange={(e) => handlePackageChange(e.target.value)}
-              >
-
-                {(formData.department === 'SEO' || formData.department === 'PPC') ? (
-                  <>
-                    <option value="Starter Package" className="bg-white dark:bg-[#030303] text-black dark:text-white">Starter Package</option>
-                    <option value="Growth Package" className="bg-white dark:bg-[#030303] text-black dark:text-white">Growth Package</option>
-                    <option value="Elite Package" className="bg-white dark:bg-[#030303] text-black dark:text-white">Elite Package</option>
-                  </>
-                ) : (
-                  <>
-                    <option value="Sliver Package Service" className="bg-white dark:bg-[#030303] text-black dark:text-white">Sliver Package Service</option>
-                    <option value="Bronze Package Service" className="bg-white dark:bg-[#030303] text-black dark:text-white">Bronze Package Service</option>
-                    <option value="Platinum Package Service" className="bg-white dark:bg-[#030303] text-black dark:text-white">Platinum Package Service</option>
-                    <option value="Gold Package Service" className="bg-white dark:bg-[#030303] text-black dark:text-white">Gold Package Service</option>
-                  </>
-                )}
-              </select>
-            </div>
-          )}
-
-          {formData.department === 'SMM' ? (
-            <div className="space-y-4 bg-gray-50 dark:bg-white/5 p-5 rounded-2xl border border-gray-200/50 dark:border-white/5">
-              <h4 className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block">SMM Campaign Requirements</h4>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block mb-1">Number of Reels</label>
-                  <input
-                    type="number"
-                    className="w-full bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all"
-                    placeholder="e.g. 10"
-                    value={smmFields.reels}
-                    onChange={(e) => handleSmmFieldChange('reels', e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block mb-1">Number of Posts</label>
-                  <input
-                    type="number"
-                    className="w-full bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all"
-                    placeholder="e.g. 6"
-                    value={smmFields.posts}
-                    onChange={(e) => handleSmmFieldChange('posts', e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block mb-1">Number of Shoots</label>
-                  <input
-                    type="number"
-                    className="w-full bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all"
-                    placeholder="e.g. 3"
-                    value={smmFields.shoots}
-                    onChange={(e) => handleSmmFieldChange('shoots', e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block mb-1">Accounts Handled</label>
-                  <input
-                    type="number"
-                    className="w-full bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all"
-                    placeholder="e.g. 2"
-                    value={smmFields.accountsCount}
-                    onChange={(e) => handleSmmFieldChange('accountsCount', e.target.value)}
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block mb-1">Which Platforms / Accounts</label>
-                <input
-                  type="text"
-                  className="w-full bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all"
-                  placeholder="e.g. Facebook, Instagram"
-                  value={smmFields.accountsList}
-                  onChange={(e) => handleSmmFieldChange('accountsList', e.target.value)}
-                />
-              </div>
-            </div>
-          ) : (formData.department === 'SEO' || formData.department === 'PPC') ? (
-            <div>
-              <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Work Details (Enter One by One)</label>
-              <div className="space-y-2">
-                {workDetailsList.map((detail, index) => (
-                  <div key={index} className="flex gap-2 items-center">
-                    <input
-                      type="text"
-                      className="flex-1 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all placeholder:text-gray-400"
-                      placeholder={`Work Detail #${index + 1}`}
-                      value={detail}
-                      onChange={(e) => {
-                        const newList = [...workDetailsList];
-                        newList[index] = e.target.value;
-                        setWorkDetailsList(newList);
-                        setFormData({
-                          ...formData,
-                          workDetail: newList.map(item => `• ${item.trim()}`).filter(item => item !== '• ').join('\n')
-                        });
-                      }}
-                    />
-                    {workDetailsList.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const newList = workDetailsList.filter((_, i) => i !== index);
-                          setWorkDetailsList(newList);
-                          setFormData({
-                            ...formData,
-                            workDetail: newList.map(item => `• ${item.trim()}`).filter(item => item !== '• ').join('\n')
-                          });
-                        }}
-                        className="p-2.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-all border-none bg-transparent cursor-pointer"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    )}
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => setWorkDetailsList([...workDetailsList, ''])}
-                  className="px-4 py-2.5 rounded-xl border border-dashed border-gray-300 dark:border-white/20 text-xs font-bold text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-all flex items-center gap-1 cursor-pointer bg-transparent"
-                >
-                  <Plus size={14} /> Add Work Detail
-                </button>
-              </div>
-            </div>
-          ) : (formData.department === 'Graphic Design' || formData.department === 'Video Editing') ? (
-            <div className="space-y-4 bg-gray-50 dark:bg-white/5 p-5 rounded-2xl border border-gray-200/50 dark:border-white/5">
-              <h4 className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block">{formData.department} Campaign Details</h4>
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block mb-1">Number of Reels</label>
-                  <input
-                    type="number"
-                    className="w-full bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all"
-                    placeholder="e.g. 10"
-                    value={graphicFields.reels}
-                    onChange={(e) => handleGraphicFieldChange('reels', e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block mb-1">Number of Posts</label>
-                  <input
-                    type="number"
-                    className="w-full bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all"
-                    placeholder="e.g. 6"
-                    value={graphicFields.posts}
-                    onChange={(e) => handleGraphicFieldChange('posts', e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block mb-1">Number of Shoots</label>
-                  <input
-                    type="number"
-                    className="w-full bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all"
-                    placeholder="e.g. 3"
-                    value={graphicFields.shoots}
-                    onChange={(e) => handleGraphicFieldChange('shoots', e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block mb-1">Per Reel Rate (₹)</label>
-                  <input
-                    type="number"
-                    className="w-full bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all"
-                    placeholder="Rate"
-                    value={graphicFields.perReelAmount}
-                    onChange={(e) => handleGraphicFieldChange('perReelAmount', e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block mb-1">Per Post Rate (₹)</label>
-                  <input
-                    type="number"
-                    className="w-full bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all"
-                    placeholder="Rate"
-                    value={graphicFields.perPostAmount}
-                    onChange={(e) => handleGraphicFieldChange('perPostAmount', e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block mb-1">Per Shoot Rate (₹)</label>
-                  <input
-                    type="number"
-                    className="w-full bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all"
-                    placeholder="Rate"
-                    value={graphicFields.perShootAmount}
-                    onChange={(e) => handleGraphicFieldChange('perShootAmount', e.target.value)}
-                  />
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div>
-              <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Work Detail</label>
-              <textarea
-                rows={4}
-                className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all placeholder:text-gray-400"
-                placeholder="Describe the work in detail"
-                value={formData.workDetail}
-                onChange={(e) => setFormData({ ...formData, workDetail: e.target.value })}
-              />
-            </div>
-          )}
 
           <div>
-            <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Total Amount (Incl. 18% GST) (₹)</label>
-            <input
-              type="number"
-              className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all placeholder:text-gray-400"
-              placeholder="Total budget"
-              value={formData.totalAmount}
-              onChange={(e) => setFormData({ ...formData, totalAmount: e.target.value })}
-            />
+            <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Project Deadline</label>
+            <input type="date" className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all" value={formData.deadline} onChange={(e) => setFormData({ ...formData, deadline: e.target.value })} />
           </div>
-          <div className="flex gap-3 mt-8">
+
+          {/* ── Department Checkbox Grid ─────────────────────── */}
+          <div>
+            <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-2">Select Departments (can select multiple)</label>
+            <div className="flex flex-wrap gap-2">
+              {ALL_DEPTS.map(dept => {
+                const cfg = DEPT_CONFIG[dept];
+                const cc = colorClasses[cfg.color];
+                const checked = selectedDepts.includes(dept);
+                return (
+                  <button
+                    key={dept}
+                    type="button"
+                    onClick={() => toggleDept(dept)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-xs font-bold transition-all cursor-pointer ${checked ? cc.pill + ' border-2' : 'bg-gray-50 dark:bg-white/5 border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-white/20'}`}
+                  >
+                    <span className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 ${checked ? cc.check : 'border border-gray-300 dark:border-white/20'}`}>
+                      {checked && <svg viewBox="0 0 10 8" className="w-2.5 h-2.5 fill-white"><path d="M1 4l2.5 2.5L9 1" stroke="white" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                    </span>
+                    {cfg.label}
+                  </button>
+                );
+              })}
+            </div>
+            {selectedDepts.length === 0 && (
+              <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-2">Please select at least one department.</p>
+            )}
+          </div>
+
+          {/* ── Per-Department Work Detail Sections ─────────── */}
+          {selectedDepts.map(dept => {
+            const cfg = DEPT_CONFIG[dept];
+            const cc = colorClasses[cfg.color];
+            const data = deptWorkData[dept] || {};
+
+            return (
+              <div key={dept} className={`rounded-2xl border ${cc.header} overflow-hidden`}>
+                {/* Section header */}
+                <div className={`flex items-center justify-between px-5 py-3 border-b ${cc.header}`}>
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-gray-700 dark:text-gray-300">{cfg.label} — Work Details</span>
+                  <button type="button" onClick={() => toggleDept(dept)} className="p-1 rounded-lg hover:bg-red-100 dark:hover:bg-red-500/10 text-gray-400 hover:text-red-500 transition-all border-none bg-transparent cursor-pointer">
+                    <X size={14} />
+                  </button>
+                </div>
+                <div className="p-5 space-y-4">
+
+                  {/* ── SMM ── */}
+                  {dept === 'SMM' && (
+                    <>
+                      <div>
+                        <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block mb-1">Select Package</label>
+                        <select className="w-full bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-black dark:text-white outline-none cursor-pointer" value={data.package || ''} onChange={e => handleSmmPackage(dept, e.target.value)}>
+                          <option value="Bronze Package Service">Bronze Package Service</option>
+                          <option value="Sliver Package Service">Sliver Package Service</option>
+                          <option value="Platinum Package Service">Platinum Package Service</option>
+                          <option value="Gold Package Service">Gold Package Service</option>
+                        </select>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block mb-1">Number of Reels</label>
+                          <input type="number" className="w-full bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-black dark:text-white outline-none transition-all" placeholder="e.g. 10" value={data.smmFields?.reels || ''} onChange={e => handleSmmField(dept, 'reels', e.target.value)} />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block mb-1">Number of Posts</label>
+                          <input type="number" className="w-full bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-black dark:text-white outline-none transition-all" placeholder="e.g. 6" value={data.smmFields?.posts || ''} onChange={e => handleSmmField(dept, 'posts', e.target.value)} />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block mb-1">Number of Shoots</label>
+                          <input type="number" className="w-full bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-black dark:text-white outline-none transition-all" placeholder="e.g. 3" value={data.smmFields?.shoots || ''} onChange={e => handleSmmField(dept, 'shoots', e.target.value)} />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block mb-1">Accounts Handled</label>
+                          <input type="number" className="w-full bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-black dark:text-white outline-none transition-all" placeholder="e.g. 2" value={data.smmFields?.accountsCount || ''} onChange={e => handleSmmField(dept, 'accountsCount', e.target.value)} />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block mb-1">Which Platforms / Accounts</label>
+                        <input type="text" className="w-full bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-black dark:text-white outline-none transition-all" placeholder="e.g. Facebook, Instagram" value={data.smmFields?.accountsList || ''} onChange={e => handleSmmField(dept, 'accountsList', e.target.value)} />
+                      </div>
+                      <div className="flex items-center justify-between text-xs font-bold text-gray-500 dark:text-gray-400 bg-white/60 dark:bg-white/5 rounded-xl px-4 py-2.5">
+                        <span>Package Amount (incl. 18% GST)</span>
+                        <span className="text-blue-600 dark:text-blue-400">₹{parseInt(data.amount || 0).toLocaleString('en-IN')}</span>
+                      </div>
+                    </>
+                  )}
+
+                  {/* ── SEO / PPC ── */}
+                  {(dept === 'SEO' || dept === 'PPC') && (
+                    <>
+                      <div>
+                        <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block mb-1">Select Package</label>
+                        <select className="w-full bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-black dark:text-white outline-none cursor-pointer" value={data.package || 'Starter Package'} onChange={e => handleSeoPackage(dept, e.target.value)}>
+                          <option value="Starter Package">Starter Package</option>
+                          <option value="Growth Package">Growth Package</option>
+                          <option value="Elite Package">Elite Package</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block mb-1">Work Details (Enter One by One)</label>
+                        <div className="space-y-2">
+                          {(data.workDetailsList || ['']).map((detail, index) => (
+                            <div key={index} className="flex gap-2 items-center">
+                              <input type="text" className="flex-1 bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-black dark:text-white outline-none transition-all placeholder:text-gray-400" placeholder={`Work Detail #${index + 1}`} value={detail} onChange={e => { const nl = [...(data.workDetailsList || [''])]; nl[index] = e.target.value; handleSeoList(dept, nl); }} />
+                              {(data.workDetailsList || []).length > 1 && (
+                                <button type="button" onClick={() => { const nl = (data.workDetailsList || []).filter((_, i) => i !== index); handleSeoList(dept, nl); }} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-all border-none bg-transparent cursor-pointer"><Trash2 size={15} /></button>
+                              )}
+                            </div>
+                          ))}
+                          <button type="button" onClick={() => handleSeoList(dept, [...(data.workDetailsList || ['']), ''])} className="px-3 py-2 rounded-xl border border-dashed border-gray-300 dark:border-white/20 text-xs font-bold text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-all flex items-center gap-1 cursor-pointer bg-transparent"><Plus size={12} /> Add Detail</button>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between text-xs font-bold text-gray-500 dark:text-gray-400 bg-white/60 dark:bg-white/5 rounded-xl px-4 py-2.5">
+                        <span>Package Amount (incl. 18% GST)</span>
+                        <span className="text-emerald-600 dark:text-emerald-400">₹{parseInt(data.amount || 0).toLocaleString('en-IN')}</span>
+                      </div>
+                    </>
+                  )}
+
+                  {/* ── Graphic Design & Video Editing ── */}
+                  {dept === 'Graphic Design & Video Editing' && (
+                    <>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div>
+                          <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block mb-1">No. of Reels</label>
+                          <input type="number" className="w-full bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-black dark:text-white outline-none transition-all" placeholder="e.g. 10" value={data.graphicFields?.reels || ''} onChange={e => handleGraphicField(dept, 'reels', e.target.value)} />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block mb-1">No. of Posts</label>
+                          <input type="number" className="w-full bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-black dark:text-white outline-none transition-all" placeholder="e.g. 6" value={data.graphicFields?.posts || ''} onChange={e => handleGraphicField(dept, 'posts', e.target.value)} />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block mb-1">No. of Shoots</label>
+                          <input type="number" className="w-full bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-black dark:text-white outline-none transition-all" placeholder="e.g. 3" value={data.graphicFields?.shoots || ''} onChange={e => handleGraphicField(dept, 'shoots', e.target.value)} />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div>
+                          <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block mb-1">Per Reel Rate (₹)</label>
+                          <input type="number" className="w-full bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-black dark:text-white outline-none transition-all" placeholder="Rate" value={data.graphicFields?.perReelAmount || ''} onChange={e => handleGraphicField(dept, 'perReelAmount', e.target.value)} />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block mb-1">Per Post Rate (₹)</label>
+                          <input type="number" className="w-full bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-black dark:text-white outline-none transition-all" placeholder="Rate" value={data.graphicFields?.perPostAmount || ''} onChange={e => handleGraphicField(dept, 'perPostAmount', e.target.value)} />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block mb-1">Per Shoot Rate (₹)</label>
+                          <input type="number" className="w-full bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-black dark:text-white outline-none transition-all" placeholder="Rate" value={data.graphicFields?.perShootAmount || ''} onChange={e => handleGraphicField(dept, 'perShootAmount', e.target.value)} />
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between text-xs font-bold text-gray-500 dark:text-gray-400 bg-white/60 dark:bg-white/5 rounded-xl px-4 py-2.5">
+                        <span>Calculated Total (incl. 18% GST)</span>
+                        <span className="text-purple-600 dark:text-purple-400">₹{parseInt(data.amount || 0).toLocaleString('en-IN')}</span>
+                      </div>
+                    </>
+                  )}
+
+                  {/* ── WEB Development ── */}
+                  {dept === 'WEB DEvlopment' && (
+                    <>
+                      <div>
+                        <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block mb-1">Select Package</label>
+                        <select className="w-full bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-black dark:text-white outline-none cursor-pointer" value={data.package || 'Informative Website'} onChange={e => handleWebPackage(dept, e.target.value)}>
+                          <option value="Informative Website">Informative Website</option>
+                          <option value="E-Commerce Website">E-Commerce Website</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block mb-1">Number of Pages</label>
+                        <input type="number" className="w-full bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-black dark:text-white outline-none transition-all" placeholder="e.g. 5" value={data.webPages || ''} onChange={e => handleWebPages(dept, e.target.value)} />
+                      </div>
+                      <div className="flex items-center justify-between text-xs font-bold text-gray-500 dark:text-gray-400 bg-white/60 dark:bg-white/5 rounded-xl px-4 py-2.5">
+                        <span>Package Amount (incl. 18% GST)</span>
+                        <span className="text-rose-600 dark:text-rose-400">₹{parseInt(data.amount || 0).toLocaleString('en-IN')}</span>
+                      </div>
+                    </>
+                  )}
+
+                </div>
+              </div>
+            );
+          })}
+
+          {/* ── Grand Total ─────────────────────────────────── */}
+          {selectedDepts.length > 0 && (
+            <div className="flex items-center justify-between bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-500/10 dark:to-indigo-500/10 border border-blue-200 dark:border-blue-500/30 rounded-2xl px-5 py-4">
+              <div>
+                <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Grand Total (All Depts, incl. 18% GST)</p>
+                {selectedDepts.length > 1 && (
+                  <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">{selectedDepts.map(d => DEPT_CONFIG[d]?.label).join(' + ')}</p>
+                )}
+              </div>
+              <span className="text-2xl font-black text-blue-600 dark:text-blue-400">₹{totalAmount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
+            </div>
+          )}
+
+          {/* ── Action Buttons ───────────────────────────────── */}
+          <div className="flex gap-3 mt-4">
             <button onClick={onClose} className="flex-1 px-6 py-3 rounded-xl border border-gray-200 dark:border-white/10 text-black dark:text-white font-bold hover:bg-gray-100 dark:hover:bg-white/5 transition-all">Cancel</button>
             <button
-              onClick={() => onAdd(formData)}
-              className="flex-1 px-6 py-3 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20"
+              onClick={handleSubmit}
+              disabled={selectedDepts.length === 0}
+              className={`flex-1 px-6 py-3 rounded-xl font-bold transition-all shadow-lg ${selectedDepts.length === 0 ? 'bg-gray-200 dark:bg-white/10 text-gray-400 cursor-not-allowed shadow-none' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-600/20'}`}
             >
               Add Client
             </button>
@@ -1292,7 +1242,7 @@ const clientsDataRaw = [
     paidAmount: 29500,
     pendingAmount: 0,
     deadline: '2024-07-20',
-    department: 'Graphic Design',
+    department: 'Graphic Design & Video Editing',
     package: 'Platinum Package Service',
     status: 'Completed',
     payments: [

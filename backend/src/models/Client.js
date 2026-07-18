@@ -42,8 +42,7 @@ const clientSchema = new mongoose.Schema({
   },
   department: {
     type: String,
-    required: true,
-    enum: ['SEO', 'SMM', 'PPC', 'Graphic Design', 'Video Editing', 'WEB DEvlopment', 'Email Marketing', 'Ai Marketing']
+    required: true
   },
   package: {
     type: String
