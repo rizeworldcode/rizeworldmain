@@ -3013,6 +3013,8 @@ const Dashboard = () => {
                           setSelectedClientForTasks(client);
                           setTempProjectData({
                             id: client._id || client.id,
+                            name: client.name,
+                            workDetail: client.workDetail || '',
                             tasks: JSON.parse(JSON.stringify(client.tasks || [])),
                             extraTasks: JSON.parse(JSON.stringify(client.extraTasks || []))
                           });
@@ -3053,6 +3055,24 @@ const Dashboard = () => {
               <ListChecks className="text-blue-500" />
               Update Progress
             </h3>
+
+            {/* Scope of Work */}
+            {tempProjectData.workDetail && (
+              <div className="mb-6 p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-blue-500/10 dark:to-indigo-500/10 border border-indigo-200 dark:border-blue-500/20">
+                <h4 className="text-xs font-black text-indigo-700 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-2 mb-3">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+                  Scope of Work
+                </h4>
+                <ul className="space-y-1.5">
+                  {tempProjectData.workDetail.split('\n').filter(line => line.trim()).map((line, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm text-indigo-800 dark:text-indigo-300">
+                      <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-indigo-400 flex-shrink-0"></span>
+                      <span>{line.replace(/^[•\-\*]+\s*/, '').trim()}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             {/* Primary Tasks */}
             <div className="space-y-4 mb-8">

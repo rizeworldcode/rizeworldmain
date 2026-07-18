@@ -303,18 +303,27 @@ const AddProjectModal = ({ isOpen, onClose, onAdd }) => {
   const [selectedDepts, setSelectedDepts] = useState([]);
   // Per-dept data keyed by department name
   const [deptWorkData, setDeptWorkData] = useState({});
+  const [totalAmount, setTotalAmount] = useState('');
 
   useEffect(() => {
     if (!isOpen) {
       setFormData({ name: '', email: '', phone: '', startDate: new Date().toISOString().split('T')[0], deadline: '' });
       setSelectedDepts([]);
       setDeptWorkData({});
+      setTotalAmount('');
     }
   }, [isOpen]);
 
   // Compute total from all depts
   const computeTotal = (data) =>
     Object.values(data).reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
+
+  const calculatedTotal = computeTotal(deptWorkData);
+
+  useEffect(() => {
+    setTotalAmount(calculatedTotal.toFixed(0));
+  }, [calculatedTotal]);
+
 
   const toggleDept = (dept) => {
     setSelectedDepts(prev => {
@@ -422,19 +431,17 @@ const AddProjectModal = ({ isOpen, onClose, onAdd }) => {
     }).join('\n\n');
     const combinedDept = selectedDepts.join(', ');
     const combinedPkgs = selectedDepts.map(d => deptWorkData[d]?.package || '').filter(Boolean).join(', ');
-    const total = computeTotal(deptWorkData);
     onAdd({
       ...formData,
       department: combinedDept,
       package: combinedPkgs,
       workDetail: combinedWorkDetail,
-      totalAmount: total.toFixed(0)
+      totalAmount: totalAmount
     });
   };
 
   if (!isOpen) return null;
 
-  const totalAmount = computeTotal(deptWorkData);
 
   const colorClasses = {
     blue:   { pill: 'bg-blue-100 dark:bg-blue-500/20 border-blue-400 text-blue-700 dark:text-blue-300', check: 'bg-blue-500', border: 'border-blue-400', header: 'bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/30' },
@@ -676,9 +683,18 @@ const AddProjectModal = ({ isOpen, onClose, onAdd }) => {
                   <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">{selectedDepts.map(d => DEPT_CONFIG[d]?.label).join(' + ')}</p>
                 )}
               </div>
-              <span className="text-2xl font-black text-blue-600 dark:text-blue-400">₹{totalAmount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
+              <div className="relative flex items-center">
+                <span className="absolute left-3 text-xl font-black text-blue-600 dark:text-blue-400">₹</span>
+                <input
+                  type="number"
+                  className="w-40 bg-white dark:bg-[#030303] border border-blue-200 dark:border-white/10 rounded-xl pl-8 pr-3 py-2 text-right text-xl font-black text-blue-600 dark:text-blue-400 focus:border-blue-500 outline-none transition-all"
+                  value={totalAmount}
+                  onChange={(e) => setTotalAmount(e.target.value)}
+                />
+              </div>
             </div>
           )}
+
 
           {/* ── Action Buttons ───────────────────────────────── */}
           <div className="flex gap-3 mt-4">

@@ -5,62 +5,52 @@ const parseWorkDetailToTasks = (workDetail) => {
   if (!workDetail) return [];
   
   const tasks = [];
-  // Split by newlines or bullet points (•) or other common delimiters
   const lines = workDetail.split(/[\n•]+/).map(line => line.trim()).filter(line => line.length > 0);
 
   lines.forEach(line => {
-    // Ignore rate info lines for Graphic Design or other metadata lines
-    if (line.match(/^(Rate\s+Per\s+|Accounts\s+Handled:)/i)) {
+    // Ignore department section headers like "--- SMM ---" or "--- SEO ---"
+    if (line.match(/^---\s*.+\s*---$/)) {
       return;
     }
 
-    // Check for specific patterns like "Total Posting 8 ( 4 Reel & 4 Post )"
-    const postingMatch = line.match(/Total Posting\s+(\d+)\s*\(\s*(\d+)\s*Reel\s*&\s*(\d+)\s*Post\s*\)/i);
-    if (postingMatch) {
-      const reelsCount = parseInt(postingMatch[2]) || 0;
-      const postsCount = parseInt(postingMatch[3]) || 0;
-      if (reelsCount > 0) {
-        tasks.push({ name: 'Reel Posting', total: reelsCount, completed: 0, status: 'Pending', unit: 'Reels' });
-      }
-      if (postsCount > 0) {
-        tasks.push({ name: 'Static Post Posting', total: postsCount, completed: 0, status: 'Pending', unit: 'Posts' });
-      }
+    // Ignore rate info lines
+    if (line.match(/^(Rate\s+Per\s+)/i)) {
       return;
     }
 
-    // Check for pattern like "3 Professional shoot" or "10 Professional shoot"
-    const shootMatch = line.match(/(\d+)\+?\s*Professional\s*shoots?/i);
-    if (shootMatch) {
-      const shootsCount = parseInt(shootMatch[1]) || 0;
-      if (shootsCount > 0) {
-        tasks.push({ name: 'Professional Shoots', total: shootsCount, completed: 0, status: 'Pending', unit: 'Shoots' });
-      }
-      return;
+    // Clean up leading bullets, hyphens or spaces from the display name
+    const cleanedName = line.replace(/^[•\-\*\s]+/, '').trim();
+    if (!cleanedName) return;
+
+    // Determine the total count
+    let total = 1;
+    let unit = 'Task';
+
+    // 1. Try to match "Total Posting X"
+    const totalPostingMatch = cleanedName.match(/Total\s+Posting\s+(\d+)/i);
+    // 2. Try to match "Accounts Handled: X"
+    const accountsHandledMatch = cleanedName.match(/Accounts\s+Handled:\s*(\d+)/i);
+    // 3. Try to match leading number e.g. "2 Professional shoot" or "3 Pages"
+    const leadingNumberMatch = cleanedName.match(/^(\d+)/);
+
+    if (totalPostingMatch) {
+      total = parseInt(totalPostingMatch[1]) || 1;
+      unit = 'Postings';
+    } else if (accountsHandledMatch) {
+      total = parseInt(accountsHandledMatch[1]) || 1;
+      unit = 'Accounts';
+    } else if (leadingNumberMatch) {
+      total = parseInt(leadingNumberMatch[1]) || 1;
+      unit = 'Tasks';
     }
 
-    // Check for pattern like "Posting Per Month 14 - 16 ( 8 - 10 Reels & 6 Post )"
-    const complexPostingMatch = line.match(/Posting\s+Per\s+Month\s+[\d\-\s]+\(\s*(\d+)[\-\d\s]*Reels?\s*&\s*(\d+)[\-\d\s]*Posts?\s*\)/i);
-    if (complexPostingMatch) {
-      const reelsCount = parseInt(complexPostingMatch[1]) || 0;
-      const postsCount = parseInt(complexPostingMatch[2]) || 0;
-      if (reelsCount > 0) {
-        tasks.push({ name: 'Reel Posting', total: reelsCount, completed: 0, status: 'Pending', unit: 'Reels' });
-      }
-      if (postsCount > 0) {
-        tasks.push({ name: 'Static Post Posting', total: postsCount, completed: 0, status: 'Pending', unit: 'Posts' });
-      }
-      return;
-    }
-
-    // Check for pattern like "Views 10k +"
-    const viewsMatch = line.match(/Views\s+(\d+k?\+?)/i);
-    if (viewsMatch) {
-      tasks.push({ name: 'Target Views', total: 1, completed: 0, status: 'Pending', unit: viewsMatch[1] });
-      return;
-    }
-
-    // Default: treat line as a single task with total 1
-    tasks.push({ name: line, total: 1, completed: 0, status: 'Pending', unit: 'Task' });
+    tasks.push({
+      name: cleanedName,
+      total,
+      completed: 0,
+      status: 'Pending',
+      unit
+    });
   });
 
   return tasks;
@@ -182,6 +172,29 @@ exports.updateClient = async (req, res) => {
     if (status !== undefined) client.status = status;
     if (startDate !== undefined) client.startDate = startDate ? new Date(startDate) : null;
     if (deadline !== undefined) client.deadline = deadline ? new Date(deadline) : null;
+
+    // If workDetail changed, regenerate tasks from new workDetail
+    // Preserve completed progress for any matching task names
+    if (workDetail !== undefined) {
+      const newTasks = parseWorkDetailToTasks(workDetail);
+      if (newTasks.length > 0) {
+        // Build a map of old task progress: name → { completed, status }
+        const oldProgressMap = {};
+        (client.tasks || []).forEach(t => {
+          oldProgressMap[t.name] = { completed: t.completed || 0, status: t.status || 'Pending' };
+        });
+        // Apply old progress to matching new tasks
+        const mergedTasks = newTasks.map(t => {
+          const oldProgress = oldProgressMap[t.name];
+          if (oldProgress) {
+            const completed = Math.min(oldProgress.completed, t.total);
+            return { ...t, completed, status: oldProgress.status };
+          }
+          return t;
+        });
+        client.tasks = mergedTasks;
+      }
+    }
 
     if (totalAmount !== undefined || totalPrice !== undefined) {
       const nextTotal = parseFloat(totalAmount ?? totalPrice);

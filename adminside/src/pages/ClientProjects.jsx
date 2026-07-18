@@ -41,38 +41,54 @@ const parseWorkDetailToTasks = (workDetail) => {
   const lines = workDetail.split(/[\n•]+/).map(line => line.trim()).filter(line => line.length > 0);
 
   lines.forEach(line => {
-    // Logic mirror from backend for consistency
-    const postingMatch = line.match(/Total Posting\s+(\d+)\s*\(\s*(\d+)\s*Reel\s*&\s*(\d+)\s*Post\s*\)/i);
-    if (postingMatch) {
-      tasks.push({ name: 'Reel Posting', total: parseInt(postingMatch[2]), completed: 0, status: 'Pending', unit: 'Reels' });
-      tasks.push({ name: 'Static Post Posting', total: parseInt(postingMatch[3]), completed: 0, status: 'Pending', unit: 'Posts' });
+    // Ignore department section headers like "--- SMM ---" or "--- SEO ---"
+    if (line.match(/^---\s*.+\s*---$/)) {
       return;
     }
 
-    const shootMatch = line.match(/(\d+)\+?\s*Professional\s*shoot/i);
-    if (shootMatch) {
-      tasks.push({ name: 'Professional Shoots', total: parseInt(shootMatch[1]), completed: 0, status: 'Pending', unit: 'Shoots' });
+    // Ignore rate info lines
+    if (line.match(/^(Rate\s+Per\s+)/i)) {
       return;
     }
 
-    const complexPostingMatch = line.match(/Posting\s+Per\s+Month\s+[\d\-\s]+\(\s*(\d+)[\d\s-]*Reels?\s*&\s*(\d+)[\d\s-]*Posts?\s*\)/i);
-    if (complexPostingMatch) {
-      tasks.push({ name: 'Reel Posting', total: parseInt(complexPostingMatch[1]), completed: 0, status: 'Pending', unit: 'Reels' });
-      tasks.push({ name: 'Static Post Posting', total: parseInt(complexPostingMatch[2]), completed: 0, status: 'Pending', unit: 'Posts' });
-      return;
+    // Clean up leading bullets, hyphens or spaces from the display name
+    const cleanedName = line.replace(/^[•\-\*\s]+/, '').trim();
+    if (!cleanedName) return;
+
+    // Determine the total count
+    let total = 1;
+    let unit = 'Task';
+
+    // 1. Try to match "Total Posting X"
+    const totalPostingMatch = cleanedName.match(/Total\s+Posting\s+(\d+)/i);
+    // 2. Try to match "Accounts Handled: X"
+    const accountsHandledMatch = cleanedName.match(/Accounts\s+Handled:\s*(\d+)/i);
+    // 3. Try to match leading number e.g. "2 Professional shoot" or "3 Pages"
+    const leadingNumberMatch = cleanedName.match(/^(\d+)/);
+
+    if (totalPostingMatch) {
+      total = parseInt(totalPostingMatch[1]) || 1;
+      unit = 'Postings';
+    } else if (accountsHandledMatch) {
+      total = parseInt(accountsHandledMatch[1]) || 1;
+      unit = 'Accounts';
+    } else if (leadingNumberMatch) {
+      total = parseInt(leadingNumberMatch[1]) || 1;
+      unit = 'Tasks';
     }
 
-    const viewsMatch = line.match(/Views\s+(\d+k?\+?)/i);
-    if (viewsMatch) {
-      tasks.push({ name: 'Target Views', total: 1, completed: 0, status: 'Pending', unit: viewsMatch[1] });
-      return;
-    }
-
-    tasks.push({ name: line, total: 1, completed: 0, status: 'Pending', unit: 'Task' });
+    tasks.push({
+      name: cleanedName,
+      total,
+      completed: 0,
+      status: 'Pending',
+      unit
+    });
   });
 
   return tasks;
 };
+
 
 const calculateProjectProgress = (project) => {
   const primaryTasks = project.tasks || [];
@@ -2090,7 +2106,9 @@ const ClientProjects = ({ onBack }) => {
       });
       const result = await response.json();
       if (result.success) {
-        const updatedClient = result.data;
+      const updatedClient = result.data;
+        // Always use the backend's returned tasks (it regenerates from workDetail).
+        // Only fall back to frontend parsing if backend returned nothing.
         if (!updatedClient.tasks || updatedClient.tasks.length === 0) {
           updatedClient.tasks = parseWorkDetailToTasks(updatedClient.workDetail);
         }
@@ -2500,6 +2518,24 @@ const ClientProjects = ({ onBack }) => {
                   <X size={20} />
                 </button>
               </div>
+
+              {/* Scope of Work */}
+              {tempProjectData.workDetail && (
+                <div className="mb-6 p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-blue-500/10 dark:to-indigo-500/10 border border-indigo-200 dark:border-blue-500/20">
+                  <h4 className="text-xs font-bold text-indigo-700 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-2 mb-3">
+                    <CheckCircle2 size={14} className="text-indigo-500" />
+                    Scope of Work
+                  </h4>
+                  <ul className="space-y-1.5">
+                    {tempProjectData.workDetail.split('\n').filter(line => line.trim()).map((line, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-indigo-800 dark:text-indigo-300">
+                        <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-indigo-400 flex-shrink-0"></span>
+                        <span>{line.replace(/^[•\-\*]+\s*/, '').trim()}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               {/* Primary Tasks */}
               <div className="space-y-4 mb-8">
