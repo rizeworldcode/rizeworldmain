@@ -84,7 +84,7 @@ const calculateProjectProgress = (project) => {
 };
 
 const CLIENT_DEPARTMENTS = ['SEO', 'SMM', 'PPC', 'Graphic Design', 'Video Editing', 'WEB DEvlopment', 'Email Marketing', 'Ai Marketing'];
-const PACKAGE_ENABLED_DEPARTMENTS = CLIENT_DEPARTMENTS;
+const PACKAGE_ENABLED_DEPARTMENTS = CLIENT_DEPARTMENTS.filter(d => d !== 'Graphic Design' && d !== 'Video Editing');
 const PROJECT_STATUS_OPTIONS = ['Pending', 'In Progress', 'On Hold', 'Completed'];
 
 const SMM_PACKAGE_FIELDS = {
@@ -273,6 +273,41 @@ const parseSeoWorkDetail = (workDetail = '') => {
   return items.length > 0 ? items : [''];
 };
 
+const parseGraphicWorkDetail = (workDetail = '') => {
+  const result = { reels: '', posts: '', shoots: '', perReelAmount: '', perPostAmount: '', perShootAmount: '' };
+  if (!workDetail) return result;
+
+  const lines = workDetail.split('\n').map(l => l.trim());
+  for (const line of lines) {
+    const postingMatch = line.match(/(?:Total\s+Posting|Posting\s+Per\s+Month)\s+\d+[\-\d\s]*\(\s*(\d+)[\-\d\s]*Reels?\s*&\s*(\d+)[\-\d\s]*Posts?\s*\)/i);
+    if (postingMatch) {
+      result.reels = postingMatch[1];
+      result.posts = postingMatch[2];
+    }
+    
+    const shootMatch = line.match(/(\d+)\+?\s*Professional\s*shoots?/i);
+    if (shootMatch) {
+      result.shoots = shootMatch[1];
+    }
+
+    const rateReelMatch = line.match(/Rate\s+Per\s+Reel:\s*₹?(\d+(\.\d+)?)/i);
+    if (rateReelMatch) {
+      result.perReelAmount = rateReelMatch[1];
+    }
+
+    const ratePostMatch = line.match(/Rate\s+Per\s+Post:\s*₹?(\d+(\.\d+)?)/i);
+    if (ratePostMatch) {
+      result.perPostAmount = ratePostMatch[1];
+    }
+
+    const rateShootMatch = line.match(/Rate\s+Per\s+Shoot:\s*₹?(\d+(\.\d+)?)/i);
+    if (rateShootMatch) {
+      result.perShootAmount = rateShootMatch[1];
+    }
+  }
+  return result;
+};
+
 const EditProjectModal = ({ isOpen, onClose, project, onSave }) => {
   const [formData, setFormData] = useState({
     department: 'WEB DEvlopment',
@@ -289,6 +324,14 @@ const EditProjectModal = ({ isOpen, onClose, project, onSave }) => {
     shoots: '',
     accountsCount: '',
     accountsList: ''
+  });
+  const [graphicFields, setGraphicFields] = useState({
+    reels: '',
+    posts: '',
+    shoots: '',
+    perReelAmount: '',
+    perPostAmount: '',
+    perShootAmount: ''
   });
   const [workDetailsList, setWorkDetailsList] = useState(['']);
 
@@ -307,12 +350,19 @@ const EditProjectModal = ({ isOpen, onClose, project, onSave }) => {
       if (dept === 'SMM') {
         setSmmFields(parseSmmWorkDetail(project.workDetail));
         setWorkDetailsList(['']);
+        setGraphicFields({ reels: '', posts: '', shoots: '', perReelAmount: '', perPostAmount: '', perShootAmount: '' });
       } else if (dept === 'SEO' || dept === 'PPC') {
         setWorkDetailsList(parseSeoWorkDetail(project.workDetail));
+        setSmmFields({ reels: '', posts: '', shoots: '', accountsCount: '', accountsList: '' });
+        setGraphicFields({ reels: '', posts: '', shoots: '', perReelAmount: '', perPostAmount: '', perShootAmount: '' });
+      } else if (dept === 'Graphic Design' || dept === 'Video Editing') {
+        setGraphicFields(parseGraphicWorkDetail(project.workDetail));
+        setWorkDetailsList(['']);
         setSmmFields({ reels: '', posts: '', shoots: '', accountsCount: '', accountsList: '' });
       } else {
         setWorkDetailsList(['']);
         setSmmFields({ reels: '', posts: '', shoots: '', accountsCount: '', accountsList: '' });
+        setGraphicFields({ reels: '', posts: '', shoots: '', perReelAmount: '', perPostAmount: '', perShootAmount: '' });
       }
     }
   }, [project, isOpen]);
@@ -345,6 +395,43 @@ const EditProjectModal = ({ isOpen, onClose, project, onSave }) => {
     });
   };
 
+  const handleGraphicFieldChange = (field, value, currentGraphicFields = graphicFields, currentFormData = formData) => {
+    const updatedFields = {
+      ...currentGraphicFields,
+      [field]: value
+    };
+    setGraphicFields(updatedFields);
+
+    const reelsCount = parseInt(updatedFields.reels || '0');
+    const postsCount = parseInt(updatedFields.posts || '0');
+    const shootsCount = parseInt(updatedFields.shoots || '0');
+    
+    const reelsRate = parseFloat(updatedFields.perReelAmount || '0');
+    const postsRate = parseFloat(updatedFields.perPostAmount || '0');
+    const shootsRate = parseFloat(updatedFields.perShootAmount || '0');
+
+    const lines = [];
+    if (reelsCount > 0 || postsCount > 0) {
+      lines.push(`Total Posting ${reelsCount + postsCount} ( ${reelsCount} Reel & ${postsCount} Post )`);
+    }
+    if (shootsCount > 0) {
+      lines.push(`${shootsCount} Professional shoot`);
+    }
+    
+    if (reelsRate > 0) lines.push(`Rate Per Reel: ₹${reelsRate}`);
+    if (postsRate > 0) lines.push(`Rate Per Post: ₹${postsRate}`);
+    if (shootsRate > 0) lines.push(`Rate Per Shoot: ₹${shootsRate}`);
+
+    const subtotal = (reelsCount * reelsRate) + (postsCount * postsRate) + (shootsCount * shootsRate);
+    const totalAmountWithGst = (subtotal * 1.18).toFixed(0);
+
+    setFormData({
+      ...currentFormData,
+      workDetail: lines.join('\n'),
+      totalAmount: subtotal > 0 ? totalAmountWithGst : currentFormData.totalAmount
+    });
+  };
+
   const handleDepartmentChange = (department) => {
     if (PACKAGE_ENABLED_DEPARTMENTS.includes(department)) {
       const defaultPackage = (department === 'SEO' || department === 'PPC') ? 'Starter Package' : 'Sliver Package Service';
@@ -374,6 +461,8 @@ const EditProjectModal = ({ isOpen, onClose, project, onSave }) => {
         workDetail: initialWorkDetail,
         totalAmount: (PACKAGE_DETAILS[defaultPackage].fee * 1.18).toFixed(0)
       });
+      setSmmFields({ reels: '', posts: '', shoots: '', accountsCount: '', accountsList: '' });
+      setGraphicFields({ reels: '', posts: '', shoots: '', perReelAmount: '', perPostAmount: '', perShootAmount: '' });
       return;
     }
 
@@ -385,6 +474,7 @@ const EditProjectModal = ({ isOpen, onClose, project, onSave }) => {
       totalAmount: ''
     });
     setSmmFields({ reels: '', posts: '', shoots: '', accountsCount: '', accountsList: '' });
+    setGraphicFields({ reels: '', posts: '', shoots: '', perReelAmount: '', perPostAmount: '', perShootAmount: '' });
   };
 
   const handlePackageChange = (packageName) => {
@@ -622,6 +712,75 @@ const EditProjectModal = ({ isOpen, onClose, project, onSave }) => {
                 >
                   <Plus size={14} /> Add Work Detail
                 </button>
+              </div>
+            </div>
+          ) : (formData.department === 'Graphic Design' || formData.department === 'Video Editing') ? (
+            <div className="space-y-4 bg-gray-50 dark:bg-white/5 p-5 rounded-2xl border border-gray-200/50 dark:border-white/5">
+              <h4 className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block">{formData.department} Campaign Details</h4>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block mb-1">Number of Reels</label>
+                  <input
+                    type="number"
+                    className="w-full bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-black dark:text-white focus:border-purple-500 outline-none transition-all"
+                    placeholder="e.g. 10"
+                    value={graphicFields.reels}
+                    onChange={(e) => handleGraphicFieldChange('reels', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block mb-1">Number of Posts</label>
+                  <input
+                    type="number"
+                    className="w-full bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-black dark:text-white focus:border-purple-500 outline-none transition-all"
+                    placeholder="e.g. 6"
+                    value={graphicFields.posts}
+                    onChange={(e) => handleGraphicFieldChange('posts', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block mb-1">Number of Shoots</label>
+                  <input
+                    type="number"
+                    className="w-full bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-black dark:text-white focus:border-purple-500 outline-none transition-all"
+                    placeholder="e.g. 3"
+                    value={graphicFields.shoots}
+                    onChange={(e) => handleGraphicFieldChange('shoots', e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block mb-1">Per Reel Rate (₹)</label>
+                  <input
+                    type="number"
+                    className="w-full bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-black dark:text-white focus:border-purple-500 outline-none transition-all"
+                    placeholder="Rate"
+                    value={graphicFields.perReelAmount}
+                    onChange={(e) => handleGraphicFieldChange('perReelAmount', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block mb-1">Per Post Rate (₹)</label>
+                  <input
+                    type="number"
+                    className="w-full bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-black dark:text-white focus:border-purple-500 outline-none transition-all"
+                    placeholder="Rate"
+                    value={graphicFields.perPostAmount}
+                    onChange={(e) => handleGraphicFieldChange('perPostAmount', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block mb-1">Per Shoot Rate (₹)</label>
+                  <input
+                    type="number"
+                    className="w-full bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-black dark:text-white focus:border-purple-500 outline-none transition-all"
+                    placeholder="Rate"
+                    value={graphicFields.perShootAmount}
+                    onChange={(e) => handleGraphicFieldChange('perShootAmount', e.target.value)}
+                  />
+                </div>
               </div>
             </div>
           ) : (

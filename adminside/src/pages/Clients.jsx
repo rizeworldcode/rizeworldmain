@@ -258,15 +258,24 @@ const AddProjectModal = ({ isOpen, onClose, onAdd }) => {
     accountsCount: '',
     accountsList: ''
   });
+  const [graphicFields, setGraphicFields] = useState({
+    reels: '',
+    posts: '',
+    shoots: '',
+    perReelAmount: '',
+    perPostAmount: '',
+    perShootAmount: ''
+  });
 
   useEffect(() => {
     if (!isOpen) {
       setWorkDetailsList(['']);
       setSmmFields({ reels: '', posts: '', shoots: '', accountsCount: '', accountsList: '' });
+      setGraphicFields({ reels: '', posts: '', shoots: '', perReelAmount: '', perPostAmount: '', perShootAmount: '' });
     }
   }, [isOpen]);
 
-  const showPackages = ['SEO', 'SMM', 'PPC', 'Graphic Design', 'Video Editing', 'WEB DEvlopment', 'Email Marketing', 'Ai Marketing'].includes(formData.department);
+  const showPackages = ['SEO', 'SMM', 'PPC', 'WEB DEvlopment', 'Email Marketing', 'Ai Marketing'].includes(formData.department);
 
   const handleSmmFieldChange = (key, value, currentSmmFields = smmFields, currentFormData = formData) => {
     const updatedFields = {
@@ -293,7 +302,7 @@ const AddProjectModal = ({ isOpen, onClose, onAdd }) => {
   };
 
   const handleDepartmentChange = (dept) => {
-    const isPackageDept = ['SEO', 'SMM', 'PPC', 'Graphic Design', 'Video Editing', 'WEB DEvlopment', 'Email Marketing', 'Ai Marketing'].includes(dept);
+    const isPackageDept = ['SEO', 'SMM', 'PPC', 'WEB DEvlopment', 'Email Marketing', 'Ai Marketing'].includes(dept);
     if (isPackageDept) {
       const pkg = (dept === 'SEO' || dept === 'PPC') ? 'Starter Package' : 'Sliver Package Service';
       let initialWorkDetail = '';
@@ -335,7 +344,45 @@ const AddProjectModal = ({ isOpen, onClose, onAdd }) => {
       });
       setWorkDetailsList(['']);
       setSmmFields({ reels: '', posts: '', shoots: '', accountsCount: '', accountsList: '' });
+      setGraphicFields({ reels: '', posts: '', shoots: '', perReelAmount: '', perPostAmount: '', perShootAmount: '' });
     }
+  };
+  
+  const handleGraphicFieldChange = (field, value, currentGraphicFields = graphicFields, currentFormData = formData) => {
+    const updatedFields = {
+      ...currentGraphicFields,
+      [field]: value
+    };
+    setGraphicFields(updatedFields);
+
+    const reelsCount = parseInt(updatedFields.reels || '0');
+    const postsCount = parseInt(updatedFields.posts || '0');
+    const shootsCount = parseInt(updatedFields.shoots || '0');
+    
+    const reelsRate = parseFloat(updatedFields.perReelAmount || '0');
+    const postsRate = parseFloat(updatedFields.perPostAmount || '0');
+    const shootsRate = parseFloat(updatedFields.perShootAmount || '0');
+
+    const lines = [];
+    if (reelsCount > 0 || postsCount > 0) {
+      lines.push(`Total Posting ${reelsCount + postsCount} ( ${reelsCount} Reel & ${postsCount} Post )`);
+    }
+    if (shootsCount > 0) {
+      lines.push(`${shootsCount} Professional shoot`);
+    }
+    
+    if (reelsRate > 0) lines.push(`Rate Per Reel: ₹${reelsRate}`);
+    if (postsRate > 0) lines.push(`Rate Per Post: ₹${postsRate}`);
+    if (shootsRate > 0) lines.push(`Rate Per Shoot: ₹${shootsRate}`);
+
+    const subtotal = (reelsCount * reelsRate) + (postsCount * postsRate) + (shootsCount * shootsRate);
+    const totalAmountWithGst = (subtotal * 1.18).toFixed(0);
+
+    setFormData({
+      ...currentFormData,
+      workDetail: lines.join('\n'),
+      totalAmount: subtotal > 0 ? totalAmountWithGst : currentFormData.totalAmount
+    });
   };
 
   const handlePackageChange = (pkgName) => {
@@ -591,6 +638,75 @@ const AddProjectModal = ({ isOpen, onClose, onAdd }) => {
                 >
                   <Plus size={14} /> Add Work Detail
                 </button>
+              </div>
+            </div>
+          ) : (formData.department === 'Graphic Design' || formData.department === 'Video Editing') ? (
+            <div className="space-y-4 bg-gray-50 dark:bg-white/5 p-5 rounded-2xl border border-gray-200/50 dark:border-white/5">
+              <h4 className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block">{formData.department} Campaign Details</h4>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block mb-1">Number of Reels</label>
+                  <input
+                    type="number"
+                    className="w-full bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all"
+                    placeholder="e.g. 10"
+                    value={graphicFields.reels}
+                    onChange={(e) => handleGraphicFieldChange('reels', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block mb-1">Number of Posts</label>
+                  <input
+                    type="number"
+                    className="w-full bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all"
+                    placeholder="e.g. 6"
+                    value={graphicFields.posts}
+                    onChange={(e) => handleGraphicFieldChange('posts', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block mb-1">Number of Shoots</label>
+                  <input
+                    type="number"
+                    className="w-full bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all"
+                    placeholder="e.g. 3"
+                    value={graphicFields.shoots}
+                    onChange={(e) => handleGraphicFieldChange('shoots', e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block mb-1">Per Reel Rate (₹)</label>
+                  <input
+                    type="number"
+                    className="w-full bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all"
+                    placeholder="Rate"
+                    value={graphicFields.perReelAmount}
+                    onChange={(e) => handleGraphicFieldChange('perReelAmount', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block mb-1">Per Post Rate (₹)</label>
+                  <input
+                    type="number"
+                    className="w-full bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all"
+                    placeholder="Rate"
+                    value={graphicFields.perPostAmount}
+                    onChange={(e) => handleGraphicFieldChange('perPostAmount', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block mb-1">Per Shoot Rate (₹)</label>
+                  <input
+                    type="number"
+                    className="w-full bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-black dark:text-white focus:border-blue-500 outline-none transition-all"
+                    placeholder="Rate"
+                    value={graphicFields.perShootAmount}
+                    onChange={(e) => handleGraphicFieldChange('perShootAmount', e.target.value)}
+                  />
+                </div>
               </div>
             </div>
           ) : (

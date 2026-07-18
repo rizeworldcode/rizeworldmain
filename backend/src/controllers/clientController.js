@@ -9,26 +9,46 @@ const parseWorkDetailToTasks = (workDetail) => {
   const lines = workDetail.split(/[\n•]+/).map(line => line.trim()).filter(line => line.length > 0);
 
   lines.forEach(line => {
+    // Ignore rate info lines for Graphic Design or other metadata lines
+    if (line.match(/^(Rate\s+Per\s+|Accounts\s+Handled:)/i)) {
+      return;
+    }
+
     // Check for specific patterns like "Total Posting 8 ( 4 Reel & 4 Post )"
     const postingMatch = line.match(/Total Posting\s+(\d+)\s*\(\s*(\d+)\s*Reel\s*&\s*(\d+)\s*Post\s*\)/i);
     if (postingMatch) {
-      tasks.push({ name: 'Reel Posting', total: parseInt(postingMatch[2]), completed: 0, status: 'Pending', unit: 'Reels' });
-      tasks.push({ name: 'Static Post Posting', total: parseInt(postingMatch[3]), completed: 0, status: 'Pending', unit: 'Posts' });
+      const reelsCount = parseInt(postingMatch[2]) || 0;
+      const postsCount = parseInt(postingMatch[3]) || 0;
+      if (reelsCount > 0) {
+        tasks.push({ name: 'Reel Posting', total: reelsCount, completed: 0, status: 'Pending', unit: 'Reels' });
+      }
+      if (postsCount > 0) {
+        tasks.push({ name: 'Static Post Posting', total: postsCount, completed: 0, status: 'Pending', unit: 'Posts' });
+      }
       return;
     }
 
     // Check for pattern like "3 Professional shoot" or "10 Professional shoot"
-    const shootMatch = line.match(/(\d+)\+?\s*Professional\s*shoot/i);
+    const shootMatch = line.match(/(\d+)\+?\s*Professional\s*shoots?/i);
     if (shootMatch) {
-      tasks.push({ name: 'Professional Shoots', total: parseInt(shootMatch[1]), completed: 0, status: 'Pending', unit: 'Shoots' });
+      const shootsCount = parseInt(shootMatch[1]) || 0;
+      if (shootsCount > 0) {
+        tasks.push({ name: 'Professional Shoots', total: shootsCount, completed: 0, status: 'Pending', unit: 'Shoots' });
+      }
       return;
     }
 
     // Check for pattern like "Posting Per Month 14 - 16 ( 8 - 10 Reels & 6 Post )"
     const complexPostingMatch = line.match(/Posting\s+Per\s+Month\s+[\d\-\s]+\(\s*(\d+)[\-\d\s]*Reels?\s*&\s*(\d+)[\-\d\s]*Posts?\s*\)/i);
     if (complexPostingMatch) {
-      tasks.push({ name: 'Reel Posting', total: parseInt(complexPostingMatch[1]), completed: 0, status: 'Pending', unit: 'Reels' });
-      tasks.push({ name: 'Static Post Posting', total: parseInt(complexPostingMatch[2]), completed: 0, status: 'Pending', unit: 'Posts' });
+      const reelsCount = parseInt(complexPostingMatch[1]) || 0;
+      const postsCount = parseInt(complexPostingMatch[2]) || 0;
+      if (reelsCount > 0) {
+        tasks.push({ name: 'Reel Posting', total: reelsCount, completed: 0, status: 'Pending', unit: 'Reels' });
+      }
+      if (postsCount > 0) {
+        tasks.push({ name: 'Static Post Posting', total: postsCount, completed: 0, status: 'Pending', unit: 'Posts' });
+      }
       return;
     }
 
