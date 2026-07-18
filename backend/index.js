@@ -210,9 +210,11 @@ app.set('view engine', 'ejs');
 // Connect to database and start server
 connectDB();
 
+
 // Initialize cron jobs
 const { initCronJobs } = require('./src/utils/cronJobs');
 initCronJobs();
+
 
 server.listen(process.env.PORT || 45000, () => {
   console.log(`Server is running on http://localhost:${process.env.PORT || 45000}`);

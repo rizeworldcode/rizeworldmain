@@ -348,6 +348,7 @@ const Dashboard = () => {
   const [selectedClientForTasks, setSelectedClientForTasks] = useState(null);
   const [isUpdateProgressOpen, setIsUpdateProgressOpen] = useState(false);
   const [tempProjectData, setTempProjectData] = useState(null);
+  const [taskMetrics, setTaskMetrics] = useState({});
   const [delayWorkForm, setDelayWorkForm] = useState({
     type: 'reel',
     publishedLink: '',
@@ -1294,12 +1295,9 @@ const Dashboard = () => {
 
     // Fetch notifications
     fetchNotifications();
-    // Only fetch Delay Work and Clients if user is a Data Analyst
+    // Only fetch Clients if user is a Data Analyst
     const staffInfo = JSON.parse(localStorage.getItem('staffInfo') || '{}');
     if (staffInfo.role?.toLowerCase() === 'data analyst') {
-      fetchDelayWork();
-      fetchClients();
-    } else if (staffInfo.role?.toLowerCase() === 'senior graphic designer & tl') {
       fetchClients();
     }
     // Refresh notifications every 5 minutes
@@ -1450,15 +1448,61 @@ const Dashboard = () => {
     setTempProjectData({ ...tempProjectData, [taskType]: newTasks });
   };
 
+  const handleMetricChange = (index, key, value) => {
+    setTaskMetrics(prev => ({
+      ...prev,
+      [index]: {
+        ...prev[index],
+        [key]: value
+      }
+    }));
+  };
+
   const handleProgressSubmit = async () => {
     try {
       const id = tempProjectData.id;
+      const staffInfo = JSON.parse(localStorage.getItem('staffInfo') || '{}');
+      const staffId = staffInfo.id || staffInfo._id;
+
+      // Construct metrics payload for SMM/Shoot tasks that were incremented
+      const metricsPayload = [];
+      Object.keys(taskMetrics).forEach(indexStr => {
+        const index = parseInt(indexStr);
+        const task = tempProjectData.tasks[index];
+        const originalTask = selectedClientForTasks?.tasks?.[index];
+        const diff = (task.completed || 0) - (originalTask?.completed || 0);
+
+        if (diff > 0) {
+          const metrics = taskMetrics[index];
+          const isReel = task.name.toLowerCase().includes('reel');
+          const isPost = task.name.toLowerCase().includes('post');
+          const isShoot = task.name.toLowerCase().includes('shoot');
+
+          if (isReel || isPost) {
+            metricsPayload.push({
+              type: isReel ? 'reel' : 'post',
+              publishedLink: metrics?.publishedLink || '',
+              totalAccountReach: parseInt(metrics?.reach) || 0,
+              totalAccountViews: parseInt(metrics?.views) || 0,
+              count: diff
+            });
+          } else if (isShoot) {
+            metricsPayload.push({
+              type: 'shoot',
+              count: diff
+            });
+          }
+        }
+      });
+
       const response = await fetch(getApiUrl(`/clients/${id}/tasks`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tasks: tempProjectData.tasks,
-          extraTasks: tempProjectData.extraTasks
+          extraTasks: tempProjectData.extraTasks,
+          metrics: metricsPayload,
+          staffId: staffId
         })
       });
       const result = await response.json();
@@ -1468,6 +1512,7 @@ const Dashboard = () => {
         ));
         setIsUpdateProgressOpen(false);
         setTempProjectData(null);
+        setTaskMetrics({});
         alert('Task progress updated successfully!');
       } else {
         alert(result.message || 'Failed to update task progress');
@@ -1477,6 +1522,7 @@ const Dashboard = () => {
       alert('Failed to update task progress');
     }
   };
+
 
 
   const handleAddDelayWork = async (e) => {
@@ -1851,8 +1897,8 @@ const Dashboard = () => {
         </motion.div>
       )}
 
-      {/* Client Task Update for Senior Graphic Designer & TL */}
-      {staffInfo.role?.toLowerCase() === 'senior graphic designer & tl' && (
+      {/* Client Task Update for Data Analyst */}
+      {staffInfo.role?.toLowerCase() === 'data analyst' && (
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -2703,273 +2749,6 @@ const Dashboard = () => {
         </motion.section>
       )}
 
-      {/* Delay Work Section - Only for Data Analysts */}
-      {staffInfo.role?.toLowerCase() === 'data analyst' && (
-        <motion.section 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="clay-card p-6 sm:p-8"
-        >
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 sm:mb-8">
-            <h3 className="text-lg sm:text-xl font-black text-black uppercase tracking-tight flex items-center gap-2">
-              <Clock size={20} className="text-amber-500" />
-              Daily Work
-            </h3>
-            <button 
-              onClick={() => setIsAddDelayWorkOpen(true)}
-              className="flex items-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-br from-amber-500 to-orange-500 text-white rounded-2xl text-xs sm:text-sm font-black uppercase tracking-widest shadow-lg hover:shadow-orange-500/30 transition-all active:scale-95 w-fit"
-            >
-              <Plus size={16} />
-              Add Daily Work
-            </button>
-          </div>
-          
-          {delayWorkLoading ? (
-            <div className="py-10 text-center">
-              <div className="w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-              <p className="text-sm font-black text-black uppercase tracking-widest mt-4">Loading Daily Work...</p>
-            </div>
-          ) : delayWork.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-6 rounded-2xl clay-inset bg-amber-100 flex items-center justify-center">
-                <Clock size={32} className="text-amber-500" />
-              </div>
-              <h3 className="text-lg sm:text-xl font-bold text-black mb-2">No daily work added yet</h3>
-              <p className="text-black font-semibold">Add your first daily work entry above!</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-              {delayWork.map((work, index) => (
-                <div key={index} className="clay-card p-4 sm:p-6">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex flex-wrap gap-2">
-                      <span className={cn(
-                        "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest",
-                        work.type === 'reel' ? "bg-purple-100 text-purple-600" : 
-                        work.type === 'post' ? "bg-blue-100 text-blue-600" : 
-                        work.type === 'shot' ? "bg-pink-100 text-pink-600" :
-                        work.type === 'extra' ? "bg-orange-100 text-orange-600" :
-                        "bg-emerald-100 text-emerald-600"
-                      )}>
-                        {work.type}
-                      </span>
-                      {work.extra && (
-                        <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-amber-100 text-amber-600">
-                          Extra
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="mb-3">
-                    <p className="text-[10px] font-black text-black uppercase tracking-widest mb-1">Client</p>
-                    <p className="text-sm font-bold text-black">{work.clientId?.name || 'N/A'}</p>
-                  </div>
-                   {work.type === 'extra' ? (
-                    <>
-                      {work.extraName && (
-                        <div className="mb-3">
-                          <p className="text-[10px] font-black text-black uppercase tracking-widest mb-1">Extra Work Detail</p>
-                          <p className="text-sm font-bold text-black">{work.extraName}</p>
-                        </div>
-                      )}
-                      <div className="mb-4">
-                        <p className="text-[10px] font-black text-black uppercase tracking-widest mb-1">Count</p>
-                        <p className="text-xl sm:text-2xl font-black text-black">{work.count || 1}</p>
-                      </div>
-                    </>
-                  ) : work.type === 'shoot' ? (
-                    <div className="mb-4">
-                      <p className="text-[10px] font-black text-black uppercase tracking-widest mb-1">Shoot Count</p>
-                      <p className="text-xl sm:text-2xl font-black text-black">{work.count || 1}</p>
-                    </div>
-                  ) : (
-                    <>
-                      {work.publishedLink && (
-                        <div className="mb-3">
-                          <p className="text-[10px] font-black text-black uppercase tracking-widest mb-1">Published Link</p>
-                          <a href={work.publishedLink} target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-blue-600 hover:underline break-all">
-                            {work.publishedLink}
-                          </a>
-                        </div>
-                      )}
-                      <div className="grid grid-cols-2 gap-4 mb-4">
-                        <div>
-                          <p className="text-[10px] font-black text-black uppercase tracking-widest mb-1">Account Reach</p>
-                          <p className="text-xl sm:text-2xl font-black text-black">{(work.totalAccountReach || 0).toLocaleString('en-IN')}</p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-black text-black uppercase tracking-widest mb-1">Account Views</p>
-                          <p className="text-xl sm:text-2xl font-black text-black">{(work.totalAccountViews || 0).toLocaleString('en-IN')}</p>
-                        </div>
-                      </div>
-                    </>
-                  )}
-                  <div>
-                    <p className="text-[10px] font-black text-black uppercase tracking-widest mb-1">Date Added</p>
-                    <p className="text-sm font-bold text-gray-600">
-                      {new Date(work.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </motion.section>
-      )}
-
-      {/* Add Delay Work Modal - Only for Data Analysts */}
-      {staffInfo.role?.toLowerCase() === 'data analyst' && isAddDelayWorkOpen && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="clay-card w-full max-w-md p-6 sm:p-8 relative">
-            <button
-              onClick={() => setIsAddDelayWorkOpen(false)}
-              className="absolute top-4 right-4 sm:top-6 sm:right-6 w-10 h-10 sm:w-12 sm:h-12 clay-flat rounded-2xl flex items-center justify-center text-black hover:clay-inset hover:text-rose-500 transition-all"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
-
-            <h3 className="text-xl sm:text-2xl font-black text-black mb-6 sm:mb-8 flex items-center gap-2">
-              <Clock className="text-amber-500" />
-              Add Daily Work
-            </h3>
-             <div className="space-y-3 sm:space-y-4">
-              <div>
-                <label className="text-[10px] font-black text-black uppercase tracking-widest block mb-1 sm:mb-2">Client Email</label>
-                <select 
-                  className="w-full p-3 sm:p-4 clay-inset rounded-2xl text-sm font-bold text-black focus:outline-none cursor-pointer"
-                  value={delayWorkForm.clientEmail}
-                  onChange={(e) => setDelayWorkForm({ ...delayWorkForm, clientEmail: e.target.value })}
-                >
-                  <option value="">Select Client Email</option>
-                  {clients.map((c) => (
-                    <option key={c._id || c.id} value={c.email}>
-                      {c.name} ({c.email})
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="text-[10px] font-black text-black uppercase tracking-widest block mb-1 sm:mb-2">Type</label>
-                <select 
-                  className="w-full p-3 sm:p-4 clay-inset rounded-2xl text-sm font-bold text-black focus:outline-none cursor-pointer"
-                  value={delayWorkForm.type}
-                  onChange={(e) => setDelayWorkForm({ ...delayWorkForm, type: e.target.value })}
-                >
-                  <option value="reel">Reel</option>
-                  <option value="post">Post</option>
-                  <option value="shoot">Shoot</option>
-                  <option value="extra">Extra</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-[10px] font-black text-black uppercase tracking-widest block mb-1 sm:mb-2">Date</label>
-                <input 
-                  type="date"
-                  className="w-full p-3 sm:p-4 clay-inset rounded-2xl text-sm font-bold text-black focus:outline-none"
-                  value={delayWorkForm.date}
-                  onChange={(e) => setDelayWorkForm({ ...delayWorkForm, date: e.target.value })}
-                />
-              </div>
-
-
-              {delayWorkForm.type !== 'extra' && (
-                <div className="flex gap-6 py-1">
-                  <label className="flex items-center gap-2 cursor-pointer select-none">
-                    <input 
-                      type="checkbox"
-                      checked={delayWorkForm.extra}
-                      onChange={(e) => setDelayWorkForm({ ...delayWorkForm, extra: e.target.checked })}
-                      className="w-4 h-4 rounded text-amber-500 focus:ring-amber-500"
-                    />
-                    <span className="text-xs font-bold text-black uppercase tracking-wider">Extra</span>
-                  </label>
-                </div>
-              )}
-
-              {delayWorkForm.type === 'extra' ? (
-                <>
-                  <div>
-                    <label className="text-[10px] font-black text-black uppercase tracking-widest block mb-1 sm:mb-2">Extra</label>
-                    <input 
-                      type="text" 
-                      className="w-full p-3 sm:p-4 clay-inset rounded-2xl text-sm font-bold text-black focus:outline-none"
-                      placeholder="Enter extra work name"
-                      value={delayWorkForm.extraName || ''}
-                      onChange={(e) => setDelayWorkForm({ ...delayWorkForm, extraName: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-black text-black uppercase tracking-widest block mb-1 sm:mb-2">Count</label>
-                    <input 
-                      type="number" 
-                      min="1"
-                      className="w-full p-3 sm:p-4 clay-inset rounded-2xl text-sm font-bold text-black focus:outline-none"
-                      placeholder="1"
-                      value={delayWorkForm.count}
-                      onChange={(e) => setDelayWorkForm({ ...delayWorkForm, count: parseInt(e.target.value) || 1 })}
-                    />
-                  </div>
-                </>
-              ) : delayWorkForm.type === 'shoot' ? (
-                <div>
-                  <label className="text-[10px] font-black text-black uppercase tracking-widest block mb-1 sm:mb-2">Count</label>
-                  <input 
-                    type="number" 
-                    min="1"
-                    className="w-full p-3 sm:p-4 clay-inset rounded-2xl text-sm font-bold text-black focus:outline-none"
-                    placeholder="1"
-                    value={delayWorkForm.count}
-                    onChange={(e) => setDelayWorkForm({ ...delayWorkForm, count: parseInt(e.target.value) || 1 })}
-                  />
-                </div>
-              ) : (
-                <>
-                  <div>
-                    <label className="text-[10px] font-black text-black uppercase tracking-widest block mb-1 sm:mb-2">Published Link</label>
-                    <input 
-                      type="text" 
-                      className="w-full p-3 sm:p-4 clay-inset rounded-2xl text-sm font-bold text-black focus:outline-none"
-                      placeholder="https://..."
-                      value={delayWorkForm.publishedLink}
-                      onChange={(e) => setDelayWorkForm({ ...delayWorkForm, publishedLink: e.target.value })}
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                    <div>
-                      <label className="text-[10px] font-black text-black uppercase tracking-widest block mb-1 sm:mb-2">Total Account Reach</label>
-                      <input 
-                        type="number" 
-                        className="w-full p-3 sm:p-4 clay-inset rounded-2xl text-sm font-bold text-black focus:outline-none"
-                        placeholder="0"
-                        value={delayWorkForm.totalAccountReach}
-                        onChange={(e) => setDelayWorkForm({ ...delayWorkForm, totalAccountReach: parseInt(e.target.value) || 0 })}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-black text-black uppercase tracking-widest block mb-1 sm:mb-2">Total Account Views</label>
-                      <input 
-                        type="number" 
-                        className="w-full p-3 sm:p-4 clay-inset rounded-2xl text-sm font-bold text-black focus:outline-none"
-                        placeholder="0"
-                        value={delayWorkForm.totalAccountViews}
-                        onChange={(e) => setDelayWorkForm({ ...delayWorkForm, totalAccountViews: parseInt(e.target.value) || 0 })}
-                      />
-                    </div>
-                  </div>
-                </>
-              )}
-              <div className="flex gap-3 mt-6 sm:mt-8">
-                <button onClick={() => setIsAddDelayWorkOpen(false)} className="flex-1 py-2.5 sm:py-3 rounded-2xl border border-gray-200 text-black font-bold hover:bg-gray-50 transition-all">Cancel</button>
-                <button onClick={handleAddDelayWork} className="flex-1 py-2.5 sm:py-3 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 text-white font-black hover:shadow-orange-500/30 transition-all">Add Daily Work</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Client List for Task Update */}
       {isClientTaskUpdateOpen && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -3100,7 +2879,48 @@ const Dashboard = () => {
                         <Plus size={16} />
                       </button>
                     </div>
+
+                    {/* Dynamic SMM metrics input for Reel/Post updates */}
+                    {(task.name?.toLowerCase().includes('reel') || task.name?.toLowerCase().includes('post')) && 
+                     (task.completed || 0) > (selectedClientForTasks?.tasks?.[index]?.completed || 0) && (
+                      <div className="mt-4 pt-3 border-t border-dashed border-gray-200 dark:border-white/10 space-y-3">
+                        <p className="text-[10px] font-black uppercase text-blue-600 dark:text-blue-400 tracking-wider">Metrics for this update</p>
+                        <div>
+                          <label className="text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide block mb-1">Published Link</label>
+                          <input 
+                            type="text" 
+                            className="w-full p-2.5 clay-inset rounded-xl text-xs font-bold text-black placeholder-gray-400 focus:outline-none"
+                            placeholder="https://instagram.com/p/..."
+                            value={taskMetrics[index]?.publishedLink || ''}
+                            onChange={(e) => handleMetricChange(index, 'publishedLink', e.target.value)}
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide block mb-1">Account Reach</label>
+                            <input 
+                              type="number" 
+                              className="w-full p-2.5 clay-inset rounded-xl text-xs font-bold text-black placeholder-gray-400 focus:outline-none"
+                              placeholder="e.g. 500"
+                              value={taskMetrics[index]?.reach || ''}
+                              onChange={(e) => handleMetricChange(index, 'reach', e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide block mb-1">Account Views</label>
+                            <input 
+                              type="number" 
+                              className="w-full p-2.5 clay-inset rounded-xl text-xs font-bold text-black placeholder-gray-400 focus:outline-none"
+                              placeholder="e.g. 1000"
+                              value={taskMetrics[index]?.views || ''}
+                              onChange={(e) => handleMetricChange(index, 'views', e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
+
                 ))}
               </div>
             </div>

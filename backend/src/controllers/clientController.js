@@ -22,21 +22,44 @@ const parseWorkDetailToTasks = (workDetail) => {
     const cleanedName = line.replace(/^[•\-\*\s]+/, '').trim();
     if (!cleanedName) return;
 
-    // Determine the total count
+    // Check for SMM Posting pattern to split into individual Reels and Posts
+    const postingMatch = cleanedName.match(/Total\s+Posting\s+\d+\s*\(\s*(\d+)[\-\s]*Reel[s]?\s*&\s*(\d+)[\-\s]*Post[s]?\s*\)/i);
+    const complexPostingMatch = cleanedName.match(/Posting\s+Per\s+Month\s+[\d\-\s]+\(\s*(\d+)[\-\d\s]*Reels?\s*&\s*(\d+)[\-\d\s]*Posts?\s*\)/i);
+
+    if (postingMatch) {
+      const reelsCount = parseInt(postingMatch[1]) || 0;
+      const postsCount = parseInt(postingMatch[2]) || 0;
+      if (reelsCount > 0) {
+        tasks.push({ name: 'Reel Posting', total: reelsCount, completed: 0, status: 'Pending', unit: 'Reels' });
+      }
+      if (postsCount > 0) {
+        tasks.push({ name: 'Static Post Posting', total: postsCount, completed: 0, status: 'Pending', unit: 'Posts' });
+      }
+      return;
+    }
+
+    if (complexPostingMatch) {
+      const reelsCount = parseInt(complexPostingMatch[1]) || 0;
+      const postsCount = parseInt(complexPostingMatch[2]) || 0;
+      if (reelsCount > 0) {
+        tasks.push({ name: 'Reel Posting', total: reelsCount, completed: 0, status: 'Pending', unit: 'Reels' });
+      }
+      if (postsCount > 0) {
+        tasks.push({ name: 'Static Post Posting', total: postsCount, completed: 0, status: 'Pending', unit: 'Posts' });
+      }
+      return;
+    }
+
+    // Determine the total count for other tasks
     let total = 1;
     let unit = 'Task';
 
-    // 1. Try to match "Total Posting X"
-    const totalPostingMatch = cleanedName.match(/Total\s+Posting\s+(\d+)/i);
-    // 2. Try to match "Accounts Handled: X"
+    // 1. Try to match "Accounts Handled: X"
     const accountsHandledMatch = cleanedName.match(/Accounts\s+Handled:\s*(\d+)/i);
-    // 3. Try to match leading number e.g. "2 Professional shoot" or "3 Pages"
+    // 2. Try to match leading number e.g. "2 Professional shoot" or "3 Pages"
     const leadingNumberMatch = cleanedName.match(/^(\d+)/);
 
-    if (totalPostingMatch) {
-      total = parseInt(totalPostingMatch[1]) || 1;
-      unit = 'Postings';
-    } else if (accountsHandledMatch) {
+    if (accountsHandledMatch) {
       total = parseInt(accountsHandledMatch[1]) || 1;
       unit = 'Accounts';
     } else if (leadingNumberMatch) {
@@ -55,6 +78,7 @@ const parseWorkDetailToTasks = (workDetail) => {
 
   return tasks;
 };
+
 
 exports.createClient = async (req, res) => {
   try {
@@ -222,7 +246,7 @@ exports.updateClient = async (req, res) => {
 
 exports.updateClientTasks = async (req, res) => {
   try {
-    const { tasks, extraTasks } = req.body;
+    const { tasks, extraTasks, metrics, staffId } = req.body;
     const client = await Client.findByIdAndUpdate(
       req.params.id,
       { tasks, extraTasks },
@@ -234,6 +258,23 @@ exports.updateClientTasks = async (req, res) => {
         success: false,
         message: 'Client not found'
       });
+    }
+
+    // Save SMM metrics to DelayWork collection if sent
+    if (metrics && metrics.length > 0 && staffId) {
+      const DelayWork = require('../models/DelayWork');
+      for (const m of metrics) {
+        const delayWork = new DelayWork({
+          type: m.type, // 'reel', 'post', 'shoot'
+          publishedLink: m.publishedLink || '',
+          totalAccountReach: m.totalAccountReach || 0,
+          totalAccountViews: m.totalAccountViews || 0,
+          count: m.count || 1,
+          clientId: req.params.id,
+          staffId: staffId
+        });
+        await delayWork.save();
+      }
     }
 
     res.status(200).json({
@@ -312,3 +353,6 @@ exports.renewClientPackage = async (req, res) => {
     });
   }
 };
+
+exports.parseWorkDetailToTasks = parseWorkDetailToTasks;
+
