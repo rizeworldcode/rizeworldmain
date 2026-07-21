@@ -143,7 +143,7 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
   const filteredStaff = staffList.filter(staff =>
     staff.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     staff.department.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  ).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
 
   const stats = useMemo(() => {
     let totalTasks = 0, completedTasks = 0, pendingTasks = 0;

@@ -1706,7 +1706,7 @@ const handleAddPayment = async (data) => {
                     <p className="text-sm font-bold text-gray-800 uppercase tracking-widest">No Clients Found</p>
                   </td>
                 </tr>
-              ) : clients.map((client) => (
+              ) : [...clients].sort((a, b) => (a.name || "").localeCompare(b.name || "")).map((client) => (
                 <motion.tr
                   key={client._id || client.id}
                   layout
@@ -1846,7 +1846,7 @@ const handleAddPayment = async (data) => {
                     </td>
                   </tr>
                 ) : (
-                  oldClients.map((oldClient) => {
+                  [...oldClients].sort((a, b) => (a.name || "").localeCompare(b.name || "")).map((oldClient) => {
                     const pendingAmount = (oldClient.totalAmount || 0) - (oldClient.paidAmount || 0);
                     return (
                       <motion.tr

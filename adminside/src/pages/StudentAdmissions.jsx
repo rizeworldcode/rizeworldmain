@@ -268,7 +268,7 @@ const StudentAdmissions = ({ onBack }) => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {admissions.map((admission) => (
+                {[...admissions].sort((a, b) => (a.studentName || "").localeCompare(b.studentName || "")).map((admission) => (
                   <tr key={admission._id} className="hover:bg-white/5 transition-colors">
                     <td className="px-6 py-4">
                       <div>

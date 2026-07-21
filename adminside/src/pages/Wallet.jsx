@@ -46,18 +46,121 @@ const WalletPage = () => {
 
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [pendingDues, setPendingDues] = useState(0);
+  const [allClientsList, setAllClientsList] = useState([]);
+  const [allOldClientsList, setAllOldClientsList] = useState([]);
 
-  const editUtrTrimmed = (editingTransaction?.utrNumber || '').trim();
-  const isEditUtrInvalid = editingTransaction?.mode === 'online' && (editUtrTrimmed.length < 12 || editUtrTrimmed.length > 16);
-  const showEditUtrError = editingTransaction?.mode === 'online' && editingTransaction?.utrNumber !== '' && (editUtrTrimmed.length < 12 || editUtrTrimmed.length > 16);
+  const getClientPhone = (t) => {
+    if (t.referenceId) {
+      const match = allClientsList.find(c => c._id === t.referenceId || c.id === t.referenceId) ||
+                    allOldClientsList.find(c => c._id === t.referenceId || c.id === t.referenceId);
+      if (match) return match.phone || '';
+    }
+    const tName = (t.name || '').trim().toLowerCase();
+    if (tName) {
+      const match = allClientsList.find(c => (c.name || '').trim().toLowerCase() === tName) ||
+                    allOldClientsList.find(c => (c.name || '').trim().toLowerCase() === tName);
+      if (match) return match.phone || '';
+    }
+    return '';
+  };
 
-  useEffect(() => {
-    fetchTransactions();
-  }, [filterType]);
+  const downloadCSV = (filename, headers, rows) => {
+    const csvRows = [
+      headers.map(h => `"${h.replace(/"/g, '""')}"`).join(','),
+      ...rows.map(row => row.map(val => {
+        const str = String(val === null || val === undefined ? '' : val);
+        return `"${str.replace(/"/g, '""')}"`;
+      }).join(','))
+    ];
+    const csvContent = '\uFEFF' + csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
-  const utrTrimmed = (newTransaction.utrNumber || '').trim();
-  const isUtrInvalid = newTransaction.mode === 'online' && (utrTrimmed.length < 12 || utrTrimmed.length > 16);
-  const showUtrError = newTransaction.mode === 'online' && newTransaction.utrNumber !== '' && (utrTrimmed.length < 12 || utrTrimmed.length > 16);
+  const downloadIncomeReport = () => {
+    const incomeTx = transactions.filter(t => t.type === 'client_payment' || t.type === 'income' || t.source === 'client_payment');
+    const sorted = [...incomeTx].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    const headers = ['Client/Income Name', 'Phone Number', 'Amount', 'Date', 'Mode', 'Method', 'UTR Number', 'Description'];
+    const rows = sorted.map(t => [
+      t.name || '',
+      getClientPhone(t),
+      t.amount || 0,
+      t.date ? new Date(t.date).toLocaleDateString('en-IN') : '',
+      t.mode || '',
+      t.method || '',
+      t.utrNumber || '',
+      t.description || ''
+    ]);
+    downloadCSV('total_income_report.csv', headers, rows);
+  };
+
+  const downloadExpenseReport = () => {
+    const expenseTx = transactions.filter(t => t.type === 'salary' || t.type === 'other_expenses' || t.source === 'salary' || t.source === 'other_expenses');
+    const sorted = [...expenseTx].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    const headers = ['Payee/Expense Name', 'Amount', 'Date', 'Mode', 'Method', 'UTR Number', 'Description'];
+    const rows = sorted.map(t => [
+      t.name || '',
+      t.amount || 0,
+      t.date ? new Date(t.date).toLocaleDateString('en-IN') : '',
+      t.mode || '',
+      t.method || '',
+      t.utrNumber || '',
+      t.description || ''
+    ]);
+    downloadCSV('total_expense_report.csv', headers, rows);
+  };
+
+  const downloadPendingDuesReport = () => {
+    const pendingClients = [];
+    allClientsList.forEach(c => {
+      const pending = parseFloat(c.pendingAmount || 0);
+      if (pending > 0) {
+        pendingClients.push({
+          name: c.name,
+          phone: c.phone || '',
+          email: c.email || '',
+          type: 'New Client',
+          totalAmount: c.totalPrice || 0,
+          paidAmount: c.paidAmount || 0,
+          pendingAmount: pending
+        });
+      }
+    });
+    allOldClientsList.forEach(c => {
+      const total = parseFloat(c.totalAmount || 0);
+      const paid = parseFloat(c.paidAmount || 0);
+      const pending = total - paid;
+      if (pending > 0) {
+        pendingClients.push({
+          name: c.name,
+          phone: c.phone || '',
+          email: c.email || '',
+          type: 'Old Client',
+          totalAmount: total,
+          paidAmount: paid,
+          pendingAmount: pending
+        });
+      }
+    });
+    pendingClients.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    const headers = ['Client Name', 'Phone Number', 'Email', 'Client Type', 'Total Amount', 'Paid Amount', 'Pending Dues'];
+    const rows = pendingClients.map(c => [
+      c.name || '',
+      c.phone || '',
+      c.email || '',
+      c.type,
+      c.totalAmount,
+      c.paidAmount,
+      c.pendingAmount
+    ]);
+    downloadCSV('pending_dues_report.csv', headers, rows);
+  };
 
   const fetchPendingDues = async () => {
     try {
@@ -68,11 +171,13 @@ const WalletPage = () => {
       
       let totalPending = 0;
       if (newClientsRes.success && Array.isArray(newClientsRes.data)) {
+        setAllClientsList(newClientsRes.data);
         newClientsRes.data.forEach(client => {
           totalPending += parseFloat(client.pendingAmount || 0);
         });
       }
       if (oldClientsRes.success && Array.isArray(oldClientsRes.data)) {
+        setAllOldClientsList(oldClientsRes.data);
         oldClientsRes.data.forEach(client => {
           const clientPending = parseFloat(client.totalAmount || 0) - parseFloat(client.paidAmount || 0);
           if (clientPending > 0) {
@@ -85,6 +190,18 @@ const WalletPage = () => {
       console.error('Error fetching pending dues:', error);
     }
   };
+
+  const editUtrTrimmed = (editingTransaction?.utrNumber || '').trim();
+  const isEditUtrInvalid = editingTransaction?.mode === 'online' && (editUtrTrimmed.length < 12 || editUtrTrimmed.length > 16);
+  const showEditUtrError = editingTransaction?.mode === 'online' && editingTransaction?.utrNumber !== '' && (editUtrTrimmed.length < 12 || editUtrTrimmed.length > 16);
+
+  useEffect(() => {
+    fetchTransactions();
+  }, [filterType]);
+
+  const utrTrimmed = (newTransaction.utrNumber || '').trim();
+  const isUtrInvalid = newTransaction.mode === 'online' && (utrTrimmed.length < 12 || utrTrimmed.length > 16);
+  const showUtrError = newTransaction.mode === 'online' && newTransaction.utrNumber !== '' && (utrTrimmed.length < 12 || utrTrimmed.length > 16);
 
   const fetchTransactions = async () => {
     try {
@@ -329,43 +446,64 @@ const WalletPage = () => {
         {/* Quick Stats Stack */}
         <div className="space-y-6 flex flex-col justify-between">
           {/* Income Card */}
-          <div className="glass rounded-3xl p-6 border border-gray-200/50 dark:border-white/5 shadow-xl flex items-center justify-between">
-            <div className="space-y-1">
-              <span className="text-gray-400 dark:text-gray-500 text-xs font-semibold uppercase tracking-wider block">Total Income</span>
-              <span className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 block">
-                ₹{(totalIncome || 0).toLocaleString('en-IN')}
-              </span>
+          <button 
+            type="button"
+            onClick={downloadIncomeReport}
+            title="Click to download complete income report CSV"
+            className="w-full text-left bg-transparent border-0 outline-none p-0 cursor-pointer block"
+          >
+            <div className="glass rounded-3xl p-6 border border-gray-200/50 dark:border-white/5 shadow-xl flex items-center justify-between hover:scale-[1.02] hover:shadow-2xl transition-all duration-300">
+              <div className="space-y-1">
+                <span className="text-gray-400 dark:text-gray-500 text-xs font-semibold uppercase tracking-wider block">Total Income</span>
+                <span className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 block">
+                  ₹{(totalIncome || 0).toLocaleString('en-IN')}
+                </span>
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 flex items-center justify-center">
+                <IndianRupee className="text-white" size={24} />
+              </div>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 flex items-center justify-center">
-              <IndianRupee className="text-white" size={24} />
-            </div>
-          </div>
+          </button>
 
           {/* Expense Card */}
-          <div className="glass rounded-3xl p-6 border border-gray-200/50 dark:border-white/5 shadow-xl flex items-center justify-between">
-            <div className="space-y-1">
-              <span className="text-gray-400 dark:text-gray-500 text-xs font-semibold uppercase tracking-wider block">Total Expense</span>
-              <span className="text-2xl font-extrabold text-rose-600 block">
-                ₹{(totalExpense || 0).toLocaleString('en-IN')}
-              </span>
+          <button 
+            type="button"
+            onClick={downloadExpenseReport}
+            title="Click to download complete expense report CSV"
+            className="w-full text-left bg-transparent border-0 outline-none p-0 cursor-pointer block"
+          >
+            <div className="glass rounded-3xl p-6 border border-gray-200/50 dark:border-white/5 shadow-xl flex items-center justify-between hover:scale-[1.02] hover:shadow-2xl transition-all duration-300">
+              <div className="space-y-1">
+                <span className="text-gray-400 dark:text-gray-500 text-xs font-semibold uppercase tracking-wider block">Total Expense</span>
+                <span className="text-2xl font-extrabold text-rose-600 block">
+                  ₹{(totalExpense || 0).toLocaleString('en-IN')}
+                </span>
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-rose-500 to-orange-500 flex items-center justify-center">
+                <CreditCard className="text-white" size={24} />
+              </div>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-rose-500 to-orange-500 flex items-center justify-center">
-              <CreditCard className="text-white" size={24} />
-            </div>
-          </div>
+          </button>
 
           {/* Pending Dues Card */}
-          <div className="glass rounded-3xl p-6 border border-gray-200/50 dark:border-white/5 shadow-xl flex items-center justify-between">
-            <div className="space-y-1">
-              <span className="text-gray-400 dark:text-gray-500 text-xs font-semibold uppercase tracking-wider block">Pending Dues</span>
-              <span className="text-2xl font-extrabold text-amber-600 dark:text-amber-400 block">
-                ₹{(pendingDues || 0).toLocaleString('en-IN')}
-              </span>
+          <button 
+            type="button"
+            onClick={downloadPendingDuesReport}
+            title="Click to download complete pending dues report CSV"
+            className="w-full text-left bg-transparent border-0 outline-none p-0 cursor-pointer block"
+          >
+            <div className="glass rounded-3xl p-6 border border-gray-200/50 dark:border-white/5 shadow-xl flex items-center justify-between hover:scale-[1.02] hover:shadow-2xl transition-all duration-300">
+              <div className="space-y-1">
+                <span className="text-gray-400 dark:text-gray-500 text-xs font-semibold uppercase tracking-wider block">Pending Dues</span>
+                <span className="text-2xl font-extrabold text-amber-600 dark:text-amber-400 block">
+                  ₹{(pendingDues || 0).toLocaleString('en-IN')}
+                </span>
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 flex items-center justify-center">
+                <Wallet className="text-white" size={24} />
+              </div>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 flex items-center justify-center">
-              <Wallet className="text-white" size={24} />
-            </div>
-          </div>
+          </button>
         </div>
       </section>
 

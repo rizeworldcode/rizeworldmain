@@ -641,7 +641,7 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
     const matchesDepartment = departmentFilter === 'All' || member.department === departmentFilter;
 
     return matchesSearch && matchesJobType && matchesDepartment;
-  });
+  }).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
 
   const handleUpdateStaff = async (id, updatedData) => {
     try {

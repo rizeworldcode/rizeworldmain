@@ -122,6 +122,10 @@ export default function VisitingCards({ onBack }) {
     }
     
     return matchesSearch && matchesDate;
+  }).sort((a, b) => {
+    const nameA = a.cardData?.company || a.cardData?.name || "";
+    const nameB = b.cardData?.company || b.cardData?.name || "";
+    return nameA.localeCompare(nameB);
   });
 
   // Summary Stats

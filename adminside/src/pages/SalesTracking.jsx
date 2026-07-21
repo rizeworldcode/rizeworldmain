@@ -225,7 +225,7 @@ const SalesTracking = () => {
       if (filterType === 'online') return matchesSearch && online;
       if (filterType === 'offline') return matchesSearch && !online;
       return matchesSearch;
-    });
+    }).sort((a, b) => (a.employeeName || "").localeCompare(b.employeeName || ""));
   }, [employees, searchQuery, filterType]);
 
   // Fetch Route History and Draw on Map

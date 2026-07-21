@@ -1096,8 +1096,9 @@ const Dashboard = () => {
   };
 
   useEffect(() => {
-    // Only track if user is admin
-    if (staffInfo.role?.toLowerCase() !== 'admin') return;
+    // Only track if user is Sales Team
+    const isSales = staffInfo.role?.toLowerCase() === 'sales team' || staffInfo.role?.toLowerCase() === 'sales';
+    if (!isSales) return;
 
 
 
@@ -1862,8 +1863,8 @@ const Dashboard = () => {
         </div>
       </header>
 
-      {/* GPS Status Banners for Admin */}
-      {staffInfo.role?.toLowerCase() === 'admin' && gpsError && (
+      {/* GPS Status Banners for Sales Team */}
+      {(staffInfo.role?.toLowerCase() === 'sales team' || staffInfo.role?.toLowerCase() === 'sales') && gpsError && (
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1876,14 +1877,14 @@ const Dashboard = () => {
             </h4>
             <p className="text-sm font-semibold mt-1 opacity-90">
               {gpsError === 'permission_denied' 
-                ? 'Please enable location services in your browser settings. GPS tracking must be active to access the portal.'
+                ? 'Please enable location services in your browser settings. Sales Team members must share location to keep portal active.'
                 : 'GPS signal is currently unavailable. Please verify that your device has location/GPS turned on.'}
             </p>
           </div>
         </motion.div>
       )}
 
-      {staffInfo.role?.toLowerCase() === 'admin' && !gpsError && (
+      {(staffInfo.role?.toLowerCase() === 'sales team' || staffInfo.role?.toLowerCase() === 'sales') && !gpsError && (
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1917,6 +1918,55 @@ const Dashboard = () => {
           >
             <ListChecks size={24} />
             Client Task Update
+          </button>
+        </motion.div>
+      )}
+
+      {/* Capture Actions for Sales Team */}
+      {(staffInfo.role?.toLowerCase() === 'sales team' || staffInfo.role?.toLowerCase() === 'sales') && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6 flex flex-col sm:flex-row gap-4"
+        >
+          <button 
+            type="button"
+            onClick={() => {
+              setIsCardScanner(false);
+              setIsCameraActive(true);
+            }}
+            disabled={isUploadingPhoto || isUploadingCard}
+            className={cn(
+              "clay-card p-5 rounded-3xl flex-1 flex items-center justify-center gap-3 transition-all cursor-pointer font-black text-lg text-left outline-none border-none",
+              (isUploadingPhoto || isUploadingCard) ? "bg-gray-200 text-gray-500 cursor-not-allowed" : "bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:shadow-lg hover:-translate-y-1"
+            )}
+          >
+            {isUploadingPhoto ? (
+              <div className="w-6 h-6 border-4 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+            ) : (
+              <Camera size={24} />
+            )}
+            {isUploadingPhoto ? 'Uploading Photo...' : 'Capture Location Photo'}
+          </button>
+
+          <button 
+            type="button"
+            onClick={() => {
+              setIsCardScanner(true);
+              setIsCameraActive(true);
+            }}
+            disabled={isUploadingPhoto || isUploadingCard}
+            className={cn(
+              "clay-card p-5 rounded-3xl flex-1 flex items-center justify-center gap-3 transition-all cursor-pointer font-black text-lg text-left outline-none border-none",
+              (isUploadingPhoto || isUploadingCard) ? "bg-gray-200 text-gray-500 cursor-not-allowed" : "bg-gradient-to-r from-purple-500 to-pink-600 text-white hover:shadow-lg hover:-translate-y-1"
+            )}
+          >
+            {isUploadingCard ? (
+              <div className="w-6 h-6 border-4 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+            ) : (
+              <CreditCard size={24} />
+            )}
+            {isUploadingCard ? 'Processing Card...' : 'Scan Visiting Card'}
           </button>
         </motion.div>
       )}

@@ -124,7 +124,7 @@ const RemovedEmployees = () => {
         member.department?.toLowerCase().includes(term) ||
         member.employeeId?.toLowerCase().includes(term)
       );
-    });
+    }).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
   }, [removedStaff, searchTerm]);
 
   const removedThisMonth = useMemo(() => {
