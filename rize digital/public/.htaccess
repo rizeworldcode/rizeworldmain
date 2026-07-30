@@ -8,6 +8,9 @@
   RewriteCond %{HTTPS} off
   RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
 
+  # Dynamic Blog Sitemap (Always up-to-date with backend database)
+  RewriteRule ^sitemap-blogs\.xml$ https://rizeworldmain.onrender.com/sitemap-blogs.xml [R=301,L]
+
   # Define Custom 404 Page
   ErrorDocument 404 /404.html
 
