@@ -17,28 +17,11 @@ import {
   Quote
 } from 'lucide-react';
 import SEO from '../../components/common/SEO';
+import { LOGOS } from '../../data/logos';
 import Breadcrumbs from '../../components/common/Breadcrumbs';
 import AreasWeServe from '../../components/common/AreasWeServe';
 
-const LOGOS_DATA = [
-  { src: "/logos/7.png", bg: "bg-white" },
-  { src: "/logos/Old Rao 100x41.png", bg: "bg-zinc-100" },
-  { src: "/logos/m.png", bg: "bg-white" },
-  { src: "/logos/yga.png", bg: "bg-white" },
-  { src: "/logos/logo1/bhavikdairy_14050326_165157844.jpg.jpeg_nobg.png", bg: "bg-blue-50" },
-  { src: "/logos/logo1/dwps_alwar_14050326_165735543.jpg.jpeg_nobg2.png", bg: "bg-white" },
-  { src: "/logos/logo1/golden_fitness_studio_14050326_165901083.jpg.jpeg_nobg2.png", bg: "bg-amber-100" },
-  { src: "/logos/logo1/hydrowash___14050326_165141258.jpg-removebg-preview.png", bg: "bg-[#27272a]" },
-  { src: "/logos/logo1/jain_event_planner__14050326_165108726.jpg-removebg-preview.png", bg: "bg-black" },
-  { src: "/logos/logo1/kafesa_by_tijacafe_14050326_165226870.jpg-removebg-preview.png", bg: "bg-amber-50" },
-  { src: "/logos/logo1/mobile_master_alwar_14050326_165925798.jpg.jpeg_nobg2.png", bg: "bg-white" },
-  { src: "/logos/logo1/rj02_hotel_14050326_170134229.jpg-removebg-preview (1).png", bg: "bg-stone-900" },
-  { src: "/logos/logo1/roastro_cafe_14050326_165747073.jpg-removebg-preview (1).png", bg: "bg-[#451a03]" },
-  { src: "/logos/logo1/saniya__hospital_14050326_165809565.jpg-removebg-preview.png", bg: "bg-teal-50" },
-  { src: "/logos/logo1/shivaura_in_14050326_165054553.jpg-removebg-preview.png", bg: "bg-[#2d3748]" },
-  { src: "/logos/logo1/sigdiresort_14050326_165131449.jpg-removebg-preview.png", bg: "bg-[#1c1917]" },
-  { src: "/logos/logo1/zonirazjewel_14050326_165120271.jpg-removebg-preview.png", bg: "bg-black" }
-];
+
 
 const SERVICES_LIST = [
   {
@@ -129,7 +112,7 @@ const TESTIMONIALS = [
 
 export default function PaidAds() {
   const navigate = useNavigate();
-  const repeatedLogos = [...LOGOS_DATA, ...LOGOS_DATA, ...LOGOS_DATA];
+  const repeatedLogos = [...LOGOS, ...LOGOS, ...LOGOS];
   const serviceSchema = {
     "@context": "https://schema.org",
     "@type": "Service",
@@ -174,8 +157,8 @@ export default function PaidAds() {
     <div className="min-h-screen bg-stone-50 pt-32 pb-24 overflow-hidden text-left font-sans selection:bg-orange-500 selection:text-white">
       
       <SEO 
-        title="PPC Advertising & Paid Search Management | RizeWorld"
-        description="Maximize your return on ad spend with PPC and Paid Ads management. Highly optimized Google Ads, Meta Ads campaigns, and target audience retargeting."
+        title="PPC Management Services & Google Ads Agency | RizeWorld"
+        description="Looking for result-driven PPC management services? As an expert Google ads agency and PPC agency, we specialize in high-ROI pay per click services."
         canonicalUrl="https://rizeworld.in/services/paid-ads"
         schema={[serviceSchema, breadcrumbSchema]}
       />
@@ -217,13 +200,13 @@ export default function PaidAds() {
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
-              className="rounded-4xl overflow-hidden aspect-video bg-gray-200 border border-gray-200 shadow-sm relative group cursor-pointer"
+              className="rounded-4xl overflow-hidden aspect-video bg-white border border-gray-200 shadow-sm relative group cursor-pointer"
             >
-              <div className="absolute inset-0 bg-orange-950/10 group-hover:bg-transparent z-10 transition-colors duration-300" />
+              <div className="absolute inset-0 bg-orange-950/5 group-hover:bg-transparent z-10 transition-colors duration-300" />
               <img 
-                src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=600" 
-                alt="team strategy session" 
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+                src="/services/paid ads.png" 
+                alt="Paid Ads Services" 
+                className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-700 ease-out"
               />
             </motion.div>
           </div>
@@ -241,16 +224,16 @@ export default function PaidAds() {
                 <Sparkles size={14} className="animate-pulse" /> Offer a wide range of services
               </span>
               <h1 className="text-4xl md:text-5xl lg:text-[3.5rem] font-black text-gray-950 leading-[1.05] uppercase tracking-tighter mb-6">
-                Paid Ads <br />
-                Campaigns <span className="relative inline-block px-4 py-1 mx-1 mt-1">
-                  Provider
+                PPC Management <br />
+                Services <span className="relative inline-block px-4 py-1 mx-1 mt-1">
+                  Agency
                   <svg className="absolute inset-0 w-full h-full text-orange-500" viewBox="0 0 100 100" preserveAspectRatio="none">
                     <path d="M 5, 50 C 5, 20 95, 20 95, 50 C 95, 80 5, 80 5, 50 Z" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="300" strokeDashoffset="0" className="animate-[dash_2s_ease-in-out_infinite]" />
                   </svg>
                 </span>
               </h1>
-              <p className="text-gray-500 text-sm md:text-base leading-relaxed max-w-xl">
-                We create targeted PPC campaigns that drive traffic, generate leads, and maximize ROI.
+              <p className="text-gray-800 text-sm md:text-base leading-relaxed max-w-xl">
+                As a leading <strong>PPC company</strong>, we deliver custom <strong>PPC campaign management services</strong> and <strong>Google ads management services</strong> that scale leads, increase conversions, and optimize ad budget.
               </p>
             </motion.div>
 
@@ -327,11 +310,14 @@ export default function PaidAds() {
         <style>
           {`
             @keyframes marquee-brands {
-              0% { transform: translateX(0); }
-              100% { transform: translateX(-50%); }
+              0% { transform: translate3d(0, 0, 0); }
+              100% { transform: translate3d(-50%, 0, 0); }
             }
             .animate-marquee-brands {
-              animation: marquee-brands 30s linear infinite;
+              animation: marquee-brands 60s linear infinite;
+              will-change: transform;
+              backface-visibility: hidden;
+              -webkit-backface-visibility: hidden;
             }
           `}
         </style>
@@ -341,11 +327,12 @@ export default function PaidAds() {
         <div className="flex-1 overflow-hidden mask-image-horizontal w-full">
           <div className="flex w-max animate-marquee-brands items-center">
             {repeatedLogos.map((item, idx) => (
-              <div key={idx} className={`w-56 h-24 mx-4 flex items-center justify-center shrink-0 p-1 rounded-4xl shadow-sm border border-gray-100 overflow-hidden ${item.bg}`}>
+              <div key={idx} className={`w-56 h-24 mx-4 flex items-center justify-center shrink-0 p-2 rounded-4xl shadow-sm border border-gray-100 overflow-hidden ${item.bg}`}>
                 <img 
                   src={item.src} 
                   alt="Client Logo" 
-                  className="max-h-full max-w-full object-contain scale-110 transition-transform duration-300 hover:scale-125 transform-[translateZ(0)] backface-hidden will-change-transform [image-rendering:-webkit-optimize-contrast]" 
+                  className={`${item.customClass || "max-h-[92%] max-w-[92%]"} object-contain`} 
+                 
                 />
               </div>
             ))}
@@ -605,7 +592,7 @@ export default function PaidAds() {
                 </div>
                 <div>
                   <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block">Our Location</span>
-                  <span className="text-sm font-semibold text-zinc-300">C-198, near Telco Circle, UIT colony, Shalimar Nagar, Alwar, Rajasthan 301001, India</span>
+                  <a href="https://maps.google.com/?q=Rizeworld+Digital+Marketing+Pvt+Ltd+Company+C198,+near+Telco+Circle,+UIT+colony,+Shalimar+Nagar,+Alwar,+Rajasthan+301001" target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-zinc-300 hover:text-orange-500 transition-colors">C-198, near Telco Circle, UIT colony, Shalimar Nagar, Alwar, Rajasthan 301001, India</a>
                 </div>
               </div>
 

@@ -36,40 +36,76 @@ export default function AgencyHighlightsSection() {
   const rightCardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    let ctx = gsap.context(() => {
-      // Set initial state (bunched together in the center, shifted down)
+    let mm = gsap.matchMedia();
+
+    // Mobile/Tablet (< 640px)
+    mm.add("(max-width: 639px)", () => {
+      gsap.set(leftCardRef.current, { x: 20, y: 150, rotation: -5 });
+      gsap.set(centerCardRef.current, { x: 0, y: 150, rotation: 0 });
+      gsap.set(rightCardRef.current, { x: -20, y: 150, rotation: 5 });
+
+      gsap.to([leftCardRef.current, centerCardRef.current, rightCardRef.current], {
+        scrollTrigger: {
+          trigger: sectionRef.current,
+          start: "top 75%",
+          end: "top 15%",
+          scrub: 1,
+        },
+        x: (i) => {
+          if (i === 0) return -70; // Spread slightly to the left
+          if (i === 2) return 70;  // Spread slightly to the right
+          return 0;
+        },
+        y: (i) => {
+          if (i === 1) return -10;
+          return 30;
+        },
+        rotation: (i) => {
+          if (i === 0) return -10;
+          if (i === 2) return 10;
+          return 0;
+        },
+        scale: (i) => {
+          if (i === 1) return 1.0;
+          return 0.9; // Slightly scale down side cards for visual hierarchy
+        },
+        ease: "power2.out"
+      });
+    });
+
+    // Desktop (>= 640px)
+    mm.add("(min-width: 640px)", () => {
       gsap.set(leftCardRef.current, { x: 50, y: 200, rotation: -5 });
       gsap.set(centerCardRef.current, { x: 0, y: 200, rotation: 0 });
       gsap.set(rightCardRef.current, { x: -50, y: 200, rotation: 5 });
 
-      // Animate to spread out state on scroll
       gsap.to([leftCardRef.current, centerCardRef.current, rightCardRef.current], {
         scrollTrigger: {
           trigger: sectionRef.current,
-          start: "top 70%", // start when section is 30% into view from bottom
-          end: "top 10%",   // end when section is near top
+          start: "top 70%",
+          end: "top 10%",
           scrub: 1,
         },
         x: (i) => {
-          if (i === 0) return -340; // Left card moves FAR left
-          if (i === 2) return 340;  // Right card moves FAR right
-          return 0;                 // Center stays center
-        },
-        y: (i) => {
-          if (i === 1) return -20;  // Center goes up slightly
-          return 40;                // Sides stay a bit lower
-        },
-        rotation: (i) => {
-          if (i === 0) return -15;  // Left card rotates more left
-          if (i === 2) return 15;   // Right card rotates more right
+          if (i === 0) return -340;
+          if (i === 2) return 340;
           return 0;
         },
+        y: (i) => {
+          if (i === 1) return -20;
+          return 40;
+        },
+        rotation: (i) => {
+          if (i === 0) return -15;
+          if (i === 2) return 15;
+          return 0;
+        },
+        scale: 1,
         ease: "power2.out"
       });
+    });
 
-    }, sectionRef);
-
-    return () => ctx.revert();
+    return () => mm.revert();
   }, []);
 
   return (
@@ -88,7 +124,7 @@ export default function AgencyHighlightsSection() {
             <div
               key={card.id}
               ref={ref}
-              className="absolute w-[280px] sm:w-[320px] bg-white rounded-3xl overflow-hidden shadow-2xl border border-gray-100 will-change-transform"
+              className="absolute w-[220px] sm:w-[320px] bg-white rounded-3xl overflow-hidden shadow-2xl border border-gray-100 will-change-transform"
               style={{ zIndex }}
             >
               {/* Header */}

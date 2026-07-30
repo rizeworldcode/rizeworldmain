@@ -76,16 +76,34 @@ const STEPS = [
 
 const TESTIMONIALS = [
   {
-    quote: "RizeWorld's content strategy revolutionized our brand's voice. Their blogs started ranking on the first page of Google within a few months, driving consistent, qualified leads.",
-    author: "Sarah Jenkins",
-    role: "Marketing Director, FinTech Solutions",
-    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=120"
+    quote: "RizeWorld's content marketing strategy completely transformed our brand voice. Their blogs and product descriptions helped Shiivaura connect deeply with customers and drive conversions. Highly recommended!",
+    author: "Harsh Tiwari",
+    role: "Founder, Shiivaura",
+    avatar: "/video/harsh tiwari.jpeg"
   },
   {
-    quote: "Their copywriting for our landing pages boosted our subscription sign-ups by 40%. The team is professional, highly responsive, and deeply understands search intent.",
-    author: "Marcus Vance",
-    role: "Product Head, SaaS Lab",
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=120"
+    quote: "Working with RizeWorld for our brand copy was a game changer for 7One. Their creative copywriters and content strategy sets them apart from the rest.",
+    author: "Mr. Ajit Singh",
+    role: "Founder, 7One",
+    avatar: "/video/k sir.jpg"
+  },
+  {
+    quote: "The content created by RizeWorld helped Mansukh Restaurant reach new heights. Our customer engagement increased noticeably through their storytelling.",
+    author: "Mr. Sajan Chandel",
+    role: "Owner, Mansukh Restaurant",
+    avatar: "/video/mansukhhh.jpg"
+  },
+  {
+    quote: "RizeWorld's content approach is highly professional and result-driven. They understood the local essence of Old Rao and crafted copy that builds real trust.",
+    author: "Mr. Rahul Bhugra",
+    role: "Owner, Old Rao",
+    avatar: "/video/Untitled-1.jpg"
+  },
+  {
+    quote: "I'm very satisfied with RizeWorld's content services. They helped Sushanti Dhyanyoga publish blogs and articles that truly resonate with our community.",
+    author: "Mr. Neeraj Lamba",
+    role: "Founder, Sushanti Dhyanyoga",
+    avatar: "/video/nk s.jpg"
   }
 ];
 
@@ -134,8 +152,8 @@ export default function ContentMarketing() {
   return (
     <div className="min-h-screen bg-stone-50 pt-32 pb-24 overflow-hidden text-left font-sans selection:bg-orange-500 selection:text-white">
       <SEO 
-        title="SEO Content Marketing & Copywriting Services | RizeWorld"
-        description="High-conversion copywriting and content marketing solutions. We write authoritative blogs, landing pages, and email drip copy to nurture leads organic."
+        title="Content Marketing Services & Content Writing Agency | RizeWorld"
+        description="Looking for the best content writing services? As a leading content creation agency, we provide website content writing and custom blog writing services."
         canonicalUrl="https://rizeworld.in/services/content-marketing"
         schema={[serviceSchema, breadcrumbSchema]}
       />
@@ -179,8 +197,8 @@ export default function ContentMarketing() {
             >
               <div className="absolute inset-0 bg-orange-950/10 group-hover:bg-transparent z-10 transition-colors duration-300" />
               <img 
-                src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=600" 
-                alt="strategy session" 
+                src="/services/content marketing..jpg.jpeg" 
+                alt="Content Marketing Strategy" 
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
               />
             </motion.div>
@@ -206,8 +224,8 @@ export default function ContentMarketing() {
                   </svg>
                 </span>
               </h1>
-              <p className="text-gray-500 text-sm md:text-base leading-relaxed max-w-xl">
-                We craft stories, search optimized copy, and strategic marketing assets that build authority, educate audiences, and drive conversions.
+              <p className="text-gray-800 text-sm md:text-base leading-relaxed max-w-xl">
+                Our premium <strong>content marketing services</strong> are backed by strategic <strong>content writing services</strong>. As a results-driven <strong>content creation agency</strong>, we write <strong>seo content writing</strong> pieces, blog writing services, and landing page content that drives organic results.
               </p>
             </motion.div>
 
@@ -517,7 +535,7 @@ export default function ContentMarketing() {
                 </div>
                 <div>
                   <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block">Our Location</span>
-                  <span className="text-sm font-semibold text-zinc-300">C-198, near Telco Circle, UIT colony, Shalimar Nagar, Alwar, Rajasthan 301001, India</span>
+                  <a href="https://maps.google.com/?q=Rizeworld+Digital+Marketing+Pvt+Ltd+Company+C198,+near+Telco+Circle,+UIT+colony,+Shalimar+Nagar,+Alwar,+Rajasthan+301001" target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-zinc-300 hover:text-orange-500 transition-colors">C-198, near Telco Circle, UIT colony, Shalimar Nagar, Alwar, Rajasthan 301001, India</a>
                 </div>
               </div>
             </div>

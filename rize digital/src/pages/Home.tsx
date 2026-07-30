@@ -1,4 +1,4 @@
-import { Suspense, lazy } from 'react';
+import { lazy, Suspense } from 'react';
 import HeroSection from '../components/home/HeroSection';
 import SEO from '../components/common/SEO';
 import AreasWeServe from '../components/common/AreasWeServe';
@@ -47,27 +47,18 @@ export default function Home() {
   return (
     <>
       <SEO 
-        title="RizeWorld | Premium Digital Marketing & SEO Agency in Alwar"
-        description="RizeWorld Digital is a premium digital marketing and software development company. Scale your business with local SEO, paid ads, content strategy, graphic design, and custom web applications."
+        title="Full-Service Digital Marketing Agency & SEO Company | RizeWorld"
+        description="Looking for the best digital marketing services? RizeWorld is a premier digital solutions company providing search engine optimization, web design, and paid ads."
         canonicalUrl="https://rizeworld.in/"
         schema={[orgSchema, localBusinessSchema]}
       />
-      <div className="relative w-full min-h-screen flex flex-col overflow-hidden bg-white">
-        {/* Background Image */}
-        <img 
-          src="/hero/BANNER1.jpg.jpeg" 
-          alt="Hero Background"
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-
-
-
-        {/* Content Layer */}
-        <div className="relative z-10 flex flex-col min-h-screen w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 gap-6">
+      
+      <div className="relative w-full min-h-screen flex flex-col overflow-hidden bg-[#060218]">
+        <div className="relative z-10 flex flex-col min-h-[70vh] xl:min-h-screen w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 gap-6 justify-center">
           <HeroSection />
         </div>
       </div>
-      
+
       <Suspense fallback={<div className="min-h-screen bg-transparent" />}>
         <AgencyHighlightsSection />
         <ServicesGridSection />

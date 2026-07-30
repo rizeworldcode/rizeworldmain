@@ -37,8 +37,8 @@ export default function CaseStudies() {
   return (
     <div className="min-h-screen bg-stone-50 pt-32 pb-24 text-left font-sans selection:bg-orange-500 selection:text-white">
       <SEO 
-        title="Success Stories & Digital Case Studies | RizeWorld"
-        description="Browse RizeWorld's client case studies. Review real-world outcomes for SEO audits, paid media spend, custom web development, and digital marketing."
+        title="Case Studies & Results | Digital Marketing Agency | RizeWorld"
+        description="Explore client case studies from RizeWorld, a leading digital solutions company. Discover how our online marketing services and SEO audits drive growth."
         canonicalUrl="https://rizeworld.in/case-studies"
         schema={[caseStudiesSchema, breadcrumbSchema]}
       />
@@ -53,11 +53,11 @@ export default function CaseStudies() {
             <Sparkles className="w-4 h-4" /> Portfolios of Growth
           </span>
           <h1 className="text-4xl md:text-6xl font-black text-gray-950 uppercase tracking-tighter mb-6">
-            Proven Performance. <br />
-            Measurable Results.
+            Digital Marketing <br />
+            Case Studies
           </h1>
           <p className="text-gray-500 text-sm md:text-base max-w-xl mx-auto">
-            Discover how our digital strategy, custom engineering, and search optimization frameworks translate directly into metrics that count.
+            Discover how our customized <strong>digital marketing services</strong>, custom web design company solutions, and search engine optimization drive measurable business growth.
           </p>
         </div>
 

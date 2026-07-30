@@ -3,12 +3,12 @@ import CityLandingPageTemplate from './CityLandingPageTemplate';
 const pageData = {
   city: "Udaipur",
   title: "Digital Marketing Agency in Udaipur | RizeWorld",
-  metaDescription: "Looking for the best Digital Marketing Agency in Udaipur? RizeWorld delivers expert SEO, hotel booking lead generation, and social media branding for Udaipur businesses.",
+  metaDescription: "Looking for the best Digital Marketing Agency in Udaipur? RizeWorld offers digital marketing services in Udaipur, SEO agency in Udaipur solutions, and website design.",
   heroHeadline: "Digital Marketing Agency in Udaipur",
-  heroSubtitle: "RizeWorld helps Udaipur's premium hotels, heritage homestays, and handicraft exporters attract domestic and international travelers through world-class search optimization and targeted media spend.",
+  heroSubtitle: "Partner with the premier digital marketing in Udaipur company. RizeWorld builds data-driven SEO services in Udaipur, social media marketing agency in Udaipur campaigns, and direct hotel booking funnels.",
   aboutHeadline: "RizeWorld – Scaling Udaipur's Tourism & Export Economy",
-  aboutText1: "Known as the City of Lakes, Udaipur's business ecosystem thrives on tourism, hospitality, destination weddings, and artisanal exports. RizeWorld specializes in building global and local search visibility campaigns that target travelers researching Udaipur vacations.",
-  aboutText2: "Our custom marketing strategy is engineered to drive direct direct-to-consumer hotel bookings, highlight wedding planning portfolios, and optimize international lead generation for Udaipur's premium marble and art exporters.",
+  aboutText1: "Udaipur's business ecosystem thrives on tourism, weddings, and exports. As a leading web design company in Udaipur, RizeWorld provides custom-built digital strategies and social media marketing company in Udaipur campaigns.",
+  aboutText2: "Whether you need a website designer in Udaipur, a custom WordPress development company setup, or an ecommerce website development company structure, we ensure top search ranking results.",
   aboutImg: "https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?auto=format&fit=crop&q=80&w=800",
   benefits: [
     "Hospitality & Hotel Leads",

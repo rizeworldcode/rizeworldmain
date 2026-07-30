@@ -56,3 +56,80 @@
 .blob {
   @apply absolute rounded-full blur-[100px] opacity-20 pointer-events-none;
 }
+
+/* MS Word Editor Canvas Styles */
+.editor-canvas h1 {
+  font-size: 2rem !important;
+  font-weight: 800 !important;
+  line-height: 1.25 !important;
+  margin-top: 1rem !important;
+  margin-bottom: 0.5rem !important;
+  color: #0f172a !important;
+}
+
+.editor-canvas h2 {
+  font-size: 1.5rem !important;
+  font-weight: 700 !important;
+  line-height: 1.3 !important;
+  margin-top: 0.875rem !important;
+  margin-bottom: 0.5rem !important;
+  color: #1e293b !important;
+}
+
+.editor-canvas h3 {
+  font-size: 1.25rem !important;
+  font-weight: 700 !important;
+  line-height: 1.35 !important;
+  margin-top: 0.75rem !important;
+  margin-bottom: 0.5rem !important;
+  color: #334155 !important;
+}
+
+.editor-canvas p {
+  font-size: 1rem !important;
+  font-weight: 400 !important;
+  color: #334155 !important;
+  margin-bottom: 0.75rem !important;
+  line-height: 1.7 !important;
+}
+
+.editor-canvas blockquote {
+  border-left: 4px solid #7c3aed !important;
+  padding-left: 1rem !important;
+  margin-top: 1rem !important;
+  margin-bottom: 1rem !important;
+  font-style: italic !important;
+  color: #475569 !important;
+  background-color: #f8fafc !important;
+  padding-top: 0.5rem !important;
+  padding-bottom: 0.5rem !important;
+  border-top-right-radius: 0.5rem !important;
+  border-bottom-right-radius: 0.5rem !important;
+}
+
+.editor-canvas a {
+  color: #7c3aed !important;
+  text-decoration: underline !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+}
+
+.editor-canvas a:hover {
+  color: #6d28d9 !important;
+}
+
+.editor-canvas ul {
+  list-style-type: disc !important;
+  padding-left: 1.5rem !important;
+  margin-bottom: 1rem !important;
+}
+
+.editor-canvas ol {
+  list-style-type: decimal !important;
+  padding-left: 1.5rem !important;
+  margin-bottom: 1rem !important;
+}
+
+.editor-canvas li {
+  margin-bottom: 0.25rem !important;
+}

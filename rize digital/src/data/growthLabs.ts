@@ -2,12 +2,28 @@ import type { GrowthLab } from '../types';
 
 export const growthLabs: GrowthLab[] = [
   {
+    id: "shinelimos",
+    title: "Mr. Amjad Ali",
+    subtitle: "Founder",
+    image: "/video/amjad ali.jpeg",
+    video: "/video/shinelimos.MP4",
+    description: "Mr. Amjad Ali is the founder of Shinelimos, a premium luxury limousine service. By partnering with RizeWorld, Shinelimos leveraged tailored digital marketing campaigns and high-performance local SEO strategies to establish a dominant brand presence and capture elite clientele."
+  },
+  {
     id: "intercept-ai",
     title: "Mr. Neeraj Lamba",
     subtitle: "Founder",
     image: "/video/nk s.jpg",
     video: "/video/1104.mp4",
     description: "Mr. Neeraj Lamba is the visionary founder of Sushanti Dhyanyoga, a wellness brand dedicated to promoting holistic health through yoga, meditation, and mindfulness practices. With a deep commitment to mental and physical well-being, Mr. Neeraj has helped individuals embrace a balanced lifestyle rooted in ancient wisdom and modern techniques."
+  },
+  {
+    id: "shivaura",
+    title: "Mr. Harsh Tiwari",
+    subtitle: "Founder",
+    image: "/video/harsh tiwari.jpeg",
+    video: "/video/shivaura.mp4",
+    description: "Mr. Harsh Tiwari is the visionary founder of Shivaura, a brand dedicated to wellness and premium lifestyle products. Under his direction, Shivaura has scaled its digital reach and successfully established a trusted brand presence across national markets."
   },
   {
     id: "predict-flow",
@@ -32,13 +48,5 @@ export const growthLabs: GrowthLab[] = [
     image: "/video/mansukhhh.jpg",
     video: "/video/mansukh.mp4",
     description: "Mr. Sajan Chandel is the owner of Mansukh Restaurant, Alwar, a popular dining destination known for its delicious cuisine and warm hospitality. With a focus on quality food and exceptional customer service, he has established the restaurant as a trusted choice for locals and visitors alike."
-  },
-  {
-    id: "shivaura",
-    title: "Mr. Harsh Tiwari",
-    subtitle: "Founder",
-    image: "/video/harsh tiwari.jpeg",
-    video: "/video/shivaura.mp4",
-    description: "Mr. Harsh Tiwari is the visionary founder of Shivaura, a brand dedicated to wellness and premium lifestyle products. Under his direction, Shivaura has scaled its digital reach and successfully established a trusted brand presence across national markets."
   }
 ];

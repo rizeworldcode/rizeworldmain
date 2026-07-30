@@ -135,8 +135,8 @@ export default function GraphicDesign() {
     <div className="min-h-screen bg-stone-50 pt-32 pb-24 overflow-hidden text-left font-sans selection:bg-orange-500 selection:text-white">
       
       <SEO 
-        title="Creative Brand Graphic Design & Visual Identity | RizeWorld"
-        description="Professional graphic design services. We craft logos, comprehensive visual brand identity guidelines, social media assets, and vector illustrations."
+        title="Graphic Design Services & Branding Agency | RizeWorld"
+        description="Looking to hire a graphic designer? Our graphic design company offers custom logo design, brochure design, and professional brand identity design."
         canonicalUrl="https://rizeworld.in/services/graphic-design"
         schema={[serviceSchema, breadcrumbSchema]}
       />
@@ -180,8 +180,8 @@ export default function GraphicDesign() {
             >
               <div className="absolute inset-0 bg-orange-950/10 group-hover:bg-transparent z-10 transition-colors duration-300" />
               <img 
-                src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=600" 
-                alt="creative design board" 
+                src="/services/graphic design.jpg.jpeg" 
+                alt="Graphic Design Strategy" 
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
               />
             </motion.div>
@@ -199,16 +199,16 @@ export default function GraphicDesign() {
                 <Sparkles size={14} className="animate-pulse" /> Exceptional Creative Assets
               </span>
               <h1 className="text-4xl md:text-5xl lg:text-[3.5rem] font-black text-gray-950 leading-[1.05] uppercase tracking-tighter mb-6">
-                Graphic <br />
-                Design <span className="relative inline-block px-4 py-1 mx-1 mt-1">
-                  Services
+                Graphic Design <br />
+                Services <span className="relative inline-block px-4 py-1 mx-1 mt-1">
+                  Studio
                   <svg className="absolute inset-0 w-full h-full text-orange-500" viewBox="0 0 100 100" preserveAspectRatio="none">
                     <path d="M 5, 50 C 5, 20 95, 20 95, 50 C 95, 80 5, 80 5, 50 Z" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="300" strokeDashoffset="0" className="animate-[dash_2s_ease-in-out_infinite]" />
                   </svg>
                 </span>
               </h1>
-              <p className="text-gray-500 text-sm md:text-base leading-relaxed max-w-xl">
-                We craft professional identity books, digital illustrations, ad creative frameworks, and layouts that capture attention instantly.
+              <p className="text-gray-800 text-sm md:text-base leading-relaxed max-w-xl">
+                As a leading <strong>graphic design company</strong> and <strong>branding agency</strong>, we provide custom <strong>graphic design services</strong>, visual guidelines, packaging design, and high-converting marketing collaterals for global brands.
               </p>
             </motion.div>
 
@@ -518,7 +518,7 @@ export default function GraphicDesign() {
                 </div>
                 <div>
                   <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block">Our Location</span>
-                  <span className="text-sm font-semibold text-zinc-300">C-198, near Telco Circle, UIT colony, Shalimar Nagar, Alwar, Rajasthan 301001, India</span>
+                  <a href="https://maps.google.com/?q=Rizeworld+Digital+Marketing+Pvt+Ltd+Company+C198,+near+Telco+Circle,+UIT+colony,+Shalimar+Nagar,+Alwar,+Rajasthan+301001" target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-zinc-300 hover:text-orange-500 transition-colors">C-198, near Telco Circle, UIT colony, Shalimar Nagar, Alwar, Rajasthan 301001, India</a>
                 </div>
               </div>
             </div>

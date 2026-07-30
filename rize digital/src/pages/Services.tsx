@@ -142,8 +142,8 @@ export default function Services() {
   return (
     <div className="min-h-screen bg-stone-50 pt-32 pb-24 text-left font-sans selection:bg-blue-600 selection:text-white">
       <SEO 
-        title="Our Services | Full-Service Digital Agency - RizeWorld"
-        description="Explore RizeWorld's premium marketing and engineering services. We offer search engine optimization, web development, content marketing, UI/UX, graphic design, and custom software development."
+        title="Digital Marketing Services & Solutions Company | RizeWorld"
+        description="Looking for the best online marketing services? RizeWorld is a full service digital marketing agency providing targeted digital business services."
         canonicalUrl="https://rizeworld.in/services"
         schema={[schemaMarkup, breadcrumbSchema]}
       />
@@ -164,11 +164,11 @@ export default function Services() {
             <Sparkles className="w-4 h-4 text-rize-primary" /> Solutions Hub
           </span>
           <h1 className="text-5xl md:text-7xl font-black text-gray-950 leading-[0.95] uppercase tracking-tighter mb-8">
-            Digital Capabilities <br />
-            & Solutions.
+            Digital Marketing <br />
+            Services Hub
           </h1>
-          <p className="text-gray-500 text-sm md:text-base leading-relaxed max-w-2xl">
-            We operate at the convergence of strategic branding, performance marketing, and high-quality software engineering. Explore our complete suite of solutions to scale your business.
+          <p className="text-gray-800 text-sm md:text-base leading-relaxed max-w-2xl">
+            We are a <strong>full service digital marketing agency</strong> and a dedicated <strong>digital solutions company</strong>. We deliver customized <strong>digital marketing solutions for startups</strong> and global brands to achieve real business growth through digital marketing.
           </p>
         </div>
       </section>

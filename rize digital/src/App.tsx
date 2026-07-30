@@ -30,12 +30,15 @@ import Faq from './pages/Faq';
 import Pricing from './pages/Pricing';
 import CaseStudies from './pages/CaseStudies';
 import DynamicCityLandingPage from './pages/services/DynamicCityLandingPage';
+
 import Locations from './pages/Locations';
 
-// Lazy-loaded new architecture pages
+// Lazy-loaded pages
+
 const StateLandingPage = lazy(() => import('./pages/locations/StateLandingPage'));
 const BlogCategoryPage = lazy(() => import('./pages/blogs/BlogCategoryPage'));
 const CaseStudyDetails = lazy(() => import('./pages/CaseStudyDetails'));
+const NotFound = lazy(() => import('./pages/NotFound'));
 
 // Individual Solution Pages
 import DigitalMarketingService from './pages/services/DigitalMarketingService';
@@ -61,131 +64,153 @@ function App() {
   const location = useLocation();
 
   useEffect(() => {
-    // Clear any previous ScrollTrigger instances to prevent accumulation
-    ScrollTrigger.getAll().forEach(t => t.kill());
-
-    // ScrollTrigger setup for Header/Navbar shadow on scroll
-    const headerTrigger = ScrollTrigger.create({
-      start: 'top -60',
-      onUpdate: (self) => {
-        gsap.to('header', {
-          boxShadow: self.isActive ? '0 4px 24px rgba(0,0,0,0.08)' : 'none',
-          backgroundColor: self.isActive ? 'rgba(255, 255, 255, 0.96)' : 'rgba(255, 255, 255, 0.92)',
-          duration: 0.3,
-          ease: 'power2.out'
-        });
-      }
-    });
-
-    // Section labels entrance animations
-    gsap.utils.toArray('.section-label').forEach((el: any) => {
-      gsap.from(el, {
-        scrollTrigger: { trigger: el, start: 'top 88%' },
-        y: 15, opacity: 0, duration: 0.5, ease: 'power2.out'
-      });
-    });
-
-    // Section titles
-    gsap.utils.toArray('.section-title').forEach((el: any) => {
-      gsap.from(el, {
-        scrollTrigger: { trigger: el, start: 'top 85%' },
-        y: 30, opacity: 0, duration: 0.8, ease: 'power3.out'
-      });
-    });
-
-    // Section subtitles
-    gsap.utils.toArray('.section-subtitle').forEach((el: any) => {
-      gsap.from(el, {
-        scrollTrigger: { trigger: el, start: 'top 85%' },
-        y: 20, opacity: 0, duration: 0.7, delay: 0.15, ease: 'power2.out'
-      });
-    });
-
-    // Cards entrance animation
-    gsap.utils.toArray('.premium-card').forEach((card: any, i: number) => {
-      gsap.from(card, {
-        scrollTrigger: {
-          trigger: card,
-          start: 'top 85%',
-          toggleActions: 'play none none reverse'
-        },
-        y: 50,
-        opacity: 0,
-        duration: 0.7,
-        delay: (i % 3) * 0.12,
-        ease: 'power3.out'
-      });
-    });
-
-    // Card 3D tilt effect
-    const cards = document.querySelectorAll('.premium-card');
-    cards.forEach((card: any) => {
-      const handleMouseMove = (e: MouseEvent) => {
-        const rect = card.getBoundingClientRect();
-        const x = (e.clientX - rect.left) / rect.width - 0.5;
-        const y = (e.clientY - rect.top) / rect.height - 0.5;
-        gsap.to(card, {
-          rotateY: x * 8,
-          rotateX: -y * 8,
-          duration: 0.4,
-          ease: 'power2.out',
-          transformPerspective: 1000,
-          transformOrigin: 'center center'
-        });
-      };
-      
-      const handleMouseLeave = () => {
-        gsap.to(card, {
-          rotateY: 0,
-          rotateX: 0,
-          duration: 0.6,
-          ease: 'power2.out'
-        });
-      };
-
-      card.addEventListener('mousemove', handleMouseMove);
-      card.addEventListener('mouseleave', handleMouseLeave);
-      (card as any)._cleanup = () => {
-        card.removeEventListener('mousemove', handleMouseMove);
-        card.removeEventListener('mouseleave', handleMouseLeave);
-      };
-    });
-
-    // Counter numbers animation
-    gsap.utils.toArray('.counter-number').forEach((el: any) => {
-      const target = parseInt(el.dataset.value || '0', 10);
-      gsap.fromTo(el,
-        { innerText: 0 },
-        {
-          scrollTrigger: { trigger: el, start: 'top 80%' },
-          innerText: target,
-          duration: 2.2,
-          snap: { innerText: 1 },
-          ease: 'power2.out',
-          onUpdate: function () {
-            el.innerText = Math.round(this.targets()[0].innerText).toLocaleString();
-          }
+    // Wrap animations in a gsap.context
+    const ctx = gsap.context(() => {
+      // ScrollTrigger setup for Header/Navbar shadow on scroll
+      ScrollTrigger.create({
+        start: 'top -60',
+        onUpdate: (self) => {
+          gsap.to('header > div:first-child', {
+            boxShadow: self.isActive ? '0 4px 24px rgba(0,0,0,0.08)' : 'none',
+            backgroundColor: self.isActive ? 'rgba(255, 255, 255, 0.96)' : 'rgba(255, 255, 255, 0.92)',
+            duration: 0.3,
+            ease: 'power2.out'
+          });
         }
-      );
+      });
+
+      // Section labels entrance animations
+      gsap.utils.toArray('.section-label').forEach((el: any) => {
+        gsap.from(el, {
+          scrollTrigger: { trigger: el, start: 'top 88%' },
+          y: 15, opacity: 0, duration: 0.5, ease: 'power2.out'
+        });
+      });
+
+      // Section titles
+      gsap.utils.toArray('.section-title').forEach((el: any) => {
+        gsap.from(el, {
+          scrollTrigger: { trigger: el, start: 'top 85%' },
+          y: 30, opacity: 0, duration: 0.8, ease: 'power3.out'
+        });
+      });
+
+      // Section subtitles
+      gsap.utils.toArray('.section-subtitle').forEach((el: any) => {
+        gsap.from(el, {
+          scrollTrigger: { trigger: el, start: 'top 85%' },
+          y: 20, opacity: 0, duration: 0.7, delay: 0.15, ease: 'power2.out'
+        });
+      });
+
+      // Cards entrance animation
+      gsap.utils.toArray('.premium-card').forEach((card: any, i: number) => {
+        gsap.from(card, {
+          scrollTrigger: {
+            trigger: card,
+            start: 'top 85%',
+            toggleActions: 'play none none reverse'
+          },
+          y: 50,
+          opacity: 0,
+          duration: 0.7,
+          delay: (i % 3) * 0.12,
+          ease: 'power3.out'
+        });
+      });
+
+      // Card 3D tilt effect
+      const cards = document.querySelectorAll('.premium-card');
+      cards.forEach((card: any) => {
+        const handleMouseMove = (e: MouseEvent) => {
+          const rect = card.getBoundingClientRect();
+          const x = (e.clientX - rect.left) / rect.width - 0.5;
+          const y = (e.clientY - rect.top) / rect.height - 0.5;
+          gsap.to(card, {
+            rotateY: x * 8,
+            rotateX: -y * 8,
+            duration: 0.4,
+            ease: 'power2.out',
+            transformPerspective: 1000,
+            transformOrigin: 'center center'
+          });
+        };
+        
+        const handleMouseLeave = () => {
+          gsap.to(card, {
+            rotateY: 0,
+            rotateX: 0,
+            duration: 0.6,
+            ease: 'power2.out'
+          });
+        };
+
+        card.addEventListener('mousemove', handleMouseMove);
+        card.addEventListener('mouseleave', handleMouseLeave);
+        (card as any)._cleanup = () => {
+          card.removeEventListener('mousemove', handleMouseMove);
+          card.removeEventListener('mouseleave', handleMouseLeave);
+        };
+      });
+
+      // Counter numbers animation
+      gsap.utils.toArray('.counter-number').forEach((el: any) => {
+        const target = parseInt(el.dataset.value || '0', 10);
+        gsap.fromTo(el,
+          { innerText: 0 },
+          {
+            scrollTrigger: { trigger: el, start: 'top 80%' },
+            innerText: target,
+            duration: 2.2,
+            snap: { innerText: 1 },
+            ease: 'power2.out',
+            onUpdate: function () {
+              el.innerText = Math.round(this.targets()[0].innerText).toLocaleString();
+            }
+          }
+        );
+      });
     });
 
     // Refresh ScrollTrigger to recalculate DOM elements positioning
     ScrollTrigger.refresh();
 
     return () => {
-      headerTrigger.kill();
+      // Revert all animations and triggers created in this hook context
+      ctx.revert();
+      const cards = document.querySelectorAll('.premium-card');
       cards.forEach((card: any) => {
         if (card._cleanup) card._cleanup();
       });
     };
   }, [location.pathname]);
 
+  const validRoutePrefixes = [
+    '/services',
+    '/about',
+    '/team',
+    '/portfolio',
+    '/careers',
+    '/blogs',
+    '/privacy',
+    '/terms',
+    '/accessibility',
+    '/faq',
+    '/pricing',
+    '/case-studies',
+    '/locations',
+    '/service',
+    '/contact'
+  ];
+
+  const isNotFound = location.pathname !== '/' && !validRoutePrefixes.some(prefix => location.pathname.startsWith(prefix));
+
   return (
     <div className="min-h-screen bg-rize-bg flex flex-col relative z-0 overflow-x-hidden">
-      <ScrollToTop />
-      <PopupModal />
-      <FloatingButtons />
-      <Header />
+      {!isNotFound && <ScrollToTop />}
+      {!isNotFound && <PopupModal />}
+      {!isNotFound && <FloatingButtons />}
+      {!isNotFound && <Header />}
       
       <main className="flex-1 w-full relative">
         <Routes>
@@ -233,10 +258,11 @@ function App() {
           <Route path="/services/ui-ux-design" element={<UiUxDesign />} />
           
           <Route path="/contact" element={<Contact />} />
+          <Route path="*" element={<Suspense fallback={<div className="min-h-screen bg-[#f3efe8]" />}><NotFound /></Suspense>} />
         </Routes>
       </main>
 
-      <Footer />
+      {!isNotFound && <Footer />}
     </div>
   );
 }

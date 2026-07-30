@@ -1,12 +1,18 @@
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Scale, Sparkles } from 'lucide-react';
+import SEO from '../components/common/SEO';
 
 export default function TermsOfService() {
   const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-stone-50 pt-32 pb-24 text-left font-sans selection:bg-orange-500 selection:text-white">
+      <SEO 
+        title="Terms of Service | RizeWorld"
+        description="Read RizeWorld's Terms of Service to understand the operational standards and terms governing our agency services and website use."
+        canonicalUrl="https://rizeworld.in/terms"
+      />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Navigation back */}

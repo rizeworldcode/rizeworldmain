@@ -41,6 +41,7 @@ interface CityContent {
   };
   phone: string;
   email: string;
+  collageImg?: string;
 }
 
 export default function CityLandingPageTemplate({ data }: { data: CityContent }) {
@@ -190,16 +191,34 @@ export default function CityLandingPageTemplate({ data }: { data: CityContent })
 
   const TESTIMONIALS = [
     {
-      quote: `RizeWorld transformed our online reach. Their tailored digital marketing solutions helped us capture high-intent leads in ${data.city} within the first three months.`,
-      author: "Rahul Sharma",
-      role: "Founder, local enterprise",
-      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=120"
+      quote: "RizeWorld transformed our online presence completely. Their SEO strategies helped Shiivaura rank on the first page within just a few months. Highly recommended!",
+      author: "Harsh Tiwari",
+      role: "Founder, Shiivaura",
+      avatar: "/video/harsh tiwari.jpeg"
     },
     {
-      quote: "Absolute professionals. Their communication is clear, their processes are fully transparent, and the return on investment of our paid ad spend has exceeded expectations.",
-      author: "Pooja Mehta",
-      role: "Marketing Director",
-      avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=120"
+      quote: "Working with RizeWorld was a game changer for 7One. Their digital marketing expertise and dedication to results truly sets them apart from the rest.",
+      author: "Mr. Ajit Singh",
+      role: "Founder, 7One",
+      avatar: "/video/k sir.jpg"
+    },
+    {
+      quote: "The team at RizeWorld helped Mansukh Restaurant reach new customers through smart social campaigns. Our footfall increased noticeably after partnering with them.",
+      author: "Mr. Sajan Chandel",
+      role: "Owner, Mansukh Restaurant",
+      avatar: "/video/mansukhhh.jpg"
+    },
+    {
+      quote: "RizeWorld's approach is professional and result-driven. They understood our brand identity at Old Rao and built a strategy that genuinely delivered growth.",
+      author: "Mr. Rahul Bhugra",
+      role: "Owner, Old Rao",
+      avatar: "/video/Untitled-1.jpg"
+    },
+    {
+      quote: "I'm very satisfied with RizeWorld's services. They helped Sushanti Dhyanyoga build a strong digital identity that resonates with our community.",
+      author: "Mr. Neeraj Lamba",
+      role: "Founder, Sushanti Dhyanyoga",
+      avatar: "/video/nk s.jpg"
     }
   ];
 
@@ -241,14 +260,20 @@ export default function CityLandingPageTemplate({ data }: { data: CityContent })
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
-              className="rounded-4xl overflow-hidden aspect-video bg-gray-200 border border-gray-200 shadow-sm relative group cursor-pointer"
+              className="bg-stone-900 text-white rounded-4xl p-8 flex flex-col justify-between h-auto min-h-[220px] shadow-sm relative overflow-hidden group border border-white/10"
             >
-              <div className="absolute inset-0 bg-orange-950/10 group-hover:bg-transparent z-10 transition-colors duration-300" />
-              <img 
-                src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=600" 
-                alt="team strategy session" 
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
-              />
+              <div className="absolute top-0 right-0 w-24 h-24 bg-orange-500/20 rounded-full blur-2xl -mr-8 -mt-8" />
+              <div>
+                <span className="text-[10px] font-black text-orange-400 uppercase tracking-widest block mb-3">Our Mission</span>
+                <h3 className="text-xl font-bold uppercase tracking-tight mb-2">Dominating Local Search</h3>
+                <p className="text-stone-300 text-xs leading-relaxed">
+                  We position your brand where high-intent buyers in {data.city} are searching. No fluff, just pure organic performance.
+                </p>
+              </div>
+              <div className="mt-4 flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-orange-400 border-t border-white/10 pt-4">
+                <span>RizeWorld Standard</span>
+                <span className="text-white">🚀 10x Growth</span>
+              </div>
             </motion.div>
           </div>
 
@@ -283,9 +308,11 @@ export default function CityLandingPageTemplate({ data }: { data: CityContent })
               <div className="flex items-center gap-3.5 shrink-0">
                 <div className="flex -space-x-3">
                   {[
-                    "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=80",
-                    "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=80",
-                    "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=80"
+                    "/video/harsh tiwari.jpeg",
+                    "/video/k sir.jpg",
+                    "/video/mansukhhh.jpg",
+                    "/video/Untitled-1.jpg",
+                    "/video/nk s.jpg"
                   ].map((avatar, i) => (
                     <img key={i} src={avatar} alt="user" className="w-9 h-9 rounded-full border-2 border-white object-cover shadow-xs" />
                   ))}
@@ -360,12 +387,28 @@ export default function CityLandingPageTemplate({ data }: { data: CityContent })
             </div>
           </div>
 
-          <div className="rounded-4xl overflow-hidden shadow-md aspect-video lg:aspect-square relative group">
-            <img 
-              src={data.aboutImg} 
-              alt={`RizeWorld office in ${data.city}`} 
-              className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-700 ease-out"
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 h-full">
+            <div className="bg-orange-50/70 border border-orange-100 rounded-3xl p-6 flex flex-col justify-between shadow-xs">
+              <span className="text-[10px] font-black text-orange-600 uppercase tracking-widest block">Strategy</span>
+              <p className="text-gray-900 text-sm font-black uppercase mt-2">SEO Dominance</p>
+              <p className="text-gray-500 text-[11px] leading-relaxed mt-1">First-page visibility for search queries that generate ready-to-buy local leads.</p>
+            </div>
+            <div className="bg-stone-900 text-white border border-stone-850 rounded-3xl p-6 flex flex-col justify-between shadow-xs relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-12 h-12 bg-orange-500/10 rounded-full blur-xl" />
+              <span className="text-[10px] font-black text-orange-400 uppercase tracking-widest block">Ads Management</span>
+              <p className="text-white text-sm font-black uppercase mt-2">Elite PPC</p>
+              <p className="text-stone-450 text-[11px] leading-relaxed mt-1">Maximize ROI and scale customer acquisitions with Google & Meta Ads campaigns.</p>
+            </div>
+            <div className="bg-stone-50 border border-gray-200/80 rounded-3xl p-6 flex flex-col justify-between shadow-xs">
+              <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest block">Social Media</span>
+              <p className="text-gray-900 text-sm font-black uppercase mt-2">SMM Curation</p>
+              <p className="text-gray-500 text-[11px] leading-relaxed mt-1">Creative campaigns that engage and build active community loyalty online.</p>
+            </div>
+            <div className="bg-blue-50/60 border border-blue-100 rounded-3xl p-6 flex flex-col justify-between shadow-xs">
+              <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest block">Web Design</span>
+              <p className="text-blue-950 text-sm font-black uppercase mt-2">Elite Layouts</p>
+              <p className="text-blue-900/60 text-[11px] leading-relaxed mt-1">Fast-loading, responsive custom websites engineered for optimal conversions.</p>
+            </div>
           </div>
         </div>
       </section>

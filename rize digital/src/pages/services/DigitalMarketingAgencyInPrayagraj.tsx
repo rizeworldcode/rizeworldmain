@@ -3,12 +3,12 @@ import CityLandingPageTemplate from './CityLandingPageTemplate';
 const pageData = {
   city: "Prayagraj",
   title: "Digital Marketing Agency in Prayagraj | RizeWorld",
-  metaDescription: "Looking for a top Digital Marketing Agency in Prayagraj? RizeWorld designs expert digital strategies, student enrollment campaigns, and search ranks for Prayagraj businesses.",
+  metaDescription: "Looking for the best Digital Marketing Agency in Prayagraj? RizeWorld designs expert digital marketing services in Prayagraj, SEO company in Prayagraj solutions, and web design.",
   heroHeadline: "Digital Marketing Agency in Prayagraj",
-  heroSubtitle: "Scale your educational institution, coaching center, or local trade enterprise in Prayagraj. RizeWorld builds digital marketing funnels that drive online student leads and local consumer inquiries.",
+  heroSubtitle: "Scale your business with our premier digital marketing company in Prayagraj. RizeWorld builds target-focused SEO services in Prayagraj and custom website design company in Prayagraj layouts.",
   aboutHeadline: "RizeWorld – Driving Digital Transformation in Prayagraj",
-  aboutText1: "As a major educational and historical administrative hub in Uttar Pradesh, Prayagraj is home to hundreds of competitive exam coaching centers, universities, healthcare clinics, and legal institutions. RizeWorld builds localized lead acquisition engines tailored for these service models.",
-  aboutText2: "We optimize search rankings for highly competitive educational phrases, build high-converting landing pages for student enrollments, and deploy cost-effective local Google Map campaigns to capture patients, students, and clients.",
+  aboutText1: "As a top marketing agency in Prayagraj, RizeWorld provides elite digital solutions that align with the high expectations of the market. Our SEO expert in Prayagraj team builds high-converting lead pipelines and SMM services in Prayagraj.",
+  aboutText2: "Whether you need a web development services in Prayagraj setup, custom WordPress development company designs, or targeted PPC company in Prayagraj setups, our custom web design company in Prayagraj ensures premium brand positioning.",
   aboutImg: "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?auto=format&fit=crop&q=80&w=800",
   benefits: [
     "Coaching Institute Leads",

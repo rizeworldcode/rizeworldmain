@@ -3,25 +3,25 @@ import { Cpu, Repeat, Megaphone, BarChart } from 'lucide-react';
 const METHODOLOGIES = [
   {
     title: "Marketing Automation",
-    description: "Use of software to campaign, market tasks and allow business to engage with customers more effectively and efficiently.",
+    description: "We deploy advanced marketing automation and online marketing services to nurture leads, improve retention, and drive business growth through digital marketing.",
     icon: <Cpu size={24} className="text-white" />,
     color: "bg-blue-500"
   },
   {
     title: "Automated Workflow",
-    description: "The most examples are invoice processing, customer ticket routing, and lead generation. A series of automated steps, like sending a series of repeated emails or updating contact information.",
+    description: "Our agency integrates automated workflows for lead generation and client management, optimizing digital business services and operational speed.",
     icon: <Repeat size={24} className="text-white" />,
     color: "bg-orange-500"
   },
   {
     title: "Ad Tech Platforms",
-    description: "It is the software that provides you buying, selling and managing digital marketing advertisements.",
+    description: "As a full service digital marketing agency, we handle ad tech configuration for programmatic campaigns, Google ads, and targeted social media marketing services.",
     icon: <Megaphone size={24} className="text-white" />,
     color: "bg-emerald-500"
   },
   {
     title: "Analytics and Reporting",
-    description: "The planning for any campaign is the first step to make it online available. First we have to manage, plan and create for online campaigns.",
+    description: "We build custom ROI dashboards and event tracking funnels, serving as a dedicated digital solutions company to monitor organic traffic growth.",
     icon: <BarChart size={24} className="text-white" />,
     color: "bg-purple-500"
   }
@@ -30,10 +30,10 @@ const METHODOLOGIES = [
 const SectionHeader = () => (
   <div className="max-w-5xl mx-auto text-center mb-16 md:mb-20">
     <h2 className="text-gray-900 font-bold leading-tight tracking-tight text-5xl md:text-6xl lg:text-7xl">
-      Used <span className="text-orange-500">Methodology</span>
+      Our Strategic <span className="text-orange-500">Methodology</span>
     </h2>
     <p className="mt-6 text-gray-500 text-lg md:text-xl leading-relaxed max-w-2xl mx-auto font-medium">
-      Leverage a variety of technologies to streamline operations.
+      We leverage digital marketing solutions to streamline operations and enhance your online visibility.
     </p>
   </div>
 );

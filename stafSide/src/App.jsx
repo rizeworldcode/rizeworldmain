@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { LogOut, GraduationCap, LayoutDashboard, TrendingUp, CreditCard, Users } from 'lucide-react';
+import { LogOut, GraduationCap, LayoutDashboard, TrendingUp, CreditCard, Users, BookOpen } from 'lucide-react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import StaffLogin from './pages/StaffLogin';
@@ -10,6 +10,8 @@ import SalesTeam from './pages/SalesTeam';
 import VisitingCards from './pages/VisitingCards';
 import Clients from './pages/Clients';
 import ClientProjects from './pages/ClientProjects';
+import BlogManagement from './pages/BlogManagement';
+
 
 
 
@@ -24,6 +26,8 @@ const MainLayout = ({ onLogout }) => {
   const isSalesTeam = staffInfo.role?.toLowerCase() === 'sales team' || staffInfo.role?.toLowerCase() === 'sales';
   const isDataAnalyst = staffInfo.role?.toLowerCase() === 'data analyst';
   const isVisitingCardsAllowed = ['admin', 'data analyst'].includes(staffInfo.role?.toLowerCase());
+  const isMarketing = (staffInfo.department?.toLowerCase() || '').includes('marketing') || (staffInfo.role?.toLowerCase() || '').includes('marketing');
+
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
@@ -180,6 +184,32 @@ const MainLayout = ({ onLogout }) => {
               </button>
             </div>
           )}
+          {isMarketing && (
+            <div className="flex items-center gap-2 bg-[#eef2f6] p-1 rounded-2xl clay-inset ml-2">
+              <button 
+                onClick={() => handleTabChange('dashboard')}
+                className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all ${
+                  activeTab === 'dashboard'
+                    ? 'clay-flat text-[#8b5cf6] font-bold shadow-md shadow-purple-500/10'
+                    : 'text-[#64748b] hover:text-[#8b5cf6]'
+                }`}
+              >
+                <LayoutDashboard size={16} className="inline mr-1" />
+                Dashboard
+              </button>
+              <button 
+                onClick={() => handleTabChange('blogs')}
+                className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all ${
+                  activeTab === 'blogs'
+                    ? 'clay-flat text-[#8b5cf6] font-bold shadow-md shadow-purple-500/10'
+                    : 'text-[#64748b] hover:text-[#8b5cf6]'
+                }`}
+              >
+                <BookOpen size={16} className="inline mr-1" />
+                Blog Editor
+              </button>
+            </div>
+          )}
         </div>
         <button 
           onClick={onLogout}
@@ -201,9 +231,11 @@ const MainLayout = ({ onLogout }) => {
             {activeTab === 'sales' && isSalesTeam && <SalesTeam onBack={() => handleTabChange('dashboard')} />}
             {activeTab === 'visitingCards' && isVisitingCardsAllowed && <VisitingCards onBack={() => handleTabChange('dashboard')} />}
             {activeTab === 'clients' && isVisitingCardsAllowed && <Clients onClientClick={(client) => navigate(`/clients/${client._id || client.id}`)} />}
+            {activeTab === 'blogs' && isMarketing && <BlogManagement onBack={() => handleTabChange('dashboard')} />}
           </>
         )}
       </main>
+
     </div>
 
   );

@@ -75,8 +75,8 @@ export default function Contact() {
   return (
     <div className="min-h-screen bg-rize-bg overflow-hidden font-sans">
       <SEO 
-        title="Contact Us | Hire Full-Service Digital Experts - RizeWorld"
-        description="Get in touch with RizeWorld Digital. Submit your project brief for custom web applications, local SEO optimization, PPC campaigns, and branding design."
+        title="Contact Our Digital Marketing Agency | RizeWorld"
+        description="Get in touch with RizeWorld Digital, a premier digital solutions company. Contact us to discuss your online marketing services or web development project requirements."
         canonicalUrl="https://rizeworld.in/contact"
         schema={[contactSchema, breadcrumbSchema]}
       />
@@ -91,7 +91,7 @@ export default function Contact() {
             transition={{ duration: 0.6 }}
             className="text-5xl md:text-7xl font-bold tracking-tight text-gray-950 mb-4"
           >
-            Contact Us
+            Hire Our Agency
           </motion.h1>
 
           <motion.p
@@ -100,7 +100,7 @@ export default function Contact() {
             transition={{ duration: 0.6, delay: 0.3 }}
             className="text-gray-500 text-base max-w-xl mx-auto leading-relaxed"
           >
-            Have a project in mind or want to join our team? Drop us a message, and we'll get back to you shortly.
+            Ready to scale with professional <strong>digital marketing services</strong>, custom web development, or search engine optimization? Drop us a message to request a consultation.
           </motion.p>
         </div>
       </section>
@@ -129,7 +129,14 @@ export default function Contact() {
               <div>
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-0.5">Location Address</p>
                 <p className="text-gray-950 font-normal text-sm leading-snug">
-                  C-198, near Telco Circle, UIT colony, Shalimar Nagar, Alwar, Rajasthan 301001, India
+                  <a 
+                    href="https://maps.google.com/?q=Rizeworld+Digital+Marketing+Pvt+Ltd+Company+C198,+near+Telco+Circle,+UIT+colony,+Shalimar+Nagar,+Alwar,+Rajasthan+301001" 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="hover:text-rize-primary transition-colors"
+                  >
+                    C-198, near Telco Circle, UIT colony, Shalimar Nagar, Alwar, Rajasthan 301001, India
+                  </a>
                 </p>
               </div>
             </div>
@@ -170,7 +177,14 @@ export default function Contact() {
               <div>
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-0.5">Region Location</p>
                 <p className="text-gray-950 font-normal text-sm">
-                  Alwar, Rajasthan, India
+                  <a 
+                    href="https://maps.google.com/?q=Alwar,+Rajasthan,+India" 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="hover:text-rize-primary transition-colors"
+                  >
+                    Alwar, Rajasthan, India
+                  </a>
                 </p>
               </div>
             </div>

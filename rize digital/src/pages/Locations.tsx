@@ -50,8 +50,28 @@ const LANDMARK_IMAGES: Record<string, string> = {
   "prayagraj": "https://images.unsplash.com/photo-1542856391-010fb87dcfed?auto=format&fit=crop&q=80&w=400"
 };
 
+const STATE_IMAGES: Record<string, string> = {
+  "delhi-ncr": "https://images.unsplash.com/photo-1587474260584-136574528ed5?auto=format&fit=crop&q=80&w=400",
+  "rajasthan": "https://images.unsplash.com/photo-1599661046289-e31897846e41?auto=format&fit=crop&q=80&w=400",
+  "maharashtra": "https://images.unsplash.com/photo-1566552881560-0be862a7c445?auto=format&fit=crop&q=80&w=400",
+  "karnataka": "https://images.unsplash.com/photo-1596176530529-78163a4f7af2?auto=format&fit=crop&q=80&w=400",
+  "gujarat": "https://images.unsplash.com/photo-1597075687490-8f673c6c17f6?auto=format&fit=crop&q=80&w=400",
+  "uttar-pradesh": "https://images.unsplash.com/photo-1564507592333-c60657eea523?auto=format&fit=crop&q=80&w=400",
+  "punjab": "https://images.unsplash.com/photo-1514222134-b57cbb8ce073?auto=format&fit=crop&q=80&w=400",
+  "haryana": "https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?auto=format&fit=crop&q=80&w=400",
+  "madhya-pradesh": "https://images.unsplash.com/photo-1506461883276-594a12b11cf3?auto=format&fit=crop&q=80&w=400",
+  "tamil-nadu": "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&q=80&w=400",
+  "kerala": "https://images.unsplash.com/photo-1589308078059-be1415eab4c3?auto=format&fit=crop&q=80&w=400",
+  "west-bengal": "https://images.unsplash.com/photo-1558431382-27e303142255?auto=format&fit=crop&q=80&w=400",
+  "telangana": "https://images.unsplash.com/photo-1626132647523-66f5bf380027?auto=format&fit=crop&q=80&w=400",
+  "andhra-pradesh": "https://images.unsplash.com/photo-1600861195091-690c92f1d2cc?auto=format&fit=crop&q=80&w=400",
+  "uttarakhand": "https://images.unsplash.com/photo-1598902108854-10e335adac99?auto=format&fit=crop&q=80&w=400",
+  "assam": "https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&q=80&w=400"
+};
+
 export default function Locations() {
   const [hoveredCity, setHoveredCity] = useState<string | null>(null);
+  const [hoveredState, setHoveredState] = useState<string | null>(null);
 
   const schemaMarkup = {
     "@context": "https://schema.org",
@@ -169,33 +189,58 @@ export default function Locations() {
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {STATES.map((state, idx) => (
-            <motion.div
-              key={state.slug}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: idx * 0.04 }}
-            >
-              <Link
-                to={`/locations/${state.slug}`}
-                className="bg-white border border-gray-200/85 hover:border-orange-500 p-5 rounded-2xl flex items-center justify-between transition-all duration-300 shadow-2xs cursor-pointer group"
+          {STATES.map((state, idx) => {
+            const isHovered = hoveredState === state.slug;
+            return (
+              <motion.div
+                key={state.slug}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: idx * 0.04 }}
               >
-                <div className="flex items-center gap-3">
-                  <Building2 size={16} className="text-gray-400 group-hover:text-orange-500 transition-colors shrink-0" />
-                  <div>
-                    <span className="text-xs font-black uppercase tracking-wider text-gray-800 group-hover:text-orange-500 transition-colors block">
-                      {state.name}
-                    </span>
-                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">
-                      {state.cities.length} {state.cities.length === 1 ? 'city' : 'cities'}
-                    </span>
+                <Link
+                  to={`/locations/${state.slug}`}
+                  onMouseEnter={() => setHoveredState(state.slug)}
+                  onMouseLeave={() => setHoveredState(null)}
+                  className="bg-white border border-gray-200/85 hover:border-orange-500 p-5 rounded-2xl flex items-center justify-between transition-all duration-300 shadow-2xs cursor-pointer group relative overflow-hidden"
+                >
+                  {/* State background image on hover */}
+                  <AnimatePresence>
+                    {isHovered && STATE_IMAGES[state.slug] && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 1.1 }}
+                        animate={{ opacity: 0.9, scale: 1 }}
+                        exit={{ opacity: 0, scale: 1.1 }}
+                        transition={{ duration: 0.4, ease: "easeOut" }}
+                        className="absolute inset-0 z-0 pointer-events-none"
+                      >
+                        <img 
+                          src={STATE_IMAGES[state.slug]} 
+                          alt={state.name} 
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-r from-white/90 via-white/50 to-white/10" />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  <div className="flex items-center gap-3 relative z-10">
+                    <Building2 size={16} className="text-gray-400 group-hover:text-orange-500 transition-colors shrink-0" />
+                    <div>
+                      <span className="text-xs font-black uppercase tracking-wider text-gray-800 group-hover:text-orange-500 transition-colors block">
+                        {state.name}
+                      </span>
+                      <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest group-hover:text-orange-500/80 transition-colors">
+                        {state.cities.length} {state.cities.length === 1 ? 'city' : 'cities'}
+                      </span>
+                    </div>
                   </div>
-                </div>
-                <ArrowUpRight size={14} className="text-gray-300 group-hover:text-orange-500 transition-colors shrink-0" />
-              </Link>
-            </motion.div>
-          ))}
+                  <ArrowUpRight size={14} className="text-gray-300 group-hover:text-orange-500 transition-colors shrink-0 relative z-10" />
+                </Link>
+              </motion.div>
+            );
+          })}
         </div>
       </section>
     </div>

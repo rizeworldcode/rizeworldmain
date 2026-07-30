@@ -31,9 +31,9 @@ export default function PopupModal() {
         {/* Close Button */}
         <button 
           onClick={() => setIsOpen(false)}
-          className="absolute -top-12 right-2 sm:-right-12 w-10 h-10 bg-white/10 hover:bg-white/20 text-white rounded-full flex items-center justify-center backdrop-blur-sm transition-all z-10"
+          className="absolute top-0 right-2 sm:-top-10 sm:right-0 w-10 h-10 text-gray-500 hover:text-gray-800 sm:text-white/80 sm:hover:text-white flex items-center justify-center transition-all z-50"
         >
-          <X size={20} />
+          <X size={24} />
         </button>
 
         {/* Container for the Form */}

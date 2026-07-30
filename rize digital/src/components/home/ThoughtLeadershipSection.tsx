@@ -53,7 +53,7 @@ export default function ThoughtLeadershipSection() {
                     <img 
                       src={card.image} 
                       alt={card.title} 
-                      className={`w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105 ${card.aspectRatio === 'portrait' ? 'aspect-3/4' : card.aspectRatio === 'landscape' ? 'aspect-video' : 'aspect-square'}`}
+                      className="w-full aspect-[3/4] object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                     />
                     <div className="p-4 sm:p-5 bg-white relative z-10 border-t border-gray-100 flex-1 flex flex-col justify-center">
                       <h3 className="text-gray-900 text-base sm:text-lg font-semibold leading-snug">{card.title}</h3>
@@ -70,7 +70,7 @@ export default function ThoughtLeadershipSection() {
                     <img 
                       src={card.image} 
                       alt={card.title} 
-                      className={`w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105 ${card.aspectRatio === 'portrait' ? 'aspect-square' : card.aspectRatio === 'landscape' ? 'aspect-3/4' : 'aspect-video'}`}
+                      className="w-full aspect-[3/4] object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                     />
                     <div className="p-4 sm:p-5 bg-white relative z-10 border-t border-gray-100 flex-1 flex flex-col justify-center">
                       <h3 className="text-gray-900 text-base sm:text-lg font-semibold leading-snug">{card.title}</h3>
@@ -86,11 +86,11 @@ export default function ThoughtLeadershipSection() {
           <div className="max-w-2xl lg:pl-10">
             <h2 className="text-gray-900 font-semibold leading-tight tracking-tight text-4xl sm:text-5xl lg:text-6xl">
               Getting the <span style={{ fontFamily: "'Playfair Display', serif", fontStyle: "italic", fontWeight: 400 }}>Headlines</span>,<br className="hidden sm:block" />
-              Leading with Thought Leadership
+              Leading Digital Solutions Company
             </h2>
             
             <p className="mt-8 text-gray-500 text-lg md:text-xl leading-relaxed">
-              RizeWorld doesn’t wait for attention — we engineer it. Through strategic PR campaigns, viral storytelling, and high-impact media positioning, we help brands dominate conversations and shape industry narratives.
+              We don’t wait for attention — we engineer it. Through result-oriented <strong>digital marketing services</strong>, strategic PR outreach, and high-impact search engine optimization campaigns, we help brands dominate search rankings and capture buyer intent.
             </p>
 
             <Link to="/portfolio" className="inline-block mt-10">

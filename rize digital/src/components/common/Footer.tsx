@@ -39,13 +39,13 @@ export default function Footer() {
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 hover:text-rize-primary cursor-pointer transition-colors"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
               </a>
             </div>
-            <button 
-              onClick={() => window.location.href = 'mailto:hr.rizeworld@gmail.com'}
+            <a 
+              href="mailto:hr.rizeworld@gmail.com"
               className="flex items-center gap-3 rounded-full bg-gray-50 border border-gray-200 px-8 py-3 text-gray-800 font-medium hover:border-rize-primary hover:bg-gray-100 hover:text-rize-primary transition-all duration-300"
             >
               hr.rizeworld@gmail.com
               <ArrowRight className="w-4 h-4 text-rize-primary" />
-            </button>
+            </a>
           </div>
         </div>
 
@@ -114,7 +114,7 @@ export default function Footer() {
           </div>
 
           {/* Column 6: Get in Touch */}
-          <div className="flex flex-col">
+          <div className="flex flex-col col-span-2 sm:col-span-1">
             <h4 className="text-gray-900 font-bold text-sm tracking-widest mb-5 uppercase">Get in Touch</h4>
             <ul className="flex flex-col gap-5">
               <li className="flex items-start gap-3">
@@ -126,16 +126,23 @@ export default function Footer() {
               </li>
               <li className="flex items-start gap-3">
                 <Mail className="w-4 h-4 text-rize-primary shrink-0 mt-0.5" />
-                <div>
+                <div className="min-w-0 flex-1">
                   <span className="block text-gray-900 font-medium text-sm mb-0.5">Email</span>
-                  <a href="mailto:hr.rizeworld@gmail.com" className="text-gray-600 hover:text-rize-primary transition-colors text-sm">hr.rizeworld@gmail.com</a>
+                  <a href="mailto:hr.rizeworld@gmail.com" className="text-gray-600 hover:text-rize-primary transition-colors text-sm break-words">hr.rizeworld@gmail.com</a>
                 </div>
               </li>
               <li className="flex items-start gap-3">
                 <MapPin className="w-4 h-4 text-rize-primary shrink-0 mt-0.5" />
                 <div>
                   <span className="block text-gray-900 font-medium text-sm mb-0.5">HQ</span>
-                  <span className="text-gray-600 text-sm leading-relaxed block max-w-[200px]">Alwar, Rajasthan 301001</span>
+                  <a 
+                    href="https://maps.google.com/?q=Rizeworld+Digital+Marketing+Pvt+Ltd+Company+C198,+near+Telco+Circle,+UIT+colony,+Shalimar+Nagar,+Alwar,+Rajasthan+301001" 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="text-gray-600 hover:text-rize-primary transition-colors text-sm leading-relaxed block max-w-[200px]"
+                  >
+                    Alwar, Rajasthan 301001
+                  </a>
                 </div>
               </li>
             </ul>

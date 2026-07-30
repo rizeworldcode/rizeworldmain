@@ -66,8 +66,8 @@ export default function Faq() {
   return (
     <div className="min-h-screen bg-stone-50 pt-32 pb-24 text-left font-sans selection:bg-orange-500 selection:text-white">
       <SEO 
-        title="Frequently Asked Questions | RizeWorld"
-        description="Find answers to common questions about RizeWorld's digital marketing, search engine optimization, web development, and branding design services."
+        title="FAQ | Digital Marketing & SEO Services Questions | RizeWorld"
+        description="Find answers to common questions about RizeWorld's digital marketing services, search engine optimization, web development, and local SEO services."
         canonicalUrl="https://rizeworld.in/faq"
         schema={[faqSchema, breadcrumbSchema]}
       />
@@ -82,11 +82,11 @@ export default function Faq() {
             <Sparkles className="w-4 h-4 animate-pulse" /> Support Hub
           </span>
           <h1 className="text-4xl md:text-6xl font-black text-gray-950 uppercase tracking-tighter mb-6">
-            Frequently Asked <br />
-            Questions.
+            Digital Marketing <br />
+            FAQ.
           </h1>
           <p className="text-gray-500 text-sm md:text-base max-w-xl mx-auto">
-            Everything you need to know about our workflow, service categories, timelines, and custom delivery systems.
+            Everything you need to know about our digital marketing solutions, SEO optimization services, website redesign timelines, and budget requirements.
           </p>
         </div>
 

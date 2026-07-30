@@ -31,17 +31,18 @@ export default function GrowthLabsSection() {
       {/* Header */}
       <div className="max-w-5xl mx-auto text-center mb-16">
         <h2 className="text-gray-900 font-bold leading-tight tracking-tight text-5xl md:text-6xl lg:text-7xl">
-          Success <span className="text-orange-500">Story</span>
+          Success <span className="text-orange-500">Stories</span>
         </h2>
         <p className="mt-6 text-gray-500 text-lg md:text-xl leading-relaxed max-w-3xl mx-auto font-medium">
-          Within 8 months we will provide the best services to our clients, make their social media strong and enhance their brand visibility. By providing a wide range of services we help them to grow their business.
+          See how our digital solutions company drives business growth through digital marketing, result-oriented search engine optimization, and custom social media marketing services.
         </p>
         <Link to="/contact" className="mt-8 inline-flex items-center gap-2 rounded-full border border-transparent bg-orange-500 px-8 py-4 text-white font-bold text-sm hover:bg-orange-600 transition-all duration-300 shadow-sm hover:shadow-md hover:shadow-orange-500/20">
           Get In Touch
         </Link>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-4 h-[800px] md:h-[600px] lg:h-[700px] w-full max-w-[1400px]">
+      {/* Desktop Layout (Accordion) */}
+      <div className="hidden md:flex md:flex-row gap-4 md:h-[600px] lg:h-[700px] w-full max-w-[1400px]">
         {growthLabs.map((lab, i) => (
           <motion.div
             key={lab.id}
@@ -109,6 +110,54 @@ export default function GrowthLabsSection() {
               )}
             </div>
           </motion.div>
+        ))}
+      </div>
+
+      {/* Mobile/Tablet Layout (List of Cards) */}
+      <div className="flex md:hidden flex-col gap-8 w-full max-w-md mx-auto">
+        {growthLabs.map((lab) => (
+          <div key={lab.id} className="bg-white rounded-3xl overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-gray-150 flex flex-col">
+            {/* Image & Play Button Container */}
+            <div className="relative aspect-[4/3] w-full bg-black flex items-center justify-center overflow-hidden">
+              <img
+                src={lab.image}
+                alt={lab.title}
+                className="w-full h-full object-cover object-top opacity-80"
+              />
+              <div className="absolute inset-0 bg-black/15" />
+              
+              {/* Floating Subtitle Badge */}
+              <div className="absolute top-4 left-4 px-3 py-1 bg-white/95 text-black rounded-full text-xs font-bold uppercase tracking-wider shadow-sm">
+                {lab.subtitle}
+              </div>
+
+              {/* Play Button in Center */}
+              <button
+                onClick={() => {
+                  setCurrentVideo(lab.video || "");
+                  setModalOpen(true);
+                }}
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-14 h-14 bg-white text-black rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition-transform shadow-xl z-20"
+              >
+                <Play className="w-6 h-6 text-black fill-black ml-1" />
+              </button>
+            </div>
+
+            {/* Content Container */}
+            <div className="p-6 flex flex-col">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-orange-500/10 text-orange-500 flex items-center justify-center font-bold text-base border border-orange-500/20">
+                  {lab.title.charAt(0)}
+                </div>
+                <h3 className="font-bold text-gray-900 text-lg">
+                  {lab.title}
+                </h3>
+              </div>
+              <p className="text-gray-600 text-sm leading-relaxed italic">
+                "{lab.description}"
+              </p>
+            </div>
+          </div>
         ))}
       </div>
       

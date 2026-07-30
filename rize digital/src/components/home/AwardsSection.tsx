@@ -10,9 +10,9 @@ export default function AwardsSection() {
         {/* Left: Large Image */}
         <div className="w-full h-[500px] lg:h-[700px] rounded-4xl overflow-hidden bg-gray-200 relative shadow-lg">
           <img 
-            src="/images/agency_office.png" 
-            alt="Agency Office" 
-            className="absolute inset-0 w-full h-full object-cover grayscale" 
+            src="/images/DSC08992.JPG.jpeg" 
+            alt="RizeWorld Founder" 
+            className="absolute inset-0 w-full h-full object-cover" 
           />
         </div>
 

@@ -114,11 +114,7 @@ export default function Pricing() {
               viewport={{ once: true }}
               transition={{ duration: 0.6, delay: idx * 0.1 }}
               key={idx}
-              className={`bg-white border rounded-4xl p-8 flex flex-col justify-between relative overflow-hidden transition-all duration-300 ${
-                plan.popular 
-                  ? 'border-orange-500 shadow-lg shadow-orange-500/5 md:-translate-y-2' 
-                  : 'border-gray-200/80 shadow-2xs hover:border-orange-500/30'
-              }`}
+              className="bg-white border border-gray-200/80 rounded-4xl p-8 flex flex-col justify-between relative overflow-hidden transition-all duration-300 shadow-2xs hover:border-orange-500 hover:shadow-lg hover:shadow-orange-500/5 hover:-translate-y-2"
             >
               {plan.popular && (
                 <span className="absolute top-4 right-4 bg-orange-500 text-white text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full">
@@ -145,11 +141,7 @@ export default function Pricing() {
               <div className="mt-8">
                 <Link
                   to="/contact"
-                  className={`w-full inline-flex items-center justify-center py-4 px-6 rounded-full text-xs font-black uppercase tracking-widest transition-all cursor-pointer ${
-                    plan.popular
-                      ? 'bg-orange-500 hover:bg-orange-600 text-white shadow-md'
-                      : 'bg-stone-150 hover:bg-orange-500 hover:text-white text-gray-800'
-                  }`}
+                  className="w-full inline-flex items-center justify-center py-4 px-6 rounded-full text-xs font-black uppercase tracking-widest transition-all cursor-pointer bg-stone-150 hover:bg-orange-500 hover:text-white text-gray-800 hover:shadow-md"
                 >
                   {plan.cta}
                 </Link>

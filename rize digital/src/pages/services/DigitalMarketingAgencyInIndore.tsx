@@ -2,13 +2,13 @@ import CityLandingPageTemplate from './CityLandingPageTemplate';
 
 const pageData = {
   city: "Indore",
-  title: "Digital Marketing Agency in Indore | RizeWorld",
-  metaDescription: "Looking for a top-rated Digital Marketing Agency in Indore? RizeWorld specializes in SEO, e-commerce growth, social media branding, and IT park B2B marketing in Indore.",
-  heroHeadline: "Digital Marketing Agency in Indore",
-  heroSubtitle: "Scale your startup, SaaS brand, or retail store in India's cleanest city. RizeWorld builds state-of-the-art SEO frameworks and ROI-driven paid ad systems optimized for Indore's competitive market.",
+  title: "Digital Marketing Company in Indore | RizeWorld",
+  metaDescription: "Looking for a top-rated Digital Marketing Company in Indore? RizeWorld specializes in SEO agency services, e-commerce, and website designer services in Indore.",
+  heroHeadline: "Digital Marketing Company in Indore",
+  heroSubtitle: "Scale your business with the best digital marketing agency in Indore. RizeWorld builds data-driven SEO services in Indore and ecommerce company Indore structures.",
   aboutHeadline: "RizeWorld – Accelerating Indore's Business Growth",
-  aboutText1: "Indore is Madhya Pradesh's dominant financial capital, boasting a rich food culture, rapidly expanding IT parks, and a thriving startup ecosystem. RizeWorld provides custom-built digital strategies designed to help Indore enterprises outperform the competition.",
-  aboutText2: "From local food brands near Chappan Dukan aiming to expand delivery orders, to B2B tech developers based in Vijay Nagar looking for international corporate clients, we deploy multi-channel funnels that drive real business growth.",
+  aboutText1: "Indore is Madhya Pradesh's dominant financial capital. As a top marketing agency in Indore, RizeWorld provides custom-built SEO company in Indore strategies and social media marketing agency in Indore campaigns.",
+  aboutText2: "Whether you need a website designer in Indore or a custom WordPress development company setup, our best web design company in Indore services ensure premium brand positioning.",
   aboutImg: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=800",
   benefits: [
     "SaaS & Tech B2B SEO",

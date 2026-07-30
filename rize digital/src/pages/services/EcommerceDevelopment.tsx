@@ -19,6 +19,7 @@ import {
 import SEO from '../../components/common/SEO';
 import Breadcrumbs from '../../components/common/Breadcrumbs';
 import AreasWeServe from '../../components/common/AreasWeServe';
+import { LOGOS } from '../../data/logos';
 
 const SERVICES_LIST = [
   {
@@ -76,21 +77,41 @@ const STEPS = [
 
 const TESTIMONIALS = [
   {
-    quote: "RizeWorld delivered a highly stable storefront that handles thousands of daily orders seamlessly. Our conversion rates increased by 35% after the launch.",
-    author: "Elena Rostova",
-    role: "CEO, Glow Cosmetics",
-    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=120"
+    quote: "RizeWorld delivered a highly stable e-commerce storefront for Shiivaura. The layout is optimized to handle high-intent shoppers smoothly. Highly recommended!",
+    author: "Harsh Tiwari",
+    role: "Founder, Shiivaura",
+    avatar: "/video/harsh tiwari.jpeg"
   },
   {
-    quote: "Their team built a headless commerce store that loads under 1 second. The integration with our inventory management system was completely flawless.",
-    author: "Arthur Pendelton",
-    role: "Co-Founder, Brew Co.",
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=120"
+    quote: "Working with RizeWorld for our retail platform was a game changer for 7One. Their custom e-commerce setups and payment integrations are flawless.",
+    author: "Mr. Ajit Singh",
+    role: "Founder, 7One",
+    avatar: "/video/k sir.jpg"
+  },
+  {
+    quote: "The digital ordering system and online store designed by RizeWorld helped Mansukh Restaurant scale deliveries easily. Excellent e-commerce work!",
+    author: "Mr. Sajan Chandel",
+    role: "Owner, Mansukh Restaurant",
+    avatar: "/video/mansukhhh.jpg"
+  },
+  {
+    quote: "Their approach to e-commerce is highly professional. They built a clean, secure shop layout for Old Rao that our customers love using.",
+    author: "Mr. Rahul Bhugra",
+    role: "Owner, Old Rao",
+    avatar: "/video/Untitled-1.jpg"
+  },
+  {
+    quote: "I'm very satisfied with RizeWorld's e-commerce setup. They built a peaceful and fast-loading web-store for our yoga community offerings.",
+    author: "Mr. Neeraj Lamba",
+    role: "Founder, Sushanti Dhyanyoga",
+    avatar: "/video/nk s.jpg"
   }
 ];
 
 export default function EcommerceDevelopment() {
   const navigate = useNavigate();
+  const repeatedLogos = [...LOGOS, ...LOGOS, ...LOGOS];
+
   const serviceSchema = {
     "@context": "https://schema.org",
     "@type": "Service",
@@ -134,10 +155,9 @@ export default function EcommerceDevelopment() {
   return (
     <div className="min-h-screen bg-stone-50 pt-32 pb-24 overflow-hidden text-left font-sans selection:bg-orange-500 selection:text-white">
       
-      
       <SEO 
-        title="E-commerce Development & Shopify Setup | RizeWorld"
-        description="Build secure, high-conversion online stores. We develop custom e-commerce checkouts, cart optimization, Shopify and WooCommerce setups to scale sales."
+        title="Ecommerce Development Company & Shopify Setup | RizeWorld"
+        description="Looking for an ecommerce website development company? Our ecommerce web development agency specializes in high-converting shopify ecommerce development."
         canonicalUrl="https://rizeworld.in/services/ecommerce-development"
         schema={[serviceSchema, breadcrumbSchema]}
       />
@@ -160,6 +180,7 @@ export default function EcommerceDevelopment() {
           
           {/* LEFT COLLAGE BLOCK */}
           <div className="flex flex-col gap-6">
+            {/* Strategy Banner Card */}
             <motion.div 
               initial={{ opacity: 0, x: -40 }}
               animate={{ opacity: 1, x: 0 }}
@@ -173,23 +194,25 @@ export default function EcommerceDevelopment() {
               </p>
             </motion.div>
 
+            {/* Visual Team Card */}
             <motion.div 
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
-              className="rounded-4xl overflow-hidden aspect-video bg-gray-200 border border-gray-200 shadow-sm relative group cursor-pointer"
+              className="rounded-4xl overflow-hidden aspect-video bg-white border border-gray-200 shadow-sm relative group cursor-pointer"
             >
-              <div className="absolute inset-0 bg-orange-950/10 group-hover:bg-transparent z-10 transition-colors duration-300" />
+              <div className="absolute inset-0 bg-orange-950/5 group-hover:bg-transparent z-10 transition-colors duration-300" />
               <img 
-                src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=600" 
-                alt="ecommerce whiteboard planning" 
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+                src="/services/ecommerece.jpg.jpeg" 
+                alt="Ecommerce Development Services" 
+                className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-700 ease-out"
               />
             </motion.div>
           </div>
 
           {/* CENTER MAIN CONTENT BLOCK */}
           <div className="flex flex-col gap-6 justify-between">
+            {/* Title Solution Card */}
             <motion.div 
               initial={{ opacity: 0, y: -30 }}
               animate={{ opacity: 1, y: 0 }}
@@ -202,17 +225,18 @@ export default function EcommerceDevelopment() {
               <h1 className="text-4xl md:text-5xl lg:text-[3.5rem] font-black text-gray-950 leading-[1.05] uppercase tracking-tighter mb-6">
                 Ecommerce <br />
                 Development <span className="relative inline-block px-4 py-1 mx-1 mt-1">
-                  Services
+                  Company
                   <svg className="absolute inset-0 w-full h-full text-orange-500" viewBox="0 0 100 100" preserveAspectRatio="none">
                     <path d="M 5, 50 C 5, 20 95, 20 95, 50 C 95, 80 5, 80 5, 50 Z" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="300" strokeDashoffset="0" className="animate-[dash_2s_ease-in-out_infinite]" />
                   </svg>
                 </span>
               </h1>
-              <p className="text-gray-500 text-sm md:text-base leading-relaxed max-w-xl">
-                We craft custom storefronts, robust backend dashboards, and highly secure payment system integrations that maximize online transactions.
+              <p className="text-gray-800 text-sm md:text-base leading-relaxed max-w-xl">
+                As a leading <strong>ecommerce development company</strong>, we deliver custom <strong>ecommerce website development</strong> and <strong>ecommerce development services</strong>. Our <strong>ecommerce web development agency</strong> builds secure, high-conversion online stores to scale your sales.
               </p>
             </motion.div>
 
+            {/* Happy Clients Badge Card */}
             <motion.div 
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
@@ -225,15 +249,17 @@ export default function EcommerceDevelopment() {
               <div className="flex items-center gap-3.5 shrink-0">
                 <div className="flex -space-x-3">
                   {[
-                    "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=80",
-                    "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=80",
-                    "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=80"
+                    "/video/harsh tiwari.jpeg",
+                    "/video/k sir.jpg",
+                    "/video/mansukhhh.jpg",
+                    "/video/Untitled-1.jpg",
+                    "/video/nk s.jpg"
                   ].map((avatar, i) => (
                     <img key={i} src={avatar} alt="user" className="w-9 h-9 rounded-full border-2 border-white object-cover shadow-xs" />
                   ))}
                 </div>
                 <div>
-                  <span className="text-base font-black text-gray-950 block leading-none">10+</span>
+                  <span className="text-base font-black text-gray-950 block leading-none">16+</span>
                   <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">eCommerce Launches</span>
                 </div>
               </div>
@@ -276,7 +302,42 @@ export default function EcommerceDevelopment() {
         </div>
       </section>
 
-      {/* 3. CORE SERVICES */}
+      {/* 3. LOVED BY TEAMS LOGO MARQUEE */}
+      <section className="py-12 bg-white border-t border-b border-gray-200/80 overflow-hidden relative">
+        <style>
+          {`
+            @keyframes marquee-brands {
+              0% { transform: translate3d(0, 0, 0); }
+              100% { transform: translate3d(-50%, 0, 0); }
+            }
+            .animate-marquee-brands {
+              animation: marquee-brands 60s linear infinite;
+              will-change: transform;
+              backface-visibility: hidden;
+              -webkit-backface-visibility: hidden;
+            }
+          `}
+        </style>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-6 text-center">
+          <span className="text-xs font-bold uppercase tracking-widest text-gray-400">Loved by teams around the world</span>
+        </div>
+        <div className="flex-1 overflow-hidden mask-image-horizontal w-full">
+          <div className="flex w-max animate-marquee-brands items-center">
+            {repeatedLogos.map((item, idx) => (
+              <div key={idx} className={`w-56 h-24 mx-4 flex items-center justify-center shrink-0 p-2 rounded-4xl shadow-sm border border-gray-100 overflow-hidden ${item.bg}`}>
+                <img 
+                  src={item.src} 
+                  alt="Client Logo" 
+                  className={`${item.customClass || "max-h-[92%] max-w-[92%]"} object-contain`} 
+                 
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 4. CORE SERVICES */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
         <div className="max-w-3xl mb-16">
           <span className="text-xs font-bold uppercase tracking-widest text-orange-500">Solution Provide</span>
@@ -326,7 +387,7 @@ export default function EcommerceDevelopment() {
         </div>
       </section>
 
-      {/* 4. PROCESS TIMELINE */}
+      {/* 5. PROCESS TIMELINE */}
       <section className="bg-white border-t border-b border-gray-200 py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
@@ -471,7 +532,7 @@ export default function EcommerceDevelopment() {
         </div>
       </section>
 
-            {/* Areas We Serve */}
+      {/* Areas We Serve */}
       <AreasWeServe />
 
       {/* 5. LET'S TALK PANEL */}
@@ -517,7 +578,7 @@ export default function EcommerceDevelopment() {
                 </div>
                 <div>
                   <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block">Our Location</span>
-                  <span className="text-sm font-semibold text-zinc-300">C-198, near Telco Circle, UIT colony, Shalimar Nagar, Alwar, Rajasthan 301001, India</span>
+                  <a href="https://maps.google.com/?q=Rizeworld+Digital+Marketing+Pvt+Ltd+Company+C198,+near+Telco+Circle,+UIT+colony,+Shalimar+Nagar,+Alwar,+Rajasthan+301001" target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-zinc-300 hover:text-orange-500 transition-colors">C-198, near Telco Circle, UIT colony, Shalimar Nagar, Alwar, Rajasthan 301001, India</a>
                 </div>
               </div>
             </div>

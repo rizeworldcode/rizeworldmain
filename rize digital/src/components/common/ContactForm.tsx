@@ -68,7 +68,7 @@ export default function ContactForm() {
 
   return (
     <div className="w-full bg-white border border-gray-100 rounded-3xl shadow-2xl overflow-hidden max-h-[85vh] overflow-y-auto scrollbar-thin">
-      <div className="p-5 sm:p-7 flex flex-col gap-4">
+      <div className="pt-9 pb-5 px-5 sm:p-7 flex flex-col gap-4">
         
         {sent ? (
           <div className="flex flex-col items-center justify-center py-8 gap-4 text-center">
@@ -93,7 +93,7 @@ export default function ContactForm() {
             {/* Header / Social Connections */}
             <div className="text-center sm:text-left flex flex-col gap-2">
               <h2 className="text-2xl font-black text-gray-950 tracking-tight leading-none uppercase">
-                Let's Grow Your Brand 🚀
+                Let's Grow Your Brand
               </h2>
               <p className="text-xs text-gray-500 font-medium">
                 Connect with our team directly or submit the form below.

@@ -11,12 +11,12 @@ export default function BusinessGrowthModern() {
         
         {/* Header Section */}
         <div className="text-center max-w-4xl mx-auto mb-16 relative">
-          <h2 className="section-title mb-6 leading-tight">
-            BUSINESS <span className="gradient-text">GROWTH</span>
+          <h2 className="text-gray-900 font-bold leading-tight tracking-tight text-5xl md:text-6xl lg:text-7xl mb-6">
+            BUSINESS <span className="text-orange-500">GROWTH</span>
           </h2>
           
           <p className="section-subtitle max-w-2xl mx-auto mb-10">
-            Build and enhance brand visibility can be seen on many factors such as business growth, online revenue, and its brand marketing.
+            Build and enhance your digital brand presence through strategic digital marketing services, custom web development, and search engine optimization.
           </p>
 
           <motion.div 
@@ -88,9 +88,6 @@ export default function BusinessGrowthModern() {
               alt="Team collaborating" 
               className="absolute inset-0 w-full h-full object-contain p-3 group-hover:scale-105 transition-transform duration-700"
             />
-            <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 flex items-center justify-center transition-colors">
-              <span className="text-white font-bold text-lg drop-shadow-md tracking-wider uppercase bg-black/50 px-4 py-1.5 rounded-full backdrop-blur-xs">Show the results</span>
-            </div>
           </motion.div>
 
           {/* Card 4: Right Light Indigo */}
@@ -114,12 +111,12 @@ export default function BusinessGrowthModern() {
             viewport={{ once: true }}
             transition={{ delay: 0.4 }}
             onClick={() => setActiveImage('/images/growth2.1.png')}
-            className="w-full sm:w-[80%] lg:w-[20%] h-[350px] lg:h-[450px] bg-[#f5f5f5] rounded-3xl lg:rounded-tl-[4rem] lg:rounded-br-[4rem] lg:rounded-tr-xl lg:rounded-bl-xl relative overflow-hidden group shadow-md hover:shadow-xl transition-shadow cursor-pointer border border-gray-100"
+            className="hidden lg:block w-full sm:w-[80%] lg:w-[20%] h-[350px] lg:h-[450px] bg-white rounded-3xl lg:rounded-tl-[4rem] lg:rounded-br-[4rem] lg:rounded-tr-xl lg:rounded-bl-xl relative overflow-hidden group shadow-md hover:shadow-xl transition-shadow cursor-pointer border border-gray-100"
           >
             <img 
               src="/images/growth2.1.png" 
               alt="Visibility to Revenue Poster" 
-              className="absolute inset-0 w-full h-full object-contain p-0 group-hover:scale-105 transition-transform duration-700"
+              className="absolute inset-0 w-full h-full object-contain scale-115 group-hover:scale-125 transition-transform duration-700 p-2"
             />
           </motion.div>
 

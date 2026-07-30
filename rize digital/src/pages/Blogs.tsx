@@ -1,14 +1,63 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { ArrowDownRight, ArrowRight, Tag } from 'lucide-react';
 import { motion } from 'framer-motion';
 import SEO from '../components/common/SEO';
 import Breadcrumbs from '../components/common/Breadcrumbs';
 import BLOG_CATEGORIES from '../data/blogCategories';
+import { getApiBaseUrl, getImageUrl, formatDate, categoryToSlug } from '../utils/api';
+
+export interface BlogListItem {
+  id: string | number;
+  slug: string;
+  category: string;
+  image: string;
+  date: string;
+  title: string;
+  description: string;
+}
 
 export default function Blogs() {
   const navigate = useNavigate();
-  const [visibleCount, setVisibleCount] = useState(3);
+  const [visibleCount, setVisibleCount] = useState(6);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [blogs, setBlogs] = useState<BlogListItem[]>(blogsList);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    const fetchBackendBlogs = async () => {
+      try {
+        const res = await fetch(`${getApiBaseUrl()}/blogs`);
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+          const backendBlogs: BlogListItem[] = data.data.map((b: any) => ({
+            id: b._id,
+            slug: b.slug,
+            category: categoryToSlug(b.category),
+            image: getImageUrl(b.coverImage),
+            date: formatDate(b.createdAt),
+            title: b.title,
+            description: b.subheading || (b.content ? b.content.replace(/<[^>]+>/g, '').slice(0, 160) + '...' : '')
+          }));
+
+          const backendSlugs = new Set(backendBlogs.map(b => b.slug));
+          const filteredStatic = blogsList.filter(b => !backendSlugs.has(b.slug));
+
+          setBlogs([...backendBlogs, ...filteredStatic]);
+        }
+      } catch (err) {
+        console.error('Error fetching blogs from backend:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBackendBlogs();
+  }, []);
+
+  const filteredBlogs = selectedCategory 
+    ? blogs.filter(blog => blog.category === selectedCategory || categoryToSlug(blog.category) === selectedCategory)
+    : blogs;
 
   const breadcrumbSchema = {
     "@context": "https://schema.org",
@@ -63,21 +112,21 @@ export default function Blogs() {
 
           {/* Category Filter Pills */}
           <div className="flex flex-wrap gap-2 mb-4">
-            <Link
-              to="/blogs"
-              className="bg-rize-primary text-white text-[10px] font-bold uppercase tracking-wider px-4 py-2 rounded-full transition-all"
+            <button
+              onClick={() => setSelectedCategory(null)}
+              className={`${!selectedCategory ? 'bg-rize-primary text-white' : 'bg-white border border-gray-200 text-gray-600 hover:border-rize-primary hover:text-rize-primary'} text-[10px] font-bold uppercase tracking-wider px-4 py-2 rounded-full transition-all cursor-pointer`}
             >
               All Posts
-            </Link>
+            </button>
             {BLOG_CATEGORIES.map((cat) => (
-              <Link
+              <button
                 key={cat.slug}
-                to={`/blogs/category/${cat.slug}`}
-                className="bg-white border border-gray-200 text-gray-600 hover:border-rize-primary hover:text-rize-primary text-[10px] font-bold uppercase tracking-wider px-4 py-2 rounded-full transition-all flex items-center gap-1.5"
+                onClick={() => setSelectedCategory(cat.slug)}
+                className={`${selectedCategory === cat.slug ? 'bg-rize-primary text-white font-bold' : 'bg-white border border-gray-200 text-gray-600 hover:border-rize-primary hover:text-rize-primary'} text-[10px] font-bold uppercase tracking-wider px-4 py-2 rounded-full transition-all flex items-center gap-1.5 cursor-pointer`}
               >
                 <Tag size={10} />
                 {cat.name}
-              </Link>
+              </button>
             ))}
           </div>
         </div>
@@ -138,46 +187,60 @@ export default function Blogs() {
 
       {/* 3. BLOGS GRID SECTION */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-16">
-          {blogsList.slice(0, visibleCount).map((blog) => (
-            <div 
-              key={blog.id} 
-              onClick={() => navigate(`/blogs/${blog.slug}`)}
-              className="group cursor-pointer flex flex-col text-left"
-            >
-              {/* Image Container */}
-              <div className="w-full aspect-4/3 rounded-3xl overflow-hidden mb-6 bg-stone-100 relative">
-                <img 
-                  src={blog.image} 
-                  alt={blog.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
-                  loading="lazy"
-                />
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-16 animate-pulse">
+            {[1, 2, 3].map((n) => (
+              <div key={n} className="flex flex-col text-left">
+                <div className="w-full aspect-4/3 rounded-3xl bg-gray-200 mb-6" />
+                <div className="h-4 bg-gray-200 rounded w-1/4 mb-3" />
+                <div className="h-6 bg-gray-200 rounded w-3/4 mb-3" />
+                <div className="h-4 bg-gray-200 rounded w-full mb-1" />
+                <div className="h-4 bg-gray-200 rounded w-2/3" />
               </div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-16">
+            {filteredBlogs.slice(0, visibleCount).map((blog) => (
+              <div 
+                key={blog.id} 
+                onClick={() => navigate(`/blogs/${blog.slug}`)}
+                className="group cursor-pointer flex flex-col text-left"
+              >
+                {/* Image Container */}
+                <div className="w-full aspect-4/3 rounded-3xl overflow-hidden mb-6 bg-stone-100 relative">
+                  <img 
+                    src={blog.image} 
+                    alt={blog.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+                    loading="lazy"
+                  />
+                </div>
 
-              {/* Date */}
-              <span className="text-[10px] sm:text-xs font-bold tracking-widest text-gray-500 uppercase mb-3 block">
-                {blog.date}
-              </span>
+                {/* Date */}
+                <span className="text-[10px] sm:text-xs font-bold tracking-widest text-gray-500 uppercase mb-3 block">
+                  {blog.date}
+                </span>
 
-              {/* Title */}
-              <h3 className="text-xl sm:text-2xl font-black text-gray-950 tracking-tight leading-snug mb-3 group-hover:text-rize-primary transition-colors duration-300">
-                {blog.title}
-              </h3>
+                {/* Title */}
+                <h3 className="text-xl sm:text-2xl font-black text-gray-950 tracking-tight leading-snug mb-3 group-hover:text-rize-primary transition-colors duration-300">
+                  {blog.title}
+                </h3>
 
-              {/* Description */}
-              <p className="text-gray-500 text-sm md:text-base font-medium leading-relaxed">
-                {blog.description}
-              </p>
-            </div>
-          ))}
-        </div>
+                {/* Description */}
+                <p className="text-gray-500 text-sm md:text-base font-medium leading-relaxed">
+                  {blog.description}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Load More Button */}
-        {visibleCount < blogsList.length && (
+        {visibleCount < filteredBlogs.length && (
           <div className="flex justify-center mt-16">
             <button 
-              onClick={() => setVisibleCount((prev) => Math.min(prev + 3, blogsList.length))}
+              onClick={() => setVisibleCount((prev) => Math.min(prev + 3, filteredBlogs.length))}
               className="px-8 py-4 bg-gray-950 text-white rounded-full text-xs font-black uppercase tracking-widest hover:bg-rize-primary hover:text-white transition-all duration-300 shadow-md hover:shadow-lg cursor-pointer"
             >
               Load More
@@ -270,42 +333,47 @@ const SERVICES_MARQUEE = [
 const blogsList = [
   {
     id: 1,
-    slug: 'role-of-prototyping-in-product-design',
+    slug: 'why-your-business-needs-a-professional-digital-marketing-company',
+    category: 'digital-marketing',
     image: '/images/blogs/blog_prototyping_design.png',
-    date: 'JUN 25, 2024',
-    title: 'The Role of Prototyping in Product Design',
-    description: 'This iterative process is crucial for addressing potential issues, validating design choices, and ensuring the final product aligns with user needs and expectations.'
+    date: 'JUL 14, 2026',
+    title: 'Why Your Business Needs a Professional Digital Marketing Company',
+    description: 'Discover how partnering with a leading digital marketing company can scale your online presence, drive higher conversion rates, and build robust online marketing services.'
   },
   {
     id: 2,
-    slug: 'designing-for-user-experience-key-considerations',
+    slug: 'how-to-choose-the-best-web-design-company',
+    category: 'web-development',
     image: '/images/blogs/blog_ux_design.png',
-    date: 'JUN 24, 2024',
-    title: 'Designing for User Experience: Key Considerations',
-    description: 'Methods such as user interviews, surveys, and persona development help in gaining insights into user needs, preferences, and pain points, guiding the design process.'
+    date: 'JUL 13, 2026',
+    title: 'How to Choose the Best Web Design Company for Your Brand',
+    description: 'Learn the essential considerations when selecting a website design company. Find out how professional web design services can translate into measurable brand credibility.'
   },
   {
     id: 3,
-    slug: 'the-future-of-product-design-trends-watch-2024',
+    slug: 'unlocking-organic-growth-local-seo-services',
+    category: 'seo',
     image: '/images/blogs/blog_future_product_design.png',
-    date: 'JUN 23, 2024',
-    title: 'The Future of Product Design: Trends to Watch in 2024',
-    description: 'Designers are increasingly focusing on creating products that minimize environmental impact by using sustainable materials, reducing waste, and designing for circularity.'
+    date: 'JUL 12, 2026',
+    title: 'Unlocking Organic Growth: The Power of Local SEO Services',
+    description: 'Max out your visibility with target local SEO services. Learn how ranking on Google maps and working with an SEO services India specialist drives nearby foot traffic.'
   },
   {
     id: 4,
-    slug: '10-essential-web-design-principles-for-2024',
+    slug: 'guide-to-ppc-management-services',
+    category: 'paid-ads',
     image: '/images/blogs/blog_design_principles.png',
-    date: 'JUN 22, 2024',
-    title: '10 Essential Web Design Principles for 2024',
-    description: 'Start by conducting thorough user research to understand what your audience values and how they interact with websites, keeping up with layout trends.'
+    date: 'JUL 11, 2026',
+    title: 'A Guide to PPC Management Services: Maximize Your ROI',
+    description: 'Find out how programmatic pay per click services and a certified Google ads agency can boost your lead generation pipelines instantly.'
   },
   {
     id: 5,
-    slug: 'responsive-web-design-best-practices-and-tips',
+    slug: 'social-media-marketing-services-brand-building',
+    category: 'social-media-marketing',
     image: '/images/blogs/blog_responsive_design.png',
-    date: 'JUN 21, 2024',
-    title: 'Responsive Web Design: Best Practices and Tips',
-    description: 'With the proliferation of smartphones, tablets, and other mobile devices, responsive design ensures your users have a seamless browsing experience across all screen sizes.'
+    date: 'JUL 10, 2026',
+    title: 'Social Media Marketing Services: Building a Brand That Stands Out',
+    description: 'Understand the core strategies used by a premier SMM agency and social media management company to convert social engagement into loyal customer pools.'
   }
 ];

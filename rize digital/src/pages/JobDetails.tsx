@@ -368,7 +368,11 @@ export default function JobDetails() {
 
           <div className="mt-8 border-t border-gray-100 pt-6">
             <span className="text-[9px] font-bold text-gray-400 uppercase block mb-1">Company Contact</span>
-            <p className="text-gray-900 font-bold text-sm">hr.rizeworld@gmail.com</p>
+            <p className="text-gray-900 font-bold text-sm">
+              <a href="mailto:hr.rizeworld@gmail.com" className="hover:text-rize-primary transition-colors">
+                hr.rizeworld@gmail.com
+              </a>
+            </p>
           </div>
         </div>
 

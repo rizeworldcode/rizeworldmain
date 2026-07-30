@@ -74,6 +74,7 @@ export default function DynamicCityLandingPage() {
     aboutText1: `RizeWorld is a premium digital marketing company dedicated to elevating retail, education, manufacturing, and local service brands in ${cityName}. We help businesses connect with online consumers through search rankings, localized keywords, and visual storytelling.`,
     aboutText2: `We design highly targeted growth loops that convert web visits into loyal customers, tailoring local campaigns specifically to your market challenges.`,
     aboutImg: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=800",
+    collageImg: rawKey === "delhi" ? "/loaction/delhi/delhi.jpg" : undefined,
     benefits: [
       "Custom Local Search Optimization",
       "High Conversion Paid Ads (PPC)",

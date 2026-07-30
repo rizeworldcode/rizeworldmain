@@ -7,38 +7,38 @@ import Breadcrumbs from '../components/common/Breadcrumbs';
 const SERVICES = [
   {
     title: "Social Media Marketing",
-    tags: ["Management", "Advertising", "Creation"],
-    desc: "use of social media platforms to promote our products for our services , it is the time period of social techniques when mostly the audience is engaged with social platforms by using SMM we make our audience aware.",
+    tags: ["SMM Services", "Instagram Marketing", "Brand Promotion"],
+    desc: "Grow your online presence with professional social media marketing services, SMM agency strategies, and custom paid social advertising campaigns designed to build community engagement.",
     path: "/services/social-media-marketing"
   },
   {
     title: "SEO Optimization",
-    tags: ["Optimization", "Research", "SEO audits"],
-    desc: "it involves optimizing various aspects of a website in its content, structure and technical elements to make it easier and helps to rank in top pages on google.",
+    tags: ["SEO Specialist", "WordPress SEO", "On-Page SEO"],
+    desc: "Our SEO services India and local SEO services utilize technical website audit procedures, on-page optimization, and targeted keyword research to dominate Google search results.",
     path: "/services/seo"
   },
   {
     title: "Content Marketing",
-    tags: ["Value", "Relevance", "Consistency"],
-    desc: "Involves creating and sharing valuable ,relevant and consistent content to attract and engage a specific target audience.",
+    tags: ["SEO Content Writing", "Website Copywriting", "Content Strategy"],
+    desc: "Engage your audience with premium content writing services. Our content creation agency writes high-converting website content writing copy and strategic blog writing services.",
     path: "/services/content-marketing"
   },
   {
     title: "Graphic Design",
-    tags: ["Creative", "Visual", "Strategic"],
-    desc: "Art and practice of creating visual content to communicate ideas, information, or emotions.",
+    tags: ["Logo Design", "Graphic Design Studio", "Infographic Design"],
+    desc: "Work with a leading graphic design company. We offer custom logo design, brochure design, and comprehensive brand identity design services tailored for corporate growth.",
     path: "/services/graphic-design"
   },
   {
     title: "PPC Advertising",
-    tags: ["Targeted", "Measurable", "Instant"],
-    desc: "A digital advertising model where advertisers pay a fee each time someone clicks on their ad.",
+    tags: ["PPC Campaign", "Google Ads Agency", "Remarketing Ads"],
+    desc: "Maximize your campaign returns with results-driven PPC management services, programmatic pay per click services, and Google ads agency setups.",
     path: "/services/paid-ads"
   },
   {
     title: "Web Designing",
-    tags: ["Creative", "Responsive", "User-friendly"],
-    desc: "Process of planning, creating and arranging visual and functional elements of a website.",
+    tags: ["Web Design Services", "Website Design Company", "Custom Web Design"],
+    desc: "Elevate your digital platform with a professional web design company. We provide custom web design services, mobile friendly web design layouts, and responsive website structures.",
     path: "/services/web-development"
   }
 ];
@@ -92,8 +92,8 @@ export default function About() {
   return (
     <div className="min-h-screen bg-rize-bg overflow-hidden">
       <SEO 
-        title="About Us | Dedicated Digital Agency Experts - RizeWorld"
-        description="Learn more about RizeWorld Digital. We blend target-focused analytics, custom website development, and branding strategy to scale digital reach."
+        title="About Our Digital Marketing Agency | RizeWorld"
+        description="Learn more about RizeWorld, a leading digital solutions company. Discover how our online marketing services and professional web design agency scale brands."
         canonicalUrl="https://rizeworld.in/about"
         schema={[orgSchema, breadcrumbSchema]}
       />
@@ -129,8 +129,8 @@ export default function About() {
               transition={{ duration: 0.8, delay: 0.1 }}
               className="text-hero mb-8 text-left! leading-[1.05]"
             >
-              Crafting Digital Connections <br className="hidden md:block"/> 
-              <span className="gradient-text">That Drive Growth</span>
+              Full Service <br className="hidden md:block"/> 
+              <span className="gradient-text">Digital Marketing Agency</span>
             </motion.h1>
 
             <motion.p 
@@ -139,7 +139,7 @@ export default function About() {
               transition={{ duration: 0.8, delay: 0.2 }}
               className="text-body max-w-[600px] text-left!"
             >
-              At RizeWorld, we blend creativity, data, and strategy to elevate brands in the digital space. Our team of experts is dedicated to building engaging, results-driven campaigns that turn brand stories into unforgettable experiences.
+              At RizeWorld, we are a dedicated <strong>digital solutions company</strong> providing comprehensive <strong>digital marketing solutions</strong>, custom web development, and search engine optimization. We blend creativity and analytics to drive business growth.
             </motion.p>
           </div>
 
@@ -198,7 +198,7 @@ export default function About() {
             </h2>
             <div className="rounded-3xl overflow-hidden bg-gray-200 mb-6 aspect-4/3 border border-gray-150">
               <img 
-                src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=800" 
+                src="/images/about/about 2.png" 
                 alt="Team collaborating" 
                 className="w-full h-full object-cover" 
               />
@@ -218,7 +218,7 @@ export default function About() {
           >
             <div className="rounded-3xl overflow-hidden bg-gray-200 h-full min-h-[400px] md:min-h-0 border border-gray-150">
               <img 
-                src="https://images.unsplash.com/photo-1561070791-2526d30994b5?auto=format&fit=crop&q=80&w=800" 
+                src="/images/about/about 3.png" 
                 alt="Design process" 
                 className="w-full h-full object-cover" 
               />
@@ -270,18 +270,13 @@ export default function About() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8 }}
-          className="relative w-full h-[400px] md:h-[500px] rounded-3xl overflow-hidden mb-20 md:mb-32 border border-gray-150"
+          className="relative w-full h-[180px] sm:h-[250px] md:h-[500px] rounded-3xl overflow-hidden mb-20 md:mb-32 border border-gray-150"
         >
           <img 
-            src="https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&q=80&w=1600" 
+            src="/images/about/about 1.png" 
             alt="Abstract design background" 
-            className="w-full h-full object-cover brightness-50"
+            className="w-full h-full object-cover md:object-contain bg-neutral-100/50"
           />
-          <div className="absolute inset-0 flex items-center justify-center p-8 text-center bg-black/30">
-            <h3 className="text-white text-2xl md:text-3xl lg:text-4xl font-medium max-w-4xl leading-relaxed">
-              Discover how RizeWorld transforms brands through innovative digital strategies and captivating storytelling.
-            </h3>
-          </div>
         </motion.div>
 
         {/* Stats Intro Text */}

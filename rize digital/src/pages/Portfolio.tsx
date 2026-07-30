@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowUpRight, Phone, Mail, Award } from 'lucide-react';
 import { PROJECTS } from '../data/projects';
+import { LOGOS } from '../data/logos';
 import SEO from '../components/common/SEO';
 import Breadcrumbs from '../components/common/Breadcrumbs';
 
@@ -21,9 +22,11 @@ const CATEGORIES = [
   "Hospitality",
   "Jewellery & Accessories",
   "Lifestyle & Wellness",
+  "Medical & Healthcare",
   "Multi-Cuisine Dining",
   "Residential Projects",
   "South Indian Restaurant",
+  "Travel & Tourism",
   "Sports & Performance Nutrition",
   "Uniform Supply",
   "Yoga Practices"
@@ -75,8 +78,8 @@ export default function Portfolio() {
   return (
     <div className="min-h-screen bg-rize-bg overflow-hidden pt-28">
       <SEO 
-        title="Our Creative Design & Development Portfolio | RizeWorld"
-        description="Browse RizeWorld Digital's marketing and software engineering case studies. We build beautiful user journeys, design premium logos, and develop high-converting online platforms."
+        title="Our Digital Marketing & Web Design Portfolio | RizeWorld"
+        description="Browse RizeWorld's portfolio of successful digital marketing services, custom web design company solutions, and search engine optimization campaigns."
         canonicalUrl="https://rizeworld.in/portfolio"
         schema={[breadcrumbSchema]}
       />
@@ -94,11 +97,11 @@ export default function Portfolio() {
             Hey there. We are
           </span>
           <h1 className="text-6xl md:text-7xl font-black text-gray-950 leading-[0.95] uppercase tracking-tighter mb-6">
-            RIZEWORLD <br />
+            WORK <br />
             PORTFOLIO
           </h1>
           <p className="text-gray-500 text-sm md:text-base leading-relaxed mb-8 max-w-sm">
-            Helping brands stand out with thoughtful and compelling design solutions. Turning complex challenges into simple, human-centric visual narratives.
+            Helping brands scale with tailored digital marketing services, custom website development, and search engine optimization.
           </p>
           <div>
             <Link 
@@ -115,24 +118,12 @@ export default function Portfolio() {
 
         {/* Center Column: Portrait / Featured visual card */}
         <div className="flex flex-col items-center">
-          <div className="relative w-full max-w-[380px] aspect-4/5 rounded-[2.5rem] bg-gray-200 border border-gray-300/60 p-4 shadow-lg overflow-hidden flex items-center justify-center">
+          <div className="relative w-full max-w-[380px] aspect-4/5 rounded-[2.5rem] bg-white border border-gray-300/60 p-4 shadow-lg overflow-hidden flex items-center justify-center">
             <img 
-              src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=800" 
-              alt="Creative Director" 
-              className="w-full h-full object-cover rounded-4xl"
+              src="/images/rw image.png" 
+              alt="RizeWorld Media" 
+              className="w-full h-full object-contain rounded-4xl"
             />
-            {/* Floating Social Circles on Right edge */}
-            <div className="absolute right-6 top-1/2 -translate-y-1/2 flex flex-col gap-3">
-              {['be', 'dr', 'in', 'ig'].map((s, i) => (
-                <a 
-                  key={i} 
-                  href="#" 
-                  className="w-9 h-9 rounded-full bg-white/90 hover:bg-rize-primary hover:text-white text-gray-700 shadow-md flex items-center justify-center text-xs font-bold uppercase transition-all duration-300 hover:scale-110"
-                >
-                  {s}
-                </a>
-              ))}
-            </div>
           </div>
           {/* Status badge */}
           <div className="flex items-center gap-2 mt-6 text-xs font-bold uppercase tracking-wider text-gray-700 bg-white px-5 py-2.5 rounded-full border border-gray-200 shadow-sm">
@@ -186,11 +177,14 @@ export default function Portfolio() {
         <style>
           {`
             @keyframes marquee-portfolio {
-              0% { transform: translateX(0); }
-              100% { transform: translateX(-50%); }
+              0% { transform: translate3d(0, 0, 0); }
+              100% { transform: translate3d(-50%, 0, 0); }
             }
             .animate-marquee-portfolio {
-              animation: marquee-portfolio 30s linear infinite;
+              animation: marquee-portfolio 60s linear infinite;
+              will-change: transform;
+              backface-visibility: hidden;
+              -webkit-backface-visibility: hidden;
             }
           `}
         </style>
@@ -199,50 +193,13 @@ export default function Portfolio() {
           <h3 className="text-gray-950 font-black text-sm uppercase">best brands globally</h3>
         </div>
         <div className="flex w-max animate-marquee-portfolio items-center">
-          {[
-            // Root logos
-            { src: "/logos/7.png", bg: "bg-white" },
-            { src: "/logos/Old Rao 100x41.png", bg: "bg-zinc-100" },
-            { src: "/logos/m.png", bg: "bg-white" },
-            { src: "/logos/yga.png", bg: "bg-white" },
-            // Logo1 transparent logos
-            { src: "/logos/logo1/bhavikdairy_14050326_165157844.jpg.jpeg_nobg.png", bg: "bg-blue-50" },
-            { src: "/logos/logo1/dwps_alwar_14050326_165735543.jpg.jpeg_nobg2.png", bg: "bg-white" },
-            { src: "/logos/logo1/golden_fitness_studio_14050326_165901083.jpg.jpeg_nobg2.png", bg: "bg-amber-100" },
-            { src: "/logos/logo1/hydrowash___14050326_165141258.jpg-removebg-preview.png", bg: "bg-[#27272a]" },
-            { src: "/logos/logo1/jain_event_planner__14050326_165108726.jpg-removebg-preview.png", bg: "bg-black" },
-            { src: "/logos/logo1/kafesa_by_tijacafe_14050326_165226870.jpg-removebg-preview.png", bg: "bg-amber-50" },
-            { src: "/logos/logo1/mobile_master_alwar_14050326_165925798.jpg.jpeg_nobg2.png", bg: "bg-white" },
-            { src: "/logos/logo1/rj02_hotel_14050326_170134229.jpg-removebg-preview (1).png", bg: "bg-stone-900" },
-            { src: "/logos/logo1/roastro_cafe_14050326_165747073.jpg-removebg-preview (1).png", bg: "bg-[#451a03]" },
-            { src: "/logos/logo1/saniya__hospital_14050326_165809565.jpg-removebg-preview.png", bg: "bg-teal-50" },
-            { src: "/logos/logo1/shivaura_in_14050326_165054553.jpg-removebg-preview.png", bg: "bg-[#2d3748]" },
-            { src: "/logos/logo1/sigdiresort_14050326_165131449.jpg-removebg-preview.png", bg: "bg-[#1c1917]" },
-            { src: "/logos/logo1/zonirazjewel_14050326_165120271.jpg-removebg-preview.png", bg: "bg-black" },
-            // Repeated for smooth continuous scrolling
-            { src: "/logos/7.png", bg: "bg-white" },
-            { src: "/logos/Old Rao 100x41.png", bg: "bg-zinc-100" },
-            { src: "/logos/m.png", bg: "bg-white" },
-            { src: "/logos/yga.png", bg: "bg-white" },
-            { src: "/logos/logo1/bhavikdairy_14050326_165157844.jpg.jpeg_nobg.png", bg: "bg-blue-50" },
-            { src: "/logos/logo1/dwps_alwar_14050326_165735543.jpg.jpeg_nobg2.png", bg: "bg-white" },
-            { src: "/logos/logo1/golden_fitness_studio_14050326_165901083.jpg.jpeg_nobg2.png", bg: "bg-amber-100" },
-            { src: "/logos/logo1/hydrowash___14050326_165141258.jpg-removebg-preview.png", bg: "bg-[#27272a]" },
-            { src: "/logos/logo1/jain_event_planner__14050326_165108726.jpg-removebg-preview.png", bg: "bg-black" },
-            { src: "/logos/logo1/kafesa_by_tijacafe_14050326_165226870.jpg-removebg-preview.png", bg: "bg-amber-50" },
-            { src: "/logos/logo1/mobile_master_alwar_14050326_165925798.jpg.jpeg_nobg2.png", bg: "bg-white" },
-            { src: "/logos/logo1/rj02_hotel_14050326_170134229.jpg-removebg-preview (1).png", bg: "bg-stone-900" },
-            { src: "/logos/logo1/roastro_cafe_14050326_165747073.jpg-removebg-preview (1).png", bg: "bg-[#451a03]" },
-            { src: "/logos/logo1/saniya__hospital_14050326_165809565.jpg-removebg-preview.png", bg: "bg-teal-50" },
-            { src: "/logos/logo1/shivaura_in_14050326_165054553.jpg-removebg-preview.png", bg: "bg-[#2d3748]" },
-            { src: "/logos/logo1/sigdiresort_14050326_165131449.jpg-removebg-preview.png", bg: "bg-[#1c1917]" },
-            { src: "/logos/logo1/zonirazjewel_14050326_165120271.jpg-removebg-preview.png", bg: "bg-black" }
-          ].map((item, i) => (
-            <div key={i} className={`w-56 h-24 mx-4 flex items-center justify-center shrink-0 p-1 rounded-4xl shadow-sm border border-gray-100/50 overflow-hidden ${item.bg}`}>
+          {[...LOGOS, ...LOGOS].map((item, i) => (
+            <div key={i} className={`w-56 h-24 mx-4 flex items-center justify-center shrink-0 p-2 rounded-4xl shadow-sm border border-gray-100/50 overflow-hidden ${item.bg}`}>
               <img 
                 src={item.src} 
                 alt="brand logo" 
-                className="max-h-full max-w-full object-contain scale-110 transform-[translateZ(0)] backface-hidden will-change-transform [image-rendering:-webkit-optimize-contrast]" 
+                className={`${item.customClass || "max-h-[92%] max-w-[92%]"} object-contain`} 
+               
               />
             </div>
           ))}
@@ -374,16 +331,10 @@ export default function Portfolio() {
           {/* Left Featured Image/Video thumbnail */}
           <div className="relative rounded-4xl overflow-hidden aspect-video bg-gray-800 border border-gray-800 max-w-lg mx-auto w-full shadow-2xl">
             <img 
-              src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=800" 
+              src="/services/ui ux.jpg.jpeg" 
               alt="team collaborating video" 
               className="w-full h-full object-cover brightness-75"
             />
-            {/* Play indicator */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-16 h-16 rounded-full bg-rize-primary/90 text-white flex items-center justify-center shadow-lg hover:scale-105 transition-transform cursor-pointer">
-                <ArrowUpRight size={28} />
-              </div>
-            </div>
           </div>
 
           {/* Right Statistics details */}

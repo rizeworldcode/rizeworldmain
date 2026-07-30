@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Briefcase, IndianRupee, Users, Award, GraduationCap, ArrowRight } from 'lucide-react';
 import { JOBS } from '../data/careers';
 import type { Job } from '../data/careers';
+import SEO from '../components/common/SEO';
 
 const getApiBaseUrl = () => {
   if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
@@ -51,7 +52,6 @@ export default function Careers() {
   const [jobsList, setJobsList] = useState<Job[]>(() => 
     JOBS.map(job => ({ ...job, salary: job.salary.replace(/\$/g, '₹') }))
   );
-  const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
     const fetchJobs = async () => {
@@ -60,8 +60,8 @@ export default function Careers() {
         const result = await response.json();
         if (result.success && result.data && result.data.length > 0) {
           const activeJobs = result.data
-            .filter((bj: any) => bj.status !== 'inactive')
-            .map(mapBackendJobToFrontend);
+             .filter((bj: any) => bj.status !== 'inactive')
+             .map(mapBackendJobToFrontend);
           
           if (activeJobs.length > 0) {
             setJobsList(activeJobs);
@@ -69,8 +69,6 @@ export default function Careers() {
         }
       } catch (error) {
         console.error("Error fetching careers from backend:", error);
-      } finally {
-        setLoading(false);
       }
     };
 
@@ -78,6 +76,11 @@ export default function Careers() {
   }, []);
   return (
     <div className="min-h-screen bg-rize-bg overflow-hidden">
+      <SEO 
+        title="Careers | Join Our Digital Marketing Agency | RizeWorld"
+        description="Looking for careers in digital marketing, web development, or graphic design? Join RizeWorld, a leading digital solutions company."
+        canonicalUrl="https://rizeworld.in/careers"
+      />
       
       {/* 1. HERO SECTION */}
       <section className="relative pt-36 pb-20 bg-rize-bg text-center flex flex-col items-center justify-center">

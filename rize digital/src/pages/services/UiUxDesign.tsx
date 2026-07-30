@@ -63,7 +63,7 @@ const STEPS = [
   {
     num: "2",
     title: "UI Design & Prototyping",
-    desc: "Our creative Figma specialists code layouts, pair fonts, configure themes, and assemble interactive mockups.",
+    desc: "Our creative Figma specialists code layouts, pair themes, configure templates, and assemble interactive mockups.",
     details: ["Figma Mockups", "Interactive Prototypes", "Theme Settings"]
   },
   {
@@ -76,16 +76,34 @@ const STEPS = [
 
 const TESTIMONIALS = [
   {
-    quote: "RizeWorld's UI/UX specialists transformed our software interface. Our customer support requests dropped by 60% due to the intuitive layout configurations.",
-    author: "Elena Rostova",
-    role: "UX Lead, Tech Corp",
-    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=120"
+    quote: "RizeWorld's UI/UX designers transformed our digital experience completely. The new interface is visually stunning, user-friendly, and has noticeably improved visitor retention. Highly recommended!",
+    author: "Harsh Tiwari",
+    role: "Founder, Shiivaura",
+    avatar: "/video/harsh tiwari.jpeg"
   },
   {
-    quote: "The interactive prototype they delivered was incredibly detailed. It helped us secure our seed funding round by visually demonstrating our SaaS tool perfectly.",
-    author: "Arthur Pendelton",
-    role: "Founder, SaaS Lab",
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=120"
+    quote: "Working with RizeWorld for our product design was a game changer for 7One. Their wireframing and prototyping capabilities set them apart from the rest.",
+    author: "Mr. Ajit Singh",
+    role: "Founder, 7One",
+    avatar: "/video/k sir.jpg"
+  },
+  {
+    quote: "The interactive menu and digital layout designed by RizeWorld helped Mansukh Restaurant connect with more diners online. Exceptional design work!",
+    author: "Mr. Sajan Chandel",
+    role: "Owner, Mansukh Restaurant",
+    avatar: "/video/mansukhhh.jpg"
+  },
+  {
+    quote: "Their approach to UI/UX is highly professional. They perfectly captured the traditional yet modern identity of Old Rao in a clean, intuitive layout.",
+    author: "Mr. Rahul Bhugra",
+    role: "Owner, Old Rao",
+    avatar: "/video/Untitled-1.jpg"
+  },
+  {
+    quote: "I'm very satisfied with RizeWorld's UI/UX services. They built a peaceful and easy-to-navigate interface that our community absolutely loves.",
+    author: "Mr. Neeraj Lamba",
+    role: "Founder, Sushanti Dhyanyoga",
+    avatar: "/video/nk s.jpg"
   }
 ];
 
@@ -134,10 +152,9 @@ export default function UiUxDesign() {
   return (
     <div className="min-h-screen bg-stone-50 pt-32 pb-24 overflow-hidden text-left font-sans selection:bg-orange-500 selection:text-white">
       
-      
       <SEO 
-        title="UI/UX Research, Wireframes & Prototypes | RizeWorld"
-        description="User interface and user experience design services. Comprehensive wireframing, high-fidelity Figma prototypes, and consumer journey mapping."
+        title="UI UX Design Services & Figma Agency | RizeWorld"
+        description="Looking for a professional UI UX design company? Our UI UX design agency specializes in mobile app design, wireframing services, and Figma prototyping."
         canonicalUrl="https://rizeworld.in/services/ui-ux-design"
         schema={[serviceSchema, breadcrumbSchema]}
       />
@@ -181,8 +198,8 @@ export default function UiUxDesign() {
             >
               <div className="absolute inset-0 bg-orange-950/10 group-hover:bg-transparent z-10 transition-colors duration-300" />
               <img 
-                src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=600" 
-                alt="creative design whiteboard" 
+                src="/services/ui ux.jpg.jpeg" 
+                alt="UI/UX Design Board" 
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
               />
             </motion.div>
@@ -200,16 +217,16 @@ export default function UiUxDesign() {
                 <Sparkles size={14} className="animate-pulse" /> Elegant Creative Interfaces
               </span>
               <h1 className="text-4xl md:text-5xl lg:text-[3.5rem] font-black text-gray-950 leading-[1.05] uppercase tracking-tighter mb-6">
-                UI/UX <br />
-                Design <span className="relative inline-block px-4 py-1 mx-1 mt-1">
-                  Services
+                UI UX Design <br />
+                Services <span className="relative inline-block px-4 py-1 mx-1 mt-1">
+                  Agency
                   <svg className="absolute inset-0 w-full h-full text-orange-500" viewBox="0 0 100 100" preserveAspectRatio="none">
                     <path d="M 5, 50 C 5, 20 95, 20 95, 50 C 95, 80 5, 80 5, 50 Z" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="300" strokeDashoffset="0" className="animate-[dash_2s_ease-in-out_infinite]" />
                   </svg>
                 </span>
               </h1>
-              <p className="text-gray-500 text-sm md:text-base leading-relaxed max-w-xl">
-                We craft intuitive wireframes, responsive visual interfaces, and custom user flows that elevate brand perception and increase conversions.
+              <p className="text-gray-800 text-sm md:text-base leading-relaxed max-w-xl">
+                As a premier <strong>UI UX design company</strong> and <strong>Figma design agency</strong>, we deliver custom <strong>UI UX design services</strong>, user journey wireframes, and <strong>professional UI UX design services</strong> to maximize user engagement.
               </p>
             </motion.div>
 
@@ -225,15 +242,17 @@ export default function UiUxDesign() {
               <div className="flex items-center gap-3.5 shrink-0">
                 <div className="flex -space-x-3">
                   {[
-                    "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=80",
-                    "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=80",
-                    "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=80"
+                    "/video/harsh tiwari.jpeg",
+                    "/video/k sir.jpg",
+                    "/video/mansukhhh.jpg",
+                    "/video/Untitled-1.jpg",
+                    "/video/nk s.jpg"
                   ].map((avatar, i) => (
                     <img key={i} src={avatar} alt="user" className="w-9 h-9 rounded-full border-2 border-white object-cover shadow-xs" />
                   ))}
                 </div>
                 <div>
-                  <span className="text-base font-black text-gray-950 block leading-none">12+</span>
+                  <span className="text-base font-black text-gray-950 block leading-none">16+</span>
                   <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Design Deliveries</span>
                 </div>
               </div>
@@ -471,7 +490,7 @@ export default function UiUxDesign() {
         </div>
       </section>
 
-            {/* Areas We Serve */}
+      {/* Areas We Serve */}
       <AreasWeServe />
 
       {/* 5. LET'S TALK PANEL */}
@@ -517,7 +536,7 @@ export default function UiUxDesign() {
                 </div>
                 <div>
                   <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block">Our Location</span>
-                  <span className="text-sm font-semibold text-zinc-300">C-198, near Telco Circle, UIT colony, Shalimar Nagar, Alwar, Rajasthan 301001, India</span>
+                  <a href="https://maps.google.com/?q=Rizeworld+Digital+Marketing+Pvt+Ltd+Company+C198,+near+Telco+Circle,+UIT+colony,+Shalimar+Nagar,+Alwar,+Rajasthan+301001" target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-zinc-300 hover:text-orange-500 transition-colors">C-198, near Telco Circle, UIT colony, Shalimar Nagar, Alwar, Rajasthan 301001, India</a>
                 </div>
               </div>
             </div>

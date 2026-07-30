@@ -36,7 +36,7 @@ const corsOptions = {
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps or curl)
     if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) !== -1) {
+    if (allowedOrigins.indexOf(origin) !== -1 || origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
       return callback(null, true);
     } else {
       return callback(new Error('CORS policy: This origin is not allowed by CORS'));
@@ -121,6 +121,11 @@ app.use('/api/visiting-card', visitingCardRoutes);
 // Master Pool routes
 const masterPoolRoutes = require('./src/routes/masterPoolRoutes');
 app.use('/api/masterpool', masterPoolRoutes);
+
+// Blog routes
+const blogRoutes = require('./src/routes/blogRoutes');
+app.use('/api/blogs', blogRoutes);
+
 
 // Secure proxy endpoint to stream files from backend/public
 // Usage: /public-file?path=uploads/filename.pdf

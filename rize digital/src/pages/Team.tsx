@@ -35,13 +35,7 @@ const TEAM_MEMBERS = [
     zoom: "scale-[1.15] group-hover:scale-[1.25]",
     socials: { linkedin: "#", twitter: "#", instagram: "#", facebook: "#" }
   },
-  {
-    name: "Sahil Gupta",
-    role: "HR Lead",
-    image: "/team/hr.jpg.jpeg",
-    zoom: "scale-[1.35] translate-y-6 group-hover:scale-[1.45] group-hover:translate-y-6",
-    socials: { linkedin: "#", twitter: "#", instagram: "#", facebook: "#" }
-  },
+
 
   {
     name: "Manoj kumar",
@@ -93,24 +87,24 @@ export default function Team() {
 
   return (
     <div className="min-h-screen bg-rize-bg overflow-hidden">
-      <SEO 
-        title="Our Team | Expert Digital Marketing & Design Specialists - RizeWorld"
-        description="Meet the RizeWorld Digital agency team. Our creative directors, web developers, graphic designers, copywriters, and local SEO managers work together to scale your business."
+      <SEO
+        title="Our Team | Digital Marketing Experts & Web Developers | RizeWorld"
+        description="Meet the RizeWorld team of digital marketing specialists, senior graphic designers, video editors, and web developers working to scale your online presence."
         canonicalUrl="https://rizeworld.in/team"
         schema={[breadcrumbSchema]}
       />
-      
+
       {/* 1. HERO SECTION */}
       <section className="relative pt-36 pb-20 bg-rize-bg text-center flex flex-col items-center justify-center">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full flex flex-col items-center">
           <Breadcrumbs items={[{ name: "Our Team" }]} />
-          <motion.h1 
+          <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
             className="text-5xl md:text-7xl font-bold tracking-tight text-gray-900 mb-4"
           >
-            Our Team
+            Digital Experts Team
           </motion.h1>
         </div>
       </section>
@@ -160,20 +154,20 @@ export default function Team() {
             // Determine correct responsive zoom classes to match the original desktop effects
             let zoomClasses = "";
             if (member.name === "Mohit Srivastava" || member.name === "DEVENDRA SINGH" || member.name === "Manoj kumar") {
-              zoomClasses = isActive 
-                ? "scale-[1.45]" 
+              zoomClasses = isActive
+                ? "scale-[1.45]"
                 : "scale-[1.35] md:group-hover:scale-[1.45]";
             } else if (member.name === "Kaveendra Saini") {
-              zoomClasses = isActive 
-                ? "scale-[1.25]" 
+              zoomClasses = isActive
+                ? "scale-[1.25]"
                 : "scale-[1.15] md:group-hover:scale-[1.25]";
             } else if (member.name === "Sahil Gupta") {
-              zoomClasses = isActive 
-                ? "scale-[1.45] translate-y-6" 
+              zoomClasses = isActive
+                ? "scale-[1.45] translate-y-6"
                 : "scale-[1.35] translate-y-6 md:group-hover:scale-[1.45]";
             } else {
-              zoomClasses = isActive 
-                ? "scale-105" 
+              zoomClasses = isActive
+                ? "scale-105"
                 : "md:group-hover:scale-105";
             }
 
@@ -181,29 +175,26 @@ export default function Team() {
               <div
                 key={i}
                 onClick={() => handleCardClick(i)}
-                className={`w-full max-w-[360px] rounded-3xl p-4 border transition-all duration-300 flex flex-col relative overflow-hidden cursor-pointer select-none group ${
-                  isActive 
-                    ? 'border-rize-primary/40 shadow-[0_20px_50px_rgba(26,86,219,0.15)] bg-gray-900 text-white' 
-                    : 'bg-white border-gray-200 shadow-sm text-gray-900 md:hover:border-rize-primary/40 md:hover:shadow-[0_20px_50px_rgba(26,86,219,0.15)] md:hover:bg-gray-900 md:hover:text-white'
-                }`}
+                className={`w-full max-w-[360px] rounded-3xl p-4 border transition-all duration-300 flex flex-col relative overflow-hidden cursor-pointer select-none group ${isActive
+                  ? 'border-rize-primary/40 shadow-[0_20px_50px_rgba(26,86,219,0.15)] bg-gray-900 text-white'
+                  : 'bg-white border-gray-200 shadow-sm text-gray-900 md:hover:border-rize-primary/40 md:hover:shadow-[0_20px_50px_rgba(26,86,219,0.15)] md:hover:bg-gray-900 md:hover:text-white'
+                  }`}
               >
                 {/* Image Section */}
                 <div className="relative overflow-hidden rounded-2xl aspect-4/5 bg-gray-100 mb-6 flex items-center justify-center">
                   <img
                     src={member.image}
                     alt={member.name}
-                    className={`w-full h-full object-cover transition-all duration-700 ${
-                      isActive ? 'grayscale-0' : 'md:grayscale md:group-hover:grayscale-0'
-                    } ${zoomClasses} transform-[translateZ(0)] backface-hidden will-change-[transform,filter]`}
+                    className={`w-full h-full object-cover transition-all duration-700 ${isActive ? 'grayscale-0' : 'md:grayscale md:group-hover:grayscale-0'
+                      } ${zoomClasses} transform-[translateZ(0)] backface-hidden will-change-[transform,filter]`}
                   />
 
                   {/* Gradient Overlay with Name and Role on Hover */}
-                  <div 
-                    className={`absolute inset-0 bg-linear-to-t from-black/90 via-black/40 to-transparent flex flex-col justify-end p-5 text-left transition-all duration-500 ${
-                      isActive 
-                        ? 'opacity-100 pointer-events-auto' 
-                        : 'opacity-0 pointer-events-none md:group-hover:opacity-100 md:group-hover:pointer-events-auto'
-                    }`}
+                  <div
+                    className={`absolute inset-0 bg-linear-to-t from-black/90 via-black/40 to-transparent flex flex-col justify-end p-5 text-left transition-all duration-500 ${isActive
+                      ? 'opacity-100 pointer-events-auto'
+                      : 'opacity-0 pointer-events-none md:group-hover:opacity-100 md:group-hover:pointer-events-auto'
+                      }`}
                   >
                     <h3 className="text-xl md:text-2xl font-bold uppercase text-white leading-tight">
                       {member.name}
@@ -212,16 +203,15 @@ export default function Team() {
                       {member.role}
                     </p>
                   </div>
-                  
+
 
                 </div>
 
                 {/* Info Footer */}
-                <div className={`px-2 pb-2 transition-all duration-300 ${
-                  isActive 
-                    ? 'opacity-0 pointer-events-none' 
-                    : 'opacity-100 md:group-hover:opacity-0 md:group-hover:pointer-events-none'
-                }`}>
+                <div className={`px-2 pb-2 transition-all duration-300 ${isActive
+                  ? 'opacity-0 pointer-events-none'
+                  : 'opacity-100 md:group-hover:opacity-0 md:group-hover:pointer-events-none'
+                  }`}>
                   <h3 className={`text-2xl font-bold uppercase ${isActive ? 'text-white' : 'text-gray-950 md:group-hover:text-white'}`}>
                     {member.name}
                   </h3>

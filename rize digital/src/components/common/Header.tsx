@@ -29,7 +29,7 @@ export default function Header() {
   };
 
   return (
-    <header className="fixed top-6 left-0 w-full z-50 pointer-events-auto flex flex-col items-center px-4 sm:px-8">
+    <header className="fixed top-6 left-0 w-full z-[100] pointer-events-auto flex flex-col items-center px-4 sm:px-8">
       
       {/* Floating Pill Navbar */}
       <div className="w-full max-w-7xl bg-white/92 backdrop-blur-md rounded-full py-2.5 px-4 sm:px-6 flex items-center justify-between shadow-sm border border-gray-100 transition-all duration-300">

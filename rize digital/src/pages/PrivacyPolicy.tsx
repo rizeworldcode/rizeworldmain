@@ -1,12 +1,18 @@
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Shield, Sparkles } from 'lucide-react';
+import SEO from '../components/common/SEO';
 
 export default function PrivacyPolicy() {
   const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-stone-50 pt-32 pb-24 text-left font-sans selection:bg-orange-500 selection:text-white">
+      <SEO 
+        title="Privacy Policy | RizeWorld"
+        description="Read RizeWorld's Privacy Policy to learn how we collect, protect, and manage your personal data when using our website and digital services."
+        canonicalUrl="https://rizeworld.in/privacy"
+      />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Navigation back */}

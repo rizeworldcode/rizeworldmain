@@ -2,13 +2,13 @@ import CityLandingPageTemplate from './CityLandingPageTemplate';
 
 const pageData = {
   city: "Chandigarh",
-  title: "Digital Marketing Agency in Chandigarh | RizeWorld",
-  metaDescription: "Looking for a premium Digital Marketing Agency in Chandigarh? RizeWorld designs high-performing SEO campaigns, SaaS leads, and social branding in Chandigarh & Mohali.",
-  heroHeadline: "Digital Marketing Agency in Chandigarh",
-  heroSubtitle: "Transform your brand, SaaS app, or real estate firm in Chandigarh. RizeWorld builds data-driven SEO architectures, premium UI/UX websites, and high-ROI ad loops designed to convert.",
+  title: "Digital Marketing Company in Chandigarh | RizeWorld",
+  metaDescription: "Looking for the best Digital Marketing Company in Chandigarh? RizeWorld is a premier digital marketing agency in Chandigarh offering SEO services and web design.",
+  heroHeadline: "Digital Marketing Company in Chandigarh",
+  heroSubtitle: "Scale your business with the best digital marketing agency in Chandigarh. RizeWorld builds data-driven SEO services in Chandigarh, premium website development company solutions, and local social media campaigns.",
   aboutHeadline: "RizeWorld – Powering Digital Success in Chandigarh",
-  aboutText1: "As India's first planned city, Chandigarh is a hotbed for modern SaaS startups, premium real estate developers, healthcare clinics, and creative agencies. RizeWorld provides elite digital solutions that align with the high expectations of the Chandigarh market.",
-  aboutText2: "Our Chandigarh team builds high-converting lead pipelines for real estate projects in Mohali & Zirakpur, search engine ranks for international tech service groups, and clean social media campaigns that establish premium brand positioning.",
+  aboutText1: "As a top marketing agency in Chandigarh, RizeWorld provides elite digital solutions that align with the high expectations of the market. Our SEO expert in Chandigarh team builds high-converting lead pipelines and clean social media marketing services in Chandigarh.",
+  aboutText2: "Whether you need a website designer in Chandigarh, custom WordPress development company designs, or targeted PPC company campaign setups, our web design services in Chandigarh ensure premium brand positioning.",
   aboutImg: "https://images.unsplash.com/photo-1551434678-e076c223a692?auto=format&fit=crop&q=80&w=800",
   benefits: [
     "SaaS & B2B Tech Leads",
