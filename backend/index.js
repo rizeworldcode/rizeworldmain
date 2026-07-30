@@ -126,6 +126,14 @@ app.use('/api/masterpool', masterPoolRoutes);
 const blogRoutes = require('./src/routes/blogRoutes');
 app.use('/api/blogs', blogRoutes);
 
+// Dynamic Sitemap route for blogs
+const { updateBlogSitemap } = require('./src/utils/sitemapGenerator');
+app.get('/sitemap-blogs.xml', async (req, res) => {
+  const xml = await updateBlogSitemap();
+  res.header('Content-Type', 'application/xml');
+  res.status(200).send(xml);
+});
+
 
 // Secure proxy endpoint to stream files from backend/public
 // Usage: /public-file?path=uploads/filename.pdf

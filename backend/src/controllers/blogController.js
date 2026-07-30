@@ -2,6 +2,7 @@ const Blog = require('../models/Blog');
 const path = require('path');
 const fs = require('fs');
 const cloudinary = require('../config/cloudinary');
+const { updateBlogSitemap } = require('../utils/sitemapGenerator');
 
 // Helper to generate clean SEO slug strictly from title
 const generateSlug = async (title, currentBlogId = null) => {
@@ -57,6 +58,9 @@ exports.createBlog = async (req, res) => {
       department: (req.user && req.user.department) ? req.user.department : 'Marketing',
       status: status || 'Published'
     });
+
+    // Automatically update sitemap-blogs.xml
+    await updateBlogSitemap();
 
     return res.status(201).json({
       success: true,
@@ -164,6 +168,9 @@ exports.updateBlog = async (req, res) => {
 
     await blog.save();
 
+    // Automatically update sitemap-blogs.xml
+    await updateBlogSitemap();
+
     return res.status(200).json({
       success: true,
       message: 'Blog updated successfully',
@@ -184,6 +191,9 @@ exports.deleteBlog = async (req, res) => {
     if (!blog) {
       return res.status(404).json({ success: false, message: 'Blog post not found' });
     }
+
+    // Automatically update sitemap-blogs.xml
+    await updateBlogSitemap();
 
     return res.status(200).json({
       success: true,
