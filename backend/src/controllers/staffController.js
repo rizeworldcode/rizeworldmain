@@ -458,7 +458,10 @@ exports.getStaffById = async (req, res) => {
         todayClock: todayClockRecord || null,
         role: staff.role,
         reportingPerson: staff.reportingPerson || [],
-        reportingPersonName
+        reportingPersonName,
+        todaySatisfaction: staff.todaySatisfaction || 'none',
+        todayComment: staff.todayComment || '',
+        commentUpdatedBy: staff.commentUpdatedBy || ''
       }
     });
   } catch (error) {
@@ -1157,8 +1160,21 @@ exports.updateTodayWork = async (req, res) => {
 
     let tasks;
     if (todayWorkIndex !== -1 && staff.work[todayWorkIndex].tasks) {
-      // Preserve completion status for existing tasks
       const existingTasks = staff.work[todayWorkIndex].tasks;
+
+      // Check if a task is being removed
+      if (taskNames.length < existingTasks.length) {
+        const reqEmployeeId = req.body?.employeeId || staff.employeeId;
+        const allowedEmployeeIds = ['RW-9752', 'RW-1702'];
+        if (!allowedEmployeeIds.includes(reqEmployeeId)) {
+          return res.status(403).json({
+            success: false,
+            message: 'Access Denied: Only employees with Employee ID RW-9752 or RW-1702 can remove daily work tasks.'
+          });
+        }
+      }
+
+      // Preserve completion status for existing tasks
       tasks = taskNames.map(name => {
         const existingTask = existingTasks.find(t => t.name === name);
         return existingTask ? existingTask : { name, completed: false };
@@ -1613,6 +1629,134 @@ exports.clearSalary = async (req, res) => {
   }
 };
 
+// Revert salary payment for a specific month
+exports.revertSalary = async (req, res) => {
+  try {
+    const { month } = req.body;
+    const staffId = req.params.id;
+
+    const staff = await Staff.findById(staffId);
+    if (!staff) {
+      return res.status(404).json({ success: false, message: 'Staff not found' });
+    }
+
+    const cleanTargetMonth = month ? month.replace(/\s*\(Current\)/i, '').trim() : '';
+
+    // Remove the salary history record matching target month
+    const updatedSalaryHistory = (staff.salaryHistory || []).filter(h => {
+      const hClean = h.month ? h.month.replace(/\s*\(Current\)/i, '').trim() : '';
+      return hClean !== cleanTargetMonth;
+    });
+
+    const now = new Date();
+    const currentMonthName = now.toLocaleString('default', { month: 'long', year: 'numeric' });
+    const isCurrentMonthReverted = cleanTargetMonth === currentMonthName;
+
+    staff.salaryHistory = updatedSalaryHistory;
+    if (isCurrentMonthReverted) {
+      staff.salaryStatus = 'Pending';
+    }
+
+    await staff.save();
+
+    // Delete associated salary transaction for this month if found
+    try {
+      await Transaction.deleteMany({
+        referenceId: staff._id,
+        type: 'salary',
+        description: { $regex: cleanTargetMonth, $options: 'i' }
+      });
+    } catch (txErr) {
+      console.error('Error deleting transaction for reverted salary:', txErr);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Salary for ${month} reverted successfully`,
+      data: staff
+    });
+  } catch (error) {
+    console.error('Error reverting salary:', error);
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+// Update Satisfaction Level for staff
+exports.updateSatisfactionLevel = async (req, res) => {
+  try {
+    const { satisfactionLevel, employeeId } = req.body;
+    const allowedEmployeeIds = ['RW-9752', 'RW-1702'];
+
+    if (employeeId && !allowedEmployeeIds.includes(employeeId)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access Denied: Only employees with Employee ID RW-9752 or RW-1702 can mark satisfaction levels.'
+      });
+    }
+
+    const staff = await Staff.findById(req.params.id);
+    if (!staff) {
+      return res.status(404).json({ success: false, message: 'Staff not found' });
+    }
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const updatedHistory = (staff.satisfactionHistory || []).filter(h => h.date !== todayStr);
+    updatedHistory.push({
+      date: todayStr,
+      level: satisfactionLevel,
+      markedBy: employeeId || 'Admin'
+    });
+
+    staff.todaySatisfaction = satisfactionLevel;
+    staff.satisfactionHistory = updatedHistory;
+
+    await staff.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Satisfaction level updated successfully',
+      data: staff
+    });
+  } catch (error) {
+    console.error('Error updating satisfaction level:', error);
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+// Update Today's Comment for staff
+exports.updateTodayComment = async (req, res) => {
+  try {
+    const { comment, employeeId } = req.body;
+    const allowedEmployeeIds = ['RW-9752', 'RW-1702'];
+
+    if (employeeId && !allowedEmployeeIds.includes(employeeId)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access Denied: Only employees with Employee ID RW-9752 or RW-1702 can add comments.'
+      });
+    }
+
+    const staff = await Staff.findById(req.params.id);
+    if (!staff) {
+      return res.status(404).json({ success: false, message: 'Staff not found' });
+    }
+
+    staff.todayComment = comment || '';
+    staff.commentUpdatedBy = employeeId || 'Management';
+
+    await staff.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Comment updated successfully',
+      data: staff
+    });
+  } catch (error) {
+    console.error('Error updating comment:', error);
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
 // Mark leave for staff (single or range)
 exports.markLeave = async (req, res) => {
   try {
@@ -1795,7 +1939,7 @@ exports.getMyReportees = async (req, res) => {
     }
 
     const reportees = await Staff.find({ reportingPerson: managerId, isRemoved: { $ne: true } })
-      .select('name employeeId department role jobType status clock work attendance');
+      .select('name employeeId department role jobType status clock work attendance todaySatisfaction todayComment commentUpdatedBy');
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -1819,6 +1963,9 @@ exports.getMyReportees = async (req, res) => {
         role: staff.role,
         jobType: staff.jobType,
         status: staff.status,
+        todaySatisfaction: staff.todaySatisfaction || 'none',
+        todayComment: staff.todayComment || '',
+        commentUpdatedBy: staff.commentUpdatedBy || '',
         todayTasks: todayWorkRecord ? todayWorkRecord.tasks : [],
         todayClock: todayClockRecord || null
       };

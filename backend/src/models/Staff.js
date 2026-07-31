@@ -111,6 +111,24 @@ const staffSchema = new mongoose.Schema({
     enum: ['clock_in', 'clock_out'],
     default: 'clock_out'
   },
+  todaySatisfaction: {
+    type: String,
+    enum: ['red', 'yellow', 'green', 'none'],
+    default: 'none'
+  },
+  satisfactionHistory: [{
+    date: String,
+    level: { type: String, enum: ['red', 'yellow', 'green'] },
+    markedBy: String
+  }],
+  todayComment: {
+    type: String,
+    default: ''
+  },
+  commentUpdatedBy: {
+    type: String,
+    default: ''
+  },
   status: {
     type: String,
     enum: ['Present', 'Absent', 'On Leave', 'Clocked Out', 'Half-Day'],

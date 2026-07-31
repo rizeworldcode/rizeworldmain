@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Users,
@@ -20,7 +20,9 @@ import {
   CheckCircle2,
   TrendingUp,
   LogIn,
-  LogOut
+  LogOut,
+  RotateCcw,
+  AlertTriangle
 } from 'lucide-react';
 import StaffPerformance from './StaffPerformance';
 
@@ -354,6 +356,47 @@ const STANDARD_HOURS_PER_DAY = 8.5;
 const DAYS_IN_MONTH = 30;
 const EXPECTED_MONTHLY_HOURS = STANDARD_HOURS_PER_DAY * DAYS_IN_MONTH; // 255 hours
 
+const CALCULATION_START_DATE = new Date(2026, 6, 1); // July 1, 2026
+
+const get30DaySequenceDates = (year, monthIndex, createdAt = null) => {
+  const dates = [];
+  const prevMonthLastDay = new Date(year, monthIndex, 0);
+  const prevMonthDays = prevMonthLastDay.getDate();
+  
+  if (prevMonthDays === 31) {
+    const prevYear = prevMonthLastDay.getFullYear();
+    const prevMonth = prevMonthLastDay.getMonth();
+    dates.push(new Date(prevYear, prevMonth, 31));
+    for (let d = 1; d <= 29; d++) {
+      dates.push(new Date(year, monthIndex, d));
+    }
+  } else {
+    const currentMonthLastDay = new Date(year, monthIndex + 1, 0).getDate();
+    const endDay = Math.min(30, currentMonthLastDay);
+    for (let d = 1; d <= endDay; d++) {
+      dates.push(new Date(year, monthIndex, d));
+    }
+  }
+
+  let filtered = dates.filter(d => {
+    const copy = new Date(d);
+    copy.setHours(0, 0, 0, 0);
+    return copy >= CALCULATION_START_DATE;
+  });
+
+  if (createdAt) {
+    const created = new Date(createdAt);
+    created.setHours(0, 0, 0, 0);
+    filtered = filtered.filter(d => {
+      const copy = new Date(d);
+      copy.setHours(0, 0, 0, 0);
+      return copy >= created;
+    });
+  }
+
+  return filtered;
+};
+
 const parseTotalHours = (totalHoursStr) => {
   if (!totalHoursStr || totalHoursStr === '-') return 0;
   let hours = 0;
@@ -373,18 +416,17 @@ const calculatePayout = (staffInfo) => {
   const currentMonth = today.getMonth();
   const currentYear = today.getFullYear();
 
-  // Determine the start day: if employee was added to the website this month, start from that date; else day 1
-  const createdAt = staffInfo.createdAt ? new Date(staffInfo.createdAt) : null;
-  const startDay = (
-    createdAt &&
-    createdAt.getMonth() === currentMonth &&
-    createdAt.getFullYear() === currentYear
-  ) ? createdAt.getDate() : 1;
+  const createdAt = staffInfo.createdAt || staffInfo.joiningDate;
+  const sequenceDates = get30DaySequenceDates(currentYear, currentMonth, createdAt);
+  
+  const todayEnd = new Date();
+  todayEnd.setHours(23, 59, 59, 999);
 
-  // --- Step 1: Sum actual hours from clock records ---
+  const validSequenceDates = sequenceDates.filter(d => d <= todayEnd);
+  const seqDateStrings = new Set(validSequenceDates.map(d => d.toDateString()));
+
   const monthlyClockRecords = (staffInfo.clock || []).filter(record => {
-    const d = new Date(record.date);
-    return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+    return seqDateStrings.has(new Date(record.date).toDateString());
   });
 
   let totalHoursWorked = 0;
@@ -399,91 +441,68 @@ const calculatePayout = (staffInfo) => {
     }
   });
 
-  // Build set of clocked dates (to avoid double-counting)
   const creditedDates = new Set(
     monthlyClockRecords.map(r => new Date(r.date).toDateString())
   );
 
-  // --- Step 2: Credit 8.5 hrs for each SUNDAY in the month (from startDay up to today) ---
-  for (let day = startDay; day <= today.getDate(); day++) {
-    const d = new Date(currentYear, currentMonth, day);
-    if (d.getDay() === 0 && !creditedDates.has(d.toDateString())) {
+  validSequenceDates.forEach(d => {
+    const dStr = d.toDateString();
+    if (d.getDay() === 0 && !creditedDates.has(dStr)) {
       totalHoursWorked += STANDARD_HOURS_PER_DAY;
-      creditedDates.add(d.toDateString());
+      creditedDates.add(dStr);
     }
-  }
+  });
 
-  // --- Step 3: Credit 8.5 hrs for each admin-declared leave day ---
   (staffInfo.leaves || []).forEach(leave => {
-    const leaveDate = new Date(leave.date);
-    if (
-      leaveDate.getMonth() === currentMonth &&
-      leaveDate.getFullYear() === currentYear &&
-      leaveDate <= today &&
-      !creditedDates.has(leaveDate.toDateString())
-    ) {
-      totalHoursWorked += STANDARD_HOURS_PER_DAY;
-      creditedDates.add(leaveDate.toDateString());
+    const ld = new Date(leave.date);
+    const ldStr = ld.toDateString();
+    if (seqDateStrings.has(ldStr)) {
+      if (!creditedDates.has(ldStr)) {
+        totalHoursWorked += STANDARD_HOURS_PER_DAY;
+        creditedDates.add(ldStr);
+      }
     }
   });
 
-  // Credit 8.5 hrs for manual daily attendance marked as 'On Leave'
   (staffInfo.attendance || []).forEach(att => {
-    const attDate = new Date(att.date);
-    if (
-      att.status === 'On Leave' &&
-      attDate.getMonth() === currentMonth &&
-      attDate.getFullYear() === currentYear &&
-      attDate <= today &&
-      !creditedDates.has(attDate.toDateString())
-    ) {
-      totalHoursWorked += STANDARD_HOURS_PER_DAY;
-      creditedDates.add(attDate.toDateString());
+    if (att.status === 'On Leave') {
+      const ad = new Date(att.date);
+      const adStr = ad.toDateString();
+      if (seqDateStrings.has(adStr)) {
+        if (!creditedDates.has(adStr)) {
+          totalHoursWorked += STANDARD_HOURS_PER_DAY;
+          creditedDates.add(adStr);
+        }
+      }
     }
   });
 
-  // --- Step 4: Find truly absent days (from startDay, no clock, not Sunday, not admin leave) ---
-  const absentDays = [];
-  for (let day = startDay; day <= today.getDate(); day++) {
-    const d = new Date(currentYear, currentMonth, day);
-    if (!creditedDates.has(d.toDateString())) {
-      absentDays.push(d);
-    }
-  }
+  const absentDays = validSequenceDates.filter(d => {
+    if (d.getDay() === 0) return false;
+    return !creditedDates.has(d.toDateString());
+  });
 
-  // --- Step 5: Find half-days from attendance records ---
   const halfDayRecords = (staffInfo.attendance || []).filter(att => {
-    const d = new Date(att.date);
-    return (
-      att.status === 'Half-Day' &&
-      d.getMonth() === currentMonth &&
-      d.getFullYear() === currentYear &&
-      d <= today
-    );
+    if (att.status !== 'Half-Day') return false;
+    const ad = new Date(att.date);
+    return seqDateStrings.has(ad.toDateString());
   });
-  // 2 half-days = 1 leave unit
   const halfDayLeaveUnits = Math.floor(halfDayRecords.length / 2);
 
-  // --- Step 6: Apply 1 FREE casual leave per month ---
-  // Priority: 1st absent day → then 1st pair of half-days
   let casualLeaveUsed = false;
 
   if (absentDays.length > 0) {
-    // 1st absent day is auto casual leave → credit full 8.5 hrs
     totalHoursWorked += STANDARD_HOURS_PER_DAY;
     creditedDates.add(absentDays[0].toDateString());
     casualLeaveUsed = true;
   } else if (halfDayLeaveUnits > 0) {
-    // No absent days but 2+ half-days → use casual leave for 1st pair
-    // Top up each of those 2 half-days to 4.25 hrs (half of 8.5)
-    // so the pair together = 8.5 hrs (1 full day equivalent)
     for (let i = 0; i < 2; i++) {
       const hdDate = new Date(halfDayRecords[i].date);
       const clockRecord = monthlyClockRecords.find(
         r => new Date(r.date).toDateString() === hdDate.toDateString()
       );
       const actualHrs = clockRecord ? parseTotalHours(clockRecord.totalHours) : 0;
-      const halfTarget = STANDARD_HOURS_PER_DAY / 2; // 4.25 hrs
+      const halfTarget = STANDARD_HOURS_PER_DAY / 2;
       if (actualHrs < halfTarget) {
         totalHoursWorked += halfTarget - actualHrs;
       }
@@ -493,13 +512,14 @@ const calculatePayout = (staffInfo) => {
 
   const payout = Math.round(hourlyRate * totalHoursWorked);
   const daysWorked = monthlyClockRecords.length;
+  const fullLeavesCount = Math.max(0, absentDays.length - (casualLeaveUsed && absentDays.length > 0 ? 1 : 0));
 
   return {
     payout,
     totalHoursWorked: Math.round(totalHoursWorked * 100) / 100,
     daysWorked,
     hourlyRate: Math.round(hourlyRate * 100) / 100,
-    fullLeaves: absentDays.length,
+    fullLeaves: fullLeavesCount,
     halfDays: halfDayRecords.length,
     casualLeaveUsed
   };
@@ -595,20 +615,82 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [jobTypeFilter, setJobTypeFilter] = useState('All');
   const [departmentFilter, setDepartmentFilter] = useState('All');
+  const [redZoneFilter, setRedZoneFilter] = useState('All');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState(null);
   const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedStaffForPerformance, setSelectedStaffForPerformance] = useState(null);
 
+  const getRedZoneDaysCount = (member) => {
+    if (!member) return 0;
+    const history = member.satisfactionHistory || [];
+    const redDates = new Set(history.filter(h => h.level === 'red').map(h => h.date));
+    if (member.todaySatisfaction === 'red') {
+      const todayStr = new Date().toISOString().split('T')[0];
+      redDates.add(todayStr);
+    }
+    return redDates.size;
+  };
+
+  const redZoneMembers = useMemo(() => {
+    return staff.filter(m => getRedZoneDaysCount(m) >= 7);
+  }, [staff]);
+
   // Salary modal state
   const [isSalaryModalOpen, setIsSalaryModalOpen] = useState(false);
   const [selectedStaffForSalary, setSelectedStaffForSalary] = useState(null);
+  const [selectedSalaryMonth, setSelectedSalaryMonth] = useState('');
   const [salaryPaymentDetails, setSalaryPaymentDetails] = useState({
     mode: 'online',
     method: 'phonepe',
     utrNumber: ''
   });
+
+  const availableSalaryMonths = useMemo(() => {
+    if (!selectedStaffForSalary) return [];
+    const months = new Set();
+    const now = new Date();
+    const currentMonthName = now.toLocaleString('default', { month: 'long', year: 'numeric' });
+    months.add(currentMonthName);
+
+    const addDateMonth = (dateInput) => {
+      if (!dateInput) return;
+      const d = new Date(dateInput);
+      if (isNaN(d.getTime())) return;
+      const check = new Date(d);
+      check.setHours(0, 0, 0, 0);
+      if (check < CALCULATION_START_DATE) return;
+      if (d.getDate() === 31) {
+        const nextMonth = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+        months.add(nextMonth.toLocaleString('default', { month: 'long', year: 'numeric' }));
+      } else {
+        months.add(d.toLocaleString('default', { month: 'long', year: 'numeric' }));
+      }
+    };
+
+    (selectedStaffForSalary.clock || []).forEach(r => addDateMonth(r.date));
+    (selectedStaffForSalary.salaryHistory || []).forEach(h => {
+      if (h.month) months.add(h.month.replace(/\s*\(Current\)/i, '').trim());
+    });
+    (selectedStaffForSalary.attendance || []).forEach(a => addDateMonth(a.date));
+    (selectedStaffForSalary.leaves || []).forEach(l => addDateMonth(l.date));
+
+    const sorted = Array.from(months).filter(mStr => {
+      const match = mStr.match(/([A-Za-z]+)\s+(\d+)/);
+      if (!match) return false;
+      const mName = match[1];
+      const yr = parseInt(match[2]);
+      const mIdx = new Date(Date.parse(mName + " 1, 2012")).getMonth();
+      return yr > 2026 || (yr === 2026 && mIdx >= 6);
+    }).sort((a, b) => {
+      const dateA = new Date(Date.parse(a + " 1"));
+      const dateB = new Date(Date.parse(b + " 1"));
+      return dateB.getTime() - dateA.getTime();
+    });
+
+    return sorted;
+  }, [selectedStaffForSalary]);
 
   // Fetch staff from backend
   useEffect(() => {
@@ -639,8 +721,9 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
 
     const matchesJobType = jobTypeFilter === 'All' || member.jobType === jobTypeFilter;
     const matchesDepartment = departmentFilter === 'All' || member.department === departmentFilter;
+    const matchesRedZone = redZoneFilter === 'All' || (redZoneFilter === 'RedZone' && getRedZoneDaysCount(member) >= 7);
 
-    return matchesSearch && matchesJobType && matchesDepartment;
+    return matchesSearch && matchesJobType && matchesDepartment && matchesRedZone;
   }).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
 
   const handleUpdateStaff = async (id, updatedData) => {
@@ -750,6 +833,145 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
     }
   };
 
+  const calculatePayoutForSelectedMonth = (staffInfo, monthStr) => {
+    if (!staffInfo || !monthStr) return { payout: 0, fullLeaves: 0, halfDays: 0, casualLeaveUsed: false, isPaid: false, daysWorked: 0 };
+    const cleanMonth = monthStr.replace(/\s*\(Current\)/i, '').trim();
+    const match = cleanMonth.match(/([A-Za-z]+)\s+(\d+)/);
+    if (!match) return calculatePayout(staffInfo);
+
+    const monthName = match[1];
+    const year = parseInt(match[2]);
+    const monthIndex = new Date(Date.parse(monthName + " 1, 2012")).getMonth();
+
+    const baseSalary = staffInfo.monthlySalary || 0;
+    const STANDARD_HOURS_PER_DAY = 8.5;
+    const EXPECTED_MONTHLY_HOURS = STANDARD_HOURS_PER_DAY * 30;
+    const hourlyRate = baseSalary / EXPECTED_MONTHLY_HOURS;
+
+    const today = new Date();
+    const isCurrentMonth = today.getMonth() === monthIndex && today.getFullYear() === year;
+
+    const createdAt = staffInfo.createdAt || staffInfo.joiningDate;
+    const sequenceDates = get30DaySequenceDates(year, monthIndex, createdAt);
+
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+
+    const validSequenceDates = isCurrentMonth
+      ? sequenceDates.filter(d => d <= todayEnd)
+      : sequenceDates;
+
+    const seqDateStrings = new Set(validSequenceDates.map(d => d.toDateString()));
+
+    const parseTotalHours = (str) => {
+      if (!str || str === '-') return 0;
+      const h = str.match(/(\d+)\s*h/i);
+      const m = str.match(/(\d+)\s*m/i);
+      return (h ? parseInt(h[1], 10) : 0) + (m ? parseInt(m[1], 10) / 60 : 0);
+    };
+
+    const monthlyClockRecords = (staffInfo.clock || []).filter(r => {
+      return seqDateStrings.has(new Date(r.date).toDateString());
+    });
+
+    let totalHoursWorked = 0;
+    monthlyClockRecords.forEach(r => {
+      const actualHrs = parseTotalHours(r.totalHours);
+      if (actualHrs > 9) {
+        totalHoursWorked += 8.5 + (actualHrs - 9);
+      } else if (actualHrs >= 8.5) {
+        totalHoursWorked += 8.5;
+      } else {
+        totalHoursWorked += actualHrs;
+      }
+    });
+
+    const creditedDates = new Set(monthlyClockRecords.map(r => new Date(r.date).toDateString()));
+
+    validSequenceDates.forEach(d => {
+      const dStr = d.toDateString();
+      if (d.getDay() === 0 && !creditedDates.has(dStr)) {
+        totalHoursWorked += STANDARD_HOURS_PER_DAY;
+        creditedDates.add(dStr);
+      }
+    });
+
+    (staffInfo.leaves || []).forEach(leave => {
+      const ld = new Date(leave.date);
+      const ldStr = ld.toDateString();
+      if (seqDateStrings.has(ldStr)) {
+        if (!creditedDates.has(ldStr)) {
+          totalHoursWorked += STANDARD_HOURS_PER_DAY;
+          creditedDates.add(ldStr);
+        }
+      }
+    });
+
+    (staffInfo.attendance || []).forEach(att => {
+      if (att.status === 'On Leave') {
+        const ad = new Date(att.date);
+        const adStr = ad.toDateString();
+        if (seqDateStrings.has(adStr)) {
+          if (!creditedDates.has(adStr)) {
+            totalHoursWorked += STANDARD_HOURS_PER_DAY;
+            creditedDates.add(adStr);
+          }
+        }
+      }
+    });
+
+    const absentDaysList = validSequenceDates.filter(d => {
+      if (d.getDay() === 0) return false;
+      return !creditedDates.has(d.toDateString());
+    });
+
+    const halfDayRecords = (staffInfo.attendance || []).filter(att => {
+      if (att.status !== 'Half-Day') return false;
+      const ad = new Date(att.date);
+      return seqDateStrings.has(ad.toDateString());
+    });
+    const halfDayLeaveUnits = Math.floor(halfDayRecords.length / 2);
+
+    let casualLeaveUsed = false;
+    if (absentDaysList.length > 0) {
+      totalHoursWorked += STANDARD_HOURS_PER_DAY;
+      creditedDates.add(absentDaysList[0].toDateString());
+      casualLeaveUsed = true;
+    } else if (halfDayLeaveUnits > 0) {
+      for (let i = 0; i < 2; i++) {
+        const hdDate = new Date(halfDayRecords[i].date);
+        const cr = monthlyClockRecords.find(r => new Date(r.date).toDateString() === hdDate.toDateString());
+        const actualHrs = cr ? parseTotalHours(cr.totalHours) : 0;
+        const halfTarget = STANDARD_HOURS_PER_DAY / 2;
+        if (actualHrs < halfTarget) {
+          totalHoursWorked += halfTarget - actualHrs;
+        }
+      }
+      casualLeaveUsed = true;
+    }
+
+    const presents = monthlyClockRecords.length;
+    const fullLeaves = Math.max(0, absentDaysList.length - (casualLeaveUsed && absentDaysList.length > 0 ? 1 : 0));
+
+    const paidHistory = (staffInfo.salaryHistory || []).find(h => {
+      const hClean = h.month ? h.month.replace(/\s*\(Current\)/i, '').trim() : '';
+      return hClean === cleanMonth;
+    });
+
+    const payout = paidHistory ? paidHistory.payoutSalary : Math.round(hourlyRate * totalHoursWorked);
+
+    return {
+      payout,
+      totalHoursWorked: Math.round(totalHoursWorked * 100) / 100,
+      daysWorked: presents,
+      hourlyRate: Math.round(hourlyRate * 100) / 100,
+      fullLeaves,
+      halfDays: halfDayRecords.length,
+      casualLeaveUsed: !!casualLeaveUsed,
+      isPaid: !!paidHistory
+    };
+  };
+
   const openEditModal = (member) => {
     setEditingStaff(member);
     setIsEditModalOpen(true);
@@ -762,39 +984,76 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
       method: 'phonepe',
       utrNumber: ''
     });
+
+    // Compute available months for member and select the first pending month
+    const months = new Set();
+    const now = new Date();
+    const currentMonthName = now.toLocaleString('default', { month: 'long', year: 'numeric' });
+    months.add(currentMonthName);
+
+    const addDateMonth = (dateInput) => {
+      if (!dateInput) return;
+      const d = new Date(dateInput);
+      if (isNaN(d.getTime())) return;
+      const check = new Date(d);
+      check.setHours(0, 0, 0, 0);
+      if (check < CALCULATION_START_DATE) return;
+      if (d.getDate() === 31) {
+        const nextMonth = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+        months.add(nextMonth.toLocaleString('default', { month: 'long', year: 'numeric' }));
+      } else {
+        months.add(d.toLocaleString('default', { month: 'long', year: 'numeric' }));
+      }
+    };
+
+    (member.clock || []).forEach(r => addDateMonth(r.date));
+    (member.salaryHistory || []).forEach(h => {
+      if (h.month) months.add(h.month.replace(/\s*\(Current\)/i, '').trim());
+    });
+    (member.attendance || []).forEach(a => addDateMonth(a.date));
+    (member.leaves || []).forEach(l => addDateMonth(l.date));
+
+    const sorted = Array.from(months).filter(mStr => {
+      const match = mStr.match(/([A-Za-z]+)\s+(\d+)/);
+      if (!match) return false;
+      const mName = match[1];
+      const yr = parseInt(match[2]);
+      const mIdx = new Date(Date.parse(mName + " 1, 2012")).getMonth();
+      return yr > 2026 || (yr === 2026 && mIdx >= 6);
+    }).sort((a, b) => {
+      const dateA = new Date(Date.parse(a + " 1"));
+      const dateB = new Date(Date.parse(b + " 1"));
+      return dateB.getTime() - dateA.getTime();
+    });
+
+    const paidSet = new Set((member.salaryHistory || []).map(h => (h.month || '').replace(/\s*\(Current\)/i, '').trim()));
+    // Prefer past pending months first (exclude current month from auto-default if past pending month exists)
+    const pendingMonths = sorted.filter(m => !paidSet.has(m));
+    const pendingPastMonth = pendingMonths.find(m => m !== currentMonthName);
+
+    setSelectedSalaryMonth(pendingPastMonth || pendingMonths[0] || sorted[0] || currentMonthName);
     setIsSalaryModalOpen(true);
   };
 
   const handleConfirmClearSalary = async () => {
-    if (!selectedStaffForSalary) return;
+    if (!selectedStaffForSalary || !selectedSalaryMonth) return;
 
-    // Validate UTR if online mode
-    if (salaryPaymentDetails.mode === 'online') {
-      const utrTrimmed = salaryPaymentDetails.utrNumber.trim();
-      if (utrTrimmed.length < 12 || utrTrimmed.length > 16) {
-        alert('UTR number must be between 12 and 16 characters.');
-        return;
-      }
-    }
-
-    const payoutData = calculatePayout(selectedStaffForSalary);
+    const payoutData = calculatePayoutForSelectedMonth(selectedStaffForSalary, selectedSalaryMonth);
     const { payout, fullLeaves, halfDays, casualLeaveUsed } = payoutData;
-    const currentMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
 
     try {
       const response = await fetch(`http://localhost:45000/api/staff/${selectedStaffForSalary._id}/clear-salary`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          month: currentMonth,
+          month: selectedSalaryMonth,
           baseSalary: selectedStaffForSalary.monthlySalary,
           payoutSalary: payout,
           totalLeaves: fullLeaves,
           totalHalfDays: halfDays,
           casualLeaveUsed,
           mode: salaryPaymentDetails.mode,
-          method: salaryPaymentDetails.mode === 'cash' ? 'cash' : salaryPaymentDetails.method,
-          utrNumber: salaryPaymentDetails.mode === 'online' ? salaryPaymentDetails.utrNumber : undefined
+          method: salaryPaymentDetails.mode === 'cash' ? 'cash' : salaryPaymentDetails.method
         })
       });
       const result = await response.json();
@@ -804,11 +1063,41 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
         ));
         setIsSalaryModalOpen(false);
         setSelectedStaffForSalary(null);
-        alert('Salary cleared, record saved, and transaction recorded successfully');
+        alert(`Salary for ${selectedSalaryMonth} cleared, record saved, and transaction recorded successfully`);
       }
     } catch (error) {
       console.error('Error clearing salary:', error);
       alert('Failed to clear salary');
+    }
+  };
+
+  const handleRevertSalary = async (member, monthToRevert = null) => {
+    const targetMonth = monthToRevert || selectedSalaryMonth || new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
+    if (!window.confirm(`Are you sure you want to revert/undo salary payment for ${targetMonth} for ${member.name}?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:45000/api/staff/${member._id}/revert-salary`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ month: targetMonth })
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        setStaff(staff.map(m => m._id === member._id ? result.data : m));
+        if (selectedStaffForSalary && selectedStaffForSalary._id === member._id) {
+          setSelectedStaffForSalary(result.data);
+        }
+        setIsSalaryModalOpen(false);
+        alert(`Salary for ${targetMonth} reverted successfully!`);
+      } else {
+        alert(result.message || 'Failed to revert salary');
+      }
+    } catch (error) {
+      console.error('Error reverting salary:', error);
+      alert('Error reverting salary');
     }
   };
 
@@ -835,6 +1124,29 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
       animate={{ opacity: 1, y: 0 }}
       className="space-y-6"
     >
+      {/* Red Zone Alert Banner */}
+      {redZoneMembers.length > 0 && (
+        <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-rose-600 via-red-600 to-rose-700 text-white font-bold shadow-xl shadow-rose-600/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-rose-400/40">
+          <div className="flex items-center gap-3">
+            <span className="text-3xl animate-bounce">🚨</span>
+            <div>
+              <h3 className="text-base sm:text-lg font-black uppercase tracking-wider text-white">
+                Red Zone Warning ({redZoneMembers.length} Staff Member{redZoneMembers.length > 1 ? 's' : ''} &ge; 7 Days)
+              </h3>
+              <p className="text-xs sm:text-sm text-rose-100 mt-0.5">
+                Attention Admin: The following employees have been in the Red Zone for 7 or more days: <span className="font-black underline">{redZoneMembers.map(m => `${m.name} (${getRedZoneDaysCount(m)} Days)`).join(', ')}</span>
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setRedZoneFilter(redZoneFilter === 'RedZone' ? 'All' : 'RedZone')}
+            className="px-4 py-2 rounded-xl bg-white text-rose-700 hover:bg-rose-50 font-black text-xs uppercase tracking-wider transition-all shadow-md cursor-pointer border-none whitespace-nowrap"
+          >
+            {redZoneFilter === 'RedZone' ? 'Show All Staff' : 'Filter Red Zone Staff'}
+          </button>
+        </div>
+      )}
+
       {/* Header Section */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
@@ -868,6 +1180,16 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
             ))}
           </select>
 
+          {/* Red Zone Dropdown */}
+          <select
+            value={redZoneFilter}
+            onChange={(e) => setRedZoneFilter(e.target.value)}
+            className="bg-black/5 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-gray-900 dark:text-gray-300 focus:border-blue-500 outline-none transition-all cursor-pointer hover:bg-black/10 dark:hover:bg-white/10"
+          >
+            <option value="All" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">All Satisfaction Status</option>
+            <option value="RedZone" className="bg-white dark:bg-[#030303] text-rose-600 dark:text-rose-400 font-bold">🔴 Red Zone (&ge; 7 Days)</option>
+          </select>
+
           <button
             onClick={onAddStaff}
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-blue-600/20 w-fit"
@@ -879,22 +1201,30 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {[
-          { label: 'Total Staff', value: filteredStaff.length, icon: Users, color: 'blue' },
-        ].map((stat, index) => (stat && (
-          <div key={index} className="glass p-6 rounded-3xl border border-gray-200 dark:border-white/10 transition-colors">
-            <div className="flex items-center gap-4">
-              <div className={`p-3 rounded-2xl bg-${stat.color}-500/10 text-${stat.color}-500`}>
-                <stat.icon size={24} />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-gray-500 dark:text-gray-400">{stat.label}</p>
-                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{stat.value}</h3>
-              </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="glass p-6 rounded-3xl border border-gray-200 dark:border-white/10 transition-colors">
+          <div className="flex items-center gap-4">
+            <div className="p-3 rounded-2xl bg-blue-500/10 text-blue-500">
+              <Users size={24} />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-gray-500 dark:text-gray-400">Total Staff</p>
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{filteredStaff.length}</h3>
             </div>
           </div>
-        )))}
+        </div>
+
+        <div className={`glass p-6 rounded-3xl border transition-colors ${redZoneMembers.length > 0 ? 'border-rose-500/50 bg-rose-500/5' : 'border-gray-200 dark:border-white/10'}`}>
+          <div className="flex items-center gap-4">
+            <div className="p-3 rounded-2xl bg-rose-500/10 text-rose-500">
+              <AlertTriangle size={24} />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-gray-500 dark:text-gray-400">Red Zone Staff (&ge; 7 Days)</p>
+              <h3 className="text-2xl font-bold text-rose-600 dark:text-rose-400">{redZoneMembers.length}</h3>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Search and Filter */}
@@ -932,15 +1262,15 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-white/5">
               {filteredStaff.map((member) => {
-                // // Calculate current month total hours
-                // const currentMonthTotalMinutes = calculateCurrentMonthTotalHours(member.clock || []);
-                // const expectedMinutes = getCurrentMonthExpectedHours();
-                // const differenceMinutes = currentMonthTotalMinutes - expectedMinutes;
-                // const currentMonthTotalFormatted = formatHoursMinutes(currentMonthTotalMinutes);
-                // const differenceFormatted = formatHoursMinutes(Math.abs(differenceMinutes));
+                const redDaysCount = getRedZoneDaysCount(member);
+                const isRedZoneAlert = redDaysCount >= 7;
 
                 return (
-                  <tr key={member._id} className="hover:bg-black/[0.02] dark:hover:bg-white/5 transition-colors group">
+                  <tr key={member._id} className={`transition-colors group ${
+                    isRedZoneAlert 
+                      ? 'bg-rose-500/10 dark:bg-rose-500/15 border-l-4 border-rose-600 hover:bg-rose-500/20' 
+                      : 'hover:bg-black/[0.02] dark:hover:bg-white/5'
+                  }`}>
                     <td className="px-6 py-4">
                       <div
                         className="flex items-center gap-3 cursor-pointer group/name"
@@ -950,9 +1280,14 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
                           {member.name.charAt(0)}
                         </div>
                         <div>
-                          <div className="text-sm font-bold text-gray-900 dark:text-white group-hover/name:text-blue-500 transition-colors flex items-center gap-2">
+                          <div className="text-sm font-bold text-gray-900 dark:text-white group-hover/name:text-blue-500 transition-colors flex items-center gap-2 flex-wrap">
                             {member.name}
                             <TrendingUp size={14} className="opacity-0 group-hover/name:opacity-100 transition-opacity" />
+                            {isRedZoneAlert && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-rose-600 text-white shadow-md animate-pulse">
+                                🚨 RED ZONE ({redDaysCount} Days)
+                              </span>
+                            )}
                           </div>
                           <div className="text-xs text-gray-500 flex flex-col gap-0.5 mt-1">
                             <span className="flex items-center gap-1"><Mail size={12} /> {member.email}</span>
@@ -976,13 +1311,28 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
 
                         return (
                           <div className="flex flex-col gap-1.5">
-                            <div className="flex flex-wrap gap-1.5">
+                            <div className="flex flex-wrap gap-1.5 items-center">
                               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
                                 {member.department}
                               </span>
                               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
                                 {member.role || 'Employee'}
                               </span>
+                              {redDaysCount > 0 && redDaysCount < 7 && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-600 border border-rose-500/20">
+                                  🔴 Red ({redDaysCount} Days)
+                                </span>
+                              )}
+                              {member.todaySatisfaction === 'yellow' && redDaysCount === 0 && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 border border-amber-500/20">
+                                  🟡 Yellow
+                                </span>
+                              )}
+                              {member.todaySatisfaction === 'green' && redDaysCount === 0 && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+                                  🟢 Green
+                                </span>
+                              )}
                             </div>
                             <div className="text-[11px] text-gray-500 dark:text-gray-400 flex flex-col gap-1">
                               <span className="flex items-center gap-1">
@@ -1077,9 +1427,23 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
                               <span className="text-xs font-black uppercase tracking-widest">Clear Salary</span>
                             </button>
                           ) : (
-                            <div className="flex items-center gap-2 rounded-xl border border-emerald-500/10 bg-emerald-500/5 px-4 py-2 text-emerald-500">
-                              <CheckCircle2 size={16} />
-                              <span className="text-xs font-black uppercase tracking-widest">Salary Paid</span>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                onClick={() => openSalaryModal(member)}
+                                className="flex items-center gap-1.5 rounded-xl border border-emerald-500/10 bg-emerald-500/5 px-3 py-2 text-emerald-500 hover:bg-emerald-500/20 transition-all"
+                                title="Salary Paid (Click to manage)"
+                              >
+                                <CheckCircle2 size={16} />
+                                <span className="text-xs font-black uppercase tracking-widest">Paid</span>
+                              </button>
+                              <button
+                                onClick={() => handleRevertSalary(member)}
+                                className="group/revert flex items-center gap-1.5 rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-rose-600 shadow-sm transition-all hover:bg-rose-500 hover:text-white"
+                                title="Revert Salary Payment"
+                              >
+                                <RotateCcw size={15} className="transition-transform group-hover/revert:-rotate-90" />
+                                <span className="text-xs font-black uppercase tracking-widest">Revert</span>
+                              </button>
                             </div>
                           )}
                         </div>
@@ -1132,8 +1496,8 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
               className="relative w-full max-w-md bg-white dark:bg-[#030303] rounded-3xl border border-gray-200 dark:border-white/10 p-8 shadow-2xl overflow-y-auto max-h-[90vh]"
             >
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                  <CreditCard className="text-emerald-500" /> Clear Salary
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                  Clear Salary
                 </h3>
                 <button
                   onClick={() => setIsSalaryModalOpen(false)}
@@ -1144,17 +1508,56 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
               </div>
 
               <div className="space-y-4">
-                {/* Employee Name & Payout */}
+                {/* Employee Name */}
                 <div className="p-4 rounded-2xl bg-black/5 dark:bg-white/5">
                   <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Employee</p>
                   <p className="text-lg font-bold text-gray-900 dark:text-white">{selectedStaffForSalary.name}</p>
-                  <p className="text-2xl font-black text-emerald-600 mt-2">
-                    ₹{calculatePayout(selectedStaffForSalary).payout.toLocaleString('en-IN')}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    for {new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}
-                  </p>
                 </div>
+
+                {/* Select Month to Clear */}
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block mb-1.5">
+                    Select Month to Clear Salary
+                  </label>
+                  <select
+                    value={selectedSalaryMonth}
+                    onChange={(e) => setSelectedSalaryMonth(e.target.value)}
+                    className="w-full bg-black/5 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm font-bold text-gray-900 dark:text-white focus:border-blue-500 outline-none transition-all cursor-pointer"
+                  >
+                    {availableSalaryMonths.map(mStr => {
+                      const isPaid = (selectedStaffForSalary.salaryHistory || []).some(h => {
+                        const hClean = h.month ? h.month.replace(/\s*\(Current\)/i, '').trim() : '';
+                        return hClean === mStr;
+                      });
+                      return (
+                        <option key={mStr} value={mStr} className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">
+                          {mStr} {isPaid ? '(Already Paid)' : '(Pending)'}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+
+                {/* Calculated Payout for Selected Month */}
+                {(() => {
+                  const calc = calculatePayoutForSelectedMonth(selectedStaffForSalary, selectedSalaryMonth);
+                  return (
+                    <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Calculated Payout</span>
+                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded ${calc.isPaid ? 'bg-blue-500/20 text-blue-600' : 'bg-amber-500/20 text-amber-600'}`}>
+                          {calc.isPaid ? 'Paid' : 'Pending'}
+                        </span>
+                      </div>
+                      <p className="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
+                        ₹{calc.payout.toLocaleString('en-IN')}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        for <strong>{selectedSalaryMonth}</strong> ({calc.daysWorked} days present, {calc.fullLeaves} leaves, {calc.halfDays} half days)
+                      </p>
+                    </div>
+                  );
+                })()}
 
                 {/* Payment Mode */}
                 <div>
@@ -1184,38 +1587,21 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
                 </div>
 
                 {salaryPaymentDetails.mode === 'online' && (
-                  <>
-                    {/* Payment Method */}
-                    <div>
-                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block mb-1.5">
-                        Payment Method
-                      </label>
-                      <select
-                        value={salaryPaymentDetails.method}
-                        onChange={(e) => setSalaryPaymentDetails({ ...salaryPaymentDetails, method: e.target.value })}
-                        className="w-full bg-black/5 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white focus:border-blue-500 outline-none transition-all"
-                      >
-                        <option value="phonepe">PhonePe</option>
-                        <option value="paytm">Paytm</option>
-                        <option value="google_pay">Google Pay</option>
-                        <option value="bank_transfer">Bank Transfer</option>
-                      </select>
-                    </div>
-
-                    {/* UTR Number */}
-                    <div>
-                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block mb-1.5">
-                        UTR Number
-                      </label>
-                      <input
-                        type="text"
-                        value={salaryPaymentDetails.utrNumber}
-                        onChange={(e) => setSalaryPaymentDetails({ ...salaryPaymentDetails, utrNumber: e.target.value })}
-                        className="w-full bg-black/5 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white focus:border-blue-500 outline-none transition-all"
-                        placeholder="Enter 12-16 digit UTR number"
-                      />
-                    </div>
-                  </>
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block mb-1.5">
+                      Payment Method
+                    </label>
+                    <select
+                      value={salaryPaymentDetails.method}
+                      onChange={(e) => setSalaryPaymentDetails({ ...salaryPaymentDetails, method: e.target.value })}
+                      className="w-full bg-black/5 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white focus:border-blue-500 outline-none transition-all"
+                    >
+                      <option value="phonepe">PhonePe</option>
+                      <option value="paytm">Paytm</option>
+                      <option value="google_pay">Google Pay</option>
+                      <option value="bank_transfer">Bank Transfer</option>
+                    </select>
+                  </div>
                 )}
               </div>
 
@@ -1226,12 +1612,27 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
                 >
                   Cancel
                 </button>
-                <button
-                  onClick={handleConfirmClearSalary}
-                  className="flex-1 px-6 py-3 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20"
-                >
-                  Confirm Payment
-                </button>
+                {(() => {
+                  const calc = calculatePayoutForSelectedMonth(selectedStaffForSalary, selectedSalaryMonth);
+                  if (calc.isPaid) {
+                    return (
+                      <button
+                        onClick={() => handleRevertSalary(selectedStaffForSalary, selectedSalaryMonth)}
+                        className="flex-1 px-6 py-3 rounded-xl bg-rose-600 text-white font-bold hover:bg-rose-700 transition-all shadow-lg shadow-rose-600/20 flex items-center justify-center gap-2"
+                      >
+                        <RotateCcw size={18} /> Revert Payment
+                      </button>
+                    );
+                  }
+                  return (
+                    <button
+                      onClick={handleConfirmClearSalary}
+                      className="flex-1 px-6 py-3 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20"
+                    >
+                      Confirm Payment
+                    </button>
+                  );
+                })()}
               </div>
             </motion.div>
           </div>

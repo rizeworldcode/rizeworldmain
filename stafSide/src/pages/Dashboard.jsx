@@ -22,7 +22,9 @@ import {
   Minus,
   ListChecks,
   Sparkles,
-  CheckCircle2
+  CheckCircle2,
+  Trash2,
+  MessageSquare
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -52,6 +54,47 @@ const parseTotalHours = (totalHoursStr) => {
   return hours + (minutes / 60);
 };
 
+const CALCULATION_START_DATE = new Date(2026, 6, 1); // July 1, 2026
+
+const get30DaySequenceDates = (year, monthIndex, createdAt = null) => {
+  const dates = [];
+  const prevMonthLastDay = new Date(year, monthIndex, 0);
+  const prevMonthDays = prevMonthLastDay.getDate();
+  
+  if (prevMonthDays === 31) {
+    const prevYear = prevMonthLastDay.getFullYear();
+    const prevMonth = prevMonthLastDay.getMonth();
+    dates.push(new Date(prevYear, prevMonth, 31));
+    for (let d = 1; d <= 29; d++) {
+      dates.push(new Date(year, monthIndex, d));
+    }
+  } else {
+    const currentMonthLastDay = new Date(year, monthIndex + 1, 0).getDate();
+    const endDay = Math.min(30, currentMonthLastDay);
+    for (let d = 1; d <= endDay; d++) {
+      dates.push(new Date(year, monthIndex, d));
+    }
+  }
+
+  let filtered = dates.filter(d => {
+    const copy = new Date(d);
+    copy.setHours(0, 0, 0, 0);
+    return copy >= CALCULATION_START_DATE;
+  });
+
+  if (createdAt) {
+    const created = new Date(createdAt);
+    created.setHours(0, 0, 0, 0);
+    filtered = filtered.filter(d => {
+      const copy = new Date(d);
+      copy.setHours(0, 0, 0, 0);
+      return copy >= created;
+    });
+  }
+
+  return filtered;
+};
+
 const calculatePayout = (staffInfo) => {
   const baseSalary = staffInfo.monthlySalary || 0;
   const hourlyRate = baseSalary / EXPECTED_MONTHLY_HOURS;
@@ -60,18 +103,17 @@ const calculatePayout = (staffInfo) => {
   const currentMonth = today.getMonth();
   const currentYear = today.getFullYear();
 
-  // Determine the start day: if employee was added to the website this month, start from that date; else day 1
-  const createdAt = staffInfo.createdAt ? new Date(staffInfo.createdAt) : null;
-  const startDay = (
-    createdAt &&
-    createdAt.getMonth() === currentMonth &&
-    createdAt.getFullYear() === currentYear
-  ) ? createdAt.getDate() : 1;
+  const createdAt = staffInfo.createdAt || staffInfo.joiningDate;
+  const sequenceDates = get30DaySequenceDates(currentYear, currentMonth, createdAt);
+  
+  const todayEnd = new Date();
+  todayEnd.setHours(23, 59, 59, 999);
 
-  // --- Step 1: Sum actual hours from clock records ---
+  const validSequenceDates = sequenceDates.filter(d => d <= todayEnd);
+  const seqDateStrings = new Set(validSequenceDates.map(d => d.toDateString()));
+
   const monthlyClockRecords = (staffInfo.clock || []).filter(record => {
-    const d = new Date(record.date);
-    return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+    return seqDateStrings.has(new Date(record.date).toDateString());
   });
 
   let totalHoursWorked = 0;
@@ -86,76 +128,68 @@ const calculatePayout = (staffInfo) => {
     }
   });
 
-  // Build set of clocked dates (to avoid double-counting)
   const creditedDates = new Set(
     monthlyClockRecords.map(r => new Date(r.date).toDateString())
   );
 
-  // --- Step 2: Credit 8.5 hrs for each SUNDAY in the month (from startDay up to today) ---
-  for (let day = startDay; day <= today.getDate(); day++) {
-    const d = new Date(currentYear, currentMonth, day);
-    if (d.getDay() === 0 && !creditedDates.has(d.toDateString())) {
+  validSequenceDates.forEach(d => {
+    const dStr = d.toDateString();
+    if (d.getDay() === 0 && !creditedDates.has(dStr)) {
       totalHoursWorked += STANDARD_HOURS_PER_DAY;
-      creditedDates.add(d.toDateString());
+      creditedDates.add(dStr);
     }
-  }
+  });
 
-  // --- Step 3: Credit 8.5 hrs for each admin-declared leave day ---
   (staffInfo.leaves || []).forEach(leave => {
-    const leaveDate = new Date(leave.date);
-    if (
-      leaveDate.getMonth() === currentMonth &&
-      leaveDate.getFullYear() === currentYear &&
-      leaveDate <= today &&
-      !creditedDates.has(leaveDate.toDateString())
-    ) {
-      totalHoursWorked += STANDARD_HOURS_PER_DAY;
-      creditedDates.add(leaveDate.toDateString());
+    const ld = new Date(leave.date);
+    const ldStr = ld.toDateString();
+    if (seqDateStrings.has(ldStr)) {
+      if (!creditedDates.has(ldStr)) {
+        totalHoursWorked += STANDARD_HOURS_PER_DAY;
+        creditedDates.add(ldStr);
+      }
     }
   });
 
-  // --- Step 4: Find truly absent days (from startDay, no clock, not Sunday, not admin leave) ---
-  const absentDays = [];
-  for (let day = startDay; day <= today.getDate(); day++) {
-    const d = new Date(currentYear, currentMonth, day);
-    if (!creditedDates.has(d.toDateString())) {
-      absentDays.push(d);
+  (staffInfo.attendance || []).forEach(att => {
+    if (att.status === 'On Leave') {
+      const ad = new Date(att.date);
+      const adStr = ad.toDateString();
+      if (seqDateStrings.has(adStr)) {
+        if (!creditedDates.has(adStr)) {
+          totalHoursWorked += STANDARD_HOURS_PER_DAY;
+          creditedDates.add(adStr);
+        }
+      }
     }
-  }
+  });
 
-  // --- Step 5: Find half-days from attendance records ---
+  const absentDays = validSequenceDates.filter(d => {
+    if (d.getDay() === 0) return false;
+    return !creditedDates.has(d.toDateString());
+  });
+
   const halfDayRecords = (staffInfo.attendance || []).filter(att => {
-    const d = new Date(att.date);
-    return (
-      att.status === 'Half-Day' &&
-      d.getMonth() === currentMonth &&
-      d.getFullYear() === currentYear &&
-      d <= today
-    );
+    if (att.status !== 'Half-Day') return false;
+    const ad = new Date(att.date);
+    return seqDateStrings.has(ad.toDateString());
   });
-  // 2 half-days = 1 leave unit
   const halfDayLeaveUnits = Math.floor(halfDayRecords.length / 2);
 
-  // --- Step 6: Apply 1 FREE casual leave per month ---
-  // Priority: 1st absent day → then 1st pair of half-days
   let casualLeaveUsed = false;
 
   if (absentDays.length > 0) {
-    // 1st absent day is auto casual leave → credit full 8.5 hrs
     totalHoursWorked += STANDARD_HOURS_PER_DAY;
     creditedDates.add(absentDays[0].toDateString());
     casualLeaveUsed = true;
   } else if (halfDayLeaveUnits > 0) {
-    // No absent days but 2+ half-days → use casual leave for 1st pair
-    // Top up each of those 2 half-days to 4.25 hrs (half of 8.5)
-    // so the pair together = 8.5 hrs (1 full day equivalent)
     for (let i = 0; i < 2; i++) {
       const hdDate = new Date(halfDayRecords[i].date);
       const clockRecord = monthlyClockRecords.find(
         r => new Date(r.date).toDateString() === hdDate.toDateString()
       );
       const actualHrs = clockRecord ? parseTotalHours(clockRecord.totalHours) : 0;
-      const halfTarget = STANDARD_HOURS_PER_DAY / 2; // 4.25 hrs
+      const halfTarget = STANDARD_HOURS_PER_DAY / 2;
       if (actualHrs < halfTarget) {
         totalHoursWorked += halfTarget - actualHrs;
       }
@@ -165,13 +199,14 @@ const calculatePayout = (staffInfo) => {
 
   const payout = Math.round(hourlyRate * totalHoursWorked);
   const daysWorked = monthlyClockRecords.length;
+  const fullLeavesCount = Math.max(0, absentDays.length - (casualLeaveUsed && absentDays.length > 0 ? 1 : 0));
 
   return {
     payout,
     totalHoursWorked: Math.round(totalHoursWorked * 100) / 100,
     daysWorked,
     hourlyRate: Math.round(hourlyRate * 100) / 100,
-    fullLeaves: absentDays.length,
+    fullLeaves: fullLeavesCount,
     halfDays: halfDayRecords.length,
     casualLeaveUsed
   };
@@ -361,6 +396,7 @@ const Dashboard = () => {
     date: new Date().toISOString().split('T')[0]
   });
   const [delayWorkLoading, setDelayWorkLoading] = useState(false);
+  const [memberComments, setMemberComments] = useState({});
   // Admissions State
   const [admissionsCount, setAdmissionsCount] = useState(0);
   const [admissionsLoading, setAdmissionsLoading] = useState(false);
@@ -1712,6 +1748,13 @@ const Dashboard = () => {
 
   const handleDeleteTask = async (taskIndex) => {
     const staffInfo = JSON.parse(localStorage.getItem('staffInfo') || '{}');
+    const allowedEmployeeIds = ['RW-9752', 'RW-1702'];
+
+    if (!staffInfo.employeeId || !allowedEmployeeIds.includes(staffInfo.employeeId)) {
+      alert('Access Denied: Only employees with Employee ID RW-9752 or RW-1702 can remove daily work tasks.');
+      return;
+    }
+
     const staffId = staffInfo.id || staffInfo._id;
     if (!staffId) {
       alert('Staff ID not found');
@@ -1725,17 +1768,133 @@ const Dashboard = () => {
       const response = await fetch(getApiUrl(`/staff/${staffId}/today-work`), { 
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ todayWork })
+        body: JSON.stringify({ todayWork, employeeId: staffInfo.employeeId })
       });
       const result = await response.json();
       if (result.success) {
         // Update localStorage and state
         localStorage.setItem('staffInfo', JSON.stringify(result.data));
         syncStaffDataStates(result.data);
+      } else {
+        alert(result.message || 'Failed to delete task');
       }
     } catch (err) {
       console.error(err);
       alert('Failed to delete task');
+    }
+  };
+
+  const handleDeleteReporteeTask = async (memberId, taskIndex) => {
+    const staffInfo = JSON.parse(localStorage.getItem('staffInfo') || '{}');
+    const allowedEmployeeIds = ['RW-9752', 'RW-1702'];
+
+    if (!staffInfo.employeeId || !allowedEmployeeIds.includes(staffInfo.employeeId)) {
+      alert('Access Denied: Only employees with Employee ID RW-9752 or RW-1702 can remove team members\' daily work tasks.');
+      return;
+    }
+
+    const member = reportees.find(m => (m.id || m._id) === memberId);
+    if (!member) return;
+
+    const updatedTasks = (member.todayTasks || []).filter((_, i) => i !== taskIndex);
+    const todayWork = updatedTasks.map(t => t.name).join(', ');
+
+    try {
+      const response = await fetch(getApiUrl(`/staff/${memberId}/today-work`), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ todayWork, employeeId: staffInfo.employeeId })
+      });
+      const result = await response.json();
+      if (result.success) {
+        setReportees(prev => prev.map(m => {
+          if ((m.id || m._id) === memberId) {
+            return { ...m, todayTasks: updatedTasks };
+          }
+          return m;
+        }));
+      } else {
+        alert(result.message || 'Failed to remove task');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Failed to remove task');
+    }
+  };
+
+  const handleUpdateSatisfaction = async (memberId, level) => {
+    const staffInfo = JSON.parse(localStorage.getItem('staffInfo') || '{}');
+    const allowedEmployeeIds = ['RW-9752', 'RW-1702'];
+
+    if (!staffInfo.employeeId || !allowedEmployeeIds.includes(staffInfo.employeeId)) {
+      alert('Access Denied: Only employees with Employee ID RW-9752 or RW-1702 can mark satisfaction levels.');
+      return;
+    }
+
+    try {
+      const response = await fetch(getApiUrl(`/staff/${memberId}/satisfaction-level`), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ satisfactionLevel: level, employeeId: staffInfo.employeeId })
+      });
+      const result = await response.json();
+      if (result.success) {
+        setReportees(prev => prev.map(m => {
+          if ((m.id || m._id) === memberId) {
+            return { ...m, todaySatisfaction: level };
+          }
+          return m;
+        }));
+      } else {
+        alert(result.message || 'Failed to update satisfaction level');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Failed to update satisfaction level');
+    }
+  };
+
+  const handleSaveMemberComment = async (memberId) => {
+    const staffInfoLocal = JSON.parse(localStorage.getItem('staffInfo') || '{}');
+    const allowedEmployeeIds = ['RW-9752', 'RW-1702'];
+
+    if (!staffInfoLocal.employeeId || !allowedEmployeeIds.includes(staffInfoLocal.employeeId)) {
+      alert('Access Denied: Only employees with Employee ID RW-9752 or RW-1702 can add comments.');
+      return;
+    }
+
+    const commentText = memberComments[memberId] !== undefined 
+      ? memberComments[memberId] 
+      : (reportees.find(m => (m.id || m._id) === memberId)?.todayComment || '');
+
+    try {
+      const response = await fetch(getApiUrl(`/staff/${memberId}/today-comment`), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ comment: commentText, employeeId: staffInfoLocal.employeeId })
+      });
+      const result = await response.json();
+      if (result.success) {
+        setReportees(prev => prev.map(m => {
+          if ((m.id || m._id) === memberId) {
+            return { ...m, todayComment: commentText, commentUpdatedBy: staffInfoLocal.employeeId };
+          }
+          return m;
+        }));
+
+        const currentStaffId = staffInfoLocal.id || staffInfoLocal._id;
+        if (memberId === currentStaffId) {
+          const updatedLocal = { ...staffInfoLocal, todayComment: commentText, commentUpdatedBy: staffInfoLocal.employeeId };
+          localStorage.setItem('staffInfo', JSON.stringify(updatedLocal));
+          setStaffInfo(updatedLocal);
+        }
+        alert('Comment saved successfully!');
+      } else {
+        alert(result.message || 'Failed to save comment');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Failed to save comment');
     }
   };
 
@@ -1757,7 +1916,75 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="space-y-10 pb-12">
+    <div className={`space-y-10 pb-12 transition-all duration-500 rounded-[2.5rem] p-4 sm:p-6 ${
+      staffInfo.todaySatisfaction === 'red'
+        ? 'bg-gradient-to-br from-rose-950/20 via-red-900/15 to-rose-900/20 border-4 border-rose-600/60 shadow-[0_0_50px_rgba(225,29,72,0.25)]'
+        : staffInfo.todaySatisfaction === 'yellow'
+        ? 'bg-gradient-to-br from-amber-500/15 via-yellow-500/10 to-amber-600/15 border-4 border-amber-500/50 shadow-[0_0_30px_rgba(245,158,11,0.2)]'
+        : staffInfo.todaySatisfaction === 'green'
+        ? 'bg-gradient-to-br from-emerald-500/15 via-green-500/10 to-emerald-600/15 border-4 border-emerald-500/50 shadow-[0_0_30px_rgba(16,185,129,0.2)]'
+        : ''
+    }`}>
+      {/* Big Red Zone Warning Banner if satisfaction is RED */}
+      {staffInfo.todaySatisfaction === 'red' && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="p-6 rounded-3xl bg-gradient-to-r from-rose-600 via-red-600 to-rose-700 text-white font-bold flex flex-col md:flex-row items-center justify-between gap-4 shadow-2xl shadow-rose-600/40 border-2 border-rose-300/30"
+        >
+          <div className="flex items-center gap-4">
+            <span className="text-4xl animate-bounce">🚨</span>
+            <div>
+              <h3 className="text-xl font-black uppercase tracking-widest text-white">YOU ARE IN THE RED ZONE 🔴</h3>
+              <p className="text-sm text-rose-100 mt-1">Management has marked your daily work satisfaction as RED. Immediate attention and task progress required!</p>
+            </div>
+          </div>
+          <span className="text-xs font-black uppercase tracking-widest bg-white/20 backdrop-blur-md px-4 py-2 rounded-xl text-white border border-white/30 whitespace-nowrap">
+            RED ZONE ALERT
+          </span>
+        </motion.div>
+      )}
+
+      {/* Yellow Zone Notice Banner if satisfaction is YELLOW */}
+      {staffInfo.todaySatisfaction === 'yellow' && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="p-6 rounded-3xl bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 text-white font-bold flex flex-col md:flex-row items-center justify-between gap-4 shadow-2xl shadow-amber-500/30 border-2 border-amber-200/30"
+        >
+          <div className="flex items-center gap-4">
+            <span className="text-4xl">⚠️</span>
+            <div>
+              <h3 className="text-xl font-black uppercase tracking-widest text-white">YOU ARE IN THE YELLOW ZONE 🟡</h3>
+              <p className="text-sm text-amber-100 mt-1">Your work satisfaction is marked YELLOW. Please improve performance and complete your daily goals.</p>
+            </div>
+          </div>
+          <span className="text-xs font-black uppercase tracking-widest bg-white/20 backdrop-blur-md px-4 py-2 rounded-xl text-white border border-white/30 whitespace-nowrap">
+            YELLOW ZONE NOTICE
+          </span>
+        </motion.div>
+      )}
+
+      {/* Green Zone Success Banner if satisfaction is GREEN */}
+      {staffInfo.todaySatisfaction === 'green' && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="p-6 rounded-3xl bg-gradient-to-r from-emerald-600 via-green-600 to-emerald-700 text-white font-bold flex flex-col md:flex-row items-center justify-between gap-4 shadow-2xl shadow-emerald-600/30 border-2 border-emerald-200/30"
+        >
+          <div className="flex items-center gap-4">
+            <span className="text-4xl">🟢</span>
+            <div>
+              <h3 className="text-xl font-black uppercase tracking-widest text-white">GREEN ZONE EXCELLENCE 🟢</h3>
+              <p className="text-sm text-emerald-100 mt-1">Great job! Your work satisfaction for today is GREEN. Outstanding performance!</p>
+            </div>
+          </div>
+          <span className="text-xs font-black uppercase tracking-widest bg-white/20 backdrop-blur-md px-4 py-2 rounded-xl text-white border border-white/30 whitespace-nowrap">
+            SAFE ZONE ✅
+          </span>
+        </motion.div>
+      )}
+
       {/* Header */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
@@ -2455,8 +2682,73 @@ const Dashboard = () => {
       <motion.section 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="clay-card p-6 sm:p-8"
+        className={`clay-card p-6 sm:p-8 transition-all ${
+          staffInfo.todaySatisfaction === 'red' 
+            ? 'bg-rose-500/10 border-2 border-rose-500/50 shadow-xl shadow-rose-500/20' 
+            : staffInfo.todaySatisfaction === 'yellow'
+            ? 'bg-amber-500/10 border-2 border-amber-500/50 shadow-xl shadow-amber-500/20'
+            : staffInfo.todaySatisfaction === 'green'
+            ? 'bg-emerald-500/10 border-2 border-emerald-500/50 shadow-xl shadow-emerald-500/20'
+            : ''
+        }`}
       >
+        {/* Red Warning Banner if satisfaction is RED */}
+        {staffInfo.todaySatisfaction === 'red' && (
+          <div className="p-4 rounded-2xl bg-rose-600 text-white font-bold mb-6 flex items-center justify-between shadow-lg shadow-rose-600/30 animate-pulse">
+            <div className="flex items-center gap-3">
+              <span className="text-xl">🔴</span>
+              <div>
+                <h4 className="text-sm font-black uppercase tracking-wider">Work Satisfaction Warning (RED)</h4>
+                <p className="text-xs text-rose-100 mt-0.5">Your work satisfaction level for today has been marked RED by management. Please review your assigned tasks immediately.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Yellow Notice Banner if satisfaction is YELLOW */}
+        {staffInfo.todaySatisfaction === 'yellow' && (
+          <div className="p-4 rounded-2xl bg-amber-500 text-white font-bold mb-6 flex items-center justify-between shadow-lg shadow-amber-500/30">
+            <div className="flex items-center gap-3">
+              <span className="text-xl">🟡</span>
+              <div>
+                <h4 className="text-sm font-black uppercase tracking-wider">Work Satisfaction Status (YELLOW)</h4>
+                <p className="text-xs text-amber-100 mt-0.5">Your work satisfaction level for today is marked YELLOW. Keep pushing to complete all tasks!</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Green Success Banner if satisfaction is GREEN */}
+        {staffInfo.todaySatisfaction === 'green' && (
+          <div className="p-4 rounded-2xl bg-emerald-600 text-white font-bold mb-6 flex items-center justify-between shadow-lg shadow-emerald-600/30">
+            <div className="flex items-center gap-3">
+              <span className="text-xl">🟢</span>
+              <div>
+                <h4 className="text-sm font-black uppercase tracking-wider">Great Work! (GREEN)</h4>
+                <p className="text-xs text-emerald-100 mt-0.5">Your work satisfaction level for today has been marked GREEN by management. Outstanding performance!</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Management Comment Box on Employee Dashboard */}
+        {staffInfo.todayComment && (
+          <div className="p-5 rounded-2xl bg-white border-2 border-purple-500/30 text-black font-bold mb-6 shadow-md shadow-purple-500/5">
+            <div className="flex items-center gap-2 mb-2 text-black">
+              <MessageSquare size={18} className="text-purple-600" />
+              <h4 className="text-xs font-black uppercase tracking-widest text-black">Management Comment / Feedback</h4>
+            </div>
+            <p className="text-sm sm:text-base font-bold leading-relaxed pl-4 border-l-4 border-purple-600 text-black">
+              "{staffInfo.todayComment}"
+            </p>
+            {staffInfo.commentUpdatedBy && (
+              <p className="text-[10px] font-bold text-gray-600 mt-2 text-right">
+                — Added by Management ({staffInfo.commentUpdatedBy})
+              </p>
+            )}
+          </div>
+        )}
+
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
           <h3 className="text-lg sm:text-xl font-black text-black uppercase tracking-tight">Today's Work</h3>
         </div>
@@ -2559,7 +2851,7 @@ const Dashboard = () => {
                     </span>
                   )}
                 </div>
-                {!task.isExtra && (
+                {!task.isExtra && ['RW-9752', 'RW-1702'].includes(staffInfo.employeeId) && (
                   <button
                     onClick={() => handleDeleteTask(index)}
                     className="p-1.5 rounded-lg text-gray-500 hover:bg-red-500/10 hover:text-red-600 transition-all"
@@ -2713,33 +3005,131 @@ const Dashboard = () => {
                   </div>
                 </div>
 
+                {/* Satisfaction Level Section */}
+                <div className="flex items-center justify-between p-2.5 rounded-xl bg-black/5 border border-black/5 mb-4">
+                  <span className="text-[10px] font-black text-black uppercase tracking-wider">Satisfaction Level</span>
+                  {['RW-9752', 'RW-1702'].includes(staffInfo.employeeId) ? (
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => handleUpdateSatisfaction(member.id || member._id, 'red')}
+                        className={`px-2 py-1 rounded-lg text-[10px] font-black transition-all flex items-center gap-1 border-none cursor-pointer ${
+                          member.todaySatisfaction === 'red'
+                            ? 'bg-rose-500 text-white shadow-md shadow-rose-500/30 scale-105'
+                            : 'bg-rose-500/10 text-rose-600 hover:bg-rose-500/20'
+                        }`}
+                        title="Mark Red (Unsatisfied)"
+                      >
+                        🔴 Red
+                      </button>
+                      <button
+                        onClick={() => handleUpdateSatisfaction(member.id || member._id, 'yellow')}
+                        className={`px-2 py-1 rounded-lg text-[10px] font-black transition-all flex items-center gap-1 border-none cursor-pointer ${
+                          member.todaySatisfaction === 'yellow'
+                            ? 'bg-amber-500 text-white shadow-md shadow-amber-500/30 scale-105'
+                            : 'bg-amber-500/10 text-amber-600 hover:bg-amber-500/20'
+                        }`}
+                        title="Mark Yellow (Average)"
+                      >
+                        🟡 Yellow
+                      </button>
+                      <button
+                        onClick={() => handleUpdateSatisfaction(member.id || member._id, 'green')}
+                        className={`px-2 py-1 rounded-lg text-[10px] font-black transition-all flex items-center gap-1 border-none cursor-pointer ${
+                          member.todaySatisfaction === 'green'
+                            ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30 scale-105'
+                            : 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20'
+                        }`}
+                        title="Mark Green (Satisfied)"
+                      >
+                        🟢 Green
+                      </button>
+                    </div>
+                  ) : (
+                    <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-lg border ${
+                      member.todaySatisfaction === 'red' ? 'bg-rose-500/10 text-rose-600 border-rose-500/20' :
+                      member.todaySatisfaction === 'yellow' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' :
+                      member.todaySatisfaction === 'green' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' :
+                      'bg-gray-100 text-gray-500 border-gray-200'
+                    }`}>
+                      {member.todaySatisfaction === 'red' ? '🔴 Red' :
+                       member.todaySatisfaction === 'yellow' ? '🟡 Yellow' :
+                       member.todaySatisfaction === 'green' ? '🟢 Green' : 'Not Set'}
+                    </span>
+                  )}
+                </div>
+
+                {/* Manager Comment Section */}
+                {['RW-9752', 'RW-1702'].includes(staffInfo.employeeId) ? (
+                  <div className="p-3 rounded-2xl bg-white border border-gray-300 shadow-sm mb-4 space-y-2">
+                    <label className="text-[10px] font-black text-black uppercase tracking-widest block flex items-center gap-1.5">
+                      <MessageSquare size={14} className="text-purple-600" /> Add Comment / Feedback
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={memberComments[member.id || member._id] !== undefined ? memberComments[member.id || member._id] : (member.todayComment || '')}
+                        onChange={(e) => setMemberComments({ ...memberComments, [member.id || member._id]: e.target.value })}
+                        onKeyDown={(e) => e.key === 'Enter' && handleSaveMemberComment(member.id || member._id)}
+                        placeholder="Type comment for employee..."
+                        className="flex-1 bg-white border border-gray-300 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-black placeholder:text-gray-500 outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/20 transition-all shadow-sm"
+                      />
+                      <button
+                        onClick={() => handleSaveMemberComment(member.id || member._id)}
+                        className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl text-[10px] sm:text-xs uppercase tracking-widest transition-all border-none cursor-pointer shadow-md shadow-purple-600/20 active:scale-95"
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  member.todayComment && (
+                    <div className="p-3 rounded-2xl bg-white border border-purple-200 shadow-sm mb-4 space-y-1">
+                      <span className="text-[10px] font-black text-black uppercase tracking-widest flex items-center gap-1">
+                        <MessageSquare size={12} className="text-purple-600" /> Management Comment
+                      </span>
+                      <p className="text-xs sm:text-sm font-bold text-black italic">"{member.todayComment}"</p>
+                    </div>
+                  )
+                )}
+
                 {/* Today's Tasks */}
                 <div>
                   <h5 className="text-[10px] font-black text-black uppercase tracking-widest mb-3 border-b border-black/5 pb-1">Today's Assigned Tasks</h5>
                   {member.todayTasks && member.todayTasks.length > 0 ? (
                     <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                       {member.todayTasks.map((task, idx) => (
-                        <div key={idx} className="flex items-center gap-2.5 p-2 rounded-xl bg-white/5 border border-black/5 hover:bg-white/10 transition-colors">
-                          <div className={`w-5 h-5 rounded-lg flex items-center justify-center transition-all ${
-                            task.completed 
-                              ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20' 
-                              : 'bg-black/5 border border-black/10 text-gray-400'
-                          }`}>
-                            {task.completed ? (
-                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                <polyline points="20 6 9 17 4 12"></polyline>
-                              </svg>
-                            ) : (
-                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                <circle cx="12" cy="12" r="10"></circle>
-                              </svg>
-                            )}
+                        <div key={idx} className="flex items-center justify-between gap-2.5 p-2 rounded-xl bg-white/5 border border-black/5 hover:bg-white/10 transition-colors">
+                          <div className="flex items-center gap-2.5 flex-1">
+                            <div className={`w-5 h-5 rounded-lg flex items-center justify-center transition-all ${
+                              task.completed 
+                                ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20' 
+                                : 'bg-black/5 border border-black/10 text-gray-400'
+                            }`}>
+                              {task.completed ? (
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                              ) : (
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                  <circle cx="12" cy="12" r="10"></circle>
+                                </svg>
+                              )}
+                            </div>
+                            <span className={`text-xs font-bold transition-all ${
+                              task.completed ? 'text-gray-500 line-through' : 'text-black'
+                            }`}>
+                              {task.name}
+                            </span>
                           </div>
-                          <span className={`text-xs font-bold transition-all ${
-                            task.completed ? 'text-gray-500 line-through' : 'text-black'
-                          }`}>
-                            {task.name}
-                          </span>
+                          {['RW-9752', 'RW-1702'].includes(staffInfo.employeeId) && (
+                            <button
+                              onClick={() => handleDeleteReporteeTask(member.id || member._id, idx)}
+                              className="p-1 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-500/10 transition-all cursor-pointer border-none bg-transparent"
+                              title="Remove task"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
                         </div>
                       ))}
                     </div>

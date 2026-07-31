@@ -40,6 +40,47 @@ const STANDARD_HOURS_PER_DAY = 8.5;
 const DAYS_IN_MONTH = 30;
 const EXPECTED_MONTHLY_HOURS = STANDARD_HOURS_PER_DAY * DAYS_IN_MONTH;
 
+const CALCULATION_START_DATE = new Date(2026, 6, 1); // July 1, 2026
+
+const get30DaySequenceDates = (year, monthIndex, createdAt = null) => {
+  const dates = [];
+  const prevMonthLastDay = new Date(year, monthIndex, 0);
+  const prevMonthDays = prevMonthLastDay.getDate();
+  
+  if (prevMonthDays === 31) {
+    const prevYear = prevMonthLastDay.getFullYear();
+    const prevMonth = prevMonthLastDay.getMonth();
+    dates.push(new Date(prevYear, prevMonth, 31));
+    for (let d = 1; d <= 29; d++) {
+      dates.push(new Date(year, monthIndex, d));
+    }
+  } else {
+    const currentMonthLastDay = new Date(year, monthIndex + 1, 0).getDate();
+    const endDay = Math.min(30, currentMonthLastDay);
+    for (let d = 1; d <= endDay; d++) {
+      dates.push(new Date(year, monthIndex, d));
+    }
+  }
+
+  let filtered = dates.filter(d => {
+    const copy = new Date(d);
+    copy.setHours(0, 0, 0, 0);
+    return copy >= CALCULATION_START_DATE;
+  });
+
+  if (createdAt) {
+    const created = new Date(createdAt);
+    created.setHours(0, 0, 0, 0);
+    filtered = filtered.filter(d => {
+      const copy = new Date(d);
+      copy.setHours(0, 0, 0, 0);
+      return copy >= created;
+    });
+  }
+
+  return filtered;
+};
+
 const parseTotalHours = (str) => {
   if (!str || str === '-') return 0;
   const hM = str.match(/(\d+)\s*h/i);
@@ -54,16 +95,17 @@ const calculatePayout = (emp) => {
   const currentMonth = today.getMonth();
   const currentYear = today.getFullYear();
 
-  const createdAt = emp.createdAt ? new Date(emp.createdAt) : null;
-  const startDay = (
-    createdAt &&
-    createdAt.getMonth() === currentMonth &&
-    createdAt.getFullYear() === currentYear
-  ) ? createdAt.getDate() : 1;
+  const createdAt = emp.createdAt || emp.joiningDate;
+  const sequenceDates = get30DaySequenceDates(currentYear, currentMonth, createdAt);
+  
+  const todayEnd = new Date();
+  todayEnd.setHours(23, 59, 59, 999);
+
+  const validSequenceDates = sequenceDates.filter(d => d <= todayEnd);
+  const seqDateStrings = new Set(validSequenceDates.map(d => d.toDateString()));
 
   const monthlyClockRecords = (emp.clock || []).filter(r => {
-    const d = new Date(r.date);
-    return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+    return seqDateStrings.has(new Date(r.date).toDateString());
   });
 
   let totalHours = 0;
@@ -77,43 +119,51 @@ const calculatePayout = (emp) => {
   const creditedDates = new Set(monthlyClockRecords.map(r => new Date(r.date).toDateString()));
 
   // Sundays
-  for (let day = startDay; day <= today.getDate(); day++) {
-    const d = new Date(currentYear, currentMonth, day);
-    if (d.getDay() === 0 && !creditedDates.has(d.toDateString())) {
+  validSequenceDates.forEach(d => {
+    const dStr = d.toDateString();
+    if (d.getDay() === 0 && !creditedDates.has(dStr)) {
       totalHours += STANDARD_HOURS_PER_DAY;
-      creditedDates.add(d.toDateString());
+      creditedDates.add(dStr);
     }
-  }
+  });
 
   // Admin-declared leaves
   (emp.leaves || []).forEach(leave => {
     const d = new Date(leave.date);
-    if (d.getMonth() === currentMonth && d.getFullYear() === currentYear && d <= today && !creditedDates.has(d.toDateString())) {
-      totalHours += STANDARD_HOURS_PER_DAY;
-      creditedDates.add(d.toDateString());
+    const dStr = d.toDateString();
+    if (seqDateStrings.has(dStr)) {
+      if (!creditedDates.has(dStr)) {
+        totalHours += STANDARD_HOURS_PER_DAY;
+        creditedDates.add(dStr);
+      }
     }
   });
 
   // Attendance 'On Leave'
   (emp.attendance || []).forEach(att => {
-    const d = new Date(att.date);
-    if (att.status === 'On Leave' && d.getMonth() === currentMonth && d.getFullYear() === currentYear && d <= today && !creditedDates.has(d.toDateString())) {
-      totalHours += STANDARD_HOURS_PER_DAY;
-      creditedDates.add(d.toDateString());
+    if (att.status === 'On Leave') {
+      const d = new Date(att.date);
+      const dStr = d.toDateString();
+      if (seqDateStrings.has(dStr)) {
+        if (!creditedDates.has(dStr)) {
+          totalHours += STANDARD_HOURS_PER_DAY;
+          creditedDates.add(dStr);
+        }
+      }
     }
   });
 
   // Absent days
-  const absentDays = [];
-  for (let day = startDay; day <= today.getDate(); day++) {
-    const d = new Date(currentYear, currentMonth, day);
-    if (!creditedDates.has(d.toDateString())) absentDays.push(d);
-  }
+  const absentDays = validSequenceDates.filter(d => {
+    if (d.getDay() === 0) return false;
+    return !creditedDates.has(d.toDateString());
+  });
 
   // Half-days
   const halfDayRecords = (emp.attendance || []).filter(att => {
+    if (att.status !== 'Half-Day') return false;
     const d = new Date(att.date);
-    return att.status === 'Half-Day' && d.getMonth() === currentMonth && d.getFullYear() === currentYear && d <= today;
+    return seqDateStrings.has(d.toDateString());
   });
   const halfDayLeaveUnits = Math.floor(halfDayRecords.length / 2);
 

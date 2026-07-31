@@ -100,75 +100,90 @@ const formatSelectedDateNice = (dateInputStr) => {
   return d.toLocaleDateString('default', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 };
 
-const calculateDetailedMonthData = (staff, monthStr) => {
-  if (!staff || !monthStr) return null;
+const CALCULATION_START_DATE = new Date(2026, 6, 1); // July 1, 2026
 
-  const cleanMonth = monthStr.replace(/\s*\(Current\)/i, '').trim();
+// Helper to calculate exact 30-day sequence dates for any given month (year, monthIndex)
+// Rule:
+// - Payout cycle is strictly a 30-day circle.
+// - If the previous month had 31 days (Jan, Mar, May, Jul, Aug, Oct, Dec), Day 31 of the previous month rolls over as Day 1 of the current month cycle.
+//   Cycle dates: Day 31 of prev month + Days 1..29 of current month = 30 days total.
+// - If the previous month did not have 31 days (Feb, Apr, Jun, Sep, Nov), cycle dates are Days 1..30 of current month (or up to last day if Feb).
+// - Day 31 of current month (if current month has 31 days) rolls over to next month's cycle.
+// - Records/dates before July 1, 2026 are not used for calculations.
+const get30DaySequenceDates = (year, monthIndex, createdAt = null) => {
+  const dates = [];
+  const prevMonthLastDay = new Date(year, monthIndex, 0);
+  const prevMonthDays = prevMonthLastDay.getDate();
+  
+  if (prevMonthDays === 31) {
+    const prevYear = prevMonthLastDay.getFullYear();
+    const prevMonth = prevMonthLastDay.getMonth();
+    dates.push(new Date(prevYear, prevMonth, 31));
+    for (let d = 1; d <= 29; d++) {
+      dates.push(new Date(year, monthIndex, d));
+    }
+  } else {
+    const currentMonthLastDay = new Date(year, monthIndex + 1, 0).getDate();
+    const endDay = Math.min(30, currentMonthLastDay);
+    for (let d = 1; d <= endDay; d++) {
+      dates.push(new Date(year, monthIndex, d));
+    }
+  }
 
-  const paidHistory = (staff.salaryHistory || []).find(h => {
-    const hCleaned = h.month.replace(/\s*\(Current\)/i, '').trim();
-    return hCleaned === cleanMonth;
+  // Filter out any date before 1 July 2026
+  let filtered = dates.filter(d => {
+    const copy = new Date(d);
+    copy.setHours(0, 0, 0, 0);
+    return copy >= CALCULATION_START_DATE;
   });
 
-  const baseSalary = paidHistory ? paidHistory.baseSalary : (staff.monthlySalary || 0);
-  const STANDARD_HOURS_PER_DAY = 8.5;
-  const EXPECTED_MONTHLY_HOURS = STANDARD_HOURS_PER_DAY * 30;
-  const hourlyRate = baseSalary / EXPECTED_MONTHLY_HOURS;
+  if (createdAt) {
+    const created = new Date(createdAt);
+    created.setHours(0, 0, 0, 0);
+    filtered = filtered.filter(d => {
+      const copy = new Date(d);
+      copy.setHours(0, 0, 0, 0);
+      return copy >= created;
+    });
+  }
 
-  const match = cleanMonth.match(/([A-Za-z]+)\s+(\d+)/);
-  if (!match) return null;
-  const monthName = match[1];
-  const year = parseInt(match[2]);
-  const monthIndex = new Date(Date.parse(monthName + " 1, 2012")).getMonth();
+  return filtered;
+};
+
+const calculatePayoutForMonth = (staffInfo, year, monthIndex, paidHistory = null) => {
+  if (!staffInfo) return null;
+  const baseSalary = paidHistory ? paidHistory.baseSalary : (staffInfo.monthlySalary || 0);
+  const STANDARD_HOURS_PER_DAY = 8.5;
+  const EXPECTED_MONTHLY_HOURS = STANDARD_HOURS_PER_DAY * 30; // 255 hrs
+  const hourlyRate = baseSalary / EXPECTED_MONTHLY_HOURS;
 
   const today = new Date();
   const isCurrentMonth = today.getMonth() === monthIndex && today.getFullYear() === year;
 
-  let daysToCount = new Date(year, monthIndex + 1, 0).getDate();
-  if (isCurrentMonth) {
-    daysToCount = today.getDate();
-  }
+  const createdAt = staffInfo.createdAt || staffInfo.joiningDate;
+  const sequenceDates = get30DaySequenceDates(year, monthIndex, createdAt);
+  
+  const todayEnd = new Date();
+  todayEnd.setHours(23, 59, 59, 999);
 
-  const expectedMinutes = daysToCount * STANDARD_HOURS_PER_DAY * 60;
+  // For current month, only evaluate sequence dates up to today (future dates haven't happened yet)
+  const validSequenceDates = isCurrentMonth
+    ? sequenceDates.filter(d => d <= todayEnd)
+    : sequenceDates;
 
-  if (paidHistory) {
-    const presents = 30 - (paidHistory.totalLeaves + paidHistory.totalHalfDays);
-    const leaves = paidHistory.totalLeaves;
-    const halfDays = paidHistory.totalHalfDays;
-    const finalPayout = paidHistory.payoutSalary;
-    const deduction = baseSalary - finalPayout;
-    const attendancePercentage = Math.round(((30 - leaves - (halfDays * 0.5)) / 30) * 100);
-
-    return {
-      expectedMinutes,
-      actualMinutes: presents * STANDARD_HOURS_PER_DAY * 60,
-      differenceMinutes: 0,
-      daysToCount,
-      isCurrentMonth,
-      presents,
-      leaves,
-      halfDays,
-      casualLeaveUsed: !!paidHistory.casualLeavesUsed,
-      deduction,
-      finalPayout,
-      attendancePercentage: Math.min(100, attendancePercentage),
-      totalHoursWorked: '-',
-      hourlyRate: Math.round(hourlyRate * 100) / 100,
-      baseSalary
-    };
-  }
-
-  const monthlyClockRecords = (staff.clock || []).filter(r => {
-    const d = new Date(r.date);
-    return d.getMonth() === monthIndex && d.getFullYear() === year;
-  });
+  const seqDateStrings = new Set(validSequenceDates.map(d => d.toDateString()));
 
   const parseTotalHours = (str) => {
     if (!str || str === '-') return 0;
     const h = str.match(/(\d+)\s*h/i);
     const m = str.match(/(\d+)\s*m/i);
-    return (h ? parseInt(h[1]) : 0) + (m ? parseInt(m[1]) / 60 : 0);
+    return (h ? parseInt(h[1], 10) : 0) + (m ? parseInt(m[1], 10) / 60 : 0);
   };
+
+  // 1. Sum actual clock hours from records within validSequenceDates
+  const monthlyClockRecords = (staffInfo.clock || []).filter(r => {
+    return seqDateStrings.has(new Date(r.date).toDateString());
+  });
 
   let totalHoursWorked = 0;
   monthlyClockRecords.forEach(r => {
@@ -184,57 +199,56 @@ const calculateDetailedMonthData = (staff, monthStr) => {
 
   const creditedDates = new Set(monthlyClockRecords.map(r => new Date(r.date).toDateString()));
 
-  const createdAt = staff.createdAt ? new Date(staff.createdAt) : null;
-  const startDay = (
-    createdAt &&
-    createdAt.getMonth() === monthIndex &&
-    createdAt.getFullYear() === year
-  ) ? createdAt.getDate() : 1;
-
-  const endDay = isCurrentMonth ? today.getDate() : new Date(year, monthIndex + 1, 0).getDate();
-  for (let day = startDay; day <= endDay; day++) {
-    const d = new Date(year, monthIndex, day);
-    if (d.getDay() === 0 && !creditedDates.has(d.toDateString())) {
+  // 2. Credit Sundays in validSequenceDates
+  validSequenceDates.forEach(d => {
+    const dStr = d.toDateString();
+    if (d.getDay() === 0 && !creditedDates.has(dStr)) {
       totalHoursWorked += STANDARD_HOURS_PER_DAY;
-      creditedDates.add(d.toDateString());
+      creditedDates.add(dStr);
     }
-  }
+  });
 
-  (staff.leaves || []).forEach(leave => {
+  // 3. Credit admin leaves in validSequenceDates
+  (staffInfo.leaves || []).forEach(leave => {
     const ld = new Date(leave.date);
-    if (ld.getMonth() === monthIndex && ld.getFullYear() === year) {
-      if (isCurrentMonth && ld > today) return;
-      if (!creditedDates.has(ld.toDateString())) {
+    const ldStr = ld.toDateString();
+    if (seqDateStrings.has(ldStr)) {
+      if (!creditedDates.has(ldStr)) {
         totalHoursWorked += STANDARD_HOURS_PER_DAY;
-        creditedDates.add(ld.toDateString());
+        creditedDates.add(ldStr);
       }
     }
   });
 
-  (staff.attendance || []).forEach(att => {
-    const ld = new Date(att.date);
-    if (att.status === 'On Leave' && ld.getMonth() === monthIndex && ld.getFullYear() === year) {
-      if (isCurrentMonth && ld > today) return;
-      if (!creditedDates.has(ld.toDateString())) {
-        totalHoursWorked += STANDARD_HOURS_PER_DAY;
-        creditedDates.add(ld.toDateString());
+  // Attendance 'On Leave' in validSequenceDates
+  (staffInfo.attendance || []).forEach(att => {
+    if (att.status === 'On Leave') {
+      const ad = new Date(att.date);
+      const adStr = ad.toDateString();
+      if (seqDateStrings.has(adStr)) {
+        if (!creditedDates.has(adStr)) {
+          totalHoursWorked += STANDARD_HOURS_PER_DAY;
+          creditedDates.add(adStr);
+        }
       }
     }
   });
 
-  const absentDaysList = [];
-  for (let day = startDay; day <= endDay; day++) {
-    const d = new Date(year, monthIndex, day);
-    if (d.getDay() === 0) continue;
-    if (!creditedDates.has(d.toDateString())) absentDaysList.push(d);
-  }
+  // 4. Absent days list in validSequenceDates (excluding Sundays and credited dates)
+  const absentDaysList = validSequenceDates.filter(d => {
+    if (d.getDay() === 0) return false;
+    return !creditedDates.has(d.toDateString());
+  });
 
-  const halfDayRecords = (staff.attendance || []).filter(att => {
-    const d = new Date(att.date);
-    return att.status === 'Half-Day' && d.getMonth() === monthIndex && d.getFullYear() === year && (!isCurrentMonth || d <= today);
+  // 5. Half-day records in validSequenceDates
+  const halfDayRecords = (staffInfo.attendance || []).filter(att => {
+    if (att.status !== 'Half-Day') return false;
+    const ad = new Date(att.date);
+    return seqDateStrings.has(ad.toDateString());
   });
   const halfDayLeaveUnits = Math.floor(halfDayRecords.length / 2);
 
+  // 6. Apply 1 free casual leave per sequence ONLY if there is an actual absent day or pair of half days
   let casualLeaveUsed = false;
   if (absentDaysList.length > 0) {
     totalHoursWorked += STANDARD_HOURS_PER_DAY;
@@ -246,33 +260,64 @@ const calculateDetailedMonthData = (staff, monthStr) => {
       const cr = monthlyClockRecords.find(r => new Date(r.date).toDateString() === hdDate.toDateString());
       const actualHrs = cr ? parseTotalHours(cr.totalHours) : 0;
       const halfTarget = STANDARD_HOURS_PER_DAY / 2;
-      if (actualHrs < halfTarget) totalHoursWorked += halfTarget - actualHrs;
+      if (actualHrs < halfTarget) {
+        totalHoursWorked += halfTarget - actualHrs;
+      }
     }
     casualLeaveUsed = true;
   }
 
   const presents = monthlyClockRecords.length;
-  const finalPayout = Math.round(hourlyRate * totalHoursWorked);
+  const fullLeaves = Math.max(0, absentDaysList.length - (casualLeaveUsed && absentDaysList.length > 0 ? 1 : 0));
+  const calculatedPayout = Math.round(hourlyRate * totalHoursWorked);
+  const finalPayout = paidHistory ? paidHistory.payoutSalary : calculatedPayout;
   const deduction = Math.max(0, baseSalary - finalPayout);
-  const attendancePercentage = Math.round((totalHoursWorked / EXPECTED_MONTHLY_HOURS) * 100);
+
+  const daysToCount = validSequenceDates.length;
+  const expectedMinutes = daysToCount * STANDARD_HOURS_PER_DAY * 60;
+  const actualMinutes = totalHoursWorked * 60;
+  const differenceMinutes = actualMinutes - expectedMinutes;
+  const attendancePercentage = Math.round((totalHoursWorked / (daysToCount * STANDARD_HOURS_PER_DAY || 1)) * 100);
 
   return {
     expectedMinutes,
-    actualMinutes: totalHoursWorked * 60,
-    differenceMinutes: (totalHoursWorked * 60) - expectedMinutes,
+    actualMinutes,
+    differenceMinutes,
     daysToCount,
     isCurrentMonth,
     presents,
-    leaves: Math.max(0, absentDaysList.length - (casualLeaveUsed && absentDaysList.length > 0 ? 1 : 0)),
+    daysWorked: presents,
+    leaves: fullLeaves,
+    fullLeaves,
     halfDays: halfDayRecords.length,
     casualLeaveUsed: !!casualLeaveUsed,
     deduction,
     finalPayout,
+    payout: finalPayout,
     attendancePercentage: Math.min(100, attendancePercentage),
     totalHoursWorked: Math.round(totalHoursWorked * 100) / 100,
     hourlyRate: Math.round(hourlyRate * 100) / 100,
-    baseSalary
+    baseSalary,
+    sequenceDates
   };
+};
+
+const calculateDetailedMonthData = (staff, monthStr) => {
+  if (!staff || !monthStr) return null;
+  const cleanMonth = monthStr.replace(/\s*\(Current\)/i, '').trim();
+
+  const paidHistory = (staff.salaryHistory || []).find(h => {
+    const hCleaned = h.month.replace(/\s*\(Current\)/i, '').trim();
+    return hCleaned === cleanMonth;
+  });
+
+  const match = cleanMonth.match(/([A-Za-z]+)\s+(\d+)/);
+  if (!match) return null;
+  const monthName = match[1];
+  const year = parseInt(match[2]);
+  const monthIndex = new Date(Date.parse(monthName + " 1, 2012")).getMonth();
+
+  return calculatePayoutForMonth(staff, year, monthIndex, paidHistory);
 };
 
 const calculateMonthPerformance = (staff, monthStr) => {
@@ -786,162 +831,6 @@ const StaffPerformance = ({ staffId, onBack }) => {
     }
   };
 
-  const performanceReport = useMemo(() => {
-    if (!staff) return null;
-
-    // Use historical data from database if available
-    const history = (staff.salaryHistory || []).map(h => ({
-      month: h.month,
-      presents: 30 - (h.totalLeaves + h.totalHalfDays), // Approximate
-      leaves: h.totalLeaves,
-      halfDays: h.totalHalfDays,
-      casualLeaveUsed: h.casualLeavesUsed, // Fix field name typo (plural)
-      deduction: h.baseSalary - h.payoutSalary,
-      finalPayout: h.payoutSalary,
-      attendancePercentage: Math.round(((30 - h.totalLeaves - (h.totalHalfDays * 0.5)) / 30) * 100)
-    }));
-
-    // Current month real-time calculation
-    const currentMonthName = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
-    
-    // Check if current month is already in history (already paid)
-    const isCurrentMonthPaid = history.some(h => h.month === currentMonthName);
-
-    if (!isCurrentMonthPaid) {
-      const baseSalary = staff.monthlySalary || 0;
-      const STANDARD_HOURS_PER_DAY = 8.5;
-      const EXPECTED_MONTHLY_HOURS = STANDARD_HOURS_PER_DAY * 30; // 255 hrs
-      const hourlyRate = baseSalary / EXPECTED_MONTHLY_HOURS;
-
-      const today = new Date();
-      const currentMonth = today.getMonth();
-      const currentYear = today.getFullYear();
-
-      // Start from createdAt date if added this month, else day 1
-      const createdAt = staff.createdAt ? new Date(staff.createdAt) : null;
-      const startDay = (
-        createdAt &&
-        createdAt.getMonth() === currentMonth &&
-        createdAt.getFullYear() === currentYear
-      ) ? createdAt.getDate() : 1;
-
-      const parseTotalHours = (str) => {
-        if (!str || str === '-') return 0;
-        const h = str.match(/(\d+)\s*h/i);
-        const m = str.match(/(\d+)\s*m/i);
-        return (h ? parseInt(h[1]) : 0) + (m ? parseInt(m[1]) / 60 : 0);
-      };
-
-      // Step 1: Sum actual clock hours
-      const monthlyClockRecords = (staff.clock || []).filter(r => {
-        const d = new Date(r.date);
-        return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
-      });
-      let totalHoursWorked = 0;
-      monthlyClockRecords.forEach(r => {
-        const actualHrs = parseTotalHours(r.totalHours);
-        if (actualHrs > 9) {
-          totalHoursWorked += 8.5 + (actualHrs - 9);
-        } else if (actualHrs >= 8.5) {
-          totalHoursWorked += 8.5;
-        } else {
-          totalHoursWorked += actualHrs;
-        }
-      });
-
-      const creditedDates = new Set(monthlyClockRecords.map(r => new Date(r.date).toDateString()));
-
-      // Step 2: Credit Sundays
-      for (let day = startDay; day <= today.getDate(); day++) {
-        const d = new Date(currentYear, currentMonth, day);
-        if (d.getDay() === 0 && !creditedDates.has(d.toDateString())) {
-          totalHoursWorked += STANDARD_HOURS_PER_DAY;
-          creditedDates.add(d.toDateString());
-        }
-      }
-
-      // Step 3: Credit admin-declared leaves
-      (staff.leaves || []).forEach(leave => {
-        const ld = new Date(leave.date);
-        if (ld.getMonth() === currentMonth && ld.getFullYear() === currentYear && ld <= today && !creditedDates.has(ld.toDateString())) {
-          totalHoursWorked += STANDARD_HOURS_PER_DAY;
-          creditedDates.add(ld.toDateString());
-        }
-      });
-
-      // Credit 8.5 hrs for manual daily attendance marked as 'On Leave'
-      (staff.attendance || []).forEach(att => {
-        const attDate = new Date(att.date);
-        if (
-          att.status === 'On Leave' &&
-          attDate.getMonth() === currentMonth &&
-          attDate.getFullYear() === currentYear &&
-          attDate <= today &&
-          !creditedDates.has(attDate.toDateString())
-        ) {
-          totalHoursWorked += STANDARD_HOURS_PER_DAY;
-          creditedDates.add(attDate.toDateString());
-        }
-      });
-
-      // Step 4: Find absent days
-      const absentDaysList = [];
-      for (let day = startDay; day <= today.getDate(); day++) {
-        const d = new Date(currentYear, currentMonth, day);
-        if (!creditedDates.has(d.toDateString())) absentDaysList.push(d);
-      }
-
-      // Step 5: Find half-days from attendance
-      const halfDayRecords = (staff.attendance || []).filter(att => {
-        const d = new Date(att.date);
-        return att.status === 'Half-Day' && d.getMonth() === currentMonth && d.getFullYear() === currentYear && d <= today;
-      });
-      const halfDayLeaveUnits = Math.floor(halfDayRecords.length / 2);
-
-      // Step 6: Apply 1 free casual leave
-      let casualLeaveUsed = false;
-      if (absentDaysList.length > 0) {
-        totalHoursWorked += STANDARD_HOURS_PER_DAY;
-        creditedDates.add(absentDaysList[0].toDateString());
-        casualLeaveUsed = true;
-      } else if (halfDayLeaveUnits > 0) {
-        for (let i = 0; i < 2; i++) {
-          const hdDate = new Date(halfDayRecords[i].date);
-          const cr = monthlyClockRecords.find(r => new Date(r.date).toDateString() === hdDate.toDateString());
-          const actualHrs = cr ? parseTotalHours(cr.totalHours) : 0;
-          const halfTarget = STANDARD_HOURS_PER_DAY / 2;
-          if (actualHrs < halfTarget) totalHoursWorked += halfTarget - actualHrs;
-        }
-        casualLeaveUsed = true;
-      }
-
-      const finalPayout = Math.round(hourlyRate * totalHoursWorked);
-      const deduction = Math.max(0, baseSalary - finalPayout);
-      const daysWorked = monthlyClockRecords.length;
-      const presents = daysWorked;
-      const fullLeaves = absentDaysList.length;
-      const halfDays = halfDayRecords.length;
-      const attendancePercentage = Math.round((totalHoursWorked / EXPECTED_MONTHLY_HOURS) * 100);
-
-      history.push({
-        month: currentMonthName + " (Current)",
-        presents,
-        leaves: fullLeaves,
-        halfDays,
-        casualLeaveUsed,
-        deduction,
-        finalPayout,
-        attendancePercentage,
-        // hours-based extras for display
-        totalHoursWorked: Math.round(totalHoursWorked * 100) / 100,
-        hourlyRate: Math.round(hourlyRate * 100) / 100,
-        baseSalary
-      });
-    }
-
-    return history.reverse();
-  }, [staff]);
-
   const [selectedReportMonth, setSelectedReportMonth] = useState('');
 
   const availableMonths = useMemo(() => {
@@ -953,42 +842,40 @@ const StaffPerformance = ({ staffId, onBack }) => {
     const currentMonthName = now.toLocaleString('default', { month: 'long', year: 'numeric' });
     months.add(currentMonthName);
 
-    (staff.clock || []).forEach(r => {
-      if (r.date) {
-        const d = new Date(r.date);
+    const addDateMonth = (dateInput) => {
+      if (!dateInput) return;
+      const d = new Date(dateInput);
+      if (isNaN(d.getTime())) return;
+      const check = new Date(d);
+      check.setHours(0, 0, 0, 0);
+      if (check < CALCULATION_START_DATE) return;
+
+      if (d.getDate() === 31) {
+        const nextMonth = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+        months.add(nextMonth.toLocaleString('default', { month: 'long', year: 'numeric' }));
+      } else {
         months.add(d.toLocaleString('default', { month: 'long', year: 'numeric' }));
       }
-    });
+    };
 
+    (staff.clock || []).forEach(r => addDateMonth(r.date));
     (staff.salaryHistory || []).forEach(h => {
       if (h.month) {
-        const cleaned = h.month.replace(/\s*\(Current\)/i, '').trim();
-        months.add(cleaned);
+        months.add(h.month.replace(/\s*\(Current\)/i, '').trim());
       }
     });
+    (staff.attendance || []).forEach(a => addDateMonth(a.date));
+    (staff.leaves || []).forEach(l => addDateMonth(l.date));
+    (staff.work || []).forEach(w => addDateMonth(w.date));
 
-    (staff.attendance || []).forEach(a => {
-      if (a.date) {
-        const d = new Date(a.date);
-        months.add(d.toLocaleString('default', { month: 'long', year: 'numeric' }));
-      }
-    });
-
-    (staff.leaves || []).forEach(l => {
-      if (l.date) {
-        const d = new Date(l.date);
-        months.add(d.toLocaleString('default', { month: 'long', year: 'numeric' }));
-      }
-    });
-
-    (staff.work || []).forEach(w => {
-      if (w.date) {
-        const d = new Date(w.date);
-        months.add(d.toLocaleString('default', { month: 'long', year: 'numeric' }));
-      }
-    });
-
-    const sortedMonths = Array.from(months).sort((a, b) => {
+    const sortedMonths = Array.from(months).filter(mStr => {
+      const match = mStr.match(/([A-Za-z]+)\s+(\d+)/);
+      if (!match) return false;
+      const mName = match[1];
+      const yr = parseInt(match[2]);
+      const mIdx = new Date(Date.parse(mName + " 1, 2012")).getMonth();
+      return yr > 2026 || (yr === 2026 && mIdx >= 6);
+    }).sort((a, b) => {
       const dateA = new Date(Date.parse(a + " 1"));
       const dateB = new Date(Date.parse(b + " 1"));
       return dateB.getTime() - dateA.getTime();
@@ -996,6 +883,39 @@ const StaffPerformance = ({ staffId, onBack }) => {
 
     return sortedMonths;
   }, [staff]);
+
+  const performanceReport = useMemo(() => {
+    if (!staff || availableMonths.length === 0) return [];
+
+    const monthList = [];
+
+    availableMonths.forEach(mStr => {
+      const match = mStr.match(/([A-Za-z]+)\s+(\d+)/);
+      if (match) {
+        const monthName = match[1];
+        const year = parseInt(match[2]);
+        const monthIndex = new Date(Date.parse(monthName + " 1, 2012")).getMonth();
+
+        const paidHistory = (staff.salaryHistory || []).find(h => {
+          const hCleaned = h.month.replace(/\s*\(Current\)/i, '').trim();
+          return hCleaned === mStr;
+        });
+
+        const metrics = calculatePayoutForMonth(staff, year, monthIndex, paidHistory);
+        if (metrics) {
+          const today = new Date();
+          const isCurrent = today.getMonth() === monthIndex && today.getFullYear() === year;
+          monthList.push({
+            month: isCurrent ? `${mStr} (Current)` : mStr,
+            rawMonth: mStr,
+            ...metrics
+          });
+        }
+      }
+    });
+
+    return monthList;
+  }, [staff, availableMonths]);
 
   useEffect(() => {
     if (availableMonths && availableMonths.length > 0 && !selectedReportMonth) {
@@ -1011,12 +931,13 @@ const StaffPerformance = ({ staffId, onBack }) => {
         const year = parseInt(match[2]);
         const monthIndex = new Date(Date.parse(monthName + " 1, 2012")).getMonth();
         
-        const today = new Date();
-        if (today.getMonth() === monthIndex && today.getFullYear() === year) {
-          setSelectedDate(getTodayDateString());
-        } else {
-          const monthStr = String(monthIndex + 1).padStart(2, '0');
-          setSelectedDate(`${year}-${monthStr}-01`);
+        const seqDates = get30DaySequenceDates(year, monthIndex);
+        if (seqDates.length > 0) {
+          const firstDate = seqDates[0];
+          const y = firstDate.getFullYear();
+          const m = String(firstDate.getMonth() + 1).padStart(2, '0');
+          const d = String(firstDate.getDate()).padStart(2, '0');
+          setSelectedDate(`${y}-${m}-${d}`);
         }
       }
     }
@@ -1384,8 +1305,24 @@ const StaffPerformance = ({ staffId, onBack }) => {
           const expectedFormatted = formatHoursMinutes(perf.expectedMinutes);
           const differenceFormatted = formatHoursMinutes(Math.abs(perf.differenceMinutes));
           
+          const startDateStr = perf.sequenceDates && perf.sequenceDates.length > 0
+            ? perf.sequenceDates[0].toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+            : '-';
+          const endDateStr = perf.sequenceDates && perf.sequenceDates.length > 0
+            ? perf.sequenceDates[perf.sequenceDates.length - 1].toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+            : '-';
+
           return (
             <div className="space-y-4">
+              {perf.sequenceDates && perf.sequenceDates.length > 0 && (
+                <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl flex items-center gap-2">
+                  <Calendar size={16} className="text-blue-500 shrink-0" />
+                  <span className="text-xs font-black text-blue-600 dark:text-blue-400">
+                    Cycle Start Date: {startDateStr} &nbsp;({startDateStr} – {endDateStr})
+                  </span>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="p-4 bg-blue-500/5 border border-blue-500/10 rounded-2xl">
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Expected Hours</p>
@@ -1410,6 +1347,7 @@ const StaffPerformance = ({ staffId, onBack }) => {
               <div className="p-4 bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 rounded-2xl">
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Calculation Formula:</p>
                 <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+                  <p><strong>Cycle Dates:</strong> Start Date: {startDateStr} to {endDateStr}</p>
                   <p><strong>Expected Hours:</strong> 8.5 hours/day × Days = 8.5h/day × {perf.daysToCount} days = {expectedFormatted}</p>
                   <p><strong>Actual Hours:</strong> Sum of daily hours from clock records = {currentMonthTotalFormatted}</p>
                   <p><strong>Difference:</strong> Actual Hours - Expected Hours = {perf.differenceMinutes > 0 ? '+' : ''}{differenceFormatted}</p>
@@ -1422,35 +1360,51 @@ const StaffPerformance = ({ staffId, onBack }) => {
 
       {/* Monthly Breakdown Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {performanceReport.map((report, idx) => (
-          <motion.div 
-            key={report.month} // Use month as unique key
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: idx * 0.1 }}
-            className="bg-white dark:bg-[#111] p-6 sm:p-8 rounded-3xl sm:rounded-[2.5rem] border border-gray-100 dark:border-white/5 shadow-sm space-y-6 relative overflow-hidden group"
-          >
-            {/* Background Glow */}
-            <div className="absolute -right-10 -top-10 w-40 h-40 bg-blue-500/5 blur-3xl rounded-full group-hover:bg-blue-500/10 transition-colors" />
+        {performanceReport.map((report, idx) => {
+          const startDateStr = report.sequenceDates && report.sequenceDates.length > 0
+            ? report.sequenceDates[0].toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+            : '-';
+          const endDateStr = report.sequenceDates && report.sequenceDates.length > 0
+            ? report.sequenceDates[report.sequenceDates.length - 1].toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+            : '-';
 
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10">
-              <div>
-                <h3 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight">{report.month}</h3>
-                <div className="flex items-center gap-2 mt-1">
-                  <div className="h-1 w-20 bg-gray-100 dark:bg-white/5 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-blue-500 rounded-full" 
-                      style={{ width: `${report.attendancePercentage}%` }}
-                    />
+          return (
+            <motion.div 
+              key={report.month} // Use month as unique key
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: idx * 0.1 }}
+              className="bg-white dark:bg-[#111] p-6 sm:p-8 rounded-3xl sm:rounded-[2.5rem] border border-gray-100 dark:border-white/5 shadow-sm space-y-6 relative overflow-hidden group"
+            >
+              {/* Background Glow */}
+              <div className="absolute -right-10 -top-10 w-40 h-40 bg-blue-500/5 blur-3xl rounded-full group-hover:bg-blue-500/10 transition-colors" />
+
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10">
+                <div>
+                  <h3 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight">{report.month}</h3>
+                  {report.sequenceDates && report.sequenceDates.length > 0 && (
+                    <div className="flex items-center gap-1.5 mt-1.5">
+                      <Calendar size={14} className="text-blue-500 shrink-0" />
+                      <span className="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20">
+                        Start Date: {startDateStr} ({startDateStr} – {endDateStr})
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 mt-2">
+                    <div className="h-1 w-20 bg-gray-100 dark:bg-white/5 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-blue-500 rounded-full" 
+                        style={{ width: `${report.attendancePercentage}%` }}
+                      />
+                    </div>
+                    <span className="text-[10px] font-black text-blue-500 uppercase">{report.attendancePercentage}% Efficiency</span>
                   </div>
-                  <span className="text-[10px] font-black text-blue-500 uppercase">{report.attendancePercentage}% Efficiency</span>
+                </div>
+                <div className="text-left sm:text-right shrink-0">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Final Payout</p>
+                  <p className="text-3xl font-black text-emerald-500">₹{report.finalPayout.toLocaleString()}</p>
                 </div>
               </div>
-              <div className="text-left sm:text-right shrink-0">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Final Payout</p>
-                <p className="text-3xl font-black text-emerald-500">₹{report.finalPayout.toLocaleString()}</p>
-              </div>
-            </div>
 
             <div className="grid grid-cols-3 gap-4 relative z-10">
               <div className="p-3 sm:p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
@@ -1500,7 +1454,8 @@ const StaffPerformance = ({ staffId, onBack }) => {
               <span className="text-lg font-black text-rose-500">- ₹{report.deduction.toLocaleString()}</span>
             </div>
           </motion.div>
-        ))}
+          );
+        })}
       </div>
       
       {/* Edit Staff Details Modal */}

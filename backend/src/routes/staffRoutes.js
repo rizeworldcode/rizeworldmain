@@ -12,6 +12,9 @@ const {
   clockOutStaff,
   clockInStaff,
   clearSalary,
+  revertSalary,
+  updateSatisfactionLevel,
+  updateTodayComment,
   updateAttendance,
   loginStaff,
   updateTodayWork,
@@ -85,6 +88,9 @@ router.patch('/:id/toggle-task', toggleTaskComplete);
 router.post('/:id/add-extra-task', addExtraTask);
 router.post('/:id/submit-report', submitWorkReport);
 router.patch('/:id/clear-salary', clearSalary);
+router.patch('/:id/revert-salary', revertSalary);
+router.patch('/:id/satisfaction-level', updateSatisfactionLevel);
+router.patch('/:id/today-comment', updateTodayComment);
 router.post('/:id/attendance', updateAttendance);
 
 // Document routes

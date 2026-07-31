@@ -106,6 +106,16 @@ exports.updateDelayWork = async (req, res) => {
 // Delete Delay Work
 exports.deleteDelayWork = async (req, res) => {
   try {
+    const allowedEmployeeIds = ['RW-9752', 'RW-1702'];
+    const reqEmployeeId = req.user?.employeeId || req.body?.employeeId || req.headers['x-employee-id'];
+
+    if (req.user && req.user.role !== 'Admin' && reqEmployeeId && !allowedEmployeeIds.includes(reqEmployeeId)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access Denied: Only employees with Employee ID RW-9752 or RW-1702 can remove daily work tasks.'
+      });
+    }
+
     const delayWork = await DelayWork.findByIdAndDelete(req.params.id);
     if (!delayWork) {
       return res.status(404).json({ success: false, message: 'Delay Work not found' });
