@@ -376,6 +376,12 @@ const generateMonthlyReportHTML = (staff, selectedMonthStr) => {
     const d = new Date(year, monthIndex, day);
     const dateStr = d.toDateString();
     
+    // Format date in YYYY-MM-DD
+    const yStr = d.getFullYear();
+    const mStr = String(d.getMonth() + 1).padStart(2, '0');
+    const dStr = String(d.getDate()).padStart(2, '0');
+    const dateYYYYMMDD = `${yStr}-${mStr}-${dStr}`;
+
     // Stop listing future dates beyond today if it's the current month
     const today = new Date();
     today.setHours(0,0,0,0);
@@ -408,6 +414,37 @@ const generateMonthlyReportHTML = (staff, selectedMonthStr) => {
       else if (status === 'Present') statusClass = 'color: #10b981; font-weight: bold;';
     }
 
+    // Satisfaction Zone (Red / Yellow / Green)
+    const satRecord = (staff.satisfactionHistory || []).find(s => s.date === dateYYYYMMDD);
+    let satisfactionLevel = satRecord ? satRecord.level : null;
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (!satisfactionLevel && dateYYYYMMDD === todayStr && staff.todaySatisfaction && staff.todaySatisfaction !== 'none') {
+      satisfactionLevel = staff.todaySatisfaction;
+    }
+
+    let satisfactionHTML = '<span style="color:#9ca3af; font-size:10px;">-</span>';
+    if (satisfactionLevel === 'red') {
+      satisfactionHTML = '<span style="background:#fef2f2; color:#dc2626; border:1px solid #fca5a5; padding:2px 6px; border-radius:4px; font-weight:bold; font-size:10px; display:inline-block;">🔴 Red Zone</span>';
+    } else if (satisfactionLevel === 'yellow') {
+      satisfactionHTML = '<span style="background:#fffbeb; color:#d97706; border:1px solid #fcd34d; padding:2px 6px; border-radius:4px; font-weight:bold; font-size:10px; display:inline-block;">🟡 Yellow Zone</span>';
+    } else if (satisfactionLevel === 'green') {
+      satisfactionHTML = '<span style="background:#f0fdf4; color:#16a34a; border:1px solid #86efac; padding:2px 6px; border-radius:4px; font-weight:bold; font-size:10px; display:inline-block;">🟢 Green Zone</span>';
+    }
+
+    // Daily Comment (from management / RW-9752 / RW-1702)
+    const commRecord = (staff.commentHistory || []).find(c => c.date === dateYYYYMMDD);
+    let dailyComment = commRecord ? commRecord.comment : '';
+    if (!dailyComment && dateYYYYMMDD === todayStr) {
+      dailyComment = staff.todayComment || '';
+    }
+
+    let commentHTML = '';
+    if (dailyComment) {
+      commentHTML = `<div style="margin-top: 4px; padding: 4px 6px; background: #f8fafc; border-left: 3px solid #6366f1; border-radius: 4px; font-size: 10px; color: #334155;">
+        <strong style="color: #4f46e5;">💬 Comment:</strong> ${dailyComment}
+      </div>`;
+    }
+
     // Sessions text
     let sessionsText = '-';
     if (clockRecord && clockRecord.sessions && clockRecord.sessions.length > 0) {
@@ -421,11 +458,15 @@ const generateMonthlyReportHTML = (staff, selectedMonthStr) => {
     if (workRecord && workRecord.tasks && workRecord.tasks.length > 0) {
       tasksText = workRecord.tasks.map(t => 
         `<div style="margin-bottom: 2px; font-size: 10px;">
-          ${t.completed ? '<span style="color:#10b981;">[✓]</span>' : '<span style="color:#ef4444;">[✗]</span>'} 
+          ${t.completed ? '<span style="color:#10b981; font-weight:bold;">[✓]</span>' : '<span style="color:#ef4444; font-weight:bold;">[✗]</span>'} 
           ${t.name} ${t.isExtra ? '<span style="color:#3b82f6; font-size:8px; font-weight:bold;">(EXTRA)</span>' : ''}
         </div>`
       ).join('');
     }
+
+    const tasksAndCommentHTML = (tasksText !== '-' || commentHTML)
+      ? `${tasksText !== '-' ? tasksText : ''}${commentHTML}`
+      : '-';
 
     const totalHours = clockRecord ? clockRecord.totalHours : '-';
 
@@ -433,9 +474,10 @@ const generateMonthlyReportHTML = (staff, selectedMonthStr) => {
       <tr style="border-bottom: 1px solid #e5e7eb; font-size: 11px;">
         <td style="padding: 8px; vertical-align: top;">${d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', weekday: 'short' })}</td>
         <td style="padding: 8px; vertical-align: top; ${statusClass}">${status}</td>
+        <td style="padding: 8px; vertical-align: top;">${satisfactionHTML}</td>
         <td style="padding: 8px; vertical-align: top; font-weight: bold; text-align: center;">${totalHours}</td>
         <td style="padding: 8px; vertical-align: top; font-size: 10px; line-height: 1.4;">${sessionsText}</td>
-        <td style="padding: 8px; vertical-align: top;">${tasksText}</td>
+        <td style="padding: 8px; vertical-align: top;">${tasksAndCommentHTML}</td>
       </tr>
     `;
   }
@@ -543,11 +585,12 @@ const generateMonthlyReportHTML = (staff, selectedMonthStr) => {
         <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
           <thead>
             <tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1; font-size: 10px; font-weight: bold; text-transform: uppercase; color: #475569; text-align: left;">
-              <th style="padding: 8px; width: 15%;">Date</th>
-              <th style="padding: 8px; width: 22%;">Status</th>
-              <th style="padding: 8px; width: 13%; text-align: center;">Hours</th>
-              <th style="padding: 8px; width: 25%;">Sessions Details</th>
-              <th style="padding: 8px; width: 25%;">Working Tasks</th>
+              <th style="padding: 8px; width: 12%;">Date</th>
+              <th style="padding: 8px; width: 14%;">Status</th>
+              <th style="padding: 8px; width: 14%;">Satisfaction Zone</th>
+              <th style="padding: 8px; width: 8%; text-align: center;">Hours</th>
+              <th style="padding: 8px; width: 18%;">Sessions Details</th>
+              <th style="padding: 8px; width: 34%;">Working Tasks & Comments</th>
             </tr>
           </thead>
           <tbody>

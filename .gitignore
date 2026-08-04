@@ -35,3 +35,4 @@ dist-ssr
 
 # Large media files (exceeding GitHub's 100MB limit)
 rize digital/public/video/1104.mp4
+*.zip

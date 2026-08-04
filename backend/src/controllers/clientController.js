@@ -267,8 +267,8 @@ exports.updateClientTasks = async (req, res) => {
         const delayWork = new DelayWork({
           type: m.type, // 'reel', 'post', 'shoot'
           publishedLink: m.publishedLink || '',
-          totalAccountReach: m.totalAccountReach || 0,
-          totalAccountViews: m.totalAccountViews || 0,
+          totalAccountReach: m.totalAccountReach !== undefined ? m.totalAccountReach : '0',
+          totalAccountViews: m.totalAccountViews !== undefined ? m.totalAccountViews : '0',
           count: m.count || 1,
           clientId: req.params.id,
           staffId: staffId

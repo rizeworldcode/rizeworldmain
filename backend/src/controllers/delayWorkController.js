@@ -186,8 +186,8 @@ exports.exportDelayWork = async (req, res) => {
         extraName: work.extraName || '',
         count: work.count || 1,
         publishedLink: work.publishedLink || '',
-        totalAccountReach: work.totalAccountReach || 0,
-        totalAccountViews: work.totalAccountViews || 0
+        totalAccountReach: work.totalAccountReach !== undefined ? work.totalAccountReach : '0',
+        totalAccountViews: work.totalAccountViews !== undefined ? work.totalAccountViews : '0'
       });
     });
 

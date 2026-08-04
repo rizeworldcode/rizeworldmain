@@ -1741,8 +1741,19 @@ exports.updateTodayComment = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Staff not found' });
     }
 
+    const todayStr = new Date().toISOString().split('T')[0];
+    const updatedCommentHistory = (staff.commentHistory || []).filter(c => c.date !== todayStr);
+    if (comment && comment.trim()) {
+      updatedCommentHistory.push({
+        date: todayStr,
+        comment: comment.trim(),
+        markedBy: employeeId || 'Management'
+      });
+    }
+
     staff.todayComment = comment || '';
     staff.commentUpdatedBy = employeeId || 'Management';
+    staff.commentHistory = updatedCommentHistory;
 
     await staff.save();
 

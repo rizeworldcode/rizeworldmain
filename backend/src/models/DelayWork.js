@@ -23,12 +23,12 @@ const delayWorkSchema = new mongoose.Schema({
     trim: true
   },
   totalAccountReach: {
-    type: Number,
-    default: 0
+    type: mongoose.Schema.Types.Mixed,
+    default: '0'
   },
   totalAccountViews: {
-    type: Number,
-    default: 0
+    type: mongoose.Schema.Types.Mixed,
+    default: '0'
   },
   clientId: {
     type: mongoose.Schema.Types.ObjectId,

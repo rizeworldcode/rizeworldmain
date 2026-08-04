@@ -129,6 +129,11 @@ const staffSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  commentHistory: [{
+    date: String,
+    comment: String,
+    markedBy: String
+  }],
   status: {
     type: String,
     enum: ['Present', 'Absent', 'On Leave', 'Clocked Out', 'Half-Day'],

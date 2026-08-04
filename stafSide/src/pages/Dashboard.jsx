@@ -387,8 +387,8 @@ const Dashboard = () => {
   const [delayWorkForm, setDelayWorkForm] = useState({
     type: 'reel',
     publishedLink: '',
-    totalAccountReach: 0,
-    totalAccountViews: 0,
+    totalAccountReach: '',
+    totalAccountViews: '',
     clientEmail: '',
     extra: false,
     count: 1,
@@ -1506,32 +1506,43 @@ const Dashboard = () => {
 
       // Construct metrics payload for SMM/Shoot tasks that were incremented
       const metricsPayload = [];
+      // Handle single global reach & views if provided
+      const globalMetrics = taskMetrics['global'] || {};
+      if (globalMetrics.reach || globalMetrics.views) {
+        metricsPayload.push({
+          type: 'reel',
+          publishedLink: '',
+          totalAccountReach: globalMetrics.reach ? globalMetrics.reach.toString().trim() : '0',
+          totalAccountViews: globalMetrics.views ? globalMetrics.views.toString().trim() : '0',
+          count: 1
+        });
+      }
+
       Object.keys(taskMetrics).forEach(indexStr => {
+        if (indexStr === 'global') return;
         const index = parseInt(indexStr);
         const task = tempProjectData.tasks[index];
         const originalTask = selectedClientForTasks?.tasks?.[index];
         const diff = (task.completed || 0) - (originalTask?.completed || 0);
 
-        if (diff > 0) {
-          const metrics = taskMetrics[index];
-          const isReel = task.name.toLowerCase().includes('reel');
-          const isPost = task.name.toLowerCase().includes('post');
-          const isShoot = task.name.toLowerCase().includes('shoot');
+        const metrics = taskMetrics[index];
+        const isReel = task.name.toLowerCase().includes('reel');
+        const isPost = task.name.toLowerCase().includes('post');
+        const isShoot = task.name.toLowerCase().includes('shoot');
 
-          if (isReel || isPost) {
-            metricsPayload.push({
-              type: isReel ? 'reel' : 'post',
-              publishedLink: metrics?.publishedLink || '',
-              totalAccountReach: parseInt(metrics?.reach) || 0,
-              totalAccountViews: parseInt(metrics?.views) || 0,
-              count: diff
-            });
-          } else if (isShoot) {
-            metricsPayload.push({
-              type: 'shoot',
-              count: diff
-            });
-          }
+        if ((isReel || isPost) && metrics?.publishedLink) {
+          metricsPayload.push({
+            type: isReel ? 'reel' : 'post',
+            publishedLink: metrics.publishedLink,
+            totalAccountReach: '0',
+            totalAccountViews: '0',
+            count: diff > 0 ? diff : 1
+          });
+        } else if (isShoot && diff > 0) {
+          metricsPayload.push({
+            type: 'shoot',
+            count: diff
+          });
         }
       });
 
@@ -1622,8 +1633,8 @@ const Dashboard = () => {
         setDelayWorkForm({
           type: 'reel',
           publishedLink: '',
-          totalAccountReach: 0,
-          totalAccountViews: 0,
+          totalAccountReach: '',
+          totalAccountViews: '',
           clientEmail: '',
           extra: false,
           count: 1,
@@ -3275,51 +3286,63 @@ const Dashboard = () => {
                         <Plus size={16} />
                       </button>
                     </div>
-
-                    {/* Dynamic SMM metrics input for Reel/Post updates */}
+                    {/* Published Link option inside task card when incremented (as it was before) */}
                     {(task.name?.toLowerCase().includes('reel') || task.name?.toLowerCase().includes('post')) && 
                      (task.completed || 0) > (selectedClientForTasks?.tasks?.[index]?.completed || 0) && (
-                      <div className="mt-4 pt-3 border-t border-dashed border-gray-200 dark:border-white/10 space-y-3">
-                        <p className="text-[10px] font-black uppercase text-blue-600 dark:text-blue-400 tracking-wider">Metrics for this update</p>
-                        <div>
-                          <label className="text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide block mb-1">Published Link</label>
-                          <input 
-                            type="text" 
-                            className="w-full p-2.5 clay-inset rounded-xl text-xs font-bold text-black placeholder-gray-400 focus:outline-none"
-                            placeholder="https://instagram.com/p/..."
-                            value={taskMetrics[index]?.publishedLink || ''}
-                            onChange={(e) => handleMetricChange(index, 'publishedLink', e.target.value)}
-                          />
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <label className="text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide block mb-1">Account Reach</label>
-                            <input 
-                              type="number" 
-                              className="w-full p-2.5 clay-inset rounded-xl text-xs font-bold text-black placeholder-gray-400 focus:outline-none"
-                              placeholder="e.g. 500"
-                              value={taskMetrics[index]?.reach || ''}
-                              onChange={(e) => handleMetricChange(index, 'reach', e.target.value)}
-                            />
-                          </div>
-                          <div>
-                            <label className="text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide block mb-1">Account Views</label>
-                            <input 
-                              type="number" 
-                              className="w-full p-2.5 clay-inset rounded-xl text-xs font-bold text-black placeholder-gray-400 focus:outline-none"
-                              placeholder="e.g. 1000"
-                              value={taskMetrics[index]?.views || ''}
-                              onChange={(e) => handleMetricChange(index, 'views', e.target.value)}
-                            />
-                          </div>
-                        </div>
+                      <div className="mt-4 pt-3 border-t border-dashed border-gray-200">
+                        <label className="text-[9px] font-black text-black uppercase tracking-wide block mb-1">Published Link</label>
+                        <input 
+                          type="text" 
+                          className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-xl text-xs font-bold text-black placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
+                          placeholder="https://instagram.com/p/..."
+                          value={taskMetrics[index]?.publishedLink || ''}
+                          onChange={(e) => handleMetricChange(index, 'publishedLink', e.target.value)}
+                        />
                       </div>
                     )}
                   </div>
-
                 ))}
               </div>
             </div>
+
+            {/* Always Visible Single Section for Account Reach & Views */}
+            {tempProjectData.tasks?.some((task) => 
+              task.name?.toLowerCase().includes('reel') || task.name?.toLowerCase().includes('post')
+            ) && (
+              <div className="space-y-4 mb-8 p-5 rounded-2xl bg-white border border-gray-200 shadow-sm">
+                <h4 className="text-sm font-black text-black uppercase tracking-widest flex items-center gap-2">
+                  <TrendingUp size={18} className="text-blue-600" /> Account Reach & Views Metrics
+                </h4>
+                <p className="text-xs font-semibold text-gray-700">
+                  Enter overall account reach and account views for this update. String format supported (e.g. <strong>10k</strong>, <strong>1.5M</strong>, <strong>500</strong>).
+                </p>
+
+                <div className="p-4 rounded-xl bg-white border border-gray-200 space-y-3 shadow-inner">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-[10px] font-black text-black uppercase tracking-wide block mb-1">Account Reach</label>
+                      <input 
+                        type="text" 
+                        className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-xl text-xs font-bold text-black placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
+                        placeholder="e.g. 10k, 1.5M, 500"
+                        value={taskMetrics['global']?.reach || ''}
+                        onChange={(e) => handleMetricChange('global', 'reach', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black text-black uppercase tracking-wide block mb-1">Account Views</label>
+                      <input 
+                        type="text" 
+                        className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-xl text-xs font-bold text-black placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
+                        placeholder="e.g. 25k, 2M, 1000"
+                        value={taskMetrics['global']?.views || ''}
+                        onChange={(e) => handleMetricChange('global', 'views', e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Extra Tasks */}
             {tempProjectData.extraTasks && tempProjectData.extraTasks.length > 0 && (
