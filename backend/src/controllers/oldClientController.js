@@ -1,4 +1,5 @@
 const OldClient = require('../models/OldClient');
+const { checkAndTransferCompletedClients } = require('./clientController');
 
 // Create Old Client
 exports.createOldClient = async (req, res) => {
@@ -21,7 +22,10 @@ exports.createOldClient = async (req, res) => {
 // Get All Old Clients
 exports.getAllOldClients = async (req, res) => {
   try {
-    const oldClients = await OldClient.find();
+    if (checkAndTransferCompletedClients) {
+      await checkAndTransferCompletedClients();
+    }
+    const oldClients = await OldClient.find().sort({ createdAt: -1 });
     res.status(200).json({
       success: true,
       count: oldClients.length,

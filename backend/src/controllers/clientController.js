@@ -1,4 +1,5 @@
 const Client = require('../models/Client');
+const OldClient = require('../models/OldClient');
 
 // Helper to parse work detail into tasks
 const parseWorkDetailToTasks = (workDetail) => {
@@ -79,6 +80,73 @@ const parseWorkDetailToTasks = (workDetail) => {
   return tasks;
 };
 
+// Helper to check and transfer clients whose work reached 100% completion 2+ days ago without renewal
+const checkAndTransferCompletedClients = async () => {
+  try {
+    const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+    const clients = await Client.find();
+
+    for (const client of clients) {
+      const primaryTasks = client.tasks || [];
+      const extraTasks = client.extraTasks || [];
+      const primaryTotal = primaryTasks.reduce((acc, t) => acc + (t.total || 0), 0);
+      const totalCompleted = [...primaryTasks, ...extraTasks].reduce((acc, t) => acc + (t.completed || 0), 0);
+      const is100Percent = (primaryTotal > 0 && totalCompleted >= primaryTotal) || client.status === 'Completed';
+
+      if (is100Percent) {
+        if (!client.completedAt) {
+          client.completedAt = client.updatedAt || new Date();
+          await client.save();
+        }
+
+        if (client.completedAt && new Date(client.completedAt) <= twoDaysAgo) {
+          // Transfer client to OldClient collection
+          const projectDetailText = (client.workDetail && client.workDetail.trim()) || client.package || 'Completed Service Package';
+          const emailText = (client.email && client.email.trim()) || `${(client.name || 'client').toLowerCase().replace(/\s+/g, '')}@example.com`;
+          const phoneText = (client.phone && client.phone.trim()) || 'N/A';
+
+          const clientTasks = (client.tasks && client.tasks.length > 0)
+            ? client.tasks.map(t => ({ ...t, completed: t.total, status: 'Completed' }))
+            : parseWorkDetailToTasks(client.workDetail).map(t => ({ ...t, completed: t.total, status: 'Completed' }));
+
+          const oldClientData = {
+            name: client.name || 'Client',
+            phone: phoneText,
+            email: emailText,
+            projectDetail: projectDetailText,
+            workDetail: client.workDetail || projectDetailText,
+            package: client.package || 'Service Package',
+            department: client.department || 'Completed Project',
+            startDate: client.startDate || client.createdAt || new Date(),
+            deliveredDate: client.completedAt || client.deadline || new Date(),
+            totalAmount: client.totalPrice || 0,
+            paidAmount: client.paidAmount || 0,
+            address: 'N/A',
+            payments: client.payments || [],
+            tasks: clientTasks,
+            extraTasks: client.extraTasks || [],
+            history: client.history || []
+          };
+
+          const oldClient = new OldClient(oldClientData);
+          await oldClient.save();
+          await Client.findByIdAndDelete(client._id);
+          console.log(`[Auto-Transfer] Transferred client ${client.name} (${client._id}) to OldClients (100% completed > 2 days ago without renewal).`);
+        }
+      } else {
+        if (client.completedAt) {
+          client.completedAt = null;
+          await client.save();
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error auto-transferring completed clients:', error);
+  }
+};
+
+exports.checkAndTransferCompletedClients = checkAndTransferCompletedClients;
+
 
 exports.createClient = async (req, res) => {
   try {
@@ -108,6 +176,7 @@ exports.createClient = async (req, res) => {
       department,
       startDate: startDate ? new Date(startDate) : new Date(),
       deadline: deadline ? new Date(deadline) : null,
+      status: req.body.status || 'Present',
       tasks: generatedTasks
     });
 
@@ -129,6 +198,7 @@ exports.createClient = async (req, res) => {
 
 exports.getAllClients = async (req, res) => {
   try {
+    await checkAndTransferCompletedClients();
     const clients = await Client.find().sort({ createdAt: -1 });
     res.status(200).json({
       success: true,
@@ -144,7 +214,50 @@ exports.getAllClients = async (req, res) => {
 
 exports.getClientById = async (req, res) => {
   try {
-    const client = await Client.findById(req.params.id);
+    let client = await Client.findById(req.params.id);
+    if (!client) {
+      const oldClientDoc = await OldClient.findById(req.params.id);
+      if (oldClientDoc) {
+        let tasks = (oldClientDoc.tasks && oldClientDoc.tasks.length > 0)
+          ? oldClientDoc.tasks
+          : parseWorkDetailToTasks(oldClientDoc.workDetail || oldClientDoc.projectDetail);
+
+        // Ensure tasks for completed/old client show 100% completed progress
+        tasks = tasks.map(t => ({
+          ...t,
+          completed: (t.completed !== undefined && t.completed > 0) ? t.completed : (t.total || 1),
+          status: 'Completed'
+        }));
+
+        const extraTasks = (oldClientDoc.extraTasks || []).map(t => ({
+          ...t,
+          completed: (t.completed !== undefined && t.completed > 0) ? t.completed : (t.total || 1),
+          status: 'Completed'
+        }));
+
+        client = {
+          _id: oldClientDoc._id,
+          id: oldClientDoc._id,
+          name: oldClientDoc.name,
+          email: oldClientDoc.email,
+          phone: oldClientDoc.phone,
+          workDetail: oldClientDoc.workDetail || oldClientDoc.projectDetail,
+          totalPrice: oldClientDoc.totalAmount || 0,
+          paidAmount: oldClientDoc.paidAmount || 0,
+          pendingAmount: Math.max(0, (oldClientDoc.totalAmount || 0) - (oldClientDoc.paidAmount || 0)),
+          startDate: oldClientDoc.startDate,
+          deadline: oldClientDoc.deliveredDate,
+          department: oldClientDoc.department || 'Completed Project',
+          package: oldClientDoc.package || 'Old Client',
+          status: 'Completed',
+          payments: oldClientDoc.payments || [],
+          tasks: tasks,
+          extraTasks: extraTasks,
+          history: oldClientDoc.history || [],
+          isOldClient: true
+        };
+      }
+    }
     if (!client) {
       return res.status(404).json({
         success: false,
@@ -260,6 +373,22 @@ exports.updateClientTasks = async (req, res) => {
       });
     }
 
+    if (tasks && Array.isArray(tasks) && tasks.length > 0) {
+      const allCompleted = tasks.every(t => t.completed >= t.total);
+      const anyInProgress = tasks.some(t => t.completed > 0 || t.status === 'In Progress');
+      if (allCompleted) {
+        client.status = 'Completed';
+        if (!client.completedAt) client.completedAt = new Date();
+        await client.save();
+      } else {
+        if (client.completedAt) client.completedAt = null;
+        if (anyInProgress && client.status === 'Pending') {
+          client.status = 'In Progress';
+        }
+        await client.save();
+      }
+    }
+
     // Save SMM metrics to DelayWork collection if sent
     if (metrics && metrics.length > 0 && staffId) {
       const DelayWork = require('../models/DelayWork');
@@ -295,7 +424,62 @@ exports.renewClientPackage = async (req, res) => {
   try {
     const { package, workDetail, totalAmount, startDate, deadline } = req.body;
 
-    const client = await Client.findById(req.params.id);
+    let client = await Client.findById(req.params.id);
+
+    // If client is in OldClient collection, restore to active Client collection
+    if (!client) {
+      const oldClientDoc = await OldClient.findById(req.params.id);
+      if (oldClientDoc) {
+        const historyEntry = {
+          package: oldClientDoc.package || 'Old Client',
+          workDetail: oldClientDoc.workDetail || oldClientDoc.projectDetail,
+          totalPrice: oldClientDoc.totalAmount || 0,
+          paidAmount: oldClientDoc.paidAmount || 0,
+          pendingAmount: Math.max(0, (oldClientDoc.totalAmount || 0) - (oldClientDoc.paidAmount || 0)),
+          startDate: oldClientDoc.startDate,
+          deadline: oldClientDoc.deliveredDate,
+          tasks: oldClientDoc.tasks || [],
+          extraTasks: oldClientDoc.extraTasks || [],
+          payments: oldClientDoc.payments || [],
+          status: 'Completed',
+          completedAt: oldClientDoc.deliveredDate || new Date()
+        };
+
+        const generatedTasks = parseWorkDetailToTasks(workDetail);
+
+        const activeClient = new Client({
+          _id: oldClientDoc._id,
+          name: oldClientDoc.name,
+          email: oldClientDoc.email,
+          phone: oldClientDoc.phone,
+          department: oldClientDoc.department || 'SEO',
+          package: package,
+          workDetail: workDetail,
+          totalPrice: parseFloat(totalAmount) || 0,
+          pendingAmount: parseFloat(totalAmount) || 0,
+          paidAmount: 0,
+          startDate: startDate ? new Date(startDate) : new Date(),
+          deadline: deadline ? new Date(deadline) : null,
+          status: 'Present',
+          completedAt: null,
+          tasks: generatedTasks,
+          extraTasks: [],
+          payments: [],
+          history: [historyEntry]
+        });
+
+        await activeClient.save();
+        await OldClient.findByIdAndDelete(oldClientDoc._id);
+        console.log(`[Auto-Reactivate] Renewed old client ${oldClientDoc.name} (${oldClientDoc._id}) and moved back to active Clients collection.`);
+
+        return res.status(200).json({
+          success: true,
+          message: 'Package renewed successfully and client moved back to active clients list',
+          data: activeClient
+        });
+      }
+    }
+
     if (!client) {
       return res.status(404).json({
         success: false,
@@ -331,7 +515,8 @@ exports.renewClientPackage = async (req, res) => {
         paidAmount: 0,
         startDate: startDate ? new Date(startDate) : new Date(),
         deadline: deadline ? new Date(deadline) : null,
-        status: 'In Progress',
+        status: 'Present',
+        completedAt: null,
         tasks: generatedTasks,
         extraTasks: [], // Reset extra tasks for the new month
         payments: [], // Clear payments for the new month

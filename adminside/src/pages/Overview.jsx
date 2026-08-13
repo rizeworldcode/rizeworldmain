@@ -6,6 +6,7 @@ import StatsCard from '../components/dashboard/StatsCard';
 import RevenueChart from '../components/dashboard/RevenueChart';
 import RecentClients from '../components/dashboard/RecentClients';
 import StaffList from '../components/dashboard/StaffList';
+import DashboardMap from '../components/dashboard/DashboardMap';
 import { getDashboardStats, getAllStaff, markStaffLeave } from '../api';
 
 const Overview = ({ onViewClient, onViewStaff }) => {
@@ -87,7 +88,7 @@ const Overview = ({ onViewClient, onViewStaff }) => {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       transition={{ duration: 0.5 }}
-      className="space-y-8"
+      className="space-y-4 sm:space-y-5"
     >
       {/* Hero Section */}
       <section>
@@ -154,6 +155,11 @@ const Overview = ({ onViewClient, onViewStaff }) => {
           loading={loading}
           onClick={() => navigate('/wallet?filter=salary')}
         />
+      </section>
+
+      {/* Sales Team Live Tracking Map Section (100% Width) */}
+      <section className="w-full">
+        <DashboardMap />
       </section>
 
       {/* Analytics Grid */}

@@ -19,12 +19,74 @@ import {
   Plus
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
+import { getAllClients, getAllOldClients, updateClient, updateOldClient, addClient } from '../api';
 
 const STATUS_OPTIONS = {
-  'Pending': ['In Progress', 'On Hold'],
-  'In Progress': ['Completed', 'On Hold'],
-  'On Hold': ['In Progress', 'Completed'],
-  'Completed': ['In Progress']
+  'Pending': ['Present', 'On Hold', 'Completed'],
+  'Present': ['Pending', 'On Hold', 'Completed'],
+  'In Progress': ['Present', 'Pending', 'On Hold', 'Completed'],
+  'On Hold': ['Present', 'Pending', 'Completed'],
+  'Completed': ['Present', 'Pending', 'On Hold']
+};
+
+const parseWorkDetailToTasks = (workDetail) => {
+  if (!workDetail) return [];
+  const tasks = [];
+  const lines = workDetail.split(/[\n•]+/).map(line => line.trim()).filter(line => line.length > 0);
+
+  lines.forEach(line => {
+    if (line.match(/^---\s*.+\s*---$/) || line.match(/^(Rate\s+Per\s+)/i)) return;
+    const cleanedName = line.replace(/^[•\-\*\s]+/, '').trim();
+    if (!cleanedName) return;
+
+    const postingMatch = cleanedName.match(/Total\s+Posting\s+\d+\s*\(\s*(\d+)[\-\s]*Reel[s]?\s*&\s*(\d+)[\-\s]*Post[s]?\s*\)/i);
+    const complexPostingMatch = cleanedName.match(/Posting\s+Per\s+Month\s+[\d\-\s]+\(\s*(\d+)[\-\d\s]*Reels?\s*&\s*(\d+)[\-\d\s]*Posts?\s*\)/i);
+
+    if (postingMatch || complexPostingMatch) {
+      const match = postingMatch || complexPostingMatch;
+      const reelsCount = parseInt(match[1]) || 0;
+      const postsCount = parseInt(match[2]) || 0;
+      if (reelsCount > 0) tasks.push({ name: 'Reel Posting', total: reelsCount, completed: 0, status: 'Pending', unit: 'Reels' });
+      if (postsCount > 0) tasks.push({ name: 'Static Post Posting', total: postsCount, completed: 0, status: 'Pending', unit: 'Posts' });
+      return;
+    }
+
+    let total = 1;
+    let unit = 'Task';
+    const accountsHandledMatch = cleanedName.match(/Accounts\s+Handled:\s*(\d+)/i);
+    const leadingNumberMatch = cleanedName.match(/^(\d+)/);
+
+    if (accountsHandledMatch) {
+      total = parseInt(accountsHandledMatch[1]) || 1;
+      unit = 'Accounts';
+    } else if (leadingNumberMatch) {
+      total = parseInt(leadingNumberMatch[1]) || 1;
+      unit = 'Tasks';
+    }
+
+    tasks.push({ name: cleanedName, total, completed: 0, status: 'Pending', unit });
+  });
+
+  return tasks;
+};
+
+const calculateClientProgress = (client) => {
+  if (client.status === 'Completed') return 100;
+  
+  const primaryTasks = (client.tasks && client.tasks.length > 0) 
+    ? client.tasks 
+    : parseWorkDetailToTasks(client.workDetail);
+  const extraTasks = client.extraTasks || [];
+
+  if (primaryTasks.length === 0 && extraTasks.length === 0) {
+    if (client.status === 'Pending') return 0;
+    return 0;
+  }
+
+  const primaryTotal = primaryTasks.reduce((acc, t) => acc + (t.total || 0), 0) || 1;
+  const totalCompleted = [...primaryTasks, ...extraTasks].reduce((acc, t) => acc + (t.completed || 0), 0);
+  
+  return Math.min(100, Math.round((totalCompleted / primaryTotal) * 100));
 };
 
 const ActionMenu = ({ onAddPayment }) => {
@@ -1069,7 +1131,7 @@ const StatusDropdown = ({ currentStatus, onStatusChange }) => {
                 >
                   <div className={`w-2 h-2 rounded-full ${
                     option === 'Completed' ? 'bg-emerald-500' :
-                    option === 'In Progress' ? 'bg-blue-500' :
+                    (option === 'Present' || option === 'In Progress') ? 'bg-blue-500' :
                     'bg-amber-500'
                   }`} />
                   {option}
@@ -1132,11 +1194,11 @@ const PaymentModal = ({ client, isOpen, onClose, theme }) => {
             <div className="space-y-4">
               <div className="bg-gray-50 dark:bg-white/5 p-4 rounded-2xl border border-gray-100 dark:border-white/5">
                 <p className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest mb-1">Project Status</p>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${client.status === 'Completed' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 border border-emerald-500/20' :
-                    client.status === 'In Progress' ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20' :
+                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${client.status === 'Completed' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 border border-emerald-500/20' :
+                    (client.status === 'Present' || client.status === 'In Progress' || !client.status) ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20' :
                       'bg-amber-500/10 text-amber-500 border border-amber-500/20'
                   }`}>
-                  {client.status}
+                  {calculateClientProgress(client)}%
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -1302,9 +1364,8 @@ const Clients = ({ onClientClick, theme }) => {
 
   const fetchClients = async () => {
     try {
-      const response = await fetch('http://localhost:45000/api/clients');
-      const result = await response.json();
-      if (result.success) {
+      const result = await getAllClients();
+      if (result && result.success) {
         setClients(result.data);
       }
     } catch (error) {
@@ -1316,9 +1377,8 @@ const Clients = ({ onClientClick, theme }) => {
 
   const fetchOldClients = async () => {
     try {
-      const response = await fetch('http://localhost:45000/api/old-clients');
-      const result = await response.json();
-      if (result.success) {
+      const result = await getAllOldClients();
+      if (result && result.success) {
         setOldClients(result.data);
       }
     } catch (error) {
@@ -1333,12 +1393,25 @@ const Clients = ({ onClientClick, theme }) => {
     fetchOldClients();
   }, []);
 
-  const handleStatusChange = (clientId, newStatus) => {
+  const handleStatusChange = async (clientId, newStatus) => {
     // Optimistic update
     setClients(prev => prev.map(c =>
       c.id === clientId || c._id === clientId ? { ...c, status: newStatus } : c
     ));
-    // TODO: Add backend integration for status update if needed
+
+    try {
+      const result = await updateClient(clientId, { status: newStatus });
+      if (result && result.success) {
+        fetchClients();
+        fetchOldClients();
+      } else {
+        console.error('Failed to update status on backend:', result?.message);
+        fetchClients();
+      }
+    } catch (err) {
+      console.error('Error updating status:', err);
+      fetchClients();
+    }
   };
 
 const handleAddPayment = async (data) => {
@@ -1762,13 +1835,33 @@ const handleAddPayment = async (data) => {
                     </div>
                   </td>
                   <td className="py-6 px-4">
-                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${client.status === 'Completed' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' :
-                        client.status === 'In Progress' ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20' :
-                          client.status === 'On Hold' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' :
-                            'bg-rose-500/10 text-rose-500 border border-rose-500/20'
-                      }`}>
-                      {client.status}
-                    </span>
+                    {(() => {
+                      const progress = calculateClientProgress(client);
+                      const statusText = client.status === 'Completed' ? 'Completed' : (client.status === 'Pending' ? 'Pending' : (client.status === 'On Hold' ? 'On Hold' : 'Present'));
+                      return (
+                        <div className="flex flex-col gap-1.5 min-w-[110px]">
+                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider w-fit ${
+                            progress === 100 || client.status === 'Completed' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' :
+                            client.status === 'On Hold' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' :
+                            client.status === 'Pending' ? 'bg-rose-500/10 text-rose-500 border border-rose-500/20' :
+                            'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20'
+                          }`}>
+                            {progress}%
+                          </span>
+                          <div className="w-full bg-gray-100 dark:bg-white/10 h-1.5 rounded-full overflow-hidden">
+                            <div 
+                              className={`h-full rounded-full transition-all duration-500 ${
+                                progress === 100 || client.status === 'Completed' ? 'bg-emerald-500' :
+                                client.status === 'On Hold' ? 'bg-amber-500' :
+                                client.status === 'Pending' ? 'bg-rose-500' :
+                                'bg-blue-500'
+                              }`}
+                              style={{ width: `${progress}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </td>
                   <td className="py-6 px-6 text-right">
                     <div className="flex items-center justify-end gap-2">
@@ -1848,12 +1941,18 @@ const handleAddPayment = async (data) => {
                         className="border-b border-gray-50 dark:border-white/5 last:border-0 hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors"
                       >
                         <td className="py-6 px-6">
-                          <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => onClientClick?.(oldClient)}
+                            className="flex items-center gap-3 text-left hover:opacity-80 transition-opacity group/client"
+                          >
                             {pendingAmount > 0 && (
                               <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse"></div>
                             )}
-                            <p className="text-sm font-bold text-black dark:text-white">{oldClient.name}</p>
-                          </div>
+                            <div className="w-8 h-8 rounded-full bg-amber-500/10 border border-gray-100 dark:border-white/20 flex items-center justify-center text-amber-600 dark:text-amber-400 group-hover/client:bg-amber-500 group-hover/client:text-white transition-all">
+                              <User size={16} />
+                            </div>
+                            <p className="text-sm font-bold text-black dark:text-white group-hover/client:text-amber-600 dark:group-hover/client:text-amber-400 transition-colors">{oldClient.name}</p>
+                          </button>
                         </td>
                         <td className="py-6 px-6">
                           <p className="text-sm text-gray-600 dark:text-gray-300">{oldClient.phone}</p>

@@ -1939,6 +1939,13 @@ const downloadInvoice = async (project, client, includeGST = true) => {
   await htmlToPDF(html, `Invoice-${client.name.replace(/\s+/g, '-')}-${includeGST ? 'with-gst' : 'without-gst'}-${Date.now().toString().slice(-6)}.pdf`);
 };
 
+const getApiUrl = (endpoint) => {
+  const base = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? 'http://localhost:45000/api'
+    : 'https://rizeworldmain.onrender.com/api';
+  return `${base}${endpoint}`;
+};
+
 const downloadDelayWork = async (clientId, startDate, endDate) => {
   try {
     const params = new URLSearchParams();
@@ -1965,13 +1972,6 @@ const downloadDelayWork = async (clientId, startDate, endDate) => {
 };
 
 const ClientProjects = ({ onBack }) => {
-
-  const getApiUrl = (endpoint) => {
-    const base = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-      ? getApiUrl('')
-      : 'https://rizeworldmain.onrender.com/api';
-    return `${base}${endpoint}`;
-  };
 
   const { id: clientId } = useParams();
   const navigateHook = useNavigate();

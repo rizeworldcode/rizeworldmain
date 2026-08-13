@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { MoreHorizontal, User, Briefcase, Clock } from 'lucide-react';
+import { getAllClients } from '../../api';
 
 const getTimeAgo = (date) => {
   const now = new Date();
@@ -31,15 +32,24 @@ const item = {
   show: { opacity: 1, x: 0 }
 };
 
+const calculateClientProgress = (client) => {
+  if (client.status === 'Completed') return 100;
+  const primaryTasks = client.tasks || [];
+  const extraTasks = client.extraTasks || [];
+  if (primaryTasks.length === 0 && extraTasks.length === 0) return 0;
+  const primaryTotal = primaryTasks.reduce((acc, t) => acc + (t.total || 0), 0) || 1;
+  const totalCompleted = [...primaryTasks, ...extraTasks].reduce((acc, t) => acc + (t.completed || 0), 0);
+  return Math.min(100, Math.round((totalCompleted / primaryTotal) * 100));
+};
+
 const RecentClients = ({ onClientClick }) => {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const fetchClients = async () => {
     try {
-      const response = await fetch('http://localhost:45000/api/clients');
-      const result = await response.json();
-      if (result.success) {
+      const result = await getAllClients();
+      if (result && result.success) {
         // Sort by createdAt descending (most recent first) and take top 5
         const sorted = result.data.sort((a, b) => 
           new Date(b.createdAt || b._id).getTime() - new Date(a.createdAt || a._id).getTime()
@@ -109,11 +119,11 @@ const RecentClients = ({ onClientClick }) => {
                 <p className="text-sm font-bold text-gray-900 dark:text-white">₹{client.totalPrice.toLocaleString('en-IN')}</p>
                 <p className={`text-[10px] font-bold mt-1 uppercase tracking-wider ${
                   client.status === 'Completed' ? 'text-emerald-600 dark:text-emerald-400' : 
-                  client.status === 'In Progress' ? 'text-blue-600 dark:text-blue-400' : 
+                  (client.status === 'Present' || client.status === 'In Progress' || !client.status) ? 'text-blue-600 dark:text-blue-400' : 
                   client.status === 'On Hold' ? 'text-amber-600 dark:text-amber-400' : 
                   client.status === 'Pending' ? 'text-amber-600 dark:text-amber-400' : 
                   'text-gray-500'
-                }`}>{client.status}</p>
+                }`}>{calculateClientProgress(client)}%</p>
               </div>
             </motion.div>
           ))}

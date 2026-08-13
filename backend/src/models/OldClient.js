@@ -41,6 +41,12 @@ const oldClientSchema = new mongoose.Schema({
   address: {
     type: String
   },
+  department: { type: String },
+  package: { type: String },
+  workDetail: { type: String },
+  tasks: Array,
+  extraTasks: Array,
+  history: Array,
   payments: [{
     date: { type: Date, default: Date.now },
     amount: { type: Number, required: true },

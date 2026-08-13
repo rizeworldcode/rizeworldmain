@@ -49,8 +49,11 @@ const clientSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['Pending', 'In Progress', 'On Hold', 'Completed'],
-    default: 'Pending'
+    enum: ['Pending', 'In Progress', 'Present', 'On Hold', 'Completed'],
+    default: 'Present'
+  },
+  completedAt: {
+    type: Date
   },
   payments: [{
     date: { type: Date, default: Date.now },

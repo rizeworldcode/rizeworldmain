@@ -1289,7 +1289,7 @@ const Clients = ({ onClientClick, theme }) => {
 
   const getApiUrl = (endpoint) => {
     const base = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-      ? getApiUrl('')
+      ? 'http://localhost:45000/api'
       : 'https://rizeworldmain.onrender.com/api';
     return `${base}${endpoint}`;
   };
