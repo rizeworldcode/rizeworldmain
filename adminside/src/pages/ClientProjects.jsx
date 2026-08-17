@@ -33,6 +33,13 @@ import {
   User
 } from 'lucide-react';
 
+function getApiUrl(endpoint) {
+  const base = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? 'http://localhost:45000/api'
+    : 'https://rizeworldmain.onrender.com/api';
+  return `${base}${endpoint}`;
+}
+
 // Helper to parse work detail into tasks for UI fallback
 const parseWorkDetailToTasks = (workDetail) => {
   if (!workDetail) return [];
@@ -1946,7 +1953,7 @@ const downloadDelayWork = async (clientId, startDate, endDate) => {
     if (startDate) params.append('startDate', startDate);
     if (endDate) params.append('endDate', endDate);
 
-    const response = await fetch(`http://localhost:45000/api/delay-work/export?${params}`);
+    const response = await fetch(getApiUrl(`/delay-work/export?${params}`));
     if (!response.ok) throw new Error('Failed to download');
 
     const blob = await response.blob();

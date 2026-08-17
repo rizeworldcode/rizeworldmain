@@ -33,6 +33,13 @@ import {
   User
 } from 'lucide-react';
 
+function getApiUrl(endpoint) {
+  const base = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? 'http://localhost:45000/api'
+    : 'https://rizeworldmain.onrender.com/api';
+  return `${base}${endpoint}`;
+}
+
 // Helper to parse work detail into tasks for UI fallback
 const parseWorkDetailToTasks = (workDetail) => {
   if (!workDetail) return [];
@@ -1937,13 +1944,6 @@ const htmlToPDF = async (html, filename) => {
 const downloadInvoice = async (project, client, includeGST = true) => {
   const html = generateInvoiceHTML(project, client, includeGST);
   await htmlToPDF(html, `Invoice-${client.name.replace(/\s+/g, '-')}-${includeGST ? 'with-gst' : 'without-gst'}-${Date.now().toString().slice(-6)}.pdf`);
-};
-
-const getApiUrl = (endpoint) => {
-  const base = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-    ? 'http://localhost:45000/api'
-    : 'https://rizeworldmain.onrender.com/api';
-  return `${base}${endpoint}`;
 };
 
 const downloadDelayWork = async (clientId, startDate, endDate) => {
