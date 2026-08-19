@@ -68,6 +68,27 @@ exports.getDashboardStats = async (req, res) => {
     const clients = await Client.find();
     const totalProjects = clients.length;
 
+    // Get today's assigned work count across active staff
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date(todayStart);
+    todayEnd.setDate(todayEnd.getDate() + 1);
+
+    const activeStaff = await Staff.find({ isRemoved: { $ne: true } });
+    const totalStaff = activeStaff.length;
+    let staffWithWorkCount = 0;
+    activeStaff.forEach(staff => {
+      const todayWork = (staff.work || []).find(w => {
+        const workDate = new Date(w.date);
+        return workDate >= todayStart && workDate < todayEnd;
+      });
+      if (todayWork && todayWork.tasks && todayWork.tasks.length > 0) {
+        staffWithWorkCount++;
+      }
+    });
+
+    const todayAssignedWork = `${staffWithWorkCount}/${totalStaff}`;
+
     // Get unified transactions
     const allTransactions = await getUnifiedTransactions();
 
@@ -94,6 +115,7 @@ exports.getDashboardStats = async (req, res) => {
         totalClients,
         totalProjects,
         totalRevenue,
+        todayAssignedWork,
         totalClientRevenue: totalIncome,
         totalReceived: totalIncome,
         totalPaidSalary

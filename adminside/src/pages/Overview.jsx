@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { IndianRupee, Users, Briefcase, Wallet, Calendar, X } from 'lucide-react';
+import { IndianRupee, CalendarCheck, Briefcase, Wallet, Calendar, X } from 'lucide-react';
 import StatsCard from '../components/dashboard/StatsCard';
 import RevenueChart from '../components/dashboard/RevenueChart';
 import RecentClients from '../components/dashboard/RecentClients';
@@ -25,7 +25,7 @@ const Overview = ({ onViewClient, onViewStaff }) => {
 
   const [stats, setStats] = useState({
     totalRevenue: 0,
-    totalClients: 0,
+    todayAssignedWork: '0/0',
     totalProjects: 0,
     totalPaidSalary: 0
   });
@@ -132,12 +132,12 @@ const Overview = ({ onViewClient, onViewStaff }) => {
           onClick={() => navigate('/wallet')}
         />
         <StatsCard 
-          title="Total Client" 
-          value={stats.totalClients.toLocaleString()} 
-          icon={Users}
+          title="Today's Assigned Work" 
+          value={stats.todayAssignedWork || '0/0'} 
+          icon={CalendarCheck}
           gradient="from-purple-600 to-pink-600"
           loading={loading}
-          onClick={() => navigate('/clients')}
+          onClick={() => navigate('/today-work')}
         />
         <StatsCard 
           title="Total Projects" 

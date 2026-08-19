@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Trash2,
   Search,
@@ -11,15 +11,205 @@ import {
   RotateCw,
   UserPlus,
   X,
-  Save
+  Save,
+  CheckCircle2,
+  Clock,
+  RotateCcw,
+  Landmark,
+  Calculator
 } from 'lucide-react';
 
 const REMOVED_STAFF_API = 'http://localhost:45000/api/staff/removed';
+const CALCULATION_START_DATE = new Date('2026-07-01T00:00:00.000Z');
+const STANDARD_HOURS_PER_DAY = 8.5;
+const EXPECTED_MONTHLY_HOURS = STANDARD_HOURS_PER_DAY * 30; // 255 hours
+
+const parseTotalHours = (str) => {
+  if (!str || str === '-') return 0;
+  const h = str.match(/(\d+)\s*h/i);
+  const m = str.match(/(\d+)\s*m/i);
+  return (h ? parseInt(h[1], 10) : 0) + (m ? parseInt(m[1], 10) / 60 : 0);
+};
+
+const get30DaySequenceDates = (year, monthIndex, createdAt = null) => {
+  const dates = [];
+  const prevMonthLastDay = new Date(year, monthIndex, 0);
+  const prevMonthDays = prevMonthLastDay.getDate();
+  
+  if (prevMonthDays === 31) {
+    const prevYear = prevMonthLastDay.getFullYear();
+    const prevMonth = prevMonthLastDay.getMonth();
+    dates.push(new Date(prevYear, prevMonth, 31));
+    for (let d = 1; d <= 29; d++) {
+      dates.push(new Date(year, monthIndex, d));
+    }
+  } else {
+    const currentMonthLastDay = new Date(year, monthIndex + 1, 0).getDate();
+    const endDay = Math.min(30, currentMonthLastDay);
+    for (let d = 1; d <= endDay; d++) {
+      dates.push(new Date(year, monthIndex, d));
+    }
+  }
+
+  let filtered = dates.filter(d => {
+    const copy = new Date(d);
+    copy.setHours(0, 0, 0, 0);
+    return copy >= CALCULATION_START_DATE;
+  });
+
+  if (createdAt) {
+    const created = new Date(createdAt);
+    created.setHours(0, 0, 0, 0);
+    filtered = filtered.filter(d => {
+      const copy = new Date(d);
+      copy.setHours(0, 0, 0, 0);
+      return copy >= created;
+    });
+  }
+
+  return filtered;
+};
+
+const calculatePayoutForSelectedMonth = (staffInfo, monthStr) => {
+  if (!staffInfo || !monthStr) return { payout: 0, daysWorked: 0, totalHoursWorked: 0, isPaid: false };
+  const cleanMonth = monthStr.replace(/\s*\(Current\)/i, '').trim();
+  const match = cleanMonth.match(/([A-Za-z]+)\s+(\d+)/);
+  if (!match) return { payout: staffInfo.monthlySalary || 0, daysWorked: 0, totalHoursWorked: 0, isPaid: false };
+
+  const monthName = match[1];
+  const year = parseInt(match[2]);
+  const monthIndex = new Date(Date.parse(monthName + " 1, 2012")).getMonth();
+
+  const baseSalary = staffInfo.monthlySalary || 0;
+  const hourlyRate = baseSalary / EXPECTED_MONTHLY_HOURS;
+
+  const today = new Date();
+  const isCurrentMonth = today.getMonth() === monthIndex && today.getFullYear() === year;
+
+  const createdAt = staffInfo.createdAt || staffInfo.joiningDate;
+  const sequenceDates = get30DaySequenceDates(year, monthIndex, createdAt);
+
+  const todayEnd = new Date();
+  todayEnd.setHours(23, 59, 59, 999);
+
+  const validSequenceDates = isCurrentMonth
+    ? sequenceDates.filter(d => d <= todayEnd)
+    : sequenceDates;
+
+  const seqDateStrings = new Set(validSequenceDates.map(d => d.toDateString()));
+
+  const monthlyClockRecords = (staffInfo.clock || []).filter(r => {
+    return seqDateStrings.has(new Date(r.date).toDateString());
+  });
+
+  const presents = monthlyClockRecords.length;
+
+  const paidHistory = (staffInfo.salaryHistory || []).find(h => {
+    const hClean = h.month ? h.month.replace(/\s*\(Current\)/i, '').trim() : '';
+    return hClean === cleanMonth;
+  });
+
+  if (presents === 0 && !paidHistory) {
+    return {
+      payout: 0,
+      totalHoursWorked: 0,
+      daysWorked: 0,
+      isPaid: false
+    };
+  }
+
+  let totalHoursWorked = 0;
+  monthlyClockRecords.forEach(r => {
+    const actualHrs = parseTotalHours(r.totalHours);
+    if (actualHrs > 9) {
+      totalHoursWorked += 8.5 + (actualHrs - 9);
+    } else if (actualHrs >= 8.5) {
+      totalHoursWorked += 8.5;
+    } else {
+      totalHoursWorked += actualHrs;
+    }
+  });
+
+  const creditedDates = new Set(monthlyClockRecords.map(r => new Date(r.date).toDateString()));
+
+  validSequenceDates.forEach(d => {
+    const dStr = d.toDateString();
+    if (d.getDay() === 0 && !creditedDates.has(dStr)) {
+      totalHoursWorked += STANDARD_HOURS_PER_DAY;
+      creditedDates.add(dStr);
+    }
+  });
+
+  (staffInfo.leaves || []).forEach(leave => {
+    const ld = new Date(leave.date);
+    const ldStr = ld.toDateString();
+    if (seqDateStrings.has(ldStr)) {
+      if (!creditedDates.has(ldStr)) {
+        totalHoursWorked += STANDARD_HOURS_PER_DAY;
+        creditedDates.add(ldStr);
+      }
+    }
+  });
+
+  (staffInfo.attendance || []).forEach(att => {
+    if (att.status === 'On Leave') {
+      const ad = new Date(att.date);
+      const adStr = ad.toDateString();
+      if (seqDateStrings.has(adStr)) {
+        if (!creditedDates.has(adStr)) {
+          totalHoursWorked += STANDARD_HOURS_PER_DAY;
+          creditedDates.add(adStr);
+        }
+      }
+    }
+  });
+
+  const absentDaysList = validSequenceDates.filter(d => {
+    if (d.getDay() === 0) return false;
+    return !creditedDates.has(d.toDateString());
+  });
+
+  const halfDayRecords = (staffInfo.attendance || []).filter(att => {
+    if (att.status !== 'Half-Day') return false;
+    const ad = new Date(att.date);
+    return seqDateStrings.has(ad.toDateString());
+  });
+  const halfDayLeaveUnits = Math.floor(halfDayRecords.length / 2);
+
+  let casualLeaveUsed = false;
+  if (absentDaysList.length > 0) {
+    totalHoursWorked += STANDARD_HOURS_PER_DAY;
+    creditedDates.add(absentDaysList[0].toDateString());
+    casualLeaveUsed = true;
+  } else if (halfDayLeaveUnits > 0) {
+    for (let i = 0; i < 2; i++) {
+      const hdDate = new Date(halfDayRecords[i].date);
+      const cr = monthlyClockRecords.find(r => new Date(r.date).toDateString() === hdDate.toDateString());
+      const actualHrs = cr ? parseTotalHours(cr.totalHours) : 0;
+      const halfTarget = STANDARD_HOURS_PER_DAY / 2;
+      if (actualHrs < halfTarget) {
+        totalHoursWorked += halfTarget - actualHrs;
+      }
+    }
+    casualLeaveUsed = true;
+  }
+
+  const payout = paidHistory ? paidHistory.payoutSalary : Math.round(hourlyRate * totalHoursWorked);
+
+  return {
+    payout,
+    totalHoursWorked: Math.round(totalHoursWorked * 100) / 100,
+    daysWorked: presents,
+    isPaid: !!paidHistory
+  };
+};
 
 const RemovedEmployees = () => {
   const [removedStaff, setRemovedStaff] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+
+  // Rejoin modal state
   const [isRejoinModalOpen, setIsRejoinModalOpen] = useState(false);
   const [rejoiningEmployee, setRejoiningEmployee] = useState(null);
   const [rejoinForm, setRejoinForm] = useState({
@@ -36,6 +226,40 @@ const RemovedEmployees = () => {
     bankName: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Salary modal state
+  const [isSalaryModalOpen, setIsSalaryModalOpen] = useState(false);
+  const [selectedStaffForSalary, setSelectedStaffForSalary] = useState(null);
+  const [selectedSalaryMonth, setSelectedSalaryMonth] = useState('');
+  const [salaryPaymentDetails, setSalaryPaymentDetails] = useState({
+    mode: 'online',
+    method: 'phonepe',
+    utrNumber: '',
+    customAmount: ''
+  });
+  const [isClearingSalary, setIsClearingSalary] = useState(false);
+
+  const fetchRemovedStaff = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await fetch(REMOVED_STAFF_API, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      const result = await response.json();
+
+      if (result.success) {
+        setRemovedStaff(result.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching removed staff:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchRemovedStaff();
+  }, [fetchRemovedStaff]);
 
   const handleOpenRejoinModal = (member) => {
     setRejoiningEmployee(member);
@@ -68,9 +292,7 @@ const RemovedEmployees = () => {
     try {
       const response = await fetch(`http://localhost:45000/api/staff/${rejoiningEmployee._id}/rejoin`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(rejoinForm)
       });
       const result = await response.json();
@@ -90,27 +312,96 @@ const RemovedEmployees = () => {
     }
   };
 
-  const fetchRemovedStaff = useCallback(async () => {
+  // Open Salary Payment Modal
+  const openSalaryModal = (member) => {
+    setSelectedStaffForSalary(member);
+    const targetMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
+
+    const calc = calculatePayoutForSelectedMonth(member, targetMonth);
+    const initialAmount = (calc.payout > 0) ? calc.payout : (member.monthlySalary || 0);
+
+    setSelectedSalaryMonth(targetMonth);
+    setSalaryPaymentDetails({
+      mode: 'online',
+      method: 'phonepe',
+      utrNumber: '',
+      customAmount: initialAmount
+    });
+    setIsSalaryModalOpen(true);
+  };
+
+  // Submit Clear Salary
+  const handleConfirmClearSalary = async () => {
+    if (!selectedStaffForSalary || !selectedSalaryMonth) return;
+    setIsClearingSalary(true);
+
+    const amount = Number(salaryPaymentDetails.customAmount);
+
     try {
-      const token = localStorage.getItem('adminToken');
-      const response = await fetch(REMOVED_STAFF_API, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      const response = await fetch(`http://localhost:45000/api/staff/${selectedStaffForSalary._id}/clear-salary`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          month: selectedSalaryMonth,
+          baseSalary: selectedStaffForSalary.monthlySalary,
+          payoutSalary: amount,
+          totalLeaves: 0,
+          totalHalfDays: 0,
+          casualLeaveUsed: 0,
+          mode: salaryPaymentDetails.mode,
+          method: salaryPaymentDetails.mode === 'cash' ? 'cash' : salaryPaymentDetails.method,
+          utrNumber: salaryPaymentDetails.utrNumber
+        })
       });
       const result = await response.json();
-
       if (result.success) {
-        setRemovedStaff(result.data || []);
+        if (result.data) {
+          setRemovedStaff(prev => prev.map(m => m._id === selectedStaffForSalary._id ? result.data : m));
+        }
+        setIsSalaryModalOpen(false);
+        setSelectedStaffForSalary(null);
+        alert(`Salary of ₹${amount.toLocaleString('en-IN')} for ${selectedSalaryMonth} cleared successfully!`);
+        fetchRemovedStaff();
+      } else {
+        alert(result.message || 'Failed to clear salary');
       }
     } catch (error) {
-      console.error('Error fetching removed staff:', error);
+      console.error('Error clearing salary:', error);
+      alert('Failed to clear salary');
     } finally {
-      setLoading(false);
+      setIsClearingSalary(false);
     }
-  }, []);
+  };
 
-  useEffect(() => {
-    fetchRemovedStaff();
-  }, [fetchRemovedStaff]);
+  // Revert Salary
+  const handleRevertSalary = async (member) => {
+    const targetMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
+
+    if (!window.confirm(`Are you sure you want to revert salary payment status to Pending for ${member.name}?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:45000/api/staff/${member._id}/revert-salary`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ month: targetMonth })
+      });
+      const result = await response.json();
+      if (result.success) {
+        if (result.data) {
+          setRemovedStaff(prev => prev.map(m => m._id === member._id ? result.data : m));
+        }
+        alert(`Salary status reverted to Pending for ${member.name}`);
+        fetchRemovedStaff();
+      } else {
+        alert(result.message || 'Failed to revert salary');
+      }
+    } catch (error) {
+      console.error('Error reverting salary:', error);
+      alert('Failed to revert salary');
+    }
+  };
 
   const filteredRemovedStaff = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
@@ -137,6 +428,10 @@ const RemovedEmployees = () => {
     }).length;
   }, [removedStaff]);
 
+  const pendingSalaryCount = useMemo(() => {
+    return filteredRemovedStaff.filter(m => m.salaryStatus !== 'Paid').length;
+  }, [filteredRemovedStaff]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -154,22 +449,23 @@ const RemovedEmployees = () => {
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Removed Employees</h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">Employees deleted from Employee Details are stored here.</p>
+          <p className="text-gray-500 dark:text-gray-400 mt-1">Employees deleted from Employee Details with calculated salary based on present days.</p>
         </div>
 
         <button
           onClick={fetchRemovedStaff}
-          className="flex items-center gap-2 bg-black/5 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-5 py-3 text-sm font-bold text-gray-700 dark:text-gray-200 hover:bg-black/10 dark:hover:bg-white/10 transition-all w-fit"
+          className="flex items-center gap-2 bg-black/5 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-5 py-3 text-sm font-bold text-gray-700 dark:text-gray-200 hover:bg-black/10 dark:hover:bg-white/10 transition-all w-fit cursor-pointer"
         >
           <RotateCw size={18} />
           Refresh List
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {[
           { label: 'Total Removed', value: filteredRemovedStaff.length, icon: Trash2, color: 'rose' },
           { label: 'Removed This Month', value: removedThisMonth, icon: Calendar, color: 'amber' },
+          { label: 'Pending Salaries', value: `${pendingSalaryCount} Members`, icon: Clock, color: 'orange' },
           {
             label: 'Monthly Salary Snapshot',
             value: `Rs ${filteredRemovedStaff.reduce((sum, member) => sum + (member.monthlySalary || 0), 0).toLocaleString('en-IN')}`,
@@ -209,70 +505,124 @@ const RemovedEmployees = () => {
               <tr className="border-b border-gray-100 dark:border-white/10 bg-black/5 dark:bg-white/5">
                 <th className="px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Employee</th>
                 <th className="px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Department</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Salary</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Calculated Salary & Status</th>
                 <th className="px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Joining Date</th>
                 <th className="px-6 py-4 text-[10px] font-bold text-rose-500 dark:text-rose-400 uppercase tracking-widest">Removed On</th>
                 <th className="px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-white/5">
-              {filteredRemovedStaff.length > 0 ? filteredRemovedStaff.map((member) => (
-                <tr key={member._id} className="hover:bg-black/[0.02] dark:hover:bg-white/5 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-rose-500 to-orange-500 flex items-center justify-center text-white font-bold">
-                        {member.name?.charAt(0) || 'R'}
-                      </div>
-                      <div>
-                        <div className="text-sm font-bold text-gray-900 dark:text-white">{member.name}</div>
-                        <div className="text-xs text-gray-500 flex flex-col gap-0.5 mt-1">
-                          <span className="flex items-center gap-1"><Mail size={12} /> {member.email || 'N/A'}</span>
-                          <span className="flex items-center gap-1"><Phone size={12} /> {member.phone || 'N/A'}</span>
-                          <span className="font-semibold text-gray-700 dark:text-gray-300">{member.employeeId || 'N/A'}</span>
+              {filteredRemovedStaff.length > 0 ? filteredRemovedStaff.map((member) => {
+                const targetMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
+                const calc = calculatePayoutForSelectedMonth(member, targetMonth);
+
+                return (
+                  <tr key={member._id} className="hover:bg-black/[0.02] dark:hover:bg-white/5 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-rose-500 to-orange-500 flex items-center justify-center text-white font-bold">
+                          {member.name?.charAt(0) || 'R'}
+                        </div>
+                        <div>
+                          <div className="text-sm font-bold text-gray-900 dark:text-white">{member.name}</div>
+                          <div className="text-xs text-gray-500 flex flex-col gap-0.5 mt-1">
+                            <span className="flex items-center gap-1"><Mail size={12} /> {member.email || 'N/A'}</span>
+                            <span className="flex items-center gap-1"><Phone size={12} /> {member.phone || 'N/A'}</span>
+                            <span className="font-semibold text-gray-700 dark:text-gray-300">{member.employeeId || 'N/A'}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex flex-col gap-2">
-                      <span className="inline-flex w-fit items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-                        {member.department || 'N/A'}
-                      </span>
-                      <span className="flex items-center gap-1 text-[11px] text-gray-500 dark:text-gray-400">
-                        <Briefcase size={12} /> {member.role || 'Employee'} | {member.jobType || 'N/A'}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm font-bold text-gray-900 dark:text-white">
-                      Rs {(member.monthlySalary || 0).toLocaleString('en-IN')}
-                    </div>
-                    <div className="text-[10px] font-bold uppercase tracking-wider mt-1 text-rose-600 dark:text-rose-400">
-                      Removed
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-gray-300">
-                      <Calendar size={12} />
-                      {member.joiningDate ? new Date(member.joiningDate).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'N/A'}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm font-bold text-rose-600 dark:text-rose-400">
-                      {member.removedAt ? new Date(member.removedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <button
-                      onClick={() => handleOpenRejoinModal(member)}
-                      className="inline-flex items-center gap-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-3.5 py-1.5 rounded-lg text-xs font-bold shadow-md hover:shadow-lg transition-all"
-                    >
-                      <UserPlus size={14} />
-                      Rejoin
-                    </button>
-                  </td>
-                </tr>
-              )) : (
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col gap-2">
+                        <span className="inline-flex w-fit items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                          {member.department || 'N/A'}
+                        </span>
+                        <span className="flex items-center gap-1 text-[11px] text-gray-500 dark:text-gray-400">
+                          <Briefcase size={12} /> {member.role || 'Employee'} | {member.jobType || 'N/A'}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col gap-1">
+                        <div className="text-sm font-extrabold text-gray-900 dark:text-white flex items-center gap-1">
+                          Rs {(calc.payout || 0).toLocaleString('en-IN')}
+                          <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full ml-1">
+                            {calc.daysWorked} {calc.daysWorked === 1 ? 'Day' : 'Days'} Present
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-gray-400 font-medium">
+                          Base: Rs {(member.monthlySalary || 0).toLocaleString('en-IN')}/mo
+                        </div>
+                        <div className="mt-0.5 flex items-center gap-1.5">
+                          {member.salaryStatus === 'Paid' ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                              <CheckCircle2 size={11} /> Paid
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                              <Clock size={11} /> Pending
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-gray-300">
+                        <Calendar size={12} />
+                        {member.joiningDate ? new Date(member.joiningDate).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'N/A'}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm font-bold text-rose-600 dark:text-rose-400">
+                        {member.removedAt ? new Date(member.removedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex items-center justify-end gap-2 flex-wrap">
+                        {member.salaryStatus === 'Paid' ? (
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => openSalaryModal(member)}
+                              className="inline-flex items-center gap-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-3 py-1.5 rounded-xl text-xs font-bold hover:bg-emerald-500 hover:text-white transition-all cursor-pointer"
+                              title="Salary Paid (Click to view/manage)"
+                            >
+                              <CheckCircle2 size={13} />
+                              Paid
+                            </button>
+                            <button
+                              onClick={() => handleRevertSalary(member)}
+                              className="inline-flex items-center gap-1 bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 px-2.5 py-1.5 rounded-xl text-xs font-bold hover:bg-rose-500 hover:text-white transition-all cursor-pointer"
+                              title="Revert Salary Payment"
+                            >
+                              <RotateCcw size={13} />
+                              Revert
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => openSalaryModal(member)}
+                            className="inline-flex items-center gap-1.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-md hover:shadow-lg transition-all cursor-pointer"
+                            title="Clear Pending Salary"
+                          >
+                            <CheckCircle2 size={14} />
+                            Clear Salary
+                          </button>
+                        )}
+
+                        <button
+                          onClick={() => handleOpenRejoinModal(member)}
+                          className="inline-flex items-center gap-1.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-md hover:shadow-lg transition-all cursor-pointer"
+                          title="Rejoin Employee"
+                        >
+                          <UserPlus size={14} />
+                          Rejoin
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              }) : (
                 <tr>
                   <td colSpan={6} className="px-6 py-14 text-center text-gray-500 dark:text-gray-400">
                     No removed employees found.
@@ -283,6 +633,201 @@ const RemovedEmployees = () => {
           </table>
         </div>
       </div>
+
+      {/* Clear Salary Modal */}
+      <AnimatePresence>
+        {isSalaryModalOpen && selectedStaffForSalary && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsSalaryModalOpen(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-xl bg-white dark:bg-[#111] rounded-3xl border border-gray-200 dark:border-white/10 shadow-2xl overflow-y-auto max-h-[90vh] z-10 p-6 sm:p-8 space-y-6"
+            >
+              <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-white/5">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                    <CheckCircle2 className="text-emerald-500" size={22} />
+                    Clear Salary for {selectedStaffForSalary.name}
+                  </h2>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Employee ID: <span className="font-semibold text-gray-700 dark:text-gray-300">{selectedStaffForSalary.employeeId || 'N/A'}</span> • Department: <span className="font-semibold text-gray-700 dark:text-gray-300">{selectedStaffForSalary.department}</span>
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsSalaryModalOpen(false)}
+                  className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Calculated Salary Breakdown Card */}
+              {(() => {
+                const calc = calculatePayoutForSelectedMonth(selectedStaffForSalary, selectedSalaryMonth);
+                return (
+                  <div className="p-4 rounded-2xl bg-emerald-500/5 border border-emerald-500/15 space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-500 dark:text-gray-400 flex items-center gap-1.5 font-medium">
+                        <Calculator size={14} className="text-emerald-500" />
+                        Days Present in {selectedSalaryMonth}:
+                      </span>
+                      <span className="font-bold text-gray-900 dark:text-white bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full">
+                        {calc.daysWorked} {calc.daysWorked === 1 ? 'Day' : 'Days'} Present
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-500 dark:text-gray-400 font-medium">Calculated Salary Earned:</span>
+                      <span className="font-extrabold text-base text-emerald-600 dark:text-emerald-400">
+                        ₹{calc.payout.toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] text-gray-400 pt-1.5 border-t border-gray-100 dark:border-white/5">
+                      <span>Full Monthly Base Salary:</span>
+                      <span className="font-semibold text-gray-600 dark:text-gray-300">
+                        ₹{(selectedStaffForSalary.monthlySalary || 0).toLocaleString('en-IN')}/mo
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Bank Account Info Card for Easy Transfer Reference */}
+              <div className="p-4 rounded-2xl bg-blue-500/5 border border-blue-500/10 space-y-2">
+                <div className="flex items-center gap-2 text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+                  <Landmark size={14} /> Bank Account Details
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <span className="text-gray-400 block">Account Holder</span>
+                    <span className="font-bold text-gray-800 dark:text-gray-200">{selectedStaffForSalary.accountHolder || selectedStaffForSalary.name}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400 block">Bank Name</span>
+                    <span className="font-bold text-gray-800 dark:text-gray-200">{selectedStaffForSalary.bankName || 'N/A'}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400 block">Account Number</span>
+                    <span className="font-bold text-gray-800 dark:text-gray-200">{selectedStaffForSalary.accountNumber || 'N/A'}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400 block">IFSC Code</span>
+                    <span className="font-bold text-gray-800 dark:text-gray-200">{selectedStaffForSalary.ifscCode || 'N/A'}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">Target Month</label>
+                  <input
+                    type="text"
+                    value={selectedSalaryMonth}
+                    onChange={(e) => {
+                      const newMonth = e.target.value;
+                      setSelectedSalaryMonth(newMonth);
+                      const newCalc = calculatePayoutForSelectedMonth(selectedStaffForSalary, newMonth);
+                      setSalaryPaymentDetails(prev => ({ ...prev, customAmount: newCalc.payout }));
+                    }}
+                    placeholder="e.g. August 2026"
+                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-sm font-semibold text-gray-900 dark:text-white outline-none focus:border-emerald-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">Salary Amount to Clear (₹)</label>
+                  <input
+                    type="number"
+                    value={salaryPaymentDetails.customAmount}
+                    onChange={(e) => setSalaryPaymentDetails(prev => ({ ...prev, customAmount: e.target.value }))}
+                    placeholder="Enter amount"
+                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-sm font-bold text-gray-900 dark:text-white outline-none focus:border-emerald-500"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">Payment Mode</label>
+                    <select
+                      value={salaryPaymentDetails.mode}
+                      onChange={(e) => setSalaryPaymentDetails(prev => ({ ...prev, mode: e.target.value }))}
+                      className="w-full px-4 py-2.5 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-sm text-gray-900 dark:text-white outline-none cursor-pointer"
+                    >
+                      <option value="online">Online</option>
+                      <option value="cash">Cash</option>
+                    </select>
+                  </div>
+
+                  {salaryPaymentDetails.mode === 'online' && (
+                    <div>
+                      <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">Method</label>
+                      <select
+                        value={salaryPaymentDetails.method}
+                        onChange={(e) => setSalaryPaymentDetails(prev => ({ ...prev, method: e.target.value }))}
+                        className="w-full px-4 py-2.5 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-sm text-gray-900 dark:text-white outline-none cursor-pointer"
+                      >
+                        <option value="phonepe">PhonePe</option>
+                        <option value="paytm">Paytm</option>
+                        <option value="google_pay">Google Pay</option>
+                        <option value="bank_transfer">Bank Transfer</option>
+                      </select>
+                    </div>
+                  )}
+                </div>
+
+                {salaryPaymentDetails.mode === 'online' && (
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">UTR / Reference Number</label>
+                    <input
+                      type="text"
+                      value={salaryPaymentDetails.utrNumber}
+                      onChange={(e) => setSalaryPaymentDetails(prev => ({ ...prev, utrNumber: e.target.value }))}
+                      placeholder="e.g. UTR123456789"
+                      className="w-full px-4 py-2.5 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-sm text-gray-900 dark:text-white outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-4 border-t border-gray-100 dark:border-white/5 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsSalaryModalOpen(false)}
+                  disabled={isClearingSalary}
+                  className="px-5 py-2.5 border border-gray-200 dark:border-white/10 rounded-xl text-gray-700 dark:text-gray-300 font-semibold hover:bg-gray-50 dark:hover:bg-white/10 transition-colors text-sm cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmClearSalary}
+                  disabled={isClearingSalary}
+                  className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 text-sm cursor-pointer"
+                >
+                  {isClearingSalary ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Clearing...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 size={16} />
+                      Confirm & Clear Salary
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Rejoin & Edit Details Modal */}
       {isRejoinModalOpen && rejoiningEmployee && (
@@ -308,7 +853,7 @@ const RemovedEmployees = () => {
                 <button
                   type="button"
                   onClick={() => setIsRejoinModalOpen(false)}
-                  className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
+                  className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
                 >
                   <X size={20} />
                 </button>
@@ -460,14 +1005,14 @@ const RemovedEmployees = () => {
                   type="button"
                   onClick={() => setIsRejoinModalOpen(false)}
                   disabled={isSubmitting}
-                  className="px-6 py-3 border border-gray-200 dark:border-white/10 rounded-xl text-gray-700 dark:text-gray-300 font-semibold hover:bg-gray-50 dark:hover:bg-white/10 transition-colors"
+                  className="px-6 py-3 border border-gray-200 dark:border-white/10 rounded-xl text-gray-700 dark:text-gray-300 font-semibold hover:bg-gray-50 dark:hover:bg-white/10 transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
+                  className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 cursor-pointer"
                 >
                   {isSubmitting ? (
                     <>

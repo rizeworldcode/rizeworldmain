@@ -1124,28 +1124,7 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
       animate={{ opacity: 1, y: 0 }}
       className="space-y-6"
     >
-      {/* Red Zone Alert Banner */}
-      {redZoneMembers.length > 0 && (
-        <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-rose-600 via-red-600 to-rose-700 text-white font-bold shadow-xl shadow-rose-600/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-rose-400/40">
-          <div className="flex items-center gap-3">
-            <span className="text-3xl animate-bounce">🚨</span>
-            <div>
-              <h3 className="text-base sm:text-lg font-black uppercase tracking-wider text-white">
-                Red Zone Warning ({redZoneMembers.length} Staff Member{redZoneMembers.length > 1 ? 's' : ''} &ge; 7 Days)
-              </h3>
-              <p className="text-xs sm:text-sm text-rose-100 mt-0.5">
-                Attention Admin: The following employees have been in the Red Zone for 7 or more days: <span className="font-black underline">{redZoneMembers.map(m => `${m.name} (${getRedZoneDaysCount(m)} Days)`).join(', ')}</span>
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => setRedZoneFilter(redZoneFilter === 'RedZone' ? 'All' : 'RedZone')}
-            className="px-4 py-2 rounded-xl bg-white text-rose-700 hover:bg-rose-50 font-black text-xs uppercase tracking-wider transition-all shadow-md cursor-pointer border-none whitespace-nowrap"
-          >
-            {redZoneFilter === 'RedZone' ? 'Show All Staff' : 'Filter Red Zone Staff'}
-          </button>
-        </div>
-      )}
+
 
       {/* Header Section */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -1180,15 +1159,7 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
             ))}
           </select>
 
-          {/* Red Zone Dropdown */}
-          <select
-            value={redZoneFilter}
-            onChange={(e) => setRedZoneFilter(e.target.value)}
-            className="bg-black/5 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-gray-900 dark:text-gray-300 focus:border-blue-500 outline-none transition-all cursor-pointer hover:bg-black/10 dark:hover:bg-white/10"
-          >
-            <option value="All" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">All Satisfaction Status</option>
-            <option value="RedZone" className="bg-white dark:bg-[#030303] text-rose-600 dark:text-rose-400 font-bold">🔴 Red Zone (&ge; 7 Days)</option>
-          </select>
+
 
           <button
             onClick={onAddStaff}
@@ -1201,7 +1172,7 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         <div className="glass p-6 rounded-3xl border border-gray-200 dark:border-white/10 transition-colors">
           <div className="flex items-center gap-4">
             <div className="p-3 rounded-2xl bg-blue-500/10 text-blue-500">
@@ -1210,18 +1181,6 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
             <div>
               <p className="text-sm font-bold text-gray-500 dark:text-gray-400">Total Staff</p>
               <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{filteredStaff.length}</h3>
-            </div>
-          </div>
-        </div>
-
-        <div className={`glass p-6 rounded-3xl border transition-colors ${redZoneMembers.length > 0 ? 'border-rose-500/50 bg-rose-500/5' : 'border-gray-200 dark:border-white/10'}`}>
-          <div className="flex items-center gap-4">
-            <div className="p-3 rounded-2xl bg-rose-500/10 text-rose-500">
-              <AlertTriangle size={24} />
-            </div>
-            <div>
-              <p className="text-sm font-bold text-gray-500 dark:text-gray-400">Red Zone Staff (&ge; 7 Days)</p>
-              <h3 className="text-2xl font-bold text-rose-600 dark:text-rose-400">{redZoneMembers.length}</h3>
             </div>
           </div>
         </div>
@@ -1262,15 +1221,8 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-white/5">
               {filteredStaff.map((member) => {
-                const redDaysCount = getRedZoneDaysCount(member);
-                const isRedZoneAlert = redDaysCount >= 7;
-
                 return (
-                  <tr key={member._id} className={`transition-colors group ${
-                    isRedZoneAlert 
-                      ? 'bg-rose-500/10 dark:bg-rose-500/15 border-l-4 border-rose-600 hover:bg-rose-500/20' 
-                      : 'hover:bg-black/[0.02] dark:hover:bg-white/5'
-                  }`}>
+                  <tr key={member._id} className="transition-colors group hover:bg-black/[0.02] dark:hover:bg-white/5">
                     <td className="px-6 py-4">
                       <div
                         className="flex items-center gap-3 cursor-pointer group/name"
@@ -1283,11 +1235,6 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
                           <div className="text-sm font-bold text-gray-900 dark:text-white group-hover/name:text-blue-500 transition-colors flex items-center gap-2 flex-wrap">
                             {member.name}
                             <TrendingUp size={14} className="opacity-0 group-hover/name:opacity-100 transition-opacity" />
-                            {isRedZoneAlert && (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-rose-600 text-white shadow-md animate-pulse">
-                                🚨 RED ZONE ({redDaysCount} Days)
-                              </span>
-                            )}
                           </div>
                           <div className="text-xs text-gray-500 flex flex-col gap-0.5 mt-1">
                             <span className="flex items-center gap-1"><Mail size={12} /> {member.email}</span>
@@ -1318,21 +1265,6 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
                               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
                                 {member.role || 'Employee'}
                               </span>
-                              {redDaysCount > 0 && redDaysCount < 7 && (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-600 border border-rose-500/20">
-                                  🔴 Red ({redDaysCount} Days)
-                                </span>
-                              )}
-                              {member.todaySatisfaction === 'yellow' && redDaysCount === 0 && (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 border border-amber-500/20">
-                                  🟡 Yellow
-                                </span>
-                              )}
-                              {member.todaySatisfaction === 'green' && redDaysCount === 0 && (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
-                                  🟢 Green
-                                </span>
-                              )}
                             </div>
                             <div className="text-[11px] text-gray-500 dark:text-gray-400 flex flex-col gap-1">
                               <span className="flex items-center gap-1">

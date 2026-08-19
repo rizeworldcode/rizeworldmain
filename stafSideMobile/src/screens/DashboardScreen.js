@@ -1,3 +1,4 @@
+// DashboardScreen with Full-Screen Zone Shading
 import React, { useState, useEffect } from 'react';
 import { 
   StyleSheet, 
@@ -12,7 +13,8 @@ import {
   RefreshControl,
   Image,
   Modal,
-  SafeAreaView
+  SafeAreaView,
+  StatusBar
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -34,7 +36,10 @@ import {
   TrendingUp,
   DollarSign,
   AlertCircle,
-  Bell
+  Bell,
+  GraduationCap,
+  CreditCard,
+  BookOpen
 } from 'lucide-react-native';
 
 // Helper to check if leave day (Sunday, explicitly on leave, or leave array match)
@@ -205,8 +210,17 @@ const calculatePayout = (info) => {
   };
 };
 
-const DashboardScreen = ({ staffInfo: initialStaffInfo, token, onLogout, getApiUrl }) => {
+const DashboardScreen = ({ staffInfo: initialStaffInfo, token, onLogout, onNavigate, getApiUrl }) => {
   const [staffInfo, setStaffInfo] = useState(initialStaffInfo);
+
+  const userRole = (staffInfo.role || '').toLowerCase();
+  const userDept = (staffInfo.department || '').toLowerCase();
+
+  const isHR = userRole === 'hr';
+  const isCounselor = userRole === 'counselor';
+  const isSalesTeam = userRole === 'sales team' || userRole === 'sales';
+  const isVisitingCardsAllowed = ['admin', 'data analyst'].includes(userRole);
+  const isMarketing = userDept.includes('marketing') || userRole.includes('marketing');
   const [todayTasks, setTodayTasks] = useState([]);
   const [newTaskInput, setNewTaskInput] = useState('');
   const [isLeaveDay, setIsLeaveDay] = useState(false);
@@ -590,6 +604,38 @@ const DashboardScreen = ({ staffInfo: initialStaffInfo, token, onLogout, getApiU
     }
   };
 
+  // Satisfaction Level Handler (Red Zone, Yellow Zone, Green Zone)
+  const handleUpdateSatisfaction = async (memberId, level) => {
+    const allowedEmployeeIds = ['RW-9752', 'RW-1702'];
+    if (!staffInfo.employeeId || !allowedEmployeeIds.includes(staffInfo.employeeId)) {
+      Alert.alert('Access Denied', 'Only authorized managers (RW-9752 or RW-1702) can mark satisfaction levels.');
+      return;
+    }
+
+    try {
+      const response = await fetch(getApiUrl(`/staff/${memberId}/satisfaction-level`), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ satisfactionLevel: level, employeeId: staffInfo.employeeId })
+      });
+      const result = await response.json();
+      if (result.success) {
+        setReportees(prev => prev.map(m => {
+          if ((m.id || m._id) === memberId) {
+            return { ...m, todaySatisfaction: level };
+          }
+          return m;
+        }));
+        Alert.alert('Updated', `Work satisfaction set to ${level.toUpperCase()}`);
+      } else {
+        Alert.alert('Error', result.message || 'Failed to update satisfaction level');
+      }
+    } catch (err) {
+      console.error(err);
+      Alert.alert('Error', 'Failed to update satisfaction level');
+    }
+  };
+
   // Master Pool Handlers
   const handleAddToPool = async () => {
     if (!newPoolItem.trim()) return;
@@ -651,9 +697,44 @@ const DashboardScreen = ({ staffInfo: initialStaffInfo, token, onLogout, getApiU
     ? new Date(staffInfo.joiningDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
     : 'N/A';
 
+  const getZoneGradientColors = () => {
+    switch (staffInfo.todaySatisfaction) {
+      case 'red':
+        return ['#fee2e2', '#fef2f2', '#f8fafc'];
+      case 'yellow':
+        return ['#fef3c7', '#fffbeb', '#f8fafc'];
+      case 'green':
+        return ['#dcfce7', '#f0fdf4', '#f8fafc'];
+      default:
+        return ['#f8fafc', '#f1f5f9', '#f8fafc'];
+    }
+  };
+
+  const getZoneBorderColor = () => {
+    switch (staffInfo.todaySatisfaction) {
+      case 'red':
+        return '#ef4444';
+      case 'yellow':
+        return '#f59e0b';
+      case 'green':
+        return '#10b981';
+      default:
+        return 'transparent';
+    }
+  };
+
   return (
-    <View style={styles.container}>
-      {/* Header Profile */}
+    <View style={[
+      styles.container,
+      staffInfo.todaySatisfaction ? { borderWidth: 3, borderColor: getZoneBorderColor() } : null
+    ]}>
+      <LinearGradient
+        colors={getZoneGradientColors()}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.fullScreenGradient}
+      >
+        {/* Header Profile */}
       <LinearGradient
         colors={['#8b5cf6', '#f472b6']}
         start={{ x: 0, y: 0 }}
@@ -710,6 +791,136 @@ const DashboardScreen = ({ staffInfo: initialStaffInfo, token, onLogout, getApiU
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#8b5cf6']} />
         }
       >
+        {/* Red Zone Warning Banner */}
+        {staffInfo.todaySatisfaction === 'red' && (
+          <LinearGradient
+            colors={['#dc2626', '#b91c1c']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.zoneBannerRed}
+          >
+            <View style={styles.zoneBannerHeaderRow}>
+              <Text style={styles.zoneBannerEmoji}>🚨</Text>
+              <View style={styles.zoneBannerTextContainer}>
+                <Text style={styles.zoneBannerTitleRed}>YOU ARE IN THE RED ZONE 🔴</Text>
+                <Text style={styles.zoneBannerSubtextRed}>
+                  Management has marked your daily work satisfaction as RED. Immediate attention and task progress required!
+                </Text>
+              </View>
+            </View>
+            <View style={styles.zoneBadgeRed}>
+              <Text style={styles.zoneBadgeTextRed}>RED ZONE ALERT</Text>
+            </View>
+          </LinearGradient>
+        )}
+
+        {/* Yellow Zone Notice Banner */}
+        {staffInfo.todaySatisfaction === 'yellow' && (
+          <LinearGradient
+            colors={['#d97706', '#b45309']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.zoneBannerYellow}
+          >
+            <View style={styles.zoneBannerHeaderRow}>
+              <Text style={styles.zoneBannerEmoji}>⚠️</Text>
+              <View style={styles.zoneBannerTextContainer}>
+                <Text style={styles.zoneBannerTitleYellow}>YOU ARE IN THE YELLOW ZONE 🟡</Text>
+                <Text style={styles.zoneBannerSubtextYellow}>
+                  Your work satisfaction is marked YELLOW. Please improve performance and complete your daily goals.
+                </Text>
+              </View>
+            </View>
+            <View style={styles.zoneBadgeYellow}>
+              <Text style={styles.zoneBadgeTextYellow}>YELLOW ZONE NOTICE</Text>
+            </View>
+          </LinearGradient>
+        )}
+
+        {/* Green Zone Success Banner */}
+        {staffInfo.todaySatisfaction === 'green' && (
+          <LinearGradient
+            colors={['#10b981', '#047857']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.zoneBannerGreen}
+          >
+            <View style={styles.zoneBannerHeaderRow}>
+              <Text style={styles.zoneBannerEmoji}>🟢</Text>
+              <View style={styles.zoneBannerTextContainer}>
+                <Text style={styles.zoneBannerTitleGreen}>GREEN ZONE EXCELLENCE 🟢</Text>
+                <Text style={styles.zoneBannerSubtextGreen}>
+                  Great job! Your work satisfaction for today is GREEN. Outstanding performance!
+                </Text>
+              </View>
+            </View>
+            <View style={styles.zoneBadgeGreen}>
+              <Text style={styles.zoneBadgeTextGreen}>SAFE ZONE ✅</Text>
+            </View>
+          </LinearGradient>
+        )}
+        {/* Role Modules Quick Actions */}
+        {(isHR || isCounselor || isSalesTeam || isVisitingCardsAllowed || isMarketing) && (
+          <View style={styles.roleModulesContainer}>
+            <Text style={styles.roleModulesHeader}>ROLE MODULES</Text>
+            <View style={styles.roleModulesGrid}>
+              {isHR && (
+                <TouchableOpacity onPress={() => onNavigate && onNavigate('hearing')} style={styles.roleModuleCard}>
+                  <LinearGradient colors={['#8b5cf6', '#a855f7']} style={styles.roleModuleIconBg}>
+                    <Briefcase size={20} color="#fff" />
+                  </LinearGradient>
+                  <Text style={styles.roleModuleText}>Hearing</Text>
+                </TouchableOpacity>
+              )}
+
+              {isCounselor && (
+                <TouchableOpacity onPress={() => onNavigate && onNavigate('admissions')} style={styles.roleModuleCard}>
+                  <LinearGradient colors={['#3b82f6', '#2563eb']} style={styles.roleModuleIconBg}>
+                    <GraduationCap size={20} color="#fff" />
+                  </LinearGradient>
+                  <Text style={styles.roleModuleText}>Admissions</Text>
+                </TouchableOpacity>
+              )}
+
+              {isSalesTeam && (
+                <TouchableOpacity onPress={() => onNavigate && onNavigate('sales')} style={styles.roleModuleCard}>
+                  <LinearGradient colors={['#10b981', '#059669']} style={styles.roleModuleIconBg}>
+                    <TrendingUp size={20} color="#fff" />
+                  </LinearGradient>
+                  <Text style={styles.roleModuleText}>Sales Log</Text>
+                </TouchableOpacity>
+              )}
+
+              {isVisitingCardsAllowed && (
+                <>
+                  <TouchableOpacity onPress={() => onNavigate && onNavigate('clients')} style={styles.roleModuleCard}>
+                    <LinearGradient colors={['#6366f1', '#4f46e5']} style={styles.roleModuleIconBg}>
+                      <Users size={20} color="#fff" />
+                    </LinearGradient>
+                    <Text style={styles.roleModuleText}>Clients</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity onPress={() => onNavigate && onNavigate('visitingCards')} style={styles.roleModuleCard}>
+                    <LinearGradient colors={['#f59e0b', '#d97706']} style={styles.roleModuleIconBg}>
+                      <CreditCard size={20} color="#fff" />
+                    </LinearGradient>
+                    <Text style={styles.roleModuleText}>Cards</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+
+              {isMarketing && (
+                <TouchableOpacity onPress={() => onNavigate && onNavigate('blogs')} style={styles.roleModuleCard}>
+                  <LinearGradient colors={['#ec4899', '#db2777']} style={styles.roleModuleIconBg}>
+                    <BookOpen size={20} color="#fff" />
+                  </LinearGradient>
+                  <Text style={styles.roleModuleText}>Blogs</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        )}
+
         {/* Info Grid (Parity with Web Dashboard) */}
         <View style={styles.infoGrid}>
           {/* Employee ID */}
@@ -850,50 +1061,142 @@ const DashboardScreen = ({ staffInfo: initialStaffInfo, token, onLogout, getApiU
           </View>
         </View>
 
-        {/* Today's Work List Card */}
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <CheckSquare size={18} color="#8b5cf6" />
-            <Text style={styles.cardTitle}>Today's Assigned Work</Text>
-          </View>
+        {/* Today's Work Card (Matching Web Portal Design) */}
+        <View style={styles.todaysWorkCard}>
+          {/* Embedded Satisfaction Status Banner */}
+          {staffInfo.todaySatisfaction === 'green' && (
+            <LinearGradient colors={['#10b981', '#047857']} style={styles.embeddedBannerGreen}>
+              <View style={styles.embeddedBannerRow}>
+                <Text style={{ fontSize: 20 }}>🟢</Text>
+                <View style={{ flex: 1, marginLeft: 8 }}>
+                  <Text style={styles.embeddedBannerTitleGreen}>GREAT WORK! (GREEN)</Text>
+                  <Text style={styles.embeddedBannerSubtextGreen}>
+                    Your work satisfaction level for today has been marked GREEN by management. Outstanding performance!
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.safeZoneBadge}>
+                <Text style={styles.safeZoneBadgeText}>SAFE ZONE ✅</Text>
+              </View>
+            </LinearGradient>
+          )}
 
-          {/* Add Task Input (Disabled for TL who uses Pool) */}
+          {staffInfo.todaySatisfaction === 'yellow' && (
+            <LinearGradient colors={['#d97706', '#b45309']} style={styles.embeddedBannerYellow}>
+              <View style={styles.embeddedBannerRow}>
+                <Text style={{ fontSize: 20 }}>🟡</Text>
+                <View style={{ flex: 1, marginLeft: 8 }}>
+                  <Text style={styles.embeddedBannerTitleYellow}>Work Satisfaction Status (YELLOW)</Text>
+                  <Text style={styles.embeddedBannerSubtextYellow}>
+                    Your work satisfaction level for today is marked YELLOW. Keep pushing to complete all tasks!
+                  </Text>
+                </View>
+              </View>
+            </LinearGradient>
+          )}
+
+          {staffInfo.todaySatisfaction === 'red' && (
+            <LinearGradient colors={['#dc2626', '#b91c1c']} style={styles.embeddedBannerRed}>
+              <View style={styles.embeddedBannerRow}>
+                <Text style={{ fontSize: 20 }}>🔴</Text>
+                <View style={{ flex: 1, marginLeft: 8 }}>
+                  <Text style={styles.embeddedBannerTitleRed}>Work Satisfaction Warning (RED)</Text>
+                  <Text style={styles.embeddedBannerSubtextRed}>
+                    Your work satisfaction level for today has been marked RED by management. Please review your assigned tasks immediately.
+                  </Text>
+                </View>
+              </View>
+            </LinearGradient>
+          )}
+
+          {/* Management Comment / Feedback Box */}
+          {staffInfo.todayComment ? (
+            <View style={styles.managementCommentBox}>
+              <Text style={styles.commentHeader}>Management Comment / Feedback</Text>
+              <Text style={styles.commentText}>"{staffInfo.todayComment}"</Text>
+              {staffInfo.commentUpdatedBy ? (
+                <Text style={styles.commentAuthor}>— Added by Management ({staffInfo.commentUpdatedBy})</Text>
+              ) : null}
+            </View>
+          ) : null}
+
+          {/* Card Title */}
+          <Text style={styles.todaysWorkTitle}>TODAY'S WORK</Text>
+
+          {/* Day Progress Box */}
+          {(() => {
+            const regularTasks = todayTasks.filter(t => !t.isExtra);
+            const extraTasks = todayTasks.filter(t => t.isExtra);
+            const completedRegularCount = regularTasks.filter(t => t.completed).length;
+            const completedExtraCount = extraTasks.filter(t => t.completed).length;
+            const totalRegular = regularTasks.length;
+            const progress = totalRegular > 0 
+              ? Math.min(100, Math.round(((completedRegularCount + completedExtraCount) / totalRegular) * 100)) 
+              : completedExtraCount > 0 ? 100 : 0;
+
+            return (
+              <View style={styles.dayProgressBox}>
+                <View style={styles.progressHeaderRow}>
+                  <Text style={styles.progressLabel}>DAY PROGRESS</Text>
+                  <Text style={styles.progressPercentText}>{progress}%</Text>
+                </View>
+                <View style={styles.progressTrack}>
+                  <View style={[
+                    styles.progressFill,
+                    { width: `${progress}%` },
+                    progress >= 100 && { backgroundColor: '#10b981' }
+                  ]} />
+                </View>
+              </View>
+            );
+          })()}
+
+          {/* Add Task Input Row */}
           {staffInfo.role !== 'Technical TL & Digital Marketing Specialist' && (
-            <View style={styles.addTaskContainer}>
+            <View style={styles.taskInputRow}>
               <TextInput
                 value={newTaskInput}
                 onChangeText={setNewTaskInput}
-                placeholder="Add task to your list..."
+                placeholder="Enter what you will work..."
                 placeholderTextColor="#94a3b8"
-                style={styles.addTaskInput}
+                style={styles.pillTaskInput}
               />
-              <TouchableOpacity onPress={handleAddTask} style={styles.addTaskBtn}>
-                <Plus size={16} color="#fff" />
+              <TouchableOpacity onPress={handleAddTask} style={styles.addTaskPillBtn}>
+                <LinearGradient
+                  colors={['#8b5cf6', '#f472b6']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.addTaskPillGradient}
+                >
+                  <Plus size={14} color="#fff" />
+                  <Text style={styles.addTaskPillText}>ADD TASK</Text>
+                </LinearGradient>
               </TouchableOpacity>
             </View>
           )}
 
+          {/* Tasks List / Empty Box */}
           {todayTasks.length > 0 ? (
-            <View style={styles.taskList}>
+            <View style={styles.taskListContainer}>
               {todayTasks.map((task, idx) => (
-                <View key={idx} style={[styles.taskItem, task.completed && styles.taskCompleted]}>
+                <View key={idx} style={[styles.taskCardItem, task.completed && styles.taskCardItemCompleted]}>
                   <TouchableOpacity 
                     onPress={() => handleToggleTask(idx)}
-                    style={styles.checkboxContainer}
+                    style={styles.checkboxTouch}
                   >
                     {task.completed ? (
-                      <CheckSquare size={20} color="#10b981" />
+                      <CheckSquare size={18} color="#10b981" />
                     ) : (
-                      <Square size={20} color="#94a3b8" />
+                      <Square size={18} color="#94a3b8" />
                     )}
                   </TouchableOpacity>
                   
-                  <Text style={[styles.taskText, task.completed && styles.taskTextCompleted]}>
+                  <Text style={[styles.taskCardText, task.completed && styles.taskCardTextCompleted]}>
                     {task.name}
                   </Text>
 
                   {staffInfo.role !== 'Technical TL & Digital Marketing Specialist' && (
-                    <TouchableOpacity onPress={() => handleDeleteTask(idx)} style={styles.deleteTaskBtn}>
+                    <TouchableOpacity onPress={() => handleDeleteTask(idx)} style={styles.taskDeleteBtn}>
                       <X size={16} color="#ef4444" />
                     </TouchableOpacity>
                   )}
@@ -901,8 +1204,8 @@ const DashboardScreen = ({ staffInfo: initialStaffInfo, token, onLogout, getApiU
               ))}
             </View>
           ) : (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No tasks assigned for today.</Text>
+            <View style={styles.emptyTaskBox}>
+              <Text style={styles.emptyTaskText}>No tasks added yet</Text>
             </View>
           )}
         </View>
@@ -1013,6 +1316,45 @@ const DashboardScreen = ({ staffInfo: initialStaffInfo, token, onLogout, getApiU
                         <Text style={styles.noTasksText}>No tasks assigned for today.</Text>
                       )}
                     </View>
+
+                    {/* Member Satisfaction Controls */}
+                    <View style={styles.memberSatisfactionRow}>
+                      <Text style={styles.satisfactionLabel}>Satisfaction Zone:</Text>
+                      <View style={styles.satisfactionButtonsRow}>
+                        <TouchableOpacity
+                          onPress={() => handleUpdateSatisfaction(member.id || member._id, 'red')}
+                          style={[
+                            styles.satBtn,
+                            styles.satBtnRed,
+                            member.todaySatisfaction === 'red' && styles.satBtnActiveRed
+                          ]}
+                        >
+                          <Text style={styles.satBtnText}>🔴 Red</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          onPress={() => handleUpdateSatisfaction(member.id || member._id, 'yellow')}
+                          style={[
+                            styles.satBtn,
+                            styles.satBtnYellow,
+                            member.todaySatisfaction === 'yellow' && styles.satBtnActiveYellow
+                          ]}
+                        >
+                          <Text style={styles.satBtnText}>🟡 Yellow</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          onPress={() => handleUpdateSatisfaction(member.id || member._id, 'green')}
+                          style={[
+                            styles.satBtn,
+                            styles.satBtnGreen,
+                            member.todaySatisfaction === 'green' && styles.satBtnActiveGreen
+                          ]}
+                        >
+                          <Text style={styles.satBtnText}>🟢 Green</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
                   </View>
                 ))}
               </View>
@@ -1020,6 +1362,7 @@ const DashboardScreen = ({ staffInfo: initialStaffInfo, token, onLogout, getApiU
           </View>
         )}
       </ScrollView>
+      </LinearGradient>
 
       {/* Notifications Modal Popup */}
       <Modal
@@ -1044,27 +1387,22 @@ const DashboardScreen = ({ staffInfo: initialStaffInfo, token, onLogout, getApiU
           <ScrollView contentContainerStyle={styles.notificationsList}>
             {notifications.length === 0 ? (
               <View style={styles.emptyNotifications}>
-                <Bell size={48} color="#cbd5e1" style={{ marginBottom: 12 }} />
-                <Text style={styles.emptyNotificationsTitle}>No notifications yet</Text>
-                <Text style={styles.emptyNotificationsText}>We will let you know when something arrives!</Text>
+                <Bell size={36} color="#cbd5e1" />
+                <Text style={styles.emptyNotifText}>No notifications yet.</Text>
               </View>
             ) : (
               notifications.map((notif) => (
                 <TouchableOpacity
                   key={notif._id}
-                  onPress={() => !notif.isRead && markAsRead(notif._id)}
+                  onPress={() => handleMarkNotificationRead(notif._id)}
                   style={[
-                    styles.notifItem,
+                    styles.notifCard,
                     notif.isRead ? styles.notifRead : styles.notifUnread
                   ]}
-                  activeOpacity={notif.isRead ? 1 : 0.7}
                 >
                   <View style={styles.notifContent}>
                     <View style={styles.notifHeaderRow}>
-                      <Text style={[
-                        styles.notifItemTitle,
-                        !notif.isRead && styles.notifItemTitleUnread
-                      ]}>
+                      <Text style={[styles.notifItemTitle, !notif.isRead && styles.notifItemTitleUnread]}>
                         {notif.title}
                       </Text>
                       {!notif.isRead && (
@@ -1091,8 +1429,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f8fafc'
   },
+  fullScreenGradient: {
+    flex: 1
+  },
   header: {
-    paddingTop: Platform.OS === 'ios' ? 70 : 50,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 28) + 16 : Platform.OS === 'ios' ? 70 : 50,
     paddingBottom: 24,
     paddingHorizontal: 20,
     borderBottomLeftRadius: 28,
@@ -1714,6 +2055,468 @@ const styles = StyleSheet.create({
     color: '#94a3b8',
     fontWeight: 'bold',
     marginTop: 2
+  },
+  roleModulesContainer: {
+    marginBottom: 16
+  },
+  roleModulesHeader: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#64748b',
+    letterSpacing: 1.5,
+    marginBottom: 10,
+    marginLeft: 4
+  },
+  roleModulesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12
+  },
+  roleModuleCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 12,
+    alignItems: 'center',
+    width: '30%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2
+  },
+  roleModuleIconBg: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8
+  },
+  roleModuleText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#1e293b',
+    textAlign: 'center'
+  },
+  // Zone Banners
+  zoneBannerRed: {
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#dc2626',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 4
+  },
+  zoneBannerYellow: {
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#d97706',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 4
+  },
+  zoneBannerGreen: {
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 4
+  },
+  zoneBannerHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12
+  },
+  zoneBannerEmoji: {
+    fontSize: 32
+  },
+  zoneBannerTextContainer: {
+    flex: 1
+  },
+  zoneBannerTitleRed: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#fff',
+    letterSpacing: 0.5
+  },
+  zoneBannerSubtextRed: {
+    fontSize: 12,
+    color: '#fecdd3',
+    fontWeight: '600',
+    marginTop: 2,
+    lineHeight: 16
+  },
+  zoneBannerTitleYellow: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#fff',
+    letterSpacing: 0.5
+  },
+  zoneBannerSubtextYellow: {
+    fontSize: 12,
+    color: '#fef3c7',
+    fontWeight: '600',
+    marginTop: 2,
+    lineHeight: 16
+  },
+  zoneBannerTitleGreen: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#fff',
+    letterSpacing: 0.5
+  },
+  zoneBannerSubtextGreen: {
+    fontSize: 12,
+    color: '#d1fae5',
+    fontWeight: '600',
+    marginTop: 2,
+    lineHeight: 16
+  },
+  zoneBadgeRed: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)'
+  },
+  zoneBadgeTextRed: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#fff',
+    letterSpacing: 1
+  },
+  zoneBadgeYellow: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)'
+  },
+  zoneBadgeTextYellow: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#fff',
+    letterSpacing: 1
+  },
+  zoneBadgeGreen: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)'
+  },
+  zoneBadgeTextGreen: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#fff',
+    letterSpacing: 1
+  },
+  // Member Satisfaction Controls
+  memberSatisfactionRow: {
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9'
+  },
+  satisfactionLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#475569',
+    marginBottom: 6
+  },
+  satisfactionButtonsRow: {
+    flexDirection: 'row',
+    gap: 8
+  },
+  satBtn: {
+    flex: 1,
+    paddingVertical: 6,
+    borderRadius: 8,
+    alignItems: 'center',
+    backgroundColor: '#f1f5f9',
+    borderWidth: 1,
+    borderColor: '#e2e8f0'
+  },
+  satBtnRed: {},
+  satBtnActiveRed: {
+    backgroundColor: '#fee2e2',
+    borderColor: '#ef4444'
+  },
+  satBtnYellow: {},
+  satBtnActiveYellow: {
+    backgroundColor: '#fef3c7',
+    borderColor: '#f59e0b'
+  },
+  satBtnGreen: {},
+  satBtnActiveGreen: {
+    backgroundColor: '#dcfce7',
+    borderColor: '#10b981'
+  },
+  satBtnText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#1e293b'
+  },
+  // Today's Work Card (Matching Web Portal)
+  todaysWorkCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    padding: 18,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 3
+  },
+  embeddedBannerGreen: {
+    borderRadius: 18,
+    padding: 14,
+    marginBottom: 16
+  },
+  embeddedBannerYellow: {
+    borderRadius: 18,
+    padding: 14,
+    marginBottom: 16
+  },
+  embeddedBannerRed: {
+    borderRadius: 18,
+    padding: 14,
+    marginBottom: 16
+  },
+  embeddedBannerRow: {
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  embeddedBannerTitleGreen: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: '#fff',
+    letterSpacing: 0.5
+  },
+  embeddedBannerSubtextGreen: {
+    fontSize: 11,
+    color: '#d1fae5',
+    fontWeight: '600',
+    marginTop: 2,
+    lineHeight: 15
+  },
+  embeddedBannerTitleYellow: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: '#fff',
+    letterSpacing: 0.5
+  },
+  embeddedBannerSubtextYellow: {
+    fontSize: 11,
+    color: '#fef3c7',
+    fontWeight: '600',
+    marginTop: 2,
+    lineHeight: 15
+  },
+  embeddedBannerTitleRed: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: '#fff',
+    letterSpacing: 0.5
+  },
+  embeddedBannerSubtextRed: {
+    fontSize: 11,
+    color: '#fecdd3',
+    fontWeight: '600',
+    marginTop: 2,
+    lineHeight: 15
+  },
+  safeZoneBadge: {
+    alignSelf: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.4)'
+  },
+  safeZoneBadgeText: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#fff',
+    letterSpacing: 1
+  },
+  managementCommentBox: {
+    backgroundColor: '#fff',
+    borderLeftWidth: 4,
+    borderLeftColor: '#8b5cf6',
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0'
+  },
+  commentHeader: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#8b5cf6',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 4
+  },
+  commentText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1e293b',
+    fontStyle: 'italic'
+  },
+  commentAuthor: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#64748b',
+    marginTop: 4,
+    textAlign: 'right'
+  },
+  todaysWorkTitle: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#0f172a',
+    letterSpacing: 0.5,
+    marginBottom: 14
+  },
+  dayProgressBox: {
+    backgroundColor: '#f1f5f9',
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: 14
+  },
+  progressHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 6
+  },
+  progressLabel: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#64748b',
+    letterSpacing: 1.5
+  },
+  progressPercentText: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#1e293b'
+  },
+  progressTrack: {
+    height: 7,
+    backgroundColor: '#e2e8f0',
+    borderRadius: 4,
+    overflow: 'hidden'
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#3b82f6',
+    borderRadius: 4
+  },
+  taskInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 14
+  },
+  pillTaskInput: {
+    flex: 1,
+    height: 48,
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1e293b'
+  },
+  addTaskPillBtn: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#8b5cf6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3
+  },
+  addTaskPillGradient: {
+    height: 48,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4
+  },
+  addTaskPillText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 1
+  },
+  taskListContainer: {
+    gap: 8
+  },
+  taskCardItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 10
+  },
+  taskCardItemCompleted: {
+    backgroundColor: '#f0fdf4',
+    borderColor: '#bbf7d0'
+  },
+  checkboxTouch: {
+    padding: 2
+  },
+  taskCardText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1e293b'
+  },
+  taskCardTextCompleted: {
+    color: '#94a3b8',
+    textDecorationLine: 'line-through'
+  },
+  taskDeleteBtn: {
+    padding: 4
+  },
+  emptyTaskBox: {
+    backgroundColor: 'rgba(241, 245, 249, 0.7)',
+    borderRadius: 16,
+    paddingVertical: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#e2e8f0'
+  },
+  emptyTaskText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#64748b'
   }
 });
 

@@ -1653,9 +1653,7 @@ exports.revertSalary = async (req, res) => {
     const isCurrentMonthReverted = cleanTargetMonth === currentMonthName;
 
     staff.salaryHistory = updatedSalaryHistory;
-    if (isCurrentMonthReverted) {
-      staff.salaryStatus = 'Pending';
-    }
+    staff.salaryStatus = 'Pending';
 
     await staff.save();
 

@@ -68,6 +68,7 @@ function App() {
       localStorage.setItem('currentAdminEmail', email);
       setAdminEmail(email);
     }
+    navigate('/');
   };
 
   const handleLogout = async () => {
@@ -80,6 +81,7 @@ function App() {
     localStorage.removeItem('isLoggedIn');
     localStorage.removeItem('currentAdminEmail');
     localStorage.removeItem('adminToken');
+    navigate('/');
   };
 
 
