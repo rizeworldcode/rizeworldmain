@@ -2565,8 +2565,32 @@ const Dashboard = () => {
       >
         <div>
           <div className="flex items-center gap-4 sm:gap-6 mb-6 sm:mb-8">
-            <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-[#8b5cf6] to-[#f472b6] flex items-center justify-center text-white font-black text-2xl sm:text-3xl shadow-lg">
-              {staffInfo?.name?.charAt(0) || 'U'}
+            <div 
+              onClick={() => {
+                if (staffInfo.profilePic) {
+                  setFullImageModal({
+                    isOpen: true,
+                    src: getProfilePicUrl(staffInfo.profilePic),
+                    title: `${staffInfo.name || 'My Profile'}`
+                  });
+                }
+              }}
+              className={`w-14 h-14 sm:w-20 sm:h-20 rounded-2xl overflow-hidden shadow-lg bg-gradient-to-br from-[#8b5cf6] to-[#f472b6] flex items-center justify-center text-white font-black text-2xl sm:text-3xl shrink-0 ${
+                staffInfo.profilePic ? 'cursor-pointer hover:scale-105 transition-transform' : ''
+              }`}
+            >
+              {staffInfo?.profilePic ? (
+                <img
+                  src={getProfilePicUrl(staffInfo.profilePic)}
+                  alt={staffInfo.name}
+                  className="w-full h-full object-cover rounded-2xl block border-0 outline-none"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              ) : (
+                staffInfo?.name?.charAt(0) || 'U'
+              )}
             </div>
             <div>
               <h3 className="text-xl sm:text-3xl font-black text-black">{staffInfo?.name || 'Employee'}</h3>
@@ -3123,8 +3147,32 @@ const Dashboard = () => {
               <div key={member.id} className="clay-card p-5 border border-black/5 bg-[#f8fafc]/50 relative overflow-hidden group">
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#8b5cf6] to-[#f472b6] flex items-center justify-center text-white font-black text-sm">
-                      {member.name.charAt(0)}
+                    <div
+                      onClick={() => {
+                        if (member.profilePic) {
+                          setFullImageModal({
+                            isOpen: true,
+                            src: getProfilePicUrl(member.profilePic),
+                            title: `${member.name} (${member.employeeId || 'Staff'})`
+                          });
+                        }
+                      }}
+                      className={`w-10 h-10 rounded-xl overflow-hidden bg-gradient-to-br from-[#8b5cf6] to-[#f472b6] flex items-center justify-center text-white font-black text-sm shrink-0 ${
+                        member.profilePic ? 'cursor-pointer hover:scale-105 transition-transform' : ''
+                      }`}
+                    >
+                      {member.profilePic ? (
+                        <img
+                          src={getProfilePicUrl(member.profilePic)}
+                          alt={member.name}
+                          className="w-full h-full object-cover rounded-xl block border-0 outline-none"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        member.name.charAt(0)
+                      )}
                     </div>
                     <div>
                       <h4 className="font-black text-black text-sm">{member.name}</h4>
