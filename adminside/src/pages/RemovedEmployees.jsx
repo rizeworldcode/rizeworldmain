@@ -574,7 +574,7 @@ const RemovedEmployees = () => {
                         {member.profilePic ? (
                           <>
                             <img
-                              src={member.profilePic.startsWith('http') ? member.profilePic : `http://localhost:45000${member.profilePic.startsWith('/') ? '' : '/'}${member.profilePic}`}
+                              src={member.profilePic.startsWith('http') ? member.profilePic : `${(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:45000' : 'https://rizeworldmain.onrender.com'}${member.profilePic.startsWith('/') ? '' : '/'}${member.profilePic}`}
                               alt={member.name}
                               className="w-10 h-10 rounded-full object-cover border-2 border-rose-500/20 shadow-sm"
                               onError={(e) => {

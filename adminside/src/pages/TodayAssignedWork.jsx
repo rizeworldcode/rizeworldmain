@@ -260,7 +260,7 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
                     {staff.profilePic ? (
                       <>
                         <img
-                          src={staff.profilePic.startsWith('http') ? staff.profilePic : `http://localhost:45000${staff.profilePic.startsWith('/') ? '' : '/'}${staff.profilePic}`}
+                          src={staff.profilePic.startsWith('http') ? staff.profilePic : `${(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:45000' : 'https://rizeworldmain.onrender.com'}${staff.profilePic.startsWith('/') ? '' : '/'}${staff.profilePic}`}
                           alt={staff.name}
                           className="w-12 h-12 rounded-2xl object-cover border-2 border-blue-500/20 shadow-lg"
                           onError={(e) => {

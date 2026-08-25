@@ -2046,7 +2046,7 @@ exports.getMyReportees = async (req, res) => {
     }
 
     const reportees = await Staff.find({ reportingPerson: managerId, isRemoved: { $ne: true } })
-      .select('name employeeId department role jobType status clock work attendance todaySatisfaction todayComment commentUpdatedBy');
+      .select('name employeeId department role jobType status clock work attendance todaySatisfaction todayComment commentUpdatedBy profilePic');
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);

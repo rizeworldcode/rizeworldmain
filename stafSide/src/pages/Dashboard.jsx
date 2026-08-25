@@ -464,7 +464,10 @@ const Dashboard = () => {
   const getProfilePicUrl = (pic) => {
     if (!pic) return null;
     if (pic.startsWith('http://') || pic.startsWith('https://')) return pic;
-    return `http://localhost:45000${pic.startsWith('/') ? '' : '/'}${pic}`;
+    const base = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+      ? 'http://localhost:45000'
+      : 'https://rizeworldmain.onrender.com';
+    return `${base}${pic.startsWith('/') ? '' : '/'}${pic}`;
   };
 
   const handleProfilePicUpload = async (e) => {
@@ -493,6 +496,29 @@ const Dashboard = () => {
       }
     } catch (err) {
       console.error('Error uploading profile picture:', err);
+      alert('Error uploading profile picture');
+    }
+  };
+
+  const handleReporteeProfilePicUpload = async (e, reporteeId) => {
+    const file = e.target.files?.[0];
+    if (!file || !reporteeId) return;
+    const formData = new FormData();
+    formData.append('profilePic', file);
+    try {
+      const res = await fetch(getApiUrl(`/staff/${reporteeId}/profile-pic`), {
+        method: 'POST',
+        body: formData
+      });
+      const result = await res.json();
+      if (result.success) {
+        fetchReportees();
+        alert('Team member profile picture updated successfully!');
+      } else {
+        alert('Failed to upload team member profile picture: ' + (result.message || 'Error'));
+      }
+    } catch (err) {
+      console.error('Error uploading team member profile picture:', err);
       alert('Error uploading profile picture');
     }
   };
@@ -3147,32 +3173,44 @@ const Dashboard = () => {
               <div key={member.id} className="clay-card p-5 border border-black/5 bg-[#f8fafc]/50 relative overflow-hidden group">
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex items-center gap-3">
-                    <div
-                      onClick={() => {
-                        if (member.profilePic) {
-                          setFullImageModal({
-                            isOpen: true,
-                            src: getProfilePicUrl(member.profilePic),
-                            title: `${member.name} (${member.employeeId || 'Staff'})`
-                          });
-                        }
-                      }}
-                      className={`w-10 h-10 rounded-xl overflow-hidden bg-gradient-to-br from-[#8b5cf6] to-[#f472b6] flex items-center justify-center text-white font-black text-sm shrink-0 ${
-                        member.profilePic ? 'cursor-pointer hover:scale-105 transition-transform' : ''
-                      }`}
-                    >
-                      {member.profilePic ? (
-                        <img
-                          src={getProfilePicUrl(member.profilePic)}
-                          alt={member.name}
-                          className="w-full h-full object-cover rounded-xl block border-0 outline-none"
-                          onError={(e) => {
-                            e.currentTarget.style.display = 'none';
-                          }}
-                        />
-                      ) : (
-                        member.name.charAt(0)
-                      )}
+                    <div className="shrink-0">
+                      <div
+                        onClick={() => {
+                          if (member.profilePic) {
+                            setFullImageModal({
+                              isOpen: true,
+                              src: getProfilePicUrl(member.profilePic),
+                              title: `${member.name} (${member.employeeId || 'Staff'})`
+                            });
+                          }
+                        }}
+                        className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl overflow-hidden bg-gradient-to-br from-[#8b5cf6] to-[#f472b6] flex items-center justify-center text-white font-black text-lg shrink-0 shadow-md ${
+                          member.profilePic ? 'cursor-pointer hover:scale-105 transition-transform' : ''
+                        }`}
+                        title={member.profilePic ? "Click to view full image" : ""}
+                      >
+                        {member.profilePic ? (
+                          <>
+                            <img
+                              src={getProfilePicUrl(member.profilePic)}
+                              alt={member.name}
+                              className="w-full h-full object-cover rounded-2xl block border-0 outline-none"
+                              onError={(e) => {
+                                const img = e.currentTarget;
+                                img.style.display = 'none';
+                                if (img.nextElementSibling) {
+                                  img.nextElementSibling.style.display = 'flex';
+                                }
+                              }}
+                            />
+                            <div style={{ display: 'none' }} className="w-full h-full items-center justify-center font-black text-lg text-white">
+                              {member.name?.charAt(0)?.toUpperCase() || 'U'}
+                            </div>
+                          </>
+                        ) : (
+                          <span>{member.name?.charAt(0)?.toUpperCase() || 'U'}</span>
+                        )}
+                      </div>
                     </div>
                     <div>
                       <h4 className="font-black text-black text-sm">{member.name}</h4>

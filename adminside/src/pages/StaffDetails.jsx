@@ -673,7 +673,10 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
   const getProfilePicUrl = (pic) => {
     if (!pic) return null;
     if (pic.startsWith('http://') || pic.startsWith('https://')) return pic;
-    return `http://localhost:45000${pic.startsWith('/') ? '' : '/'}${pic}`;
+    const base = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+      ? 'http://localhost:45000'
+      : 'https://rizeworldmain.onrender.com';
+    return `${base}${pic.startsWith('/') ? '' : '/'}${pic}`;
   };
 
   const getRedZoneDaysCount = (member) => {
