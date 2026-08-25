@@ -9,7 +9,6 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
-  SafeAreaView,
   Platform,
   RefreshControl,
   StatusBar
@@ -32,7 +31,7 @@ import {
   Check
 } from 'lucide-react-native';
 
-const HearingScreen = ({ staffInfo, token, onBack, getApiUrl }) => {
+const HearingScreen = ({ staffInfo, token, onBack, getApiUrl, onUpdateStaffInfo }) => {
   const [hearings, setHearings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -228,7 +227,7 @@ const HearingScreen = ({ staffInfo, token, onBack, getApiUrl }) => {
   });
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       {/* Top Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
@@ -458,7 +457,7 @@ const HearingScreen = ({ staffInfo, token, onBack, getApiUrl }) => {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 };
 

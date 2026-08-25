@@ -5,7 +5,6 @@ import {
   View,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   Platform,
   StatusBar
 } from 'react-native';
@@ -37,7 +36,7 @@ const ClientProjectsScreen = ({ client, onBack }) => {
   const milestones = client.milestones || client.projects || [];
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
@@ -160,7 +159,7 @@ const ClientProjectsScreen = ({ client, onBack }) => {
           )}
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 

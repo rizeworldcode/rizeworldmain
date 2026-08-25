@@ -95,10 +95,42 @@ const get30DaySequenceDates = (year, monthIndex, createdAt = null) => {
   return filtered;
 };
 
-const calculatePayout = (staffInfo) => {
-  const baseSalary = staffInfo.monthlySalary || 0;
-  const hourlyRate = baseSalary / EXPECTED_MONTHLY_HOURS;
+const getSalaryForDate = (staffInfo, date) => {
+  const defaultSalary = staffInfo?.monthlySalary || 0;
+  const defaultJobType = staffInfo?.jobType || '';
+  if (!staffInfo?.salaryRevisions || staffInfo.salaryRevisions.length === 0) {
+    return { salary: defaultSalary, jobType: defaultJobType };
+  }
 
+  const d = new Date(date);
+  d.setHours(23, 59, 59, 999);
+
+  let activeSalary = defaultSalary;
+  let activeJobType = defaultJobType;
+  let found = false;
+
+  for (let i = staffInfo.salaryRevisions.length - 1; i >= 0; i--) {
+    const rev = staffInfo.salaryRevisions[i];
+    const revDate = new Date(rev.effectiveDate);
+    revDate.setHours(0, 0, 0, 0);
+
+    if (revDate <= d) {
+      activeSalary = rev.monthlySalary;
+      activeJobType = rev.jobType || defaultJobType;
+      found = true;
+      break;
+    }
+  }
+
+  if (!found && staffInfo.salaryRevisions.length > 0) {
+    activeSalary = staffInfo.salaryRevisions[0].monthlySalary;
+    activeJobType = staffInfo.salaryRevisions[0].jobType || defaultJobType;
+  }
+
+  return { salary: activeSalary, jobType: activeJobType };
+};
+
+const calculatePayout = (staffInfo) => {
   const today = new Date();
   const currentMonth = today.getMonth();
   const currentYear = today.getFullYear();
@@ -116,26 +148,28 @@ const calculatePayout = (staffInfo) => {
     return seqDateStrings.has(new Date(record.date).toDateString());
   });
 
-  let totalHoursWorked = 0;
-  monthlyClockRecords.forEach(record => {
-    const actualHrs = parseTotalHours(record.totalHours);
-    if (actualHrs > 9) {
-      totalHoursWorked += 8.5 + (actualHrs - 9);
-    } else if (actualHrs >= 8.5) {
-      totalHoursWorked += 8.5;
-    } else {
-      totalHoursWorked += actualHrs;
-    }
-  });
+  const dailyHoursMap = {};
+  const creditedDates = new Set();
 
-  const creditedDates = new Set(
-    monthlyClockRecords.map(r => new Date(r.date).toDateString())
-  );
+  monthlyClockRecords.forEach(record => {
+    const dStr = new Date(record.date).toDateString();
+    const actualHrs = parseTotalHours(record.totalHours);
+    let hrs = 0;
+    if (actualHrs > 9) {
+      hrs = 8.5 + (actualHrs - 9);
+    } else if (actualHrs >= 8.5) {
+      hrs = 8.5;
+    } else {
+      hrs = actualHrs;
+    }
+    dailyHoursMap[dStr] = hrs;
+    creditedDates.add(dStr);
+  });
 
   validSequenceDates.forEach(d => {
     const dStr = d.toDateString();
     if (d.getDay() === 0 && !creditedDates.has(dStr)) {
-      totalHoursWorked += STANDARD_HOURS_PER_DAY;
+      dailyHoursMap[dStr] = STANDARD_HOURS_PER_DAY;
       creditedDates.add(dStr);
     }
   });
@@ -143,11 +177,9 @@ const calculatePayout = (staffInfo) => {
   (staffInfo.leaves || []).forEach(leave => {
     const ld = new Date(leave.date);
     const ldStr = ld.toDateString();
-    if (seqDateStrings.has(ldStr)) {
-      if (!creditedDates.has(ldStr)) {
-        totalHoursWorked += STANDARD_HOURS_PER_DAY;
-        creditedDates.add(ldStr);
-      }
+    if (seqDateStrings.has(ldStr) && !creditedDates.has(ldStr)) {
+      dailyHoursMap[ldStr] = STANDARD_HOURS_PER_DAY;
+      creditedDates.add(ldStr);
     }
   });
 
@@ -155,11 +187,9 @@ const calculatePayout = (staffInfo) => {
     if (att.status === 'On Leave') {
       const ad = new Date(att.date);
       const adStr = ad.toDateString();
-      if (seqDateStrings.has(adStr)) {
-        if (!creditedDates.has(adStr)) {
-          totalHoursWorked += STANDARD_HOURS_PER_DAY;
-          creditedDates.add(adStr);
-        }
+      if (seqDateStrings.has(adStr) && !creditedDates.has(adStr)) {
+        dailyHoursMap[adStr] = STANDARD_HOURS_PER_DAY;
+        creditedDates.add(adStr);
       }
     }
   });
@@ -179,27 +209,44 @@ const calculatePayout = (staffInfo) => {
   let casualLeaveUsed = false;
 
   if (absentDays.length > 0) {
-    totalHoursWorked += STANDARD_HOURS_PER_DAY;
-    creditedDates.add(absentDays[0].toDateString());
+    const casualLeaveDate = absentDays[0];
+    const dStr = casualLeaveDate.toDateString();
+    dailyHoursMap[dStr] = STANDARD_HOURS_PER_DAY;
+    creditedDates.add(dStr);
     casualLeaveUsed = true;
   } else if (halfDayLeaveUnits > 0) {
     for (let i = 0; i < 2; i++) {
       const hdDate = new Date(halfDayRecords[i].date);
+      const dStr = hdDate.toDateString();
       const clockRecord = monthlyClockRecords.find(
-        r => new Date(r.date).toDateString() === hdDate.toDateString()
+        r => new Date(r.date).toDateString() === dStr
       );
       const actualHrs = clockRecord ? parseTotalHours(clockRecord.totalHours) : 0;
       const halfTarget = STANDARD_HOURS_PER_DAY / 2;
       if (actualHrs < halfTarget) {
-        totalHoursWorked += halfTarget - actualHrs;
+        dailyHoursMap[dStr] = (dailyHoursMap[dStr] || actualHrs) + (halfTarget - actualHrs);
       }
     }
     casualLeaveUsed = true;
   }
 
-  const payout = Math.round(hourlyRate * totalHoursWorked);
+  let totalPayout = 0;
+  let totalHoursWorked = 0;
+
+  validSequenceDates.forEach(d => {
+    const dStr = d.toDateString();
+    const hrs = dailyHoursMap[dStr] || 0;
+    totalHoursWorked += hrs;
+    const { salary: daySalary } = getSalaryForDate(staffInfo, d);
+    const dayHourlyRate = daySalary / EXPECTED_MONTHLY_HOURS;
+    totalPayout += hrs * dayHourlyRate;
+  });
+
+  const payout = Math.round(totalPayout);
   const daysWorked = monthlyClockRecords.length;
   const fullLeavesCount = Math.max(0, absentDays.length - (casualLeaveUsed && absentDays.length > 0 ? 1 : 0));
+  const currentSalary = staffInfo.monthlySalary || 0;
+  const hourlyRate = currentSalary / EXPECTED_MONTHLY_HOURS;
 
   return {
     payout,
@@ -412,6 +459,43 @@ const Dashboard = () => {
   const [staffInfo, setStaffInfo] = useState(JSON.parse(localStorage.getItem('staffInfo') || '{}'));
   const [reportees, setReportees] = useState([]);
   const [loadingReportees, setLoadingReportees] = useState(false);
+  const [fullImageModal, setFullImageModal] = useState({ isOpen: false, src: '', title: '' });
+
+  const getProfilePicUrl = (pic) => {
+    if (!pic) return null;
+    if (pic.startsWith('http://') || pic.startsWith('https://')) return pic;
+    return `http://localhost:45000${pic.startsWith('/') ? '' : '/'}${pic}`;
+  };
+
+  const handleProfilePicUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('profilePic', file);
+    const staffId = staffInfo.id || staffInfo._id;
+    if (!staffId) {
+      alert('Staff ID not found');
+      return;
+    }
+    try {
+      const res = await fetch(getApiUrl(`/staff/${staffId}/profile-pic`), {
+        method: 'POST',
+        body: formData
+      });
+      const result = await res.json();
+      if (result.success) {
+        const updatedStaff = result.data;
+        setStaffInfo(updatedStaff);
+        localStorage.setItem('staffInfo', JSON.stringify(updatedStaff));
+        alert('Profile picture updated successfully!');
+      } else {
+        alert('Failed to upload profile picture: ' + (result.message || 'Error'));
+      }
+    } catch (err) {
+      console.error('Error uploading profile picture:', err);
+      alert('Error uploading profile picture');
+    }
+  };
   const baseSalary = staffInfo.monthlySalary || 0;
   const { payout, totalHoursWorked, daysWorked, hourlyRate, fullLeaves, halfDays } = calculatePayout(staffInfo);
   const chartData = generateChartData(staffInfo);
@@ -451,32 +535,37 @@ const Dashboard = () => {
 
   // Sync staff info across multiple local react states
   const syncStaffDataStates = (updatedStaff) => {
+    if (!updatedStaff) return;
     setStaffInfo(updatedStaff);
 
     const leaveDay = checkLeaveDay(updatedStaff);
     setIsLeaveDay(leaveDay);
 
     if (!leaveDay) {
-      const canClockOut = updatedStaff.clock_status === 'clock_in';
-      const canClockIn = updatedStaff.clock_status === 'clock_out' || !updatedStaff.clock_status;
-      
-      if (updatedStaff.todayClock && updatedStaff.todayClock.sessions) {
-        const todayClock = updatedStaff.todayClock;
-        const sessions = todayClock.sessions || [];
-        setAttendanceStatus({
-          canClockIn: canClockIn,
-          canClockOut: canClockOut,
-          sessions: sessions,
-          totalHours: todayClock.totalHours || '-'
-        });
-      } else {
-        setAttendanceStatus({
-          canClockIn: canClockIn,
-          canClockOut: canClockOut,
-          sessions: [],
-          totalHours: '-'
-        });
-      }
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const todayClock = updatedStaff.todayClock || (updatedStaff.clock && updatedStaff.clock.find(c => {
+        const d = new Date(c.date);
+        return d >= today && d < tomorrow;
+      }));
+
+      const sessions = todayClock?.sessions || [];
+      const lastSession = sessions.length > 0 ? sessions[sessions.length - 1] : null;
+      const hasOpenSession = lastSession && lastSession.clockIn && !lastSession.clockOut;
+
+      const canClockOut = updatedStaff.clock_status === 'clock_in' || hasOpenSession;
+      const canClockIn = !canClockOut;
+
+      setAttendanceStatus({
+        canClockIn: canClockIn,
+        canClockOut: canClockOut,
+        sessions: sessions,
+        totalHours: todayClock?.totalHours || '-'
+      });
+    }
       
       if (updatedStaff.work) {
         const today = new Date();
@@ -494,7 +583,6 @@ const Dashboard = () => {
       } else {
         setTodayTasks([]);
       }
-    }
   };
 
   const fetchReportees = async () => {
@@ -519,7 +607,8 @@ const Dashboard = () => {
   };
 
   const fetchStaffInfo = async () => {
-    const staffId = staffInfo.id || staffInfo._id;
+    const staffInfoLocal = JSON.parse(localStorage.getItem('staffInfo') || '{}');
+    const staffId = staffInfoLocal.id || staffInfoLocal._id || staffInfo?.id || staffInfo?._id;
     if (!staffId) return;
     try {
       const response = await fetch(getApiUrl(`/staff/${staffId}`));
@@ -1373,22 +1462,16 @@ const Dashboard = () => {
       const result = await response.json();
       
       if (result.success) {
-        const todayClock = result.data.todayClock;
-        const sessions = todayClock.sessions || [];
-        const lastSession = sessions.length > 0 ? sessions[sessions.length - 1] : null;
-
-        setAttendanceStatus({
-          canClockIn: false,
-          canClockOut: true,
-          sessions: sessions,
-          totalHours: todayClock.totalHours || '-'
-        });
-
         // Update localStorage with full staff data
         localStorage.setItem('staffInfo', JSON.stringify(result.data));
         syncStaffDataStates(result.data);
+        fetchStaffInfo();
 
-        alert(`Clocked in successfully at ${lastSession.clockIn}`);
+        const todayClock = result.data.todayClock || (result.data.clock && result.data.clock[result.data.clock.length - 1]);
+        const sessions = todayClock?.sessions || [];
+        const lastSession = sessions.length > 0 ? sessions[sessions.length - 1] : null;
+
+        alert(`Clocked in successfully at ${lastSession?.clockIn || ''}`);
       } else {
         alert(result.message || 'Failed to clock in');
       }
@@ -1399,8 +1482,8 @@ const Dashboard = () => {
   };
 
   const handleClockOut = async () => {
-    const staffInfo = JSON.parse(localStorage.getItem('staffInfo') || '{}');
-    const staffId = staffInfo.id || staffInfo._id;
+    const staffInfoLocal = JSON.parse(localStorage.getItem('staffInfo') || '{}');
+    const staffId = staffInfoLocal.id || staffInfoLocal._id || staffInfo?.id || staffInfo?._id;
     
     if (!staffId) {
       alert('Staff ID not found. Please log in again.');
@@ -1415,21 +1498,15 @@ const Dashboard = () => {
       const result = await response.json();
       
       if (result.success) {
-        const todayClock = result.data.todayClock || {};
-        const sessions = todayClock.sessions || [];
-        const lastSession = sessions.length > 0 ? sessions[sessions.length - 1] : null;
-        const clockOutTime = lastSession?.clockOut || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-        setAttendanceStatus({
-          canClockIn: true,
-          canClockOut: false,
-          sessions: sessions,
-          totalHours: todayClock.totalHours || '-'
-        });
-
         // Update localStorage with full staff data
         localStorage.setItem('staffInfo', JSON.stringify(result.data));
         syncStaffDataStates(result.data);
+        fetchStaffInfo();
+
+        const todayClock = result.data.todayClock || (result.data.clock && result.data.clock[result.data.clock.length - 1]);
+        const sessions = todayClock?.sessions || [];
+        const lastSession = sessions.length > 0 ? sessions[sessions.length - 1] : null;
+        const clockOutTime = lastSession?.clockOut || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
         alert(`Clocked out successfully at ${clockOutTime}`);
       } else {
@@ -1998,16 +2075,70 @@ const Dashboard = () => {
 
       {/* Header */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-          <motion.h2 
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="text-3xl sm:text-4xl font-black text-black tracking-tight"
-          >
-            {greeting}, {JSON.parse(localStorage.getItem('staffInfo') || '{}')?.name || 'Alex'}
-          </motion.h2>
-          <p className="text-black font-bold mt-2 text-sm sm:text-base">Here's what's happening with your work today.</p>
-          <p className="text-xs text-gray-500 font-medium mt-1">Role: {staffInfo.role || 'Not set'}</p>
+        <div className="flex items-center gap-4 sm:gap-5">
+          {/* Employee Self Profile Avatar & Upload Button */}
+          <div className="relative group/avatar shrink-0">
+            <div
+              onClick={() => {
+                if (staffInfo.profilePic) {
+                  setFullImageModal({
+                    isOpen: true,
+                    src: getProfilePicUrl(staffInfo.profilePic),
+                    title: `${staffInfo.name || 'My Profile'}`
+                  });
+                }
+              }}
+              className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden shadow-lg ring-4 ring-blue-500/30 bg-slate-900 flex items-center justify-center transition-transform hover:scale-105 ${
+                staffInfo.profilePic ? 'cursor-pointer' : ''
+              }`}
+              title={staffInfo.profilePic ? "Click to view full image" : ""}
+            >
+              {staffInfo.profilePic ? (
+                <img
+                  src={getProfilePicUrl(staffInfo.profilePic)}
+                  alt={staffInfo.name || 'Profile'}
+                  className="w-full h-full object-cover rounded-full block border-0 outline-none"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center">
+                  <span className="text-2xl font-black text-blue-400">
+                    {staffInfo.name?.charAt(0)?.toUpperCase() || 'E'}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Employee Camera Upload Button */}
+            <label
+              htmlFor="staffSelfProfilePicInput"
+              className="absolute -bottom-1 -right-1 p-2 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg cursor-pointer transition-transform hover:scale-110 flex items-center justify-center border-2 border-white"
+              title="Change Profile Picture"
+            >
+              <Camera size={13} />
+              <input
+                type="file"
+                id="staffSelfProfilePicInput"
+                accept="image/*"
+                className="hidden"
+                onChange={handleProfilePicUpload}
+              />
+            </label>
+          </div>
+
+          <div>
+            <motion.h2 
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="text-2xl sm:text-4xl font-black text-black tracking-tight"
+            >
+              {greeting}, {staffInfo.name || JSON.parse(localStorage.getItem('staffInfo') || '{}')?.name || 'Alex'}
+            </motion.h2>
+            <p className="text-black font-bold mt-1 text-sm sm:text-base">Here's what's happening with your work today.</p>
+            <p className="text-xs text-gray-500 font-medium mt-0.5">Role: {staffInfo.role || 'Not set'}</p>
+          </div>
         </div>
 
         <div className="flex items-center gap-3 sm:gap-4">
@@ -3398,8 +3529,35 @@ const Dashboard = () => {
         </div>
       )}
 
-
-
+      {/* Full Image Lightbox Modal */}
+      {fullImageModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            onClick={() => setFullImageModal({ isOpen: false, src: '', title: '' })}
+            className="absolute inset-0 bg-black/80 backdrop-blur-md"
+          />
+          <div className="relative max-w-4xl max-h-[90vh] z-10 flex flex-col items-center justify-center pointer-events-auto">
+            <button
+              type="button"
+              onClick={() => setFullImageModal({ isOpen: false, src: '', title: '' })}
+              className="absolute -top-12 right-0 p-2 text-white/80 hover:text-white bg-white/10 hover:bg-white/20 rounded-full transition-colors cursor-pointer border-none"
+              title="Close"
+            >
+              <X size={24} />
+            </button>
+            <img
+              src={fullImageModal.src}
+              alt={fullImageModal.title || 'Profile Picture'}
+              className="max-w-full max-h-[80vh] object-contain rounded-2xl shadow-2xl border border-white/20"
+            />
+            {fullImageModal.title && (
+              <p className="mt-4 text-white font-bold text-sm sm:text-base tracking-wide bg-black/70 px-6 py-2 rounded-full border border-white/10 backdrop-blur-sm">
+                {fullImageModal.title}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
     </div>
   );

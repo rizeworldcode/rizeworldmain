@@ -9,7 +9,6 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
-  SafeAreaView,
   Image,
   RefreshControl,
   StatusBar,
@@ -35,7 +34,7 @@ const CATEGORIES = [
   'Social Media', 'Branding', 'Web Development', 'News & Updates'
 ];
 
-const BlogsScreen = ({ staffInfo, token, onBack, getApiUrl }) => {
+const BlogsScreen = ({ staffInfo, token, onBack, getApiUrl, onUpdateStaffInfo }) => {
   const [blogs, setBlogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -198,7 +197,7 @@ const BlogsScreen = ({ staffInfo, token, onBack, getApiUrl }) => {
   });
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
@@ -393,7 +392,7 @@ const BlogsScreen = ({ staffInfo, token, onBack, getApiUrl }) => {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 };
 

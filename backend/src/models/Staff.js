@@ -61,6 +61,11 @@ const staffSchema = new mongoose.Schema({
     method: { type: String, enum: ['phonepe', 'paytm', 'google_pay', 'bank_transfer', 'cash'], required: true },
     utrNumber: { type: String }
   }],
+  salaryRevisions: [{
+    effectiveDate: { type: Date, required: true },
+    monthlySalary: { type: Number, required: true },
+    jobType: { type: String }
+  }],
   clock: [{
     date: {
       type: Date,

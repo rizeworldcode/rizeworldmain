@@ -9,7 +9,6 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
-  SafeAreaView,
   Linking,
   RefreshControl,
   Platform,
@@ -30,7 +29,7 @@ import {
   BookOpen
 } from 'lucide-react-native';
 
-const AdmissionsScreen = ({ staffInfo, token, onBack, getApiUrl }) => {
+const AdmissionsScreen = ({ staffInfo, token, onBack, getApiUrl, onUpdateStaffInfo }) => {
   const [admissions, setAdmissions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -195,7 +194,7 @@ const AdmissionsScreen = ({ staffInfo, token, onBack, getApiUrl }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
@@ -397,7 +396,7 @@ const AdmissionsScreen = ({ staffInfo, token, onBack, getApiUrl }) => {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 };
 

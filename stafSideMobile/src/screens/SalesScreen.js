@@ -9,7 +9,6 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
-  SafeAreaView,
   RefreshControl,
   Platform,
   StatusBar
@@ -29,7 +28,7 @@ import {
   ShoppingBag
 } from 'lucide-react-native';
 
-const SalesScreen = ({ staffInfo, token, onBack, getApiUrl }) => {
+const SalesScreen = ({ staffInfo, token, onBack, getApiUrl, onUpdateStaffInfo }) => {
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -172,7 +171,7 @@ const SalesScreen = ({ staffInfo, token, onBack, getApiUrl }) => {
   const totalRevenue = sales.reduce((acc, curr) => acc + (parseFloat(curr.saleAmount) || 0), 0);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
@@ -315,7 +314,7 @@ const SalesScreen = ({ staffInfo, token, onBack, getApiUrl }) => {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 };
 

@@ -9,7 +9,6 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
-  SafeAreaView,
   RefreshControl,
   Platform,
   StatusBar
@@ -30,7 +29,7 @@ import {
   Phone
 } from 'lucide-react-native';
 
-const ClientsScreen = ({ staffInfo, token, onBack, onSelectClient, getApiUrl }) => {
+const ClientsScreen = ({ staffInfo, token, onBack, onSelectClient, getApiUrl, onUpdateStaffInfo }) => {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -127,7 +126,7 @@ const ClientsScreen = ({ staffInfo, token, onBack, onSelectClient, getApiUrl }) 
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
@@ -311,7 +310,7 @@ const ClientsScreen = ({ staffInfo, token, onBack, onSelectClient, getApiUrl }) 
           </View>
         ) : null}
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 };
 

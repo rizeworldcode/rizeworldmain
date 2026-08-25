@@ -408,10 +408,42 @@ const parseTotalHours = (totalHoursStr) => {
   return hours + (minutes / 60);
 };
 
-const calculatePayout = (staffInfo) => {
-  const baseSalary = staffInfo.monthlySalary || 0;
-  const hourlyRate = baseSalary / EXPECTED_MONTHLY_HOURS;
+const getSalaryForDate = (staffInfo, date) => {
+  const defaultSalary = staffInfo?.monthlySalary || 0;
+  const defaultJobType = staffInfo?.jobType || '';
+  if (!staffInfo?.salaryRevisions || staffInfo.salaryRevisions.length === 0) {
+    return { salary: defaultSalary, jobType: defaultJobType };
+  }
 
+  const d = new Date(date);
+  d.setHours(23, 59, 59, 999);
+
+  let activeSalary = defaultSalary;
+  let activeJobType = defaultJobType;
+  let found = false;
+
+  for (let i = staffInfo.salaryRevisions.length - 1; i >= 0; i--) {
+    const rev = staffInfo.salaryRevisions[i];
+    const revDate = new Date(rev.effectiveDate);
+    revDate.setHours(0, 0, 0, 0);
+
+    if (revDate <= d) {
+      activeSalary = rev.monthlySalary;
+      activeJobType = rev.jobType || defaultJobType;
+      found = true;
+      break;
+    }
+  }
+
+  if (!found && staffInfo.salaryRevisions.length > 0) {
+    activeSalary = staffInfo.salaryRevisions[0].monthlySalary;
+    activeJobType = staffInfo.salaryRevisions[0].jobType || defaultJobType;
+  }
+
+  return { salary: activeSalary, jobType: activeJobType };
+};
+
+const calculatePayout = (staffInfo) => {
   const today = new Date();
   const currentMonth = today.getMonth();
   const currentYear = today.getFullYear();
@@ -429,26 +461,28 @@ const calculatePayout = (staffInfo) => {
     return seqDateStrings.has(new Date(record.date).toDateString());
   });
 
-  let totalHoursWorked = 0;
-  monthlyClockRecords.forEach(record => {
-    const actualHrs = parseTotalHours(record.totalHours);
-    if (actualHrs > 9) {
-      totalHoursWorked += 8.5 + (actualHrs - 9);
-    } else if (actualHrs >= 8.5) {
-      totalHoursWorked += 8.5;
-    } else {
-      totalHoursWorked += actualHrs;
-    }
-  });
+  const dailyHoursMap = {};
+  const creditedDates = new Set();
 
-  const creditedDates = new Set(
-    monthlyClockRecords.map(r => new Date(r.date).toDateString())
-  );
+  monthlyClockRecords.forEach(record => {
+    const dStr = new Date(record.date).toDateString();
+    const actualHrs = parseTotalHours(record.totalHours);
+    let hrs = 0;
+    if (actualHrs > 9) {
+      hrs = 8.5 + (actualHrs - 9);
+    } else if (actualHrs >= 8.5) {
+      hrs = 8.5;
+    } else {
+      hrs = actualHrs;
+    }
+    dailyHoursMap[dStr] = hrs;
+    creditedDates.add(dStr);
+  });
 
   validSequenceDates.forEach(d => {
     const dStr = d.toDateString();
     if (d.getDay() === 0 && !creditedDates.has(dStr)) {
-      totalHoursWorked += STANDARD_HOURS_PER_DAY;
+      dailyHoursMap[dStr] = STANDARD_HOURS_PER_DAY;
       creditedDates.add(dStr);
     }
   });
@@ -456,11 +490,9 @@ const calculatePayout = (staffInfo) => {
   (staffInfo.leaves || []).forEach(leave => {
     const ld = new Date(leave.date);
     const ldStr = ld.toDateString();
-    if (seqDateStrings.has(ldStr)) {
-      if (!creditedDates.has(ldStr)) {
-        totalHoursWorked += STANDARD_HOURS_PER_DAY;
-        creditedDates.add(ldStr);
-      }
+    if (seqDateStrings.has(ldStr) && !creditedDates.has(ldStr)) {
+      dailyHoursMap[ldStr] = STANDARD_HOURS_PER_DAY;
+      creditedDates.add(ldStr);
     }
   });
 
@@ -468,11 +500,9 @@ const calculatePayout = (staffInfo) => {
     if (att.status === 'On Leave') {
       const ad = new Date(att.date);
       const adStr = ad.toDateString();
-      if (seqDateStrings.has(adStr)) {
-        if (!creditedDates.has(adStr)) {
-          totalHoursWorked += STANDARD_HOURS_PER_DAY;
-          creditedDates.add(adStr);
-        }
+      if (seqDateStrings.has(adStr) && !creditedDates.has(adStr)) {
+        dailyHoursMap[adStr] = STANDARD_HOURS_PER_DAY;
+        creditedDates.add(adStr);
       }
     }
   });
@@ -492,27 +522,44 @@ const calculatePayout = (staffInfo) => {
   let casualLeaveUsed = false;
 
   if (absentDays.length > 0) {
-    totalHoursWorked += STANDARD_HOURS_PER_DAY;
-    creditedDates.add(absentDays[0].toDateString());
+    const casualLeaveDate = absentDays[0];
+    const dStr = casualLeaveDate.toDateString();
+    dailyHoursMap[dStr] = STANDARD_HOURS_PER_DAY;
+    creditedDates.add(dStr);
     casualLeaveUsed = true;
   } else if (halfDayLeaveUnits > 0) {
     for (let i = 0; i < 2; i++) {
       const hdDate = new Date(halfDayRecords[i].date);
+      const dStr = hdDate.toDateString();
       const clockRecord = monthlyClockRecords.find(
-        r => new Date(r.date).toDateString() === hdDate.toDateString()
+        r => new Date(r.date).toDateString() === dStr
       );
       const actualHrs = clockRecord ? parseTotalHours(clockRecord.totalHours) : 0;
       const halfTarget = STANDARD_HOURS_PER_DAY / 2;
       if (actualHrs < halfTarget) {
-        totalHoursWorked += halfTarget - actualHrs;
+        dailyHoursMap[dStr] = (dailyHoursMap[dStr] || actualHrs) + (halfTarget - actualHrs);
       }
     }
     casualLeaveUsed = true;
   }
 
-  const payout = Math.round(hourlyRate * totalHoursWorked);
+  let totalPayout = 0;
+  let totalHoursWorked = 0;
+
+  validSequenceDates.forEach(d => {
+    const dStr = d.toDateString();
+    const hrs = dailyHoursMap[dStr] || 0;
+    totalHoursWorked += hrs;
+    const { salary: daySalary } = getSalaryForDate(staffInfo, d);
+    const dayHourlyRate = daySalary / EXPECTED_MONTHLY_HOURS;
+    totalPayout += hrs * dayHourlyRate;
+  });
+
+  const payout = Math.round(totalPayout);
   const daysWorked = monthlyClockRecords.length;
   const fullLeavesCount = Math.max(0, absentDays.length - (casualLeaveUsed && absentDays.length > 0 ? 1 : 0));
+  const baseSalary = staffInfo.monthlySalary || 0;
+  const hourlyRate = baseSalary / EXPECTED_MONTHLY_HOURS;
 
   return {
     payout,
@@ -621,6 +668,13 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
   const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedStaffForPerformance, setSelectedStaffForPerformance] = useState(null);
+  const [fullImageModal, setFullImageModal] = useState({ isOpen: false, src: '', title: '' });
+
+  const getProfilePicUrl = (pic) => {
+    if (!pic) return null;
+    if (pic.startsWith('http://') || pic.startsWith('https://')) return pic;
+    return `http://localhost:45000${pic.startsWith('/') ? '' : '/'}${pic}`;
+  };
 
   const getRedZoneDaysCount = (member) => {
     if (!member) return 0;
@@ -874,24 +928,28 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
       return seqDateStrings.has(new Date(r.date).toDateString());
     });
 
-    let totalHoursWorked = 0;
-    monthlyClockRecords.forEach(r => {
-      const actualHrs = parseTotalHours(r.totalHours);
-      if (actualHrs > 9) {
-        totalHoursWorked += 8.5 + (actualHrs - 9);
-      } else if (actualHrs >= 8.5) {
-        totalHoursWorked += 8.5;
-      } else {
-        totalHoursWorked += actualHrs;
-      }
-    });
+    const dailyHoursMap = {};
+    const creditedDates = new Set();
 
-    const creditedDates = new Set(monthlyClockRecords.map(r => new Date(r.date).toDateString()));
+    monthlyClockRecords.forEach(r => {
+      const dStr = new Date(r.date).toDateString();
+      const actualHrs = parseTotalHours(r.totalHours);
+      let hrs = 0;
+      if (actualHrs > 9) {
+        hrs = 8.5 + (actualHrs - 9);
+      } else if (actualHrs >= 8.5) {
+        hrs = 8.5;
+      } else {
+        hrs = actualHrs;
+      }
+      dailyHoursMap[dStr] = hrs;
+      creditedDates.add(dStr);
+    });
 
     validSequenceDates.forEach(d => {
       const dStr = d.toDateString();
       if (d.getDay() === 0 && !creditedDates.has(dStr)) {
-        totalHoursWorked += STANDARD_HOURS_PER_DAY;
+        dailyHoursMap[dStr] = STANDARD_HOURS_PER_DAY;
         creditedDates.add(dStr);
       }
     });
@@ -899,11 +957,9 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
     (staffInfo.leaves || []).forEach(leave => {
       const ld = new Date(leave.date);
       const ldStr = ld.toDateString();
-      if (seqDateStrings.has(ldStr)) {
-        if (!creditedDates.has(ldStr)) {
-          totalHoursWorked += STANDARD_HOURS_PER_DAY;
-          creditedDates.add(ldStr);
-        }
+      if (seqDateStrings.has(ldStr) && !creditedDates.has(ldStr)) {
+        dailyHoursMap[ldStr] = STANDARD_HOURS_PER_DAY;
+        creditedDates.add(ldStr);
       }
     });
 
@@ -911,11 +967,9 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
       if (att.status === 'On Leave') {
         const ad = new Date(att.date);
         const adStr = ad.toDateString();
-        if (seqDateStrings.has(adStr)) {
-          if (!creditedDates.has(adStr)) {
-            totalHoursWorked += STANDARD_HOURS_PER_DAY;
-            creditedDates.add(adStr);
-          }
+        if (seqDateStrings.has(adStr) && !creditedDates.has(adStr)) {
+          dailyHoursMap[adStr] = STANDARD_HOURS_PER_DAY;
+          creditedDates.add(adStr);
         }
       }
     });
@@ -934,21 +988,38 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
 
     let casualLeaveUsed = false;
     if (absentDaysList.length > 0) {
-      totalHoursWorked += STANDARD_HOURS_PER_DAY;
-      creditedDates.add(absentDaysList[0].toDateString());
+      const casualLeaveDate = absentDaysList[0];
+      const dStr = casualLeaveDate.toDateString();
+      dailyHoursMap[dStr] = STANDARD_HOURS_PER_DAY;
+      creditedDates.add(dStr);
       casualLeaveUsed = true;
     } else if (halfDayLeaveUnits > 0) {
       for (let i = 0; i < 2; i++) {
         const hdDate = new Date(halfDayRecords[i].date);
-        const cr = monthlyClockRecords.find(r => new Date(r.date).toDateString() === hdDate.toDateString());
+        const dStr = hdDate.toDateString();
+        const cr = monthlyClockRecords.find(r => new Date(r.date).toDateString() === dStr);
         const actualHrs = cr ? parseTotalHours(cr.totalHours) : 0;
         const halfTarget = STANDARD_HOURS_PER_DAY / 2;
         if (actualHrs < halfTarget) {
-          totalHoursWorked += halfTarget - actualHrs;
+          dailyHoursMap[dStr] = (dailyHoursMap[dStr] || actualHrs) + (halfTarget - actualHrs);
         }
       }
       casualLeaveUsed = true;
     }
+
+    let calculatedPayout = 0;
+    let totalHoursWorked = 0;
+
+    validSequenceDates.forEach(d => {
+      const dStr = d.toDateString();
+      const hrs = dailyHoursMap[dStr] || 0;
+      totalHoursWorked += hrs;
+      const { salary: daySalary } = getSalaryForDate(staffInfo, d);
+      const dayHourlyRate = daySalary / EXPECTED_MONTHLY_HOURS;
+      calculatedPayout += hrs * dayHourlyRate;
+    });
+
+    calculatedPayout = Math.round(calculatedPayout);
 
     const presents = monthlyClockRecords.length;
     const fullLeaves = Math.max(0, absentDaysList.length - (casualLeaveUsed && absentDaysList.length > 0 ? 1 : 0));
@@ -958,7 +1029,7 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
       return hClean === cleanMonth;
     });
 
-    const payout = paidHistory ? paidHistory.payoutSalary : Math.round(hourlyRate * totalHoursWorked);
+    const payout = paidHistory ? paidHistory.payoutSalary : calculatedPayout;
 
     return {
       payout,
@@ -1228,9 +1299,40 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
                         className="flex items-center gap-3 cursor-pointer group/name"
                         onClick={() => setSelectedStaffForPerformance(member._id)}
                       >
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold group-hover/name:scale-110 transition-transform">
-                          {member.name.charAt(0)}
-                        </div>
+                        {member.profilePic ? (
+                          <>
+                            <img
+                              src={getProfilePicUrl(member.profilePic)}
+                              alt={member.name}
+                              className="w-10 h-10 rounded-full object-cover border-2 border-blue-500/20 group-hover/name:scale-110 transition-transform shadow-sm cursor-pointer"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setFullImageModal({
+                                  isOpen: true,
+                                  src: getProfilePicUrl(member.profilePic),
+                                  title: `${member.name} (${member.employeeId || 'Staff'})`
+                                });
+                              }}
+                              onError={(e) => {
+                                const img = e.currentTarget;
+                                img.style.display = 'none';
+                                if (img.nextElementSibling) {
+                                  img.nextElementSibling.setAttribute('style', 'display: flex');
+                                }
+                              }}
+                            />
+                            <div
+                              style={{ display: 'none' }}
+                              className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 items-center justify-center text-white font-bold group-hover/name:scale-110 transition-transform shadow-sm"
+                            >
+                              {member.name?.charAt(0)?.toUpperCase() || 'E'}
+                            </div>
+                          </>
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold group-hover/name:scale-110 transition-transform shadow-sm">
+                            {member.name?.charAt(0)?.toUpperCase() || 'E'}
+                          </div>
+                        )}
                         <div>
                           <div className="text-sm font-bold text-gray-900 dark:text-white group-hover/name:text-blue-500 transition-colors flex items-center gap-2 flex-wrap">
                             {member.name}
@@ -1566,6 +1668,47 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
                   );
                 })()}
               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Full Image Lightbox Modal */}
+      <AnimatePresence>
+        {fullImageModal.isOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setFullImageModal({ isOpen: false, src: '', title: '' })}
+              className="absolute inset-0 bg-black/80 backdrop-blur-md"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ duration: 0.2 }}
+              className="relative max-w-4xl max-h-[90vh] z-10 flex flex-col items-center justify-center pointer-events-auto"
+            >
+              <button
+                type="button"
+                onClick={() => setFullImageModal({ isOpen: false, src: '', title: '' })}
+                className="absolute -top-12 right-0 p-2 text-white/80 hover:text-white bg-white/10 hover:bg-white/20 rounded-full transition-colors cursor-pointer"
+                title="Close"
+              >
+                <X size={24} />
+              </button>
+              <img
+                src={fullImageModal.src}
+                alt={fullImageModal.title || 'Profile Picture'}
+                className="max-w-full max-h-[80vh] object-contain rounded-2xl shadow-2xl border border-white/20"
+              />
+              {fullImageModal.title && (
+                <p className="mt-4 text-white font-bold text-sm sm:text-base tracking-wide bg-black/70 px-6 py-2 rounded-full border border-white/10 backdrop-blur-sm">
+                  {fullImageModal.title}
+                </p>
+              )}
             </motion.div>
           </div>
         )}

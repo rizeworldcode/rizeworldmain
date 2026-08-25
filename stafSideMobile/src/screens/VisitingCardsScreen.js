@@ -9,7 +9,6 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
-  SafeAreaView,
   Image,
   Linking,
   Clipboard,
@@ -33,7 +32,7 @@ import {
   ExternalLink
 } from 'lucide-react-native';
 
-const VisitingCardsScreen = ({ staffInfo, token, onBack, getApiUrl }) => {
+const VisitingCardsScreen = ({ staffInfo, token, onBack, getApiUrl, onUpdateStaffInfo }) => {
   const [cards, setCards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -91,7 +90,7 @@ const VisitingCardsScreen = ({ staffInfo, token, onBack, getApiUrl }) => {
   });
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
@@ -251,7 +250,7 @@ const VisitingCardsScreen = ({ staffInfo, token, onBack, getApiUrl }) => {
           </View>
         ) : null}
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 };
 

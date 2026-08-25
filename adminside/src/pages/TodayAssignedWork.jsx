@@ -257,9 +257,32 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
                 {/* Staff Info */}
                 <div className="lg:w-1/3 space-y-4">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-lg">
-                      {staff.name.charAt(0)}
-                    </div>
+                    {staff.profilePic ? (
+                      <>
+                        <img
+                          src={staff.profilePic.startsWith('http') ? staff.profilePic : `http://localhost:45000${staff.profilePic.startsWith('/') ? '' : '/'}${staff.profilePic}`}
+                          alt={staff.name}
+                          className="w-12 h-12 rounded-2xl object-cover border-2 border-blue-500/20 shadow-lg"
+                          onError={(e) => {
+                            const img = e.currentTarget;
+                            img.style.display = 'none';
+                            if (img.nextElementSibling) {
+                              img.nextElementSibling.setAttribute('style', 'display: flex');
+                            }
+                          }}
+                        />
+                        <div
+                          style={{ display: 'none' }}
+                          className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 items-center justify-center text-white font-bold text-lg shadow-lg"
+                        >
+                          {staff.name?.charAt(0)?.toUpperCase() || 'E'}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-lg">
+                        {staff.name?.charAt(0)?.toUpperCase() || 'E'}
+                      </div>
+                    )}
                     <div>
                       <h4 className="text-lg font-bold text-gray-900 dark:text-white">{staff.name}</h4>
                       <span className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-tighter bg-blue-500/10 px-2 py-0.5 rounded">

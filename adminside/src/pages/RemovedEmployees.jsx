@@ -70,6 +70,41 @@ const get30DaySequenceDates = (year, monthIndex, createdAt = null) => {
   return filtered;
 };
 
+const getSalaryForDate = (staffInfo, date) => {
+  const defaultSalary = staffInfo?.monthlySalary || 0;
+  const defaultJobType = staffInfo?.jobType || '';
+  if (!staffInfo?.salaryRevisions || staffInfo.salaryRevisions.length === 0) {
+    return { salary: defaultSalary, jobType: defaultJobType };
+  }
+
+  const d = new Date(date);
+  d.setHours(23, 59, 59, 999);
+
+  let activeSalary = defaultSalary;
+  let activeJobType = defaultJobType;
+  let found = false;
+
+  for (let i = staffInfo.salaryRevisions.length - 1; i >= 0; i--) {
+    const rev = staffInfo.salaryRevisions[i];
+    const revDate = new Date(rev.effectiveDate);
+    revDate.setHours(0, 0, 0, 0);
+
+    if (revDate <= d) {
+      activeSalary = rev.monthlySalary;
+      activeJobType = rev.jobType || defaultJobType;
+      found = true;
+      break;
+    }
+  }
+
+  if (!found && staffInfo.salaryRevisions.length > 0) {
+    activeSalary = staffInfo.salaryRevisions[0].monthlySalary;
+    activeJobType = staffInfo.salaryRevisions[0].jobType || defaultJobType;
+  }
+
+  return { salary: activeSalary, jobType: activeJobType };
+};
+
 const calculatePayoutForSelectedMonth = (staffInfo, monthStr) => {
   if (!staffInfo || !monthStr) return { payout: 0, daysWorked: 0, totalHoursWorked: 0, isPaid: false };
   const cleanMonth = monthStr.replace(/\s*\(Current\)/i, '').trim();
@@ -118,24 +153,28 @@ const calculatePayoutForSelectedMonth = (staffInfo, monthStr) => {
     };
   }
 
-  let totalHoursWorked = 0;
-  monthlyClockRecords.forEach(r => {
-    const actualHrs = parseTotalHours(r.totalHours);
-    if (actualHrs > 9) {
-      totalHoursWorked += 8.5 + (actualHrs - 9);
-    } else if (actualHrs >= 8.5) {
-      totalHoursWorked += 8.5;
-    } else {
-      totalHoursWorked += actualHrs;
-    }
-  });
+  const dailyHoursMap = {};
+  const creditedDates = new Set();
 
-  const creditedDates = new Set(monthlyClockRecords.map(r => new Date(r.date).toDateString()));
+  monthlyClockRecords.forEach(r => {
+    const dStr = new Date(r.date).toDateString();
+    const actualHrs = parseTotalHours(r.totalHours);
+    let hrs = 0;
+    if (actualHrs > 9) {
+      hrs = 8.5 + (actualHrs - 9);
+    } else if (actualHrs >= 8.5) {
+      hrs = 8.5;
+    } else {
+      hrs = actualHrs;
+    }
+    dailyHoursMap[dStr] = hrs;
+    creditedDates.add(dStr);
+  });
 
   validSequenceDates.forEach(d => {
     const dStr = d.toDateString();
     if (d.getDay() === 0 && !creditedDates.has(dStr)) {
-      totalHoursWorked += STANDARD_HOURS_PER_DAY;
+      dailyHoursMap[dStr] = STANDARD_HOURS_PER_DAY;
       creditedDates.add(dStr);
     }
   });
@@ -143,11 +182,9 @@ const calculatePayoutForSelectedMonth = (staffInfo, monthStr) => {
   (staffInfo.leaves || []).forEach(leave => {
     const ld = new Date(leave.date);
     const ldStr = ld.toDateString();
-    if (seqDateStrings.has(ldStr)) {
-      if (!creditedDates.has(ldStr)) {
-        totalHoursWorked += STANDARD_HOURS_PER_DAY;
-        creditedDates.add(ldStr);
-      }
+    if (seqDateStrings.has(ldStr) && !creditedDates.has(ldStr)) {
+      dailyHoursMap[ldStr] = STANDARD_HOURS_PER_DAY;
+      creditedDates.add(ldStr);
     }
   });
 
@@ -155,11 +192,9 @@ const calculatePayoutForSelectedMonth = (staffInfo, monthStr) => {
     if (att.status === 'On Leave') {
       const ad = new Date(att.date);
       const adStr = ad.toDateString();
-      if (seqDateStrings.has(adStr)) {
-        if (!creditedDates.has(adStr)) {
-          totalHoursWorked += STANDARD_HOURS_PER_DAY;
-          creditedDates.add(adStr);
-        }
+      if (seqDateStrings.has(adStr) && !creditedDates.has(adStr)) {
+        dailyHoursMap[adStr] = STANDARD_HOURS_PER_DAY;
+        creditedDates.add(adStr);
       }
     }
   });
@@ -178,23 +213,39 @@ const calculatePayoutForSelectedMonth = (staffInfo, monthStr) => {
 
   let casualLeaveUsed = false;
   if (absentDaysList.length > 0) {
-    totalHoursWorked += STANDARD_HOURS_PER_DAY;
-    creditedDates.add(absentDaysList[0].toDateString());
+    const casualLeaveDate = absentDaysList[0];
+    const dStr = casualLeaveDate.toDateString();
+    dailyHoursMap[dStr] = STANDARD_HOURS_PER_DAY;
+    creditedDates.add(dStr);
     casualLeaveUsed = true;
   } else if (halfDayLeaveUnits > 0) {
     for (let i = 0; i < 2; i++) {
       const hdDate = new Date(halfDayRecords[i].date);
-      const cr = monthlyClockRecords.find(r => new Date(r.date).toDateString() === hdDate.toDateString());
+      const dStr = hdDate.toDateString();
+      const cr = monthlyClockRecords.find(r => new Date(r.date).toDateString() === dStr);
       const actualHrs = cr ? parseTotalHours(cr.totalHours) : 0;
       const halfTarget = STANDARD_HOURS_PER_DAY / 2;
       if (actualHrs < halfTarget) {
-        totalHoursWorked += halfTarget - actualHrs;
+        dailyHoursMap[dStr] = (dailyHoursMap[dStr] || actualHrs) + (halfTarget - actualHrs);
       }
     }
     casualLeaveUsed = true;
   }
 
-  const payout = paidHistory ? paidHistory.payoutSalary : Math.round(hourlyRate * totalHoursWorked);
+  let calculatedPayout = 0;
+  let totalHoursWorked = 0;
+
+  validSequenceDates.forEach(d => {
+    const dStr = d.toDateString();
+    const hrs = dailyHoursMap[dStr] || 0;
+    totalHoursWorked += hrs;
+    const { salary: daySalary } = getSalaryForDate(staffInfo, d);
+    const dayHourlyRate = daySalary / EXPECTED_MONTHLY_HOURS;
+    calculatedPayout += hrs * dayHourlyRate;
+  });
+
+  calculatedPayout = Math.round(calculatedPayout);
+  const payout = paidHistory ? paidHistory.payoutSalary : calculatedPayout;
 
   return {
     payout,
@@ -520,9 +571,32 @@ const RemovedEmployees = () => {
                   <tr key={member._id} className="hover:bg-black/[0.02] dark:hover:bg-white/5 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-rose-500 to-orange-500 flex items-center justify-center text-white font-bold">
-                          {member.name?.charAt(0) || 'R'}
-                        </div>
+                        {member.profilePic ? (
+                          <>
+                            <img
+                              src={member.profilePic.startsWith('http') ? member.profilePic : `http://localhost:45000${member.profilePic.startsWith('/') ? '' : '/'}${member.profilePic}`}
+                              alt={member.name}
+                              className="w-10 h-10 rounded-full object-cover border-2 border-rose-500/20 shadow-sm"
+                              onError={(e) => {
+                                const img = e.currentTarget;
+                                img.style.display = 'none';
+                                if (img.nextElementSibling) {
+                                  img.nextElementSibling.setAttribute('style', 'display: flex');
+                                }
+                              }}
+                            />
+                            <div
+                              style={{ display: 'none' }}
+                              className="w-10 h-10 rounded-full bg-gradient-to-br from-rose-500 to-orange-500 items-center justify-center text-white font-bold shadow-sm"
+                            >
+                              {member.name?.charAt(0)?.toUpperCase() || 'R'}
+                            </div>
+                          </>
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-rose-500 to-orange-500 flex items-center justify-center text-white font-bold shadow-sm">
+                            {member.name?.charAt(0)?.toUpperCase() || 'R'}
+                          </div>
+                        )}
                         <div>
                           <div className="text-sm font-bold text-gray-900 dark:text-white">{member.name}</div>
                           <div className="text-xs text-gray-500 flex flex-col gap-0.5 mt-1">

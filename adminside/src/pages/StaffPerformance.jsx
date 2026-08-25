@@ -25,7 +25,9 @@ import {
   Eye,
   EyeOff,
   ShieldAlert,
-  RefreshCw
+  RefreshCw,
+  Camera,
+  Maximize2
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -150,6 +152,41 @@ const get30DaySequenceDates = (year, monthIndex, createdAt = null) => {
   return filtered;
 };
 
+const getSalaryForDate = (staffInfo, date) => {
+  const defaultSalary = staffInfo?.monthlySalary || 0;
+  const defaultJobType = staffInfo?.jobType || '';
+  if (!staffInfo?.salaryRevisions || staffInfo.salaryRevisions.length === 0) {
+    return { salary: defaultSalary, jobType: defaultJobType };
+  }
+
+  const d = new Date(date);
+  d.setHours(23, 59, 59, 999);
+
+  let activeSalary = defaultSalary;
+  let activeJobType = defaultJobType;
+  let found = false;
+
+  for (let i = staffInfo.salaryRevisions.length - 1; i >= 0; i--) {
+    const rev = staffInfo.salaryRevisions[i];
+    const revDate = new Date(rev.effectiveDate);
+    revDate.setHours(0, 0, 0, 0);
+
+    if (revDate <= d) {
+      activeSalary = rev.monthlySalary;
+      activeJobType = rev.jobType || defaultJobType;
+      found = true;
+      break;
+    }
+  }
+
+  if (!found && staffInfo.salaryRevisions.length > 0) {
+    activeSalary = staffInfo.salaryRevisions[0].monthlySalary;
+    activeJobType = staffInfo.salaryRevisions[0].jobType || defaultJobType;
+  }
+
+  return { salary: activeSalary, jobType: activeJobType };
+};
+
 const calculatePayoutForMonth = (staffInfo, year, monthIndex, paidHistory = null) => {
   if (!staffInfo) return null;
   const baseSalary = paidHistory ? paidHistory.baseSalary : (staffInfo.monthlySalary || 0);
@@ -166,7 +203,6 @@ const calculatePayoutForMonth = (staffInfo, year, monthIndex, paidHistory = null
   const todayEnd = new Date();
   todayEnd.setHours(23, 59, 59, 999);
 
-  // For current month, only evaluate sequence dates up to today (future dates haven't happened yet)
   const validSequenceDates = isCurrentMonth
     ? sequenceDates.filter(d => d <= todayEnd)
     : sequenceDates;
@@ -180,67 +216,61 @@ const calculatePayoutForMonth = (staffInfo, year, monthIndex, paidHistory = null
     return (h ? parseInt(h[1], 10) : 0) + (m ? parseInt(m[1], 10) / 60 : 0);
   };
 
-  // 1. Sum actual clock hours from records within validSequenceDates
   const monthlyClockRecords = (staffInfo.clock || []).filter(r => {
     return seqDateStrings.has(new Date(r.date).toDateString());
   });
 
-  let totalHoursWorked = 0;
+  const dailyHoursMap = {};
+  const creditedDates = new Set();
+
   monthlyClockRecords.forEach(r => {
+    const dStr = new Date(r.date).toDateString();
     const actualHrs = parseTotalHours(r.totalHours);
+    let hrs = 0;
     if (actualHrs > 9) {
-      totalHoursWorked += 8.5 + (actualHrs - 9);
+      hrs = 8.5 + (actualHrs - 9);
     } else if (actualHrs >= 8.5) {
-      totalHoursWorked += 8.5;
+      hrs = 8.5;
     } else {
-      totalHoursWorked += actualHrs;
+      hrs = actualHrs;
     }
+    dailyHoursMap[dStr] = hrs;
+    creditedDates.add(dStr);
   });
 
-  const creditedDates = new Set(monthlyClockRecords.map(r => new Date(r.date).toDateString()));
-
-  // 2. Credit Sundays in validSequenceDates
   validSequenceDates.forEach(d => {
     const dStr = d.toDateString();
     if (d.getDay() === 0 && !creditedDates.has(dStr)) {
-      totalHoursWorked += STANDARD_HOURS_PER_DAY;
+      dailyHoursMap[dStr] = STANDARD_HOURS_PER_DAY;
       creditedDates.add(dStr);
     }
   });
 
-  // 3. Credit admin leaves in validSequenceDates
   (staffInfo.leaves || []).forEach(leave => {
     const ld = new Date(leave.date);
     const ldStr = ld.toDateString();
-    if (seqDateStrings.has(ldStr)) {
-      if (!creditedDates.has(ldStr)) {
-        totalHoursWorked += STANDARD_HOURS_PER_DAY;
-        creditedDates.add(ldStr);
-      }
+    if (seqDateStrings.has(ldStr) && !creditedDates.has(ldStr)) {
+      dailyHoursMap[ldStr] = STANDARD_HOURS_PER_DAY;
+      creditedDates.add(ldStr);
     }
   });
 
-  // Attendance 'On Leave' in validSequenceDates
   (staffInfo.attendance || []).forEach(att => {
     if (att.status === 'On Leave') {
       const ad = new Date(att.date);
       const adStr = ad.toDateString();
-      if (seqDateStrings.has(adStr)) {
-        if (!creditedDates.has(adStr)) {
-          totalHoursWorked += STANDARD_HOURS_PER_DAY;
-          creditedDates.add(adStr);
-        }
+      if (seqDateStrings.has(adStr) && !creditedDates.has(adStr)) {
+        dailyHoursMap[adStr] = STANDARD_HOURS_PER_DAY;
+        creditedDates.add(adStr);
       }
     }
   });
 
-  // 4. Absent days list in validSequenceDates (excluding Sundays and credited dates)
   const absentDaysList = validSequenceDates.filter(d => {
     if (d.getDay() === 0) return false;
     return !creditedDates.has(d.toDateString());
   });
 
-  // 5. Half-day records in validSequenceDates
   const halfDayRecords = (staffInfo.attendance || []).filter(att => {
     if (att.status !== 'Half-Day') return false;
     const ad = new Date(att.date);
@@ -248,28 +278,43 @@ const calculatePayoutForMonth = (staffInfo, year, monthIndex, paidHistory = null
   });
   const halfDayLeaveUnits = Math.floor(halfDayRecords.length / 2);
 
-  // 6. Apply 1 free casual leave per sequence ONLY if there is an actual absent day or pair of half days
   let casualLeaveUsed = false;
   if (absentDaysList.length > 0) {
-    totalHoursWorked += STANDARD_HOURS_PER_DAY;
-    creditedDates.add(absentDaysList[0].toDateString());
+    const casualLeaveDate = absentDaysList[0];
+    const dStr = casualLeaveDate.toDateString();
+    dailyHoursMap[dStr] = STANDARD_HOURS_PER_DAY;
+    creditedDates.add(dStr);
     casualLeaveUsed = true;
   } else if (halfDayLeaveUnits > 0) {
     for (let i = 0; i < 2; i++) {
       const hdDate = new Date(halfDayRecords[i].date);
-      const cr = monthlyClockRecords.find(r => new Date(r.date).toDateString() === hdDate.toDateString());
+      const dStr = hdDate.toDateString();
+      const cr = monthlyClockRecords.find(r => new Date(r.date).toDateString() === dStr);
       const actualHrs = cr ? parseTotalHours(cr.totalHours) : 0;
       const halfTarget = STANDARD_HOURS_PER_DAY / 2;
       if (actualHrs < halfTarget) {
-        totalHoursWorked += halfTarget - actualHrs;
+        dailyHoursMap[dStr] = (dailyHoursMap[dStr] || actualHrs) + (halfTarget - actualHrs);
       }
     }
     casualLeaveUsed = true;
   }
 
+  let calculatedPayout = 0;
+  let totalHoursWorked = 0;
+
+  validSequenceDates.forEach(d => {
+    const dStr = d.toDateString();
+    const hrs = dailyHoursMap[dStr] || 0;
+    totalHoursWorked += hrs;
+    const { salary: daySalary } = getSalaryForDate(staffInfo, d);
+    const dayHourlyRate = daySalary / EXPECTED_MONTHLY_HOURS;
+    calculatedPayout += hrs * dayHourlyRate;
+  });
+
+  calculatedPayout = Math.round(calculatedPayout);
+
   const presents = monthlyClockRecords.length;
   const fullLeaves = Math.max(0, absentDaysList.length - (casualLeaveUsed && absentDaysList.length > 0 ? 1 : 0));
-  const calculatedPayout = Math.round(hourlyRate * totalHoursWorked);
   const finalPayout = paidHistory ? paidHistory.payoutSalary : calculatedPayout;
   const deduction = Math.max(0, baseSalary - finalPayout);
 
@@ -719,6 +764,7 @@ const StaffPerformance = ({ staffId, onBack }) => {
     department: '',
     jobType: '',
     joiningDate: '',
+    salaryEffectiveDate: new Date().toISOString().split('T')[0],
     accountHolder: '',
     accountNumber: '',
     ifscCode: '',
@@ -729,6 +775,36 @@ const StaffPerformance = ({ staffId, onBack }) => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [documentName, setDocumentName] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [fullImageModal, setFullImageModal] = useState({ isOpen: false, src: '', title: '' });
+
+  const getProfilePicUrl = (pic) => {
+    if (!pic) return null;
+    if (pic.startsWith('http://') || pic.startsWith('https://')) return pic;
+    return `http://localhost:45000${pic.startsWith('/') ? '' : '/'}${pic}`;
+  };
+
+  const handleProfilePicUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('profilePic', file);
+    try {
+      const res = await fetch(`http://localhost:45000/api/staff/${staffId}/profile-pic`, {
+        method: 'POST',
+        body: formData
+      });
+      const result = await res.json();
+      if (result.success) {
+        setStaff(result.data);
+        alert('Profile picture updated successfully!');
+      } else {
+        alert('Failed to upload profile picture: ' + (result.message || 'Error'));
+      }
+    } catch (err) {
+      console.error('Error uploading profile picture:', err);
+      alert('Error uploading profile picture');
+    }
+  };
 
   useEffect(() => {
     const fetchStaffDetails = async () => {
@@ -748,6 +824,7 @@ const StaffPerformance = ({ staffId, onBack }) => {
             department: foundStaff?.department === 'WEB DEvlopment' ? 'WEB Development' : foundStaff?.department || '',
             jobType: foundStaff?.jobType || '',
             joiningDate: foundStaff?.joiningDate ? new Date(foundStaff.joiningDate).toISOString().split('T')[0] : '',
+            salaryEffectiveDate: new Date().toISOString().split('T')[0],
             accountHolder: foundStaff?.accountHolder || '',
             accountNumber: foundStaff?.accountNumber || '',
             ifscCode: foundStaff?.ifscCode || '',
@@ -798,6 +875,7 @@ const StaffPerformance = ({ staffId, onBack }) => {
           department: result.data.department || '',
           jobType: result.data.jobType || '',
           joiningDate: result.data.joiningDate ? new Date(result.data.joiningDate).toISOString().split('T')[0] : '',
+          salaryEffectiveDate: new Date().toISOString().split('T')[0],
           accountHolder: result.data.accountHolder || '',
           accountNumber: result.data.accountNumber || '',
           ifscCode: result.data.ifscCode || '',
@@ -1183,6 +1261,7 @@ const StaffPerformance = ({ staffId, onBack }) => {
         department: staff.department === 'WEB DEvlopment' ? 'WEB Development' : staff.department || '',
         jobType: staff.jobType || '',
         joiningDate: staff.joiningDate ? new Date(staff.joiningDate).toISOString().split('T')[0] : '',
+        salaryEffectiveDate: new Date().toISOString().split('T')[0],
         accountHolder: staff.accountHolder || '',
         accountNumber: staff.accountNumber || '',
         ifscCode: staff.ifscCode || '',
@@ -1252,8 +1331,39 @@ const StaffPerformance = ({ staffId, onBack }) => {
 
       {/* Profile Card */}
       <div className="bg-white dark:bg-[#111] p-6 sm:p-8 rounded-3xl sm:rounded-[2.5rem] border border-gray-100 dark:border-white/5 shadow-sm flex flex-col md:flex-row gap-6 sm:gap-8 items-center">
-        <div className="w-32 h-32 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center text-blue-500 border-2 border-white/10 shrink-0">
-          <User size={64} />
+        <div className="shrink-0">
+          <div
+            onClick={() => {
+              if (staff.profilePic) {
+                setFullImageModal({
+                  isOpen: true,
+                  src: getProfilePicUrl(staff.profilePic),
+                  title: `${staff.name} (${staff.employeeId || 'Staff'})`
+                });
+              }
+            }}
+            className={`w-32 h-32 rounded-full overflow-hidden shadow-xl ring-4 ring-blue-500/30 dark:ring-blue-400/20 shrink-0 bg-slate-900 flex items-center justify-center transition-transform hover:scale-105 ${
+              staff.profilePic ? 'cursor-pointer' : ''
+            }`}
+            title={staff.profilePic ? "Click to view full image" : ""}
+          >
+            {staff.profilePic ? (
+              <img
+                src={getProfilePicUrl(staff.profilePic)}
+                alt={staff.name}
+                className="w-full h-full object-cover rounded-full block border-0 outline-none"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center">
+                <span className="text-4xl font-black text-blue-400">
+                  {staff.name?.charAt(0)?.toUpperCase() || 'E'}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
         <div className="flex-1 space-y-4 text-center md:text-left">
           <div>
@@ -1625,7 +1735,7 @@ const StaffPerformance = ({ staffId, onBack }) => {
                     </select>
                   </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label className="text-sm font-bold text-gray-500 dark:text-gray-400">Joining Date</label>
                     <input
@@ -1635,7 +1745,37 @@ const StaffPerformance = ({ staffId, onBack }) => {
                       className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                     />
                   </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-blue-600 dark:text-blue-400 flex items-center justify-between">
+                      <span>Salary & Status Effective Date</span>
+                      <span className="text-[11px] font-normal text-gray-400 dark:text-gray-500">(Date calculation starts)</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={editForm.salaryEffectiveDate || ''}
+                      onChange={(e) => handleInputChange('salaryEffectiveDate', e.target.value)}
+                      className="w-full px-4 py-3 bg-blue-50/50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-500/30 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 font-medium"
+                    />
+                  </div>
                 </div>
+
+                {staff?.salaryRevisions && staff.salaryRevisions.length > 0 && (
+                  <div className="mt-4 p-4 rounded-2xl bg-blue-50/40 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30">
+                    <h4 className="text-xs font-bold text-blue-800 dark:text-blue-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                      <TrendingUp size={14} /> Salary & Job Status Revisions History
+                    </h4>
+                    <div className="space-y-1.5 text-xs">
+                      {staff.salaryRevisions.map((rev, idx) => (
+                        <div key={idx} className="flex justify-between items-center py-1 border-b border-gray-100 dark:border-white/5 last:border-0 text-gray-700 dark:text-gray-300">
+                          <span className="font-semibold">{new Date(rev.effectiveDate).toLocaleDateString('en-IN')}:</span>
+                          <span className="bg-white dark:bg-white/5 px-2 py-0.5 rounded border border-gray-200 dark:border-white/10">
+                            {rev.jobType || 'Standard'} • ₹{Number(rev.monthlySalary || 0).toLocaleString('en-IN')}/month
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Bank Details */}
@@ -1807,6 +1947,47 @@ const StaffPerformance = ({ staffId, onBack }) => {
       )}
       </AnimatePresence>
       
+      {/* Full Image Lightbox Modal */}
+      <AnimatePresence>
+        {fullImageModal.isOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setFullImageModal({ isOpen: false, src: '', title: '' })}
+              className="absolute inset-0 bg-black/80 backdrop-blur-md"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ duration: 0.2 }}
+              className="relative max-w-4xl max-h-[90vh] z-10 flex flex-col items-center justify-center pointer-events-auto"
+            >
+              <button
+                type="button"
+                onClick={() => setFullImageModal({ isOpen: false, src: '', title: '' })}
+                className="absolute -top-12 right-0 p-2 text-white/80 hover:text-white bg-white/10 hover:bg-white/20 rounded-full transition-colors cursor-pointer"
+                title="Close"
+              >
+                <X size={24} />
+              </button>
+              <img
+                src={fullImageModal.src}
+                alt={fullImageModal.title || 'Profile Picture'}
+                className="max-w-full max-h-[80vh] object-contain rounded-2xl shadow-2xl border border-white/20"
+              />
+              {fullImageModal.title && (
+                <p className="mt-4 text-white font-bold text-sm sm:text-base tracking-wide bg-black/70 px-6 py-2 rounded-full border border-white/10 backdrop-blur-sm">
+                  {fullImageModal.title}
+                </p>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Bottom Padding */}
       <div className="h-8" />
     </motion.div>

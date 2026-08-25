@@ -13,7 +13,6 @@ import {
   RefreshControl,
   Image,
   Modal,
-  SafeAreaView,
   StatusBar
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
@@ -210,8 +209,15 @@ const calculatePayout = (info) => {
   };
 };
 
-const DashboardScreen = ({ staffInfo: initialStaffInfo, token, onLogout, onNavigate, getApiUrl }) => {
+const DashboardScreen = ({ staffInfo: initialStaffInfo, token, onLogout, onNavigate, getApiUrl, onUpdateStaffInfo, refreshStaffInfo }) => {
   const [staffInfo, setStaffInfo] = useState(initialStaffInfo);
+
+  useEffect(() => {
+    if (initialStaffInfo) {
+      setStaffInfo(initialStaffInfo);
+      syncStaffDataStates(initialStaffInfo, false);
+    }
+  }, [initialStaffInfo]);
 
   const userRole = (staffInfo.role || '').toLowerCase();
   const userDept = (staffInfo.department || '').toLowerCase();
@@ -309,7 +315,7 @@ const DashboardScreen = ({ staffInfo: initialStaffInfo, token, onLogout, onNavig
       const result = JSON.parse(response.body);
 
       if (result.success) {
-        await AsyncStorage.setItem('staffInfo', JSON.stringify(result.data));
+        if (onUpdateStaffInfo) onUpdateStaffInfo(result.data);
         syncStaffDataStates(result.data);
         Alert.alert('Success', 'Profile image updated successfully.');
       } else {
@@ -360,31 +366,40 @@ const DashboardScreen = ({ staffInfo: initialStaffInfo, token, onLogout, onNavig
     }
   };
 
-  const syncStaffDataStates = (info) => {
+  const syncStaffDataStates = (info, notifyParent = true) => {
+    if (!info) return;
     setStaffInfo(info);
+    if (notifyParent && onUpdateStaffInfo) {
+      onUpdateStaffInfo(info);
+    }
     
     const leaveDay = checkLeaveDay(info);
     setIsLeaveDay(leaveDay);
 
     if (!leaveDay) {
-      const canClockOut = info.clock_status === 'clock_in';
-      const canClockIn = info.clock_status === 'clock_out' || !info.clock_status;
-      
-      if (info.todayClock && info.todayClock.sessions) {
-        setAttendanceStatus({
-          canClockIn,
-          canClockOut,
-          sessions: info.todayClock.sessions || [],
-          totalHours: info.todayClock.totalHours || '-'
-        });
-      } else {
-        setAttendanceStatus({
-          canClockIn,
-          canClockOut,
-          sessions: [],
-          totalHours: '-'
-        });
-      }
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const todayClock = info.todayClock || (info.clock && info.clock.find(c => {
+        const d = new Date(c.date);
+        return d >= today && d < tomorrow;
+      }));
+
+      const sessions = todayClock?.sessions || [];
+      const lastSession = sessions.length > 0 ? sessions[sessions.length - 1] : null;
+      const hasOpenSession = lastSession && lastSession.clockIn && !lastSession.clockOut;
+
+      const canClockOut = info.clock_status === 'clock_in' || hasOpenSession;
+      const canClockIn = !canClockOut;
+
+      setAttendanceStatus({
+        canClockIn,
+        canClockOut,
+        sessions,
+        totalHours: todayClock?.totalHours || '-'
+      });
     }
 
     // Sync Today's Work Tasks
@@ -418,9 +433,8 @@ const DashboardScreen = ({ staffInfo: initialStaffInfo, token, onLogout, onNavig
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const result = await response.json();
-      if (result.success) {
-        await AsyncStorage.setItem('staffInfo', JSON.stringify(result.data));
-        syncStaffDataStates(result.data);
+      if (result.success && result.data) {
+        syncStaffDataStates(result.data, true);
       }
     } catch (err) {
       console.error(err);
@@ -489,9 +503,10 @@ const DashboardScreen = ({ staffInfo: initialStaffInfo, token, onLogout, onNavig
       });
       const result = await response.json();
       if (result.success) {
-        await AsyncStorage.setItem('staffInfo', JSON.stringify(result.data));
-        syncStaffDataStates(result.data);
-        const sessions = result.data.todayClock?.sessions || [];
+        syncStaffDataStates(result.data, true);
+        fetchStaffInfo();
+        const todayClock = result.data.todayClock || (result.data.clock && result.data.clock[result.data.clock.length - 1]);
+        const sessions = todayClock?.sessions || [];
         const lastSession = sessions[sessions.length - 1];
         Alert.alert('Success', `Clocked in successfully at ${lastSession?.clockIn || ''}`);
       } else {
@@ -515,8 +530,8 @@ const DashboardScreen = ({ staffInfo: initialStaffInfo, token, onLogout, onNavig
       });
       const result = await response.json();
       if (result.success) {
-        await AsyncStorage.setItem('staffInfo', JSON.stringify(result.data));
-        syncStaffDataStates(result.data);
+        syncStaffDataStates(result.data, true);
+        fetchStaffInfo();
         Alert.alert('Success', 'Clocked out successfully');
       } else {
         Alert.alert('Clock Out Failed', result.message || 'Verification failed');
@@ -546,8 +561,7 @@ const DashboardScreen = ({ staffInfo: initialStaffInfo, token, onLogout, onNavig
       });
       const result = await response.json();
       if (result.success) {
-        await AsyncStorage.setItem('staffInfo', JSON.stringify(result.data));
-        syncStaffDataStates(result.data);
+        syncStaffDataStates(result.data, true);
       }
     } catch (err) {
       console.error(err);
@@ -571,8 +585,7 @@ const DashboardScreen = ({ staffInfo: initialStaffInfo, token, onLogout, onNavig
       });
       const result = await response.json();
       if (result.success) {
-        await AsyncStorage.setItem('staffInfo', JSON.stringify(result.data));
-        syncStaffDataStates(result.data);
+        syncStaffDataStates(result.data, true);
         setNewTaskInput('');
       }
     } catch (err) {
@@ -596,8 +609,7 @@ const DashboardScreen = ({ staffInfo: initialStaffInfo, token, onLogout, onNavig
       });
       const result = await response.json();
       if (result.success) {
-        await AsyncStorage.setItem('staffInfo', JSON.stringify(result.data));
-        syncStaffDataStates(result.data);
+        syncStaffDataStates(result.data, true);
       }
     } catch (err) {
       console.error(err);
@@ -681,8 +693,7 @@ const DashboardScreen = ({ staffInfo: initialStaffInfo, token, onLogout, onNavig
       });
       const result = await response.json();
       if (result.success) {
-        await AsyncStorage.setItem('staffInfo', JSON.stringify(result.data));
-        syncStaffDataStates(result.data);
+        syncStaffDataStates(result.data, true);
       }
     } catch (err) {
       console.error(err);
@@ -1371,7 +1382,7 @@ const DashboardScreen = ({ staffInfo: initialStaffInfo, token, onLogout, onNavig
         transparent={false}
         onRequestClose={() => setShowNotifications(false)}
       >
-        <SafeAreaView style={styles.modalContainer}>
+        <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <View>
               <Text style={styles.modalTitle}>Notifications</Text>
@@ -1418,7 +1429,7 @@ const DashboardScreen = ({ staffInfo: initialStaffInfo, token, onLogout, onNavig
               ))
             )}
           </ScrollView>
-        </SafeAreaView>
+        </View>
       </Modal>
     </View>
   );

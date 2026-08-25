@@ -88,9 +88,42 @@ const parseTotalHours = (str) => {
   return (hM ? parseInt(hM[1], 10) : 0) + (mM ? parseInt(mM[1], 10) / 60 : 0);
 };
 
+const getSalaryForDate = (staffInfo, date) => {
+  const defaultSalary = staffInfo?.monthlySalary || 0;
+  const defaultJobType = staffInfo?.jobType || '';
+  if (!staffInfo?.salaryRevisions || staffInfo.salaryRevisions.length === 0) {
+    return { salary: defaultSalary, jobType: defaultJobType };
+  }
+
+  const d = new Date(date);
+  d.setHours(23, 59, 59, 999);
+
+  let activeSalary = defaultSalary;
+  let activeJobType = defaultJobType;
+  let found = false;
+
+  for (let i = staffInfo.salaryRevisions.length - 1; i >= 0; i--) {
+    const rev = staffInfo.salaryRevisions[i];
+    const revDate = new Date(rev.effectiveDate);
+    revDate.setHours(0, 0, 0, 0);
+
+    if (revDate <= d) {
+      activeSalary = rev.monthlySalary;
+      activeJobType = rev.jobType || defaultJobType;
+      found = true;
+      break;
+    }
+  }
+
+  if (!found && staffInfo.salaryRevisions.length > 0) {
+    activeSalary = staffInfo.salaryRevisions[0].monthlySalary;
+    activeJobType = staffInfo.salaryRevisions[0].jobType || defaultJobType;
+  }
+
+  return { salary: activeSalary, jobType: activeJobType };
+};
+
 const calculatePayout = (emp) => {
-  const baseSalary = emp.monthlySalary || 0;
-  const hourlyRate = baseSalary / EXPECTED_MONTHLY_HOURS;
   const today = new Date();
   const currentMonth = today.getMonth();
   const currentYear = today.getFullYear();
@@ -108,21 +141,25 @@ const calculatePayout = (emp) => {
     return seqDateStrings.has(new Date(r.date).toDateString());
   });
 
-  let totalHours = 0;
-  monthlyClockRecords.forEach(r => {
-    const h = parseTotalHours(r.totalHours);
-    if (h > 9) totalHours += 8.5 + (h - 9);
-    else if (h >= 8.5) totalHours += 8.5;
-    else totalHours += h;
-  });
+  const dailyHoursMap = {};
+  const creditedDates = new Set();
 
-  const creditedDates = new Set(monthlyClockRecords.map(r => new Date(r.date).toDateString()));
+  monthlyClockRecords.forEach(r => {
+    const dStr = new Date(r.date).toDateString();
+    const h = parseTotalHours(r.totalHours);
+    let hrs = 0;
+    if (h > 9) hrs = 8.5 + (h - 9);
+    else if (h >= 8.5) hrs = 8.5;
+    else hrs = h;
+    dailyHoursMap[dStr] = hrs;
+    creditedDates.add(dStr);
+  });
 
   // Sundays
   validSequenceDates.forEach(d => {
     const dStr = d.toDateString();
     if (d.getDay() === 0 && !creditedDates.has(dStr)) {
-      totalHours += STANDARD_HOURS_PER_DAY;
+      dailyHoursMap[dStr] = STANDARD_HOURS_PER_DAY;
       creditedDates.add(dStr);
     }
   });
@@ -131,11 +168,9 @@ const calculatePayout = (emp) => {
   (emp.leaves || []).forEach(leave => {
     const d = new Date(leave.date);
     const dStr = d.toDateString();
-    if (seqDateStrings.has(dStr)) {
-      if (!creditedDates.has(dStr)) {
-        totalHours += STANDARD_HOURS_PER_DAY;
-        creditedDates.add(dStr);
-      }
+    if (seqDateStrings.has(dStr) && !creditedDates.has(dStr)) {
+      dailyHoursMap[dStr] = STANDARD_HOURS_PER_DAY;
+      creditedDates.add(dStr);
     }
   });
 
@@ -144,11 +179,9 @@ const calculatePayout = (emp) => {
     if (att.status === 'On Leave') {
       const d = new Date(att.date);
       const dStr = d.toDateString();
-      if (seqDateStrings.has(dStr)) {
-        if (!creditedDates.has(dStr)) {
-          totalHours += STANDARD_HOURS_PER_DAY;
-          creditedDates.add(dStr);
-        }
+      if (seqDateStrings.has(dStr) && !creditedDates.has(dStr)) {
+        dailyHoursMap[dStr] = STANDARD_HOURS_PER_DAY;
+        creditedDates.add(dStr);
       }
     }
   });
@@ -169,19 +202,33 @@ const calculatePayout = (emp) => {
 
   // 1 free casual leave
   if (absentDays.length > 0) {
-    totalHours += STANDARD_HOURS_PER_DAY;
-    creditedDates.add(absentDays[0].toDateString());
+    const casualLeaveDate = absentDays[0];
+    const dStr = casualLeaveDate.toDateString();
+    dailyHoursMap[dStr] = STANDARD_HOURS_PER_DAY;
+    creditedDates.add(dStr);
   } else if (halfDayLeaveUnits > 0) {
     for (let i = 0; i < 2; i++) {
       const hdDate = new Date(halfDayRecords[i].date);
-      const cr = monthlyClockRecords.find(r => new Date(r.date).toDateString() === hdDate.toDateString());
+      const dStr = hdDate.toDateString();
+      const cr = monthlyClockRecords.find(r => new Date(r.date).toDateString() === dStr);
       const actualHrs = cr ? parseTotalHours(cr.totalHours) : 0;
       const halfTarget = STANDARD_HOURS_PER_DAY / 2;
-      if (actualHrs < halfTarget) totalHours += halfTarget - actualHrs;
+      if (actualHrs < halfTarget) {
+        dailyHoursMap[dStr] = (dailyHoursMap[dStr] || actualHrs) + (halfTarget - actualHrs);
+      }
     }
   }
 
-  return Math.round(hourlyRate * totalHours);
+  let totalPayout = 0;
+  validSequenceDates.forEach(d => {
+    const dStr = d.toDateString();
+    const hrs = dailyHoursMap[dStr] || 0;
+    const { salary: daySalary } = getSalaryForDate(emp, d);
+    const dayHourlyRate = daySalary / EXPECTED_MONTHLY_HOURS;
+    totalPayout += hrs * dayHourlyRate;
+  });
+
+  return Math.round(totalPayout);
 };
 
 

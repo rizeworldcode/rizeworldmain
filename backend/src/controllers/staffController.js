@@ -115,6 +115,13 @@ exports.createStaff = async (req, res) => {
     }
 
     const staff = new Staff(req.body);
+    if (!staff.salaryRevisions || staff.salaryRevisions.length === 0) {
+      staff.salaryRevisions = [{
+        effectiveDate: staff.joiningDate || new Date(),
+        monthlySalary: staff.monthlySalary || 0,
+        jobType: staff.jobType || ''
+      }];
+    }
     await staff.save();
     res.status(201).json({
       success: true,
@@ -186,7 +193,7 @@ exports.verifySalaryPassword = async (req, res) => {
 exports.getSalarySheet = async (req, res) => {
   try {
     const staff = await Staff.find({ isRemoved: { $ne: true } })
-      .select('name employeeId department jobType monthlySalary joiningDate clock attendance leaves createdAt')
+      .select('name employeeId department jobType monthlySalary joiningDate clock attendance leaves createdAt salaryRevisions')
       .sort({ department: 1, name: 1 });
 
     const totalPayroll = staff.reduce((sum, s) => sum + (s.monthlySalary || 0), 0);
@@ -502,9 +509,53 @@ exports.updateStaff = async (req, res) => {
       });
     }
 
+    // Handle salary and jobType revisions with effective date
+    const newSalary = updateData.monthlySalary !== undefined ? Number(updateData.monthlySalary) : staff.monthlySalary;
+    const newJobType = updateData.jobType || staff.jobType;
+    const effectiveDateStr = req.body.salaryEffectiveDate || new Date().toISOString().split('T')[0];
+    const effectiveDate = new Date(effectiveDateStr);
+
+    const isSalaryChanged = updateData.monthlySalary !== undefined && Number(newSalary) !== Number(staff.monthlySalary);
+    const isJobTypeChanged = updateData.jobType !== undefined && newJobType !== staff.jobType;
+
+    if (isSalaryChanged || isJobTypeChanged || req.body.salaryEffectiveDate) {
+      if (!staff.salaryRevisions) {
+        staff.salaryRevisions = [];
+      }
+
+      // If salaryRevisions is empty, record initial state from joiningDate / createdAt
+      if (staff.salaryRevisions.length === 0) {
+        staff.salaryRevisions.push({
+          effectiveDate: staff.joiningDate || staff.createdAt || new Date(2026, 0, 1),
+          monthlySalary: staff.monthlySalary,
+          jobType: staff.jobType
+        });
+      }
+
+      const targetDateKey = effectiveDate.toISOString().split('T')[0];
+      const existingIdx = staff.salaryRevisions.findIndex(r => {
+        return new Date(r.effectiveDate).toISOString().split('T')[0] === targetDateKey;
+      });
+
+      if (existingIdx !== -1) {
+        staff.salaryRevisions[existingIdx].monthlySalary = newSalary;
+        staff.salaryRevisions[existingIdx].jobType = newJobType;
+      } else {
+        staff.salaryRevisions.push({
+          effectiveDate: effectiveDate,
+          monthlySalary: newSalary,
+          jobType: newJobType
+        });
+      }
+
+      staff.salaryRevisions.sort((a, b) => new Date(a.effectiveDate) - new Date(b.effectiveDate));
+    }
+
     // Update fields from cleaned data
     Object.keys(updateData).forEach(key => {
-      staff[key] = updateData[key];
+      if (key !== 'salaryEffectiveDate') {
+        staff[key] = updateData[key];
+      }
     });
 
     // Save the staff (this will trigger pre-save middleware for password hashing)
@@ -680,10 +731,42 @@ const parseTotalHours = (totalHoursStr) => {
   return hours + (minutes / 60);
 };
 
-const calculatePayout = (staffInfo) => {
-  const baseSalary = staffInfo.monthlySalary || 0;
-  const hourlyRate = baseSalary / EXPECTED_MONTHLY_HOURS;
+const getSalaryForDate = (staffInfo, date) => {
+  const defaultSalary = staffInfo.monthlySalary || 0;
+  const defaultJobType = staffInfo.jobType || '';
+  if (!staffInfo.salaryRevisions || staffInfo.salaryRevisions.length === 0) {
+    return { salary: defaultSalary, jobType: defaultJobType };
+  }
 
+  const d = new Date(date);
+  d.setHours(23, 59, 59, 999);
+
+  let activeSalary = defaultSalary;
+  let activeJobType = defaultJobType;
+  let found = false;
+
+  for (let i = staffInfo.salaryRevisions.length - 1; i >= 0; i--) {
+    const rev = staffInfo.salaryRevisions[i];
+    const revDate = new Date(rev.effectiveDate);
+    revDate.setHours(0, 0, 0, 0);
+
+    if (revDate <= d) {
+      activeSalary = rev.monthlySalary;
+      activeJobType = rev.jobType || defaultJobType;
+      found = true;
+      break;
+    }
+  }
+
+  if (!found && staffInfo.salaryRevisions.length > 0) {
+    activeSalary = staffInfo.salaryRevisions[0].monthlySalary;
+    activeJobType = staffInfo.salaryRevisions[0].jobType || defaultJobType;
+  }
+
+  return { salary: activeSalary, jobType: activeJobType };
+};
+
+const calculatePayout = (staffInfo) => {
   const today = new Date();
   const currentMonth = today.getMonth();
   const currentYear = today.getFullYear();
@@ -696,68 +779,71 @@ const calculatePayout = (staffInfo) => {
     createdAt.getFullYear() === currentYear
   ) ? createdAt.getDate() : 1;
 
-  // --- Step 1: Sum actual hours from clock records ---
   const monthlyClockRecords = (staffInfo.clock || []).filter(record => {
     const d = new Date(record.date);
     return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
   });
 
-  let totalHoursWorked = 0;
+  const dailyHoursMap = {};
+  const creditedDates = new Set();
+
   monthlyClockRecords.forEach(record => {
+    const dStr = new Date(record.date).toDateString();
     const actualHrs = parseTotalHours(record.totalHours);
+    let hrs = 0;
     if (actualHrs > 9) {
-      totalHoursWorked += 8.5 + (actualHrs - 9);
+      hrs = 8.5 + (actualHrs - 9);
     } else if (actualHrs >= 8.5) {
-      totalHoursWorked += 8.5;
+      hrs = 8.5;
     } else {
-      totalHoursWorked += actualHrs;
+      hrs = actualHrs;
     }
+    dailyHoursMap[dStr] = hrs;
+    creditedDates.add(dStr);
   });
 
-  // Build set of clocked dates (to avoid double-counting)
-  const creditedDates = new Set(
-    monthlyClockRecords.map(r => new Date(r.date).toDateString())
-  );
-
-  // --- Step 2: Credit 8.5 hrs for each SUNDAY in the month (from startDay up to today) ---
+  // Credit 8.5 hrs for each SUNDAY in the month (from startDay up to today)
   for (let day = startDay; day <= today.getDate(); day++) {
     const d = new Date(currentYear, currentMonth, day);
-    if (d.getDay() === 0 && !creditedDates.has(d.toDateString())) {
-      totalHoursWorked += STANDARD_HOURS_PER_DAY;
-      creditedDates.add(d.toDateString());
+    const dStr = d.toDateString();
+    if (d.getDay() === 0 && !creditedDates.has(dStr)) {
+      dailyHoursMap[dStr] = STANDARD_HOURS_PER_DAY;
+      creditedDates.add(dStr);
     }
   }
 
-  // --- Step 3: Credit 8.5 hrs for each admin-declared leave day ---
+  // Credit 8.5 hrs for each admin-declared leave day
   (staffInfo.leaves || []).forEach(leave => {
     const leaveDate = new Date(leave.date);
+    const dStr = leaveDate.toDateString();
     if (
       leaveDate.getMonth() === currentMonth &&
       leaveDate.getFullYear() === currentYear &&
       leaveDate <= today &&
-      !creditedDates.has(leaveDate.toDateString())
+      !creditedDates.has(dStr)
     ) {
-      totalHoursWorked += STANDARD_HOURS_PER_DAY;
-      creditedDates.add(leaveDate.toDateString());
+      dailyHoursMap[dStr] = STANDARD_HOURS_PER_DAY;
+      creditedDates.add(dStr);
     }
   });
 
   // Credit 8.5 hrs for manual daily attendance marked as 'On Leave'
   (staffInfo.attendance || []).forEach(att => {
     const attDate = new Date(att.date);
+    const dStr = attDate.toDateString();
     if (
       att.status === 'On Leave' &&
       attDate.getMonth() === currentMonth &&
       attDate.getFullYear() === currentYear &&
       attDate <= today &&
-      !creditedDates.has(attDate.toDateString())
+      !creditedDates.has(dStr)
     ) {
-      totalHoursWorked += STANDARD_HOURS_PER_DAY;
-      creditedDates.add(attDate.toDateString());
+      dailyHoursMap[dStr] = STANDARD_HOURS_PER_DAY;
+      creditedDates.add(dStr);
     }
   });
 
-  // --- Step 4: Find truly absent days (from startDay, no clock, not Sunday, not admin leave) ---
+  // Find truly absent days
   const absentDays = [];
   for (let day = startDay; day <= today.getDate(); day++) {
     const d = new Date(currentYear, currentMonth, day);
@@ -766,7 +852,7 @@ const calculatePayout = (staffInfo) => {
     }
   }
 
-  // --- Step 5: Find half-days from attendance records ---
+  // Find half-days from attendance records
   const halfDayRecords = (staffInfo.attendance || []).filter(att => {
     const d = new Date(att.date);
     return (
@@ -776,38 +862,48 @@ const calculatePayout = (staffInfo) => {
       d <= today
     );
   });
-  // 2 half-days = 1 leave unit
   const halfDayLeaveUnits = Math.floor(halfDayRecords.length / 2);
 
-  // --- Step 6: Apply 1 FREE casual leave per month ---
-  // Priority: 1st absent day → then 1st pair of half-days
+  // Apply 1 FREE casual leave per month
   let casualLeaveUsed = false;
 
   if (absentDays.length > 0) {
-    // 1st absent day is auto casual leave → credit full 8.5 hrs
-    totalHoursWorked += STANDARD_HOURS_PER_DAY;
-    creditedDates.add(absentDays[0].toDateString());
+    const casualLeaveDate = absentDays[0];
+    const dStr = casualLeaveDate.toDateString();
+    dailyHoursMap[dStr] = STANDARD_HOURS_PER_DAY;
+    creditedDates.add(dStr);
     casualLeaveUsed = true;
   } else if (halfDayLeaveUnits > 0) {
-    // No absent days but 2+ half-days → use casual leave for 1st pair
-    // Top up each of those 2 half-days to 4.25 hrs (half of 8.5)
-    // so the pair together = 8.5 hrs (1 full day equivalent)
     for (let i = 0; i < 2; i++) {
       const hdDate = new Date(halfDayRecords[i].date);
+      const dStr = hdDate.toDateString();
       const clockRecord = monthlyClockRecords.find(
-        r => new Date(r.date).toDateString() === hdDate.toDateString()
+        r => new Date(r.date).toDateString() === dStr
       );
       const actualHrs = clockRecord ? parseTotalHours(clockRecord.totalHours) : 0;
-      const halfTarget = STANDARD_HOURS_PER_DAY / 2; // 4.25 hrs
+      const halfTarget = STANDARD_HOURS_PER_DAY / 2;
       if (actualHrs < halfTarget) {
-        totalHoursWorked += halfTarget - actualHrs;
+        dailyHoursMap[dStr] = (dailyHoursMap[dStr] || actualHrs) + (halfTarget - actualHrs);
       }
     }
     casualLeaveUsed = true;
   }
 
-  const payout = Math.round(hourlyRate * totalHoursWorked);
+  let totalPayout = 0;
+  let totalHoursWorked = 0;
+
+  Object.keys(dailyHoursMap).forEach(dStr => {
+    const hrs = dailyHoursMap[dStr] || 0;
+    totalHoursWorked += hrs;
+    const { salary: daySalary } = getSalaryForDate(staffInfo, dStr);
+    const dayHourlyRate = daySalary / EXPECTED_MONTHLY_HOURS;
+    totalPayout += hrs * dayHourlyRate;
+  });
+
+  const payout = Math.round(totalPayout);
   const daysWorked = monthlyClockRecords.length;
+  const currentSalary = staffInfo.monthlySalary || 0;
+  const hourlyRate = currentSalary / EXPECTED_MONTHLY_HOURS;
 
   return {
     payout,
@@ -2002,25 +2098,24 @@ exports.updateProfilePic = async (req, res) => {
 
     const staff = await Staff.findById(req.params.id);
     if (!staff) {
-      // Clean up local file even on error
       if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
       return res.status(404).json({ success: false, message: 'Staff not found' });
     }
 
-    // Upload to Cloudinary
-    const result = await cloudinary.uploader.upload(req.file.path, {
-      folder: 'profile_pics',
-      resource_type: 'auto'
-    });
-    const profilePicUrl = result.secure_url;
-
-    // Clean up local temp file
+    let profilePicUrl;
     try {
+      // Upload to Cloudinary if configured
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: 'profile_pics',
+        resource_type: 'auto'
+      });
+      profilePicUrl = result.secure_url;
       if (fs.existsSync(req.file.path)) {
         fs.unlinkSync(req.file.path);
       }
-    } catch (unlinkError) {
-      console.error(`Failed to delete local temp file ${req.file.path}:`, unlinkError);
+    } catch (cloudErr) {
+      console.warn('Cloudinary upload error, falling back to local file URL:', cloudErr.message);
+      profilePicUrl = `/uploads/${req.file.filename}`;
     }
 
     // Set the profile picture path
