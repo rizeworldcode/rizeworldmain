@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   User,
@@ -27,6 +27,62 @@ const STATUS_OPTIONS = {
   'In Progress': ['Present', 'Pending', 'On Hold', 'Completed'],
   'On Hold': ['Present', 'Pending', 'Completed'],
   'Completed': ['Present', 'Pending', 'On Hold']
+};
+
+const formatProjectMonth = (monthStr) => {
+  if (!monthStr) return null;
+  if (monthStr.includes('-')) {
+    const [year, month] = monthStr.split('-').map(Number);
+    if (year && month) {
+      const date = new Date(year, month - 1, 1);
+      return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    }
+  }
+  return monthStr;
+};
+
+const formatDateFormatted = (dateStr) => {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+};
+
+const getProjectOptions = (client) => {
+  if (!client) return [];
+  const options = [];
+
+  const currentPending = client.pendingAmount !== undefined ? client.pendingAmount : Math.max(0, (client.totalPrice || 0) - (client.paidAmount || 0));
+  const currentStart = client.startDate ? formatDateFormatted(client.startDate) : 'N/A';
+  const currentEnd = client.deadline ? formatDateFormatted(client.deadline) : 'N/A';
+  options.push({
+    key: 'current',
+    type: 'current',
+    historyIndex: -1,
+    label: `Current Project (${currentStart} to ${currentEnd}) — Pending: ₹${currentPending.toLocaleString('en-IN')}`,
+    pendingAmount: currentPending,
+    startDate: client.startDate,
+    deadline: client.deadline
+  });
+
+  if (client.history && client.history.length > 0) {
+    client.history.forEach((h, idx) => {
+      const hPending = h.pendingAmount !== undefined ? h.pendingAmount : Math.max(0, (h.totalPrice || 0) - (h.paidAmount || 0));
+      const hStart = h.startDate ? formatDateFormatted(h.startDate) : 'N/A';
+      const hEnd = h.deadline ? formatDateFormatted(h.deadline) : 'N/A';
+      options.push({
+        key: `history-${idx}`,
+        type: 'history',
+        historyIndex: idx,
+        label: `Past Project Cycle #${idx + 1} (${hStart} to ${hEnd}) — Pending: ₹${hPending.toLocaleString('en-IN')}`,
+        pendingAmount: hPending,
+        startDate: h.startDate,
+        deadline: h.deadline
+      });
+    });
+  }
+
+  return options;
 };
 
 const parseWorkDetailToTasks = (workDetail) => {
@@ -142,34 +198,88 @@ const ActionMenu = ({ onAddPayment }) => {
   );
 };
 
-const AddPaymentModal = ({ isOpen, onClose, onAdd, maxAmount }) => {
+const AddPaymentModal = ({ client, isOpen, onClose, onAdd, maxAmount }) => {
+  const projectOptions = useMemo(() => getProjectOptions(client), [client]);
+  const [selectedProjectKey, setSelectedProjectKey] = useState('current');
+
+  useEffect(() => {
+    if (projectOptions.length > 0) {
+      setSelectedProjectKey(projectOptions[0].key);
+    }
+  }, [client, projectOptions]);
+
+  const selectedProject = projectOptions.find(p => p.key === selectedProjectKey) || projectOptions[0];
+  const activeMaxAmount = selectedProject ? selectedProject.pendingAmount : (maxAmount !== undefined ? maxAmount : 0);
+
+  const defaultStart = selectedProject?.startDate ? new Date(selectedProject.startDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+  const defaultEnd = selectedProject?.deadline ? new Date(selectedProject.deadline).toISOString().split('T')[0] : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
   const [formData, setFormData] = useState({
     amount: '',
     mode: 'Online',
     utr: '',
+    month: new Date().toISOString().slice(0, 7),
+    periodFrom: defaultStart,
+    periodTo: defaultEnd,
     date: new Date().toISOString().split('T')[0]
   });
+
+  useEffect(() => {
+    if (selectedProject) {
+      const pStart = selectedProject.startDate ? new Date(selectedProject.startDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+      const pEnd = selectedProject.deadline ? new Date(selectedProject.deadline).toISOString().split('T')[0] : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      setFormData(prev => ({
+        ...prev,
+        periodFrom: pStart,
+        periodTo: pEnd
+      }));
+    }
+  }, [selectedProjectKey, selectedProject]);
 
   if (!isOpen) return null;
 
   const amountVal = parseFloat(formData.amount) || 0;
-  const isOverLimit = maxAmount !== undefined && amountVal > maxAmount;
+  const isOverLimit = activeMaxAmount !== undefined && amountVal > activeMaxAmount;
   const utrTrimmed = (formData.utr || '').trim();
   const isUtrInvalid = formData.mode === 'Online' && (utrTrimmed.length < 12 || utrTrimmed.length > 16);
   const showUtrError = formData.mode === 'Online' && formData.utr !== '' && (utrTrimmed.length < 12 || utrTrimmed.length > 16);
 
+  const formattedPeriodString = (formData.periodFrom && formData.periodTo)
+    ? `${formatDateFormatted(formData.periodFrom)} - ${formatDateFormatted(formData.periodTo)}`
+    : '';
+
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-black/60 backdrop-blur-md" />
-      <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative w-full max-w-md bg-white dark:bg-[#030303] rounded-3xl border border-gray-200 dark:border-white/10 p-8 shadow-2xl">
+      <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative w-full max-w-md bg-white dark:bg-[#030303] rounded-3xl border border-gray-200 dark:border-white/10 p-8 shadow-2xl max-h-[90vh] overflow-y-auto">
         <h3 className="text-xl font-bold text-black dark:text-white mb-6 flex items-center gap-2">
           <PlusCircle className="text-emerald-500" /> Add New Payment
         </h3>
+
+        {/* Multi-Project Selection Dropdown */}
+        {projectOptions.length > 1 && (
+          <div className="mb-4 p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl space-y-2">
+            <label className="text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-widest block">
+              Select Project / Cycle to Clear Payment ({projectOptions.length} Projects Available)
+            </label>
+            <select
+              className="w-full bg-white dark:bg-[#030303] border border-amber-500/30 rounded-xl px-4 py-2.5 text-xs text-black dark:text-white focus:border-amber-500 outline-none transition-all cursor-pointer font-bold"
+              value={selectedProjectKey}
+              onChange={(e) => setSelectedProjectKey(e.target.value)}
+            >
+              {projectOptions.map(p => (
+                <option key={p.key} value={p.key} className="bg-white dark:bg-[#030303] text-black dark:text-white">
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         
-        {maxAmount !== undefined && (
+        {activeMaxAmount !== undefined && (
           <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl">
             <p className="text-xs text-blue-600 dark:text-blue-400 font-bold">
-              Remaining Pending Amount: ₹{maxAmount.toLocaleString('en-IN')}
+              Remaining Pending Amount: ₹{activeMaxAmount.toLocaleString('en-IN')}
             </p>
           </div>
         )}
@@ -188,7 +298,7 @@ const AddPaymentModal = ({ isOpen, onClose, onAdd, maxAmount }) => {
             />
             {isOverLimit && (
               <p className="text-[11px] text-red-500 font-semibold mt-1">
-                Amount cannot exceed the remaining pending amount of ₹{maxAmount.toLocaleString('en-IN')}.
+                Amount cannot exceed the remaining pending amount of ₹{activeMaxAmount.toLocaleString('en-IN')}.
               </p>
             )}
           </div>
@@ -236,12 +346,20 @@ const AddPaymentModal = ({ isOpen, onClose, onAdd, maxAmount }) => {
             <button
               onClick={() => {
                 if (isOverLimit || isUtrInvalid) return;
-                onAdd(formData);
+                onAdd({
+                  ...formData,
+                  periodFrom: selectedProject?.startDate || formData.periodFrom,
+                  periodTo: selectedProject?.deadline || formData.periodTo,
+                  projectPeriod: (selectedProject?.startDate && selectedProject?.deadline)
+                    ? `${formatDateFormatted(selectedProject.startDate)} - ${formatDateFormatted(selectedProject.deadline)}`
+                    : '',
+                  historyIndex: selectedProject?.historyIndex
+                });
               }}
               disabled={isOverLimit || isUtrInvalid || !formData.amount}
               className={`flex-1 px-6 py-3 rounded-xl font-bold transition-all shadow-lg ${
                 isOverLimit || isUtrInvalid || !formData.amount
-                  ? 'bg-gray-300 dark:bg-white/10 text-gray-500 dark:text-gray-400 cursor-not-allowed shadow-none'
+                  ? 'bg-gray-300 dark:bg-white/10 text-gray-500 dark:text-gray-600 cursor-not-allowed shadow-none'
                   : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-600/20'
               }`}
             >
@@ -1259,7 +1377,21 @@ const PaymentModal = ({ client, isOpen, onClose, theme }) => {
                     <div className="flex justify-between items-start">
                       <div>
                         <p className="text-sm font-bold text-black dark:text-white">₹{payment.amount.toLocaleString('en-IN')}</p>
-                        <p className="text-[11px] text-gray-600 font-medium mt-1">{payment.date}</p>
+                        <div className="flex flex-col gap-1 mt-1">
+                          <p className="text-[11px] text-gray-600 dark:text-gray-400 font-medium">
+                            Received Date: {payment.date ? (new Date(payment.date).toString() !== 'Invalid Date' ? new Date(payment.date).toLocaleDateString('en-IN') : payment.date) : '—'}
+                          </p>
+                          {(payment.projectPeriod || (payment.periodFrom && payment.periodTo)) && (
+                            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded w-fit flex items-center gap-1">
+                              <span>📅 Period:</span> {payment.projectPeriod || `${formatDateFormatted(payment.periodFrom)} - ${formatDateFormatted(payment.periodTo)}`}
+                            </span>
+                          )}
+                          {!payment.projectPeriod && payment.month && (
+                            <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded w-fit">
+                              Month: {formatProjectMonth(payment.month)}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <div className="text-right">
                         <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded uppercase">
@@ -1440,7 +1572,13 @@ const handleAddPayment = async (data) => {
       body: JSON.stringify({
         payingAmount: parseFloat(data.amount),
         paymentMethod: data.mode,
-        ...(data.mode === 'Online' && { utr: data.utr })
+        ...(data.mode === 'Online' && { utr: data.utr }),
+        month: data.month,
+        periodFrom: data.periodFrom,
+        periodTo: data.periodTo,
+        projectPeriod: data.projectPeriod,
+        historyIndex: data.historyIndex,
+        date: data.date
       })
     });
 
@@ -1462,7 +1600,11 @@ const handleAddPayment = async (data) => {
                 date: data.date,
                 amount: amount,
                 mode: data.mode,
-                utr: data.utr || null
+                utr: data.utr || null,
+                month: data.month,
+                periodFrom: data.periodFrom,
+                periodTo: data.periodTo,
+                projectPeriod: data.projectPeriod
               }
             ]
           };
@@ -1622,10 +1764,14 @@ const handleAddPayment = async (data) => {
     try {
       const updatedPaidAmount = (activeOldClient.paidAmount || 0) + amount;
       const paymentItem = {
-        date: new Date(),
+        date: data.date ? new Date(data.date) : new Date(),
         amount: amount,
         mode: data.mode === 'Cash' ? 'Cash' : 'Online',
-        utr: data.utr || ''
+        utr: data.utr || '',
+        month: data.month || '',
+        periodFrom: data.periodFrom ? new Date(data.periodFrom) : undefined,
+        periodTo: data.periodTo ? new Date(data.periodTo) : undefined,
+        projectPeriod: data.projectPeriod || ''
       };
       const submitData = {
         ...activeOldClient,
@@ -1675,6 +1821,7 @@ const handleAddPayment = async (data) => {
         )}
         {isAddPaymentOpen && (
           <AddPaymentModal
+            client={clients.find(c => c.id === activeClientId || c._id === activeClientId)}
             isOpen={isAddPaymentOpen}
             onClose={() => setIsAddPaymentOpen(false)}
             onAdd={handleAddPayment}
@@ -1708,6 +1855,7 @@ const handleAddPayment = async (data) => {
         )}
         {isAddOldPaymentOpen && (
           <AddPaymentModal
+            client={oldClients.find(c => c._id === activeOldClientId)}
             isOpen={isAddOldPaymentOpen}
             onClose={() => setIsAddOldPaymentOpen(false)}
             onAdd={handleAddOldClientPayment}

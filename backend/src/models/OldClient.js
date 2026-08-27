@@ -51,7 +51,11 @@ const oldClientSchema = new mongoose.Schema({
     date: { type: Date, default: Date.now },
     amount: { type: Number, required: true },
     mode: { type: String, enum: ['Online', 'Cash'], default: 'Online' },
-    utr: { type: String }
+    utr: { type: String },
+    month: { type: String },
+    periodFrom: { type: Date },
+    periodTo: { type: Date },
+    projectPeriod: { type: String }
   }]
 }, {
   timestamps: true

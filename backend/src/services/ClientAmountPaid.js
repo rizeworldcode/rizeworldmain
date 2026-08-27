@@ -9,10 +9,18 @@ exports.updateClientPaidAmount = async (req, res) => {
     if (!client) {
       return res.status(404).json({ success: false, message: 'Client not found' });
     }
-    const currentPending = Number(client.pendingAmount);
-    if (payingAmount > currentPending) {
-      return res.status(400).json({ success: false, message: `Payment amount (₹${payingAmount}) cannot exceed the pending amount (₹${currentPending})` });
+    const historyIndex = req.body.historyIndex !== undefined && req.body.historyIndex !== null && req.body.historyIndex !== '' ? Number(req.body.historyIndex) : -1;
+
+    let targetPending = Number(client.pendingAmount);
+    if (historyIndex >= 0 && client.history && client.history[historyIndex]) {
+      const histItem = client.history[historyIndex];
+      targetPending = Number(histItem.pendingAmount !== undefined ? histItem.pendingAmount : (histItem.totalPrice - (histItem.paidAmount || 0)));
     }
+
+    if (payingAmount > targetPending) {
+      return res.status(400).json({ success: false, message: `Payment amount (₹${payingAmount}) cannot exceed the pending amount (₹${targetPending})` });
+    }
+
     const paymentMode = req.body.paymentMethod === 'Cash' ? 'Cash' : 'Online';
     if (paymentMode === 'Online') {
       const utrStr = (req.body.utr || '').trim();
@@ -20,19 +28,36 @@ exports.updateClientPaidAmount = async (req, res) => {
         return res.status(400).json({ success: false, message: 'UTR number must be between 12 and 16 characters for online payments.' });
       }
     }
-    const newPaidAmount = Number(client.paidAmount) + payingAmount;
-    const newPendingAmount = Number(client.totalPrice) - newPaidAmount;
 
-    client.paidAmount = newPaidAmount;
-    client.pendingAmount = newPendingAmount;
-
-    // ✅ This is the fix — push to payments array
-    client.payments.push({
-      date: new Date(),
+    const paymentEntry = {
+      date: req.body.date ? new Date(req.body.date) : new Date(),
       amount: payingAmount,
       mode: req.body.paymentMethod === 'Cash' ? 'Cash' : 'Online',
-      utr: req.body.utr || ''
-    });
+      utr: req.body.utr || '',
+      month: req.body.month || '',
+      periodFrom: req.body.periodFrom ? new Date(req.body.periodFrom) : undefined,
+      periodTo: req.body.periodTo ? new Date(req.body.periodTo) : undefined,
+      projectPeriod: req.body.projectPeriod || ''
+    };
+
+    if (historyIndex >= 0 && client.history && client.history[historyIndex]) {
+      const histItem = client.history[historyIndex];
+      const newHistPaid = Number(histItem.paidAmount || 0) + payingAmount;
+      const newHistPending = Math.max(0, Number(histItem.totalPrice || 0) - newHistPaid);
+      histItem.paidAmount = newHistPaid;
+      histItem.pendingAmount = newHistPending;
+      if (!histItem.payments) histItem.payments = [];
+      histItem.payments.push(paymentEntry);
+      client.markModified('history');
+    } else {
+      const newPaidAmount = Number(client.paidAmount) + payingAmount;
+      const newPendingAmount = Number(client.totalPrice) - newPaidAmount;
+      client.paidAmount = newPaidAmount;
+      client.pendingAmount = newPendingAmount;
+    }
+
+    // Always record payment entry in client.payments array for global history
+    client.payments.push(paymentEntry);
 
     const updatedClient = await client.save();
     return res.status(200).json({
