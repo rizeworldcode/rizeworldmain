@@ -203,10 +203,10 @@ const AddPaymentModal = ({ client, isOpen, onClose, onAdd, maxAmount }) => {
   const [selectedProjectKey, setSelectedProjectKey] = useState('current');
 
   useEffect(() => {
-    if (projectOptions.length > 0) {
+    if (isOpen && projectOptions.length > 0) {
       setSelectedProjectKey(projectOptions[0].key);
     }
-  }, [client, projectOptions]);
+  }, [isOpen, client?._id, client?.id]);
 
   const selectedProject = projectOptions.find(p => p.key === selectedProjectKey) || projectOptions[0];
   const activeMaxAmount = selectedProject ? selectedProject.pendingAmount : (maxAmount !== undefined ? maxAmount : 0);
@@ -1550,8 +1550,16 @@ const handleAddPayment = async (data) => {
   const activeClient = clients.find(c => c.id === activeClientId || c._id === activeClientId);
   const amount = parseFloat(data.amount);
 
-  if (activeClient && amount > activeClient.pendingAmount) {
-    alert(`Error: Payment amount (₹${amount.toLocaleString('en-IN')}) cannot exceed the pending amount (₹${activeClient.pendingAmount.toLocaleString('en-IN')})`);
+  const hIndex = data.historyIndex !== undefined && data.historyIndex !== null && data.historyIndex !== '' ? Number(data.historyIndex) : -1;
+  let targetPending = activeClient ? activeClient.pendingAmount : 0;
+  if (hIndex >= 0 && activeClient?.history && activeClient.history[hIndex]) {
+    const hItem = activeClient.history[hIndex];
+    const hTotal = Number(hItem.totalPrice !== undefined ? hItem.totalPrice : (hItem.totalAmount !== undefined ? hItem.totalAmount : 0));
+    targetPending = hItem.pendingAmount !== undefined ? Number(hItem.pendingAmount) : Math.max(0, hTotal - Number(hItem.paidAmount || 0));
+  }
+
+  if (activeClient && amount > targetPending) {
+    alert(`Error: Payment amount (₹${amount.toLocaleString('en-IN')}) cannot exceed the pending amount (₹${targetPending.toLocaleString('en-IN')})`);
     return;
   }
 
@@ -1589,25 +1597,39 @@ const handleAddPayment = async (data) => {
       setClients(prev => prev.map(c => {
         if (c.id === activeClientId || c._id === activeClientId) {
           const amount = parseFloat(data.amount);
-          return {
-            ...c,
-            paidAmount: c.paidAmount + amount,
-            pendingAmount: c.pendingAmount - amount,
-            payments: [
-              ...c.payments,
-              {
-                id: c.payments.length + 1,
-                date: data.date,
-                amount: amount,
-                mode: data.mode,
-                utr: data.utr || null,
-                month: data.month,
-                periodFrom: data.periodFrom,
-                periodTo: data.periodTo,
-                projectPeriod: data.projectPeriod
-              }
-            ]
+          const paymentEntry = {
+            id: (c.payments || []).length + 1,
+            date: data.date,
+            amount: amount,
+            mode: data.mode,
+            utr: data.utr || null,
+            month: data.month,
+            periodFrom: data.periodFrom,
+            periodTo: data.periodTo,
+            projectPeriod: data.projectPeriod
           };
+          if (hIndex >= 0 && c.history && c.history[hIndex]) {
+            const updatedHistory = [...c.history];
+            const hItem = { ...updatedHistory[hIndex] };
+            const newPaid = Number(hItem.paidAmount || 0) + amount;
+            const hTotal = Number(hItem.totalPrice !== undefined ? hItem.totalPrice : (hItem.totalAmount || 0));
+            hItem.paidAmount = newPaid;
+            hItem.pendingAmount = Math.max(0, hTotal - newPaid);
+            hItem.payments = [...(hItem.payments || []), paymentEntry];
+            updatedHistory[hIndex] = hItem;
+            return {
+              ...c,
+              history: updatedHistory,
+              payments: [...(c.payments || []), paymentEntry]
+            };
+          } else {
+            return {
+              ...c,
+              paidAmount: c.paidAmount + amount,
+              pendingAmount: c.pendingAmount - amount,
+              payments: [...(c.payments || []), paymentEntry]
+            };
+          }
         }
         return c;
       }));

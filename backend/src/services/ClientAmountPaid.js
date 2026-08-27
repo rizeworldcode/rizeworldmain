@@ -14,7 +14,9 @@ exports.updateClientPaidAmount = async (req, res) => {
     let targetPending = Number(client.pendingAmount);
     if (historyIndex >= 0 && client.history && client.history[historyIndex]) {
       const histItem = client.history[historyIndex];
-      targetPending = Number(histItem.pendingAmount !== undefined ? histItem.pendingAmount : (histItem.totalPrice - (histItem.paidAmount || 0)));
+      const hTotal = Number(histItem.totalPrice !== undefined ? histItem.totalPrice : (histItem.totalAmount !== undefined ? histItem.totalAmount : 0));
+      const hPaid = Number(histItem.paidAmount || 0);
+      targetPending = histItem.pendingAmount !== undefined ? Number(histItem.pendingAmount) : Math.max(0, hTotal - hPaid);
     }
 
     if (payingAmount > targetPending) {
@@ -42,8 +44,9 @@ exports.updateClientPaidAmount = async (req, res) => {
 
     if (historyIndex >= 0 && client.history && client.history[historyIndex]) {
       const histItem = client.history[historyIndex];
+      const hTotal = Number(histItem.totalPrice !== undefined ? histItem.totalPrice : (histItem.totalAmount !== undefined ? histItem.totalAmount : 0));
       const newHistPaid = Number(histItem.paidAmount || 0) + payingAmount;
-      const newHistPending = Math.max(0, Number(histItem.totalPrice || 0) - newHistPaid);
+      const newHistPending = Math.max(0, hTotal - newHistPaid);
       histItem.paidAmount = newHistPaid;
       histItem.pendingAmount = newHistPending;
       if (!histItem.payments) histItem.payments = [];
