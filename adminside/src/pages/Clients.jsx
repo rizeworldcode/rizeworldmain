@@ -425,6 +425,11 @@ const PACKAGE_DETAILS = {
     fee: 25000,
     gst: 18,
     details: 'E-Commerce Website'
+  },
+  'GMB Management Plan': {
+    fee: 5000,
+    gst: 18,
+    details: '• 4 Posts / Month (Regular GMB posts to keep profile active & engaging)\n• Q&A Post (Questions & Answers posted to build trust)\n• Keywords Research (In-depth local search terms research)\n• 60 Reviews (Review content/links shared with client)\n• Review Reply (Timely, professional replies to all incoming reviews)\n• Local Review Support (Local team review posting support)\n• Top 3 Ranking in 45 Days (For a single targeted keyword)'
   }
 };
 
@@ -436,6 +441,7 @@ const DEPT_CONFIG = {
   'PPC':                        { color: 'orange', label: 'PPC' },
   'Graphic Design & Video Editing': { color: 'purple', label: 'Graphic Design & Video Editing' },
   'WEB DEvlopment':             { color: 'rose',   label: 'Web Development' },
+  'GMB':                        { color: 'amber',  label: 'GMB (Google My Business)' },
 };
 const ALL_DEPTS = Object.keys(DEPT_CONFIG);
 
@@ -467,6 +473,23 @@ const makeDeptData = (dept) => {
   }
   if (dept === 'WEB DEvlopment') {
     return { package: 'Informative Website', webPages: '', workDetail: 'Informative Website (0 Pages)', amount: (PACKAGE_DETAILS['Informative Website'].fee * 1.18).toFixed(0) };
+  }
+  if (dept === 'GMB') {
+    const defaultList = [
+      '4 Posts / Month (Regular GMB posts to keep profile active & engaging)',
+      'Q&A Post (Questions & Answers posted to build trust)',
+      'Keywords Research (In-depth local search terms research)',
+      '60 Reviews (Review content/links shared with client)',
+      'Review Reply (Timely, professional replies to all incoming reviews)',
+      'Local Review Support (Local team review posting support)',
+      'Top 3 Ranking in 45 Days (For a single targeted keyword)'
+    ];
+    return {
+      package: 'GMB Management Plan',
+      workDetailsList: defaultList,
+      workDetail: defaultList.map(i => `• ${i}`).join('\n'),
+      amount: (PACKAGE_DETAILS['GMB Management Plan'].fee * 1.18).toFixed(0)
+    };
   }
   return { workDetail: '', amount: '0' };
 };
@@ -629,6 +652,7 @@ const AddProjectModal = ({ isOpen, onClose, onAdd }) => {
     orange: { pill: 'bg-orange-100 dark:bg-orange-500/20 border-orange-400 text-orange-700 dark:text-orange-300', check: 'bg-orange-500', border: 'border-orange-400', header: 'bg-orange-50 dark:bg-orange-500/10 border-orange-200 dark:border-orange-500/30' },
     purple: { pill: 'bg-purple-100 dark:bg-purple-500/20 border-purple-400 text-purple-700 dark:text-purple-300', check: 'bg-purple-500', border: 'border-purple-400', header: 'bg-purple-50 dark:bg-purple-500/10 border-purple-200 dark:border-purple-500/30' },
     rose:   { pill: 'bg-rose-100 dark:bg-rose-500/20 border-rose-400 text-rose-700 dark:text-rose-300', check: 'bg-rose-500', border: 'border-rose-400', header: 'bg-rose-50 dark:bg-rose-500/10 border-rose-200 dark:border-rose-500/30' },
+    amber:  { pill: 'bg-amber-100 dark:bg-amber-500/20 border-amber-400 text-amber-700 dark:text-amber-300', check: 'bg-amber-500', border: 'border-amber-400', header: 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30' },
   };
 
   return (
@@ -845,6 +869,36 @@ const AddProjectModal = ({ isOpen, onClose, onAdd }) => {
                       <div className="flex items-center justify-between text-xs font-bold text-gray-500 dark:text-gray-400 bg-white/60 dark:bg-white/5 rounded-xl px-4 py-2.5">
                         <span>Package Amount (incl. 18% GST)</span>
                         <span className="text-rose-600 dark:text-rose-400">₹{parseInt(data.amount || 0).toLocaleString('en-IN')}</span>
+                      </div>
+                    </>
+                  )}
+
+                  {/* ── GMB (Google My Business) ── */}
+                  {dept === 'GMB' && (
+                    <>
+                      <div>
+                        <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block mb-1">Select Package / Plan</label>
+                        <select className="w-full bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-black dark:text-white outline-none cursor-pointer" value={data.package || 'GMB Management Plan'} onChange={e => handleSeoPackage(dept, e.target.value)}>
+                          <option value="GMB Management Plan">GMB Management Plan (Growth & Management Plan)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider block mb-1">GMB Work Details (Monthly Service Plan Items)</label>
+                        <div className="space-y-2">
+                          {(data.workDetailsList || []).map((detail, index) => (
+                            <div key={index} className="flex gap-2 items-center">
+                              <input type="text" className="flex-1 bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-black dark:text-white outline-none transition-all placeholder:text-gray-400" placeholder={`GMB Service Item #${index + 1}`} value={detail} onChange={e => { const nl = [...(data.workDetailsList || [])]; nl[index] = e.target.value; handleSeoList(dept, nl); }} />
+                              {(data.workDetailsList || []).length > 1 && (
+                                <button type="button" onClick={() => { const nl = (data.workDetailsList || []).filter((_, i) => i !== index); handleSeoList(dept, nl); }} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-all border-none bg-transparent cursor-pointer"><Trash2 size={15} /></button>
+                              )}
+                            </div>
+                          ))}
+                          <button type="button" onClick={() => handleSeoList(dept, [...(data.workDetailsList || []), ''])} className="px-3 py-2 rounded-xl border border-dashed border-gray-300 dark:border-white/20 text-xs font-bold text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-all flex items-center gap-1 cursor-pointer bg-transparent"><Plus size={12} /> Add GMB Service Detail</button>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between text-xs font-bold text-gray-500 dark:text-gray-400 bg-white/60 dark:bg-white/5 rounded-xl px-4 py-2.5">
+                        <span>GMB Package Amount (incl. 18% GST)</span>
+                        <span className="text-amber-600 dark:text-amber-400">₹{parseInt(data.amount || 0).toLocaleString('en-IN')}</span>
                       </div>
                     </>
                   )}

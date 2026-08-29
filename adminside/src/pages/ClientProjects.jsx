@@ -187,6 +187,11 @@ const PACKAGE_DETAILS = {
     fee: 25000,
     gst: 18,
     details: 'E-Commerce Website'
+  },
+  'GMB Management Plan': {
+    fee: 5000,
+    gst: 18,
+    details: '• 4 Posts / Month (Regular GMB posts to keep profile active & engaging)\n• Q&A Post (Questions & Answers posted to build trust)\n• Keywords Research (In-depth local search terms research)\n• 60 Reviews (Review content/links shared with client)\n• Review Reply (Timely, professional replies to all incoming reviews)\n• Local Review Support (Local team review posting support)\n• Top 3 Ranking in 45 Days (For a single targeted keyword)'
   }
 };
 
@@ -378,7 +383,8 @@ const DEPT_CONFIG = {
   'SMM': { color: 'blue', label: 'SMM' },
   'PPC': { color: 'orange', label: 'PPC' },
   'Graphic Design & Video Editing': { color: 'purple', label: 'Graphic Design & Video Editing' },
-  'WEB DEvlopment': { color: 'rose', label: 'WEB DEvlopment' }
+  'WEB DEvlopment': { color: 'rose', label: 'WEB DEvlopment' },
+  'GMB': { color: 'amber', label: 'GMB (Google My Business)' }
 };
 
 const makeDeptData = (dept) => {
@@ -408,6 +414,20 @@ const makeDeptData = (dept) => {
     const pkg = 'Informative Website';
     const fee = PACKAGE_DETAILS[pkg]?.fee || 15000;
     return { package: pkg, webPages: '', workDetail: 'Informative Website (0 Pages)', amount: (fee * 1.18).toFixed(0) };
+  }
+  if (dept === 'GMB') {
+    const pkg = 'GMB Management Plan';
+    const fee = PACKAGE_DETAILS[pkg]?.fee || 5000;
+    const defaultList = [
+      '4 Posts / Month (Regular GMB posts to keep profile active & engaging)',
+      'Q&A Post (Questions & Answers posted to build trust)',
+      'Keywords Research (In-depth local search terms research)',
+      '60 Reviews (Review content/links shared with client)',
+      'Review Reply (Timely, professional replies to all incoming reviews)',
+      'Local Review Support (Local team review posting support)',
+      'Top 3 Ranking in 45 Days (For a single targeted keyword)'
+    ];
+    return { package: pkg, workDetailsList: defaultList, workDetail: defaultList.map(i => `• ${i}`).join('\n'), amount: (fee * 1.18).toFixed(0) };
   }
   return { package: '', workDetail: '', amount: '0' };
 };
@@ -499,6 +519,26 @@ const EditProjectModal = ({ isOpen, onClose, project, onSave }) => {
             package: pkg,
             webPages,
             workDetail: deptText || `${pkg} (${webPages || '0'} Pages)`,
+            amount: (fee * 1.18).toFixed(0)
+          };
+        } else if (dept === 'GMB') {
+          const workDetailsList = parseSeoWorkDetail(deptText);
+          const pkg = project.package || 'GMB Management Plan';
+          const fee = PACKAGE_DETAILS[pkg]?.fee || 5000;
+          const defaultList = [
+            '4 Posts / Month (Regular GMB posts to keep profile active & engaging)',
+            'Q&A Post (Questions & Answers posted to build trust)',
+            'Keywords Research (In-depth local search terms research)',
+            '60 Reviews (Review content/links shared with client)',
+            'Review Reply (Timely, professional replies to all incoming reviews)',
+            'Local Review Support (Local team review posting support)',
+            'Top 3 Ranking in 45 Days (For a single targeted keyword)'
+          ];
+          const finalDetailsList = workDetailsList.length > 0 && workDetailsList[0] !== '' ? workDetailsList : defaultList;
+          initialDeptWorkData[dept] = {
+            package: pkg,
+            workDetailsList: finalDetailsList,
+            workDetail: deptText || finalDetailsList.map(i => `• ${i}`).join('\n'),
             amount: (fee * 1.18).toFixed(0)
           };
         }
