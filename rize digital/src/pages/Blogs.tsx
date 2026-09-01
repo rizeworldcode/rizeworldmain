@@ -15,6 +15,7 @@ export interface BlogListItem {
   date: string;
   title: string;
   description: string;
+  authorName?: string;
 }
 
 export default function Blogs() {
@@ -30,15 +31,28 @@ export default function Blogs() {
         const res = await fetch(`${getApiBaseUrl()}/blogs`);
         const data = await res.json();
         if (data.success && Array.isArray(data.data) && data.data.length > 0) {
-          const backendBlogs: BlogListItem[] = data.data.map((b: any) => ({
-            id: b._id,
-            slug: b.slug,
-            category: categoryToSlug(b.category),
-            image: getImageUrl(b.coverImage),
-            date: formatDate(b.createdAt),
-            title: b.title,
-            description: b.subheading || (b.content ? b.content.replace(/<[^>]+>/g, '').slice(0, 160) + '...' : '')
-          }));
+          const backendBlogs: BlogListItem[] = data.data.map((b: any) => {
+            const writerName = (b.authorId && typeof b.authorId === 'object' && b.authorId.name) 
+              ? b.authorId.name 
+              : (b.authorName || 'Marketing Team');
+
+            const writerRole = (b.authorId && typeof b.authorId === 'object' && b.authorId.role && b.authorId.role !== 'Other')
+              ? b.authorId.role
+              : (b.authorRole && b.authorRole !== 'Other' ? b.authorRole : '');
+
+            const writerDisplay = writerRole ? `${writerName} (${writerRole})` : writerName;
+
+            return {
+              id: b._id,
+              slug: b.slug,
+              category: categoryToSlug(b.category),
+              image: getImageUrl(b.coverImage),
+              date: formatDate(b.createdAt),
+              title: b.title,
+              description: b.subheading || (b.content ? b.content.replace(/<[^>]+>/g, '').slice(0, 160) + '...' : ''),
+              authorName: writerDisplay
+            };
+          });
 
           const backendSlugs = new Set(backendBlogs.map(b => b.slug));
           const filteredStatic = blogsList.filter(b => !backendSlugs.has(b.slug));
@@ -217,10 +231,13 @@ export default function Blogs() {
                   />
                 </div>
 
-                {/* Date */}
-                <span className="text-[10px] sm:text-xs font-bold tracking-widest text-gray-500 uppercase mb-3 block">
-                  {blog.date}
-                </span>
+                {/* Date & Author */}
+                <div className="flex items-center justify-between text-[10px] sm:text-xs font-bold tracking-widest text-gray-500 uppercase mb-3">
+                  <span>{blog.date}</span>
+                  {blog.authorName && (
+                    <span className="text-rize-primary font-bold">BY {blog.authorName}</span>
+                  )}
+                </div>
 
                 {/* Title */}
                 <h3 className="text-xl sm:text-2xl font-black text-gray-950 tracking-tight leading-snug mb-3 group-hover:text-rize-primary transition-colors duration-300">

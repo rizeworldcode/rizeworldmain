@@ -39,6 +39,10 @@ const blogSchema = new mongoose.Schema({
     type: String,
     default: 'Marketing Team'
   },
+  authorRole: {
+    type: String,
+    default: ''
+  },
   authorId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Staff'

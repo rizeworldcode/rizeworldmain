@@ -15,6 +15,7 @@ export interface DynamicBlog {
   intro: string;
   contentHtml?: string;
   sections?: { heading: string; content: string }[];
+  authorName?: string;
 }
 
 export interface NavBlog {
@@ -42,13 +43,24 @@ export default function BlogDetails() {
           const data = await res.json();
           if (data.success && data.data) {
             const b = data.data;
+            const writerName = (b.authorId && typeof b.authorId === 'object' && b.authorId.name) 
+              ? b.authorId.name 
+              : (b.authorName || 'Marketing Team');
+
+            const writerRole = (b.authorId && typeof b.authorId === 'object' && b.authorId.role && b.authorId.role !== 'Other')
+              ? b.authorId.role
+              : (b.authorRole && b.authorRole !== 'Other' ? b.authorRole : '');
+
+            const writerDisplay = writerRole ? `${writerName} (${writerRole})` : writerName;
+
             setFetchedBlog({
               title: b.title,
               category: b.category || 'Digital Marketing',
               date: formatDate(b.createdAt),
               image: getImageUrl(b.coverImage),
               intro: b.subheading || '',
-              contentHtml: b.content || ''
+              contentHtml: b.content || '',
+              authorName: writerDisplay
             });
           }
         }
@@ -90,7 +102,8 @@ export default function BlogDetails() {
     date: fallbackBlog.date,
     image: fallbackBlog.image,
     intro: fallbackBlog.intro,
-    sections: fallbackBlog.sections
+    sections: fallbackBlog.sections,
+    authorName: 'Marketing Team'
   };
 
   // Prev / Next / More Blogs navigation logic
@@ -119,9 +132,8 @@ export default function BlogDetails() {
     "datePublished": parseDate(blog.date),
     "description": blog.intro,
     "author": {
-      "@type": "Organization",
-      "name": "RizeWorld Digital",
-      "url": window.location.origin
+      "@type": "Person",
+      "name": blog.authorName || "Marketing Team"
     },
     "publisher": {
       "@type": "Organization",
@@ -190,7 +202,11 @@ export default function BlogDetails() {
           {blog.title}
         </h1>
 
-        <div className="flex justify-center items-center gap-16 md:gap-24 border-t border-b border-gray-200 py-6 max-w-xl mx-auto">
+        <div className="flex justify-center items-center gap-8 sm:gap-12 md:gap-16 border-t border-b border-gray-200 py-6 max-w-2xl mx-auto flex-wrap">
+          <div className="text-center">
+            <span className="text-gray-400 text-xs uppercase tracking-widest block mb-1">Written by</span>
+            <span className="text-gray-950 font-black text-sm uppercase tracking-wider">{blog.authorName || 'Marketing Team'}</span>
+          </div>
           <div className="text-center">
             <span className="text-gray-400 text-xs uppercase tracking-widest block mb-1">Posted on</span>
             <span className="text-gray-950 font-black text-sm uppercase tracking-wider">{blog.category}</span>

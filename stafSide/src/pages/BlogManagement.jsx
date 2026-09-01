@@ -680,7 +680,15 @@ const BlogManagement = ({ onBack }) => {
                         </p>
                       )}
                       <div className="flex items-center justify-between mt-4 text-[11px] text-gray-400 font-bold">
-                        <span>By {blog.authorName || 'Marketing Team'}</span>
+                        <span>
+                          By {
+                            (() => {
+                              const wName = (blog.authorId && typeof blog.authorId === 'object' && blog.authorId.name) ? blog.authorId.name : (blog.authorName || 'Marketing Team');
+                              const wRole = (blog.authorId && typeof blog.authorId === 'object' && blog.authorId.role && blog.authorId.role !== 'Other') ? blog.authorId.role : (blog.authorRole && blog.authorRole !== 'Other' ? blog.authorRole : '');
+                              return wRole ? `${wName} (${wRole})` : wName;
+                            })()
+                          }
+                        </span>
                         <span>{new Date(blog.createdAt).toLocaleDateString()}</span>
                       </div>
                     </div>
@@ -1183,9 +1191,26 @@ const BlogManagement = ({ onBack }) => {
                   </p>
                 )}
                 <div className="flex items-center gap-4 text-xs font-bold text-gray-400 mt-4">
-                  <span>Author: Marketing Team</span>
+                  <span>
+                    Author: {
+                      (() => {
+                        let staff = {};
+                        try {
+                          staff = JSON.parse(localStorage.getItem('staffInfo') || '{}');
+                        } catch(e) {}
+                        const currentBlog = blogs.find(b => b._id === editingId);
+                        const wName = (currentBlog?.authorId && typeof currentBlog.authorId === 'object' && currentBlog.authorId.name) 
+                          ? currentBlog.authorId.name 
+                          : (currentBlog?.authorName || staff.name || 'Marketing Team');
+                        const wRole = (currentBlog?.authorId && typeof currentBlog.authorId === 'object' && currentBlog.authorId.role && currentBlog.authorId.role !== 'Other') 
+                          ? currentBlog.authorId.role 
+                          : (currentBlog?.authorRole && currentBlog.authorRole !== 'Other' ? currentBlog.authorRole : (staff.role && staff.role !== 'Other' ? staff.role : ''));
+                        return wRole ? `${wName} (${wRole})` : wName;
+                      })()
+                    }
+                  </span>
                   <span>•</span>
-                  <span>Date: {new Date().toLocaleDateString()}</span>
+                  <span>Date: {editingId && blogs.find(b => b._id === editingId) ? new Date(blogs.find(b => b._id === editingId).createdAt).toLocaleDateString() : new Date().toLocaleDateString()}</span>
                 </div>
               </div>
 

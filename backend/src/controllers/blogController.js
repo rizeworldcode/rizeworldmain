@@ -43,6 +43,7 @@ exports.createBlog = async (req, res) => {
 
     const slug = await generateSlug(title);
     const authorName = req.user ? req.user.name : 'Marketing Team';
+    const authorRole = (req.user && req.user.role) ? req.user.role : '';
     const authorId = req.user ? req.user._id : null;
 
     const newBlog = await Blog.create({
@@ -54,6 +55,7 @@ exports.createBlog = async (req, res) => {
       category: category || 'General',
       tags: Array.isArray(tags) ? tags : (tags ? tags.split(',').map(t => t.trim()) : []),
       authorName,
+      authorRole,
       authorId,
       department: (req.user && req.user.department) ? req.user.department : 'Marketing',
       status: status || 'Published'
@@ -95,7 +97,7 @@ exports.getAllBlogs = async (req, res) => {
       ];
     }
 
-    const blogs = await Blog.find(query).sort({ createdAt: -1 });
+    const blogs = await Blog.find(query).sort({ createdAt: -1 }).populate('authorId', 'name role department profilePic');
 
     return res.status(200).json({
       success: true,
@@ -114,14 +116,14 @@ exports.getBlogById = async (req, res) => {
     let blog = null;
 
     if (id.match(/^[0-9a-fA-F]{24}$/)) {
-      blog = await Blog.findById(id);
+      blog = await Blog.findById(id).populate('authorId', 'name role department profilePic');
     }
     if (!blog) {
-      blog = await Blog.findOne({ slug: id });
+      blog = await Blog.findOne({ slug: id }).populate('authorId', 'name role department profilePic');
     }
     if (!blog && id.includes('-')) {
       const baseSlugWithoutNumber = id.replace(/-\d{4,5}$/, '');
-      blog = await Blog.findOne({ slug: baseSlugWithoutNumber });
+      blog = await Blog.findOne({ slug: baseSlugWithoutNumber }).populate('authorId', 'name role department profilePic');
     }
 
     if (!blog) {
@@ -146,7 +148,7 @@ exports.getBlogById = async (req, res) => {
 exports.updateBlog = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, subheading, content, coverImage, category, tags, status } = req.body;
+    const { title, subheading, content, coverImage, category, tags, status, authorName } = req.body;
 
     const blog = await Blog.findById(id);
     if (!blog) {
@@ -165,6 +167,18 @@ exports.updateBlog = async (req, res) => {
       blog.tags = Array.isArray(tags) ? tags : (tags ? tags.split(',').map(t => t.trim()) : []);
     }
     if (status !== undefined) blog.status = status;
+    if (authorName) {
+      blog.authorName = authorName;
+    }
+    if (req.user) {
+      if (!blog.authorId) blog.authorId = req.user._id;
+      if (req.user.name && (blog.authorName === 'Marketing Team' || !blog.authorName)) {
+        blog.authorName = req.user.name;
+      }
+      if (req.user.role) {
+        blog.authorRole = req.user.role;
+      }
+    }
 
     await blog.save();
 
