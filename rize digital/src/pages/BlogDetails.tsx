@@ -312,7 +312,7 @@ export default function BlogDetails() {
               onClick={() => navigate(`/blogs/${item.slug}`)}
               className="group cursor-pointer flex flex-col text-left"
             >
-              <div className="w-full aspect-4/3 rounded-2xl overflow-hidden mb-4 bg-stone-100 relative">
+              <div className="w-full aspect-video rounded-2xl overflow-hidden mb-4 bg-stone-100 relative">
                 <img 
                   src={item.image} 
                   alt={item.title}

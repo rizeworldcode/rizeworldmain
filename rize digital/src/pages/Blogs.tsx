@@ -222,7 +222,7 @@ export default function Blogs() {
                 className="group cursor-pointer flex flex-col text-left"
               >
                 {/* Image Container */}
-                <div className="w-full aspect-4/3 rounded-3xl overflow-hidden mb-6 bg-stone-100 relative">
+                <div className="w-full aspect-video rounded-3xl overflow-hidden mb-6 bg-stone-100 relative">
                   <img 
                     src={blog.image} 
                     alt={blog.title}
