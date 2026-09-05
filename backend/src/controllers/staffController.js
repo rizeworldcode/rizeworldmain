@@ -181,6 +181,8 @@ exports.getAllStaff = async (req, res) => {
             return d >= todayStart;
           });
         }
+        // Ensure documents array is defined for frontend safety
+        staffObj.documents = staffObj.documents || [];
         return staffObj;
       });
     }, 60);

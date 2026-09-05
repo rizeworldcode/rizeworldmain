@@ -1768,7 +1768,7 @@ const StaffPerformance = ({ staffId, onBack }) => {
                       <TrendingUp size={14} /> Salary & Job Status Revisions History
                     </h4>
                     <div className="space-y-1.5 text-xs">
-                      {staff.salaryRevisions.map((rev, idx) => (
+                      {(staff.salaryRevisions || []).map((rev, idx) => (
                         <div key={idx} className="flex justify-between items-center py-1 border-b border-gray-100 dark:border-white/5 last:border-0 text-gray-700 dark:text-gray-300">
                           <span className="font-semibold">{new Date(rev.effectiveDate).toLocaleDateString('en-IN')}:</span>
                           <span className="bg-white dark:bg-white/5 px-2 py-0.5 rounded border border-gray-200 dark:border-white/10">
@@ -1880,7 +1880,7 @@ const StaffPerformance = ({ staffId, onBack }) => {
                 {staff && staff.documents && staff.documents.length > 0 && (
                   <div className="space-y-2">
                     <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Uploaded Documents</h4>
-                    {staff.documents.map((doc) => (
+                    {(staff.documents || []).map((doc) => (
                       <div
                         key={doc._id}
                         className="flex items-center justify-between bg-white dark:bg-gray-800 border border-gray-200 dark:border-white/10 rounded-xl p-4"

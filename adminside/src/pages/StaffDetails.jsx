@@ -321,7 +321,7 @@ const EditStaffModal = ({ isOpen, onClose, staffMember, onUpdate }) => {
                   <FileText size={14} /> Current Documents:
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {staffMember.documents.map((doc, i) => (
+                  {(staffMember.documents || []).map((doc, i) => (
                     <span key={i} className="text-[10px] bg-black/5 dark:bg-white/10 border border-gray-200 dark:border-white/10 rounded px-2 py-1 text-gray-600 dark:text-gray-300">
                       {typeof doc === 'string' ? doc : doc.name}
                     </span>
@@ -1407,7 +1407,7 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex flex-wrap gap-1">
-                        {member.documents.map((doc, i) => (
+                        {(member.documents || []).map((doc, i) => (
                           <span key={i} className="rounded border border-gray-200 bg-black/5 px-1.5 py-0.5 text-[10px] text-gray-600 dark:border-white/10 dark:bg-white/5 dark:text-gray-400">
                             {typeof doc === 'string' ? doc : doc.name}
                           </span>
