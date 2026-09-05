@@ -63,15 +63,35 @@ app.use((req, res, next) => {
   next();
 });
 
+const compression = require('compression');
+const requestProfiler = require('./src/middleware/profiler');
+const mongoose = require('mongoose');
+
 // Middleware setup
 // Stripe webhook needs raw body for signature verification
 app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
 
+app.use(requestProfiler);
+app.use(compression());
 app.use(express.json());
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, '/public')));
 app.use('/uploads', express.static(path.join(__dirname, '/uploads')));
+
+// Fast Health check endpoints
+app.get('/health', (req, res) => {
+  res.status(200).json({ success: true, status: 'ok', uptime: process.uptime() });
+});
+
+app.get('/health/db', (req, res) => {
+  const isConnected = mongoose.connection.readyState === 1;
+  res.status(isConnected ? 200 : 503).json({
+    success: isConnected,
+    dbState: mongoose.connection.readyState,
+    status: isConnected ? 'healthy' : 'unhealthy'
+  });
+});
 
 // Staff routes
 const staffRoutes = require('./src/routes/staffRoutes');
@@ -232,3 +252,5 @@ initCronJobs();
 server.listen(process.env.PORT || 45000, () => {
   console.log(`Server is running on http://localhost:${process.env.PORT || 45000}`);
 });
+
+module.exports = { app, server };

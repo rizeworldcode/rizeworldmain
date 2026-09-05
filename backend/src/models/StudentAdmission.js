@@ -44,4 +44,7 @@ const studentAdmissionSchema = new mongoose.Schema({
   timestamps: true
 });
 
+studentAdmissionSchema.index({ counselorId: 1, createdAt: -1 });
+studentAdmissionSchema.index({ createdAt: -1 });
+
 module.exports = mongoose.model('StudentAdmission', studentAdmissionSchema);

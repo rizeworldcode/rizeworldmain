@@ -207,4 +207,11 @@ staffSchema.methods.comparePassword = async function (candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
+staffSchema.index({ isRemoved: 1, role: 1, department: 1 });
+staffSchema.index({ employeeId: 1, isRemoved: 1 });
+staffSchema.index({ isRemoved: 1, role: 1 });
+staffSchema.index({ isRemoved: 1, department: 1 });
+staffSchema.index({ reportingPerson: 1 });
+staffSchema.index({ createdAt: -1 });
+
 module.exports = mongoose.model('Staff', staffSchema);

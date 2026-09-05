@@ -1,6 +1,7 @@
 const EmployeeLiveLocation = require('../models/EmployeeLiveLocation');
 const EmployeeLocationHistory = require('../models/EmployeeLocationHistory');
 const Staff = require('../models/Staff');
+const cache = require('../utils/cache');
 const socketUtil = require('../../socket');
 const fs = require('fs');
 const cloudinary = require('../config/cloudinary');
@@ -103,16 +104,21 @@ exports.getLiveLocations = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
-    const liveLocations = await EmployeeLiveLocation.find().sort({ lastUpdated: -1 });
-    
-    // Add employee phone to live locations
-    const result = await Promise.all(liveLocations.map(async (loc) => {
-      const staff = await Staff.findById(loc.employeeId).select('phone');
-      return {
-        ...loc.toObject(),
-        phone: staff ? staff.phone : 'N/A'
-      };
-    }));
+    const cacheKey = 'location:live';
+
+    const result = await cache.fetchOrCompute(cacheKey, async () => {
+      const liveLocations = await EmployeeLiveLocation.find().sort({ lastUpdated: -1 }).lean();
+      
+      // Batch fetch staff phones in 1 query instead of N queries
+      const employeeIds = liveLocations.map(loc => loc.employeeId).filter(Boolean);
+      const staffList = await Staff.find({ _id: { $in: employeeIds } }).select('_id phone').lean();
+      const phoneMap = new Map(staffList.map(s => [String(s._id), s.phone]));
+
+      return liveLocations.map(loc => ({
+        ...loc,
+        phone: phoneMap.get(String(loc.employeeId)) || 'N/A'
+      }));
+    }, 15);
 
     res.status(200).json({ success: true, data: result });
   } catch (error) {
@@ -157,7 +163,7 @@ exports.getLocationHistory = async (req, res) => {
       };
     }
 
-    const history = await EmployeeLocationHistory.find(filter).sort({ timestamp: 1 });
+    const history = await EmployeeLocationHistory.find(filter).sort({ timestamp: 1 }).lean();
     res.status(200).json({ success: true, data: history });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -250,7 +256,8 @@ exports.getLocationPhotos = async (req, res) => {
     }
 
     const photos = await EmployeeLocationHistory.find({ photoUrl: { $exists: true, $ne: null } })
-      .sort({ timestamp: -1 });
+      .sort({ timestamp: -1 })
+      .lean();
 
     res.status(200).json({ success: true, data: photos });
   } catch (error) {

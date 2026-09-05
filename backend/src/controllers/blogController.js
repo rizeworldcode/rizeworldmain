@@ -97,7 +97,7 @@ exports.getAllBlogs = async (req, res) => {
       ];
     }
 
-    const blogs = await Blog.find(query).sort({ createdAt: -1 }).populate('authorId', 'name role department profilePic');
+    const blogs = await Blog.find(query).sort({ createdAt: -1 }).populate('authorId', 'name role department profilePic').lean();
 
     return res.status(200).json({
       success: true,

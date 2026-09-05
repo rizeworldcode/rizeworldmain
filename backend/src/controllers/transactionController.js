@@ -2,6 +2,7 @@ const Transaction = require('../models/Transaction');
 const Staff = require('../models/Staff');
 const Client = require('../models/Client');
 const OldClient = require('../models/OldClient');
+const cache = require('../utils/cache');
 
 exports.createTransaction = async (req, res) => {
   try {
@@ -83,6 +84,16 @@ exports.getAllTransactions = async (req, res) => {
   try {
     const { type, startDate, endDate } = req.query;
 
+    const cacheKey = `transactions:${type || 'all'}:${startDate || ''}:${endDate || ''}`;
+    const cachedData = cache.get(cacheKey);
+    if (cachedData) {
+      return res.status(200).json({
+        success: true,
+        count: cachedData.length,
+        data: cachedData
+      });
+    }
+
     // --- 1. Fetch from Transaction model ---
     let query = {};
     if (type) query.type = type;
@@ -92,14 +103,14 @@ exports.getAllTransactions = async (req, res) => {
       if (endDate) query.date.$lte = new Date(endDate + 'T23:59:59.999Z');
     }
 
-    const transactions = await Transaction.find(query).sort({ date: -1 });
+    const transactions = await Transaction.find(query).sort({ date: -1 }).lean();
 
     // --- 2. Fetch client payment history ---
     // Only fetch client payments if type is not 'expense' (they're always income)
     let clientPayments = [];
     if (!type || type === 'income' || type === 'client_payment') {
-      const clients = await Client.find({}, 'name email payments');
-      const oldClients = await OldClient.find({}, 'name email payments');
+      const clients = await Client.find({}, 'name email payments').lean();
+      const oldClients = await OldClient.find({}, 'name email payments').lean();
 
       clients.forEach(client => {
         (client.payments || []).forEach(payment => {
@@ -156,9 +167,11 @@ exports.getAllTransactions = async (req, res) => {
 
     // --- 3. Merge and sort by date descending ---
     const allTransactions = [
-      ...transactions.map(t => ({ ...t.toObject(), source: t.type })),
+      ...transactions.map(t => ({ ...t, source: t.type })),
       ...clientPayments,
     ].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    cache.set(cacheKey, allTransactions, 60);
 
     res.status(200).json({
       success: true,

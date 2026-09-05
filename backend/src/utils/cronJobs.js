@@ -83,14 +83,32 @@ async function notifyHRAndSupportOldClientPostDeadline(oldClient, daysSinceDeliv
 }
 
 function initCronJobs() {
+  const { checkAndTransferCompletedClients } = require('../controllers/clientController');
+
+  // Daily notification check at 2:00 PM IST
   cron.schedule('7 15 * * *', async () => {
     console.log('Running daily notification check at 2:00 PM IST');
     await checkAndSendClientNotifications();
   }, {
     timezone: 'Asia/Kolkata'
   });
+
+  // Hourly check for completed clients transfer to OldClients
+  cron.schedule('0 * * * *', async () => {
+    console.log('Running hourly check for completed clients transfer...');
+    await checkAndTransferCompletedClients();
+  });
+
+  // Run auto-transfer initial check shortly after server startup
+  setTimeout(async () => {
+    try {
+      await checkAndTransferCompletedClients();
+    } catch (e) {
+      console.error('Initial completed client check failed:', e);
+    }
+  }, 10000);
   
-  console.log('Cron jobs initialized - daily notifications at 2:00 PM IST');
+  console.log('Cron jobs initialized - daily notifications & hourly completed client check');
 }
 
 module.exports = {

@@ -2,6 +2,7 @@ const DelayWork = require('../models/DelayWork');
 const Client = require('../models/Client'); // To find client by email
 const ExcelJS = require('exceljs');
 const mongoose = require('mongoose');
+const cache = require('../utils/cache');
 // Create new Delay Work entry
 exports.createDelayWork = async (req, res) => {
   try {
@@ -44,9 +45,14 @@ exports.createDelayWork = async (req, res) => {
 // Get all Delay Work entries
 exports.getAllDelayWork = async (req, res) => {
   try {
-    const delayWork = await DelayWork.find()
-      .populate('clientId', 'name email phone')
-      .populate('staffId', 'name email');
+    const cacheKey = 'delaywork:all';
+    const delayWork = await cache.fetchOrCompute(cacheKey, async () => {
+      return await DelayWork.find()
+        .populate('clientId', 'name email phone')
+        .populate('staffId', 'name email')
+        .lean();
+    }, 30);
+
     res.status(200).json({ success: true, count: delayWork.length, data: delayWork });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -58,14 +64,15 @@ exports.getDelayWorkByStaff = async (req, res) => {
   try {
     // Verify staff has Data Analyst role
     const Staff = require('../models/Staff');
-    const staff = await Staff.findById(req.params.staffId);
+    const staff = await Staff.findById(req.params.staffId).lean();
     if (!staff || staff.role !== 'Data Analyst') {
       return res.status(403).json({ success: false, message: 'Only Data Analysts can access this data' });
     }
 
     const delayWork = await DelayWork.find({ staffId: req.params.staffId })
       .populate('clientId', 'name email phone')
-      .populate('staffId', 'name email');
+      .populate('staffId', 'name email')
+      .lean();
     res.status(200).json({ success: true, count: delayWork.length, data: delayWork });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -77,7 +84,8 @@ exports.getDelayWorkByClient = async (req, res) => {
   try {
     const delayWork = await DelayWork.find({ clientId: req.params.clientId })
       .populate('clientId', 'name email phone')
-      .populate('staffId', 'name email');
+      .populate('staffId', 'name email')
+      .lean();
     res.status(200).json({ success: true, count: delayWork.length, data: delayWork });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -144,7 +152,8 @@ exports.exportDelayWork = async (req, res) => {
     }
     const delayWorks = await DelayWork.find(query)
       .populate('clientId', 'name email phone')
-      .populate('staffId', 'name email');
+      .populate('staffId', 'name email')
+      .lean();
     // Create workbook
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Delay Work');

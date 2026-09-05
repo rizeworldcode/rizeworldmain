@@ -4,7 +4,7 @@ const MasterPool = require('../models/MasterPool');
 exports.getMasterPool = async (req, res) => {
   try {
     const { staffId } = req.params;
-    const items = await MasterPool.find({ staffId }).sort({ createdAt: -1 });
+    const items = await MasterPool.find({ staffId }).sort({ createdAt: -1 }).lean();
     res.json({ success: true, data: items });
   } catch (error) {
     console.error('Error fetching master pool:', error);

@@ -1,44 +1,50 @@
 const Notification = require('../models/Notification');
 const Staff = require('../models/Staff');
+const cache = require('../utils/cache');
 
 // Get notifications for a staff member based on their role
 exports.getNotificationsForStaff = async (req, res) => {
   try {
     const staffId = req.params.staffId;
-    
-    const staff = await Staff.findById(staffId);
-    if (!staff) {
+    const cacheKey = `notifications:staff:${staffId}`;
+
+    const responseData = await cache.fetchOrCompute(cacheKey, async () => {
+      const staff = await Staff.findById(staffId).select('role').lean();
+      if (!staff) return null;
+
+      // Find notifications where the staff's role is in recipientRoles
+      const notifications = await Notification.find({
+        recipientRoles: { $in: [staff.role] },
+        isActive: true
+      })
+        .sort({ createdAt: -1 })
+        .populate('clientId', 'name phone pendingAmount')
+        .populate('oldClientId', 'name phone totalAmount paidAmount')
+        .lean();
+
+      // Check which notifications have been read by this staff member
+      return notifications.map(notification => {
+        const isRead = (notification.readBy || []).some(read => 
+          read.staffId && read.staffId.toString() === staffId.toString()
+        );
+        return {
+          ...notification,
+          isRead
+        };
+      });
+    }, 30);
+
+    if (responseData === null) {
       return res.status(404).json({
         success: false,
         message: 'Staff not found'
       });
     }
 
-    // Find notifications where the staff's role is in recipientRoles
-    const notifications = await Notification.find({
-      recipientRoles: { $in: [staff.role] },
-      isActive: true
-    })
-      .sort({ createdAt: -1 })
-      .populate('clientId', 'name phone pendingAmount')
-      .populate('oldClientId', 'name phone totalAmount paidAmount');
-
-    // Check which notifications have been read by this staff member
-    const notificationsWithReadStatus = notifications.map(notification => {
-      const isRead = notification.readBy.some(read => 
-        read.staffId.toString() === staffId.toString()
-      );
-      
-      return {
-        ...notification.toObject(),
-        isRead
-      };
-    });
-
     res.status(200).json({
       success: true,
-      count: notificationsWithReadStatus.length,
-      data: notificationsWithReadStatus
+      count: responseData.length,
+      data: responseData
     });
   } catch (error) {
     res.status(500).json({
@@ -63,7 +69,7 @@ exports.markNotificationAsRead = async (req, res) => {
 
     // Check if already read by this staff member
     const alreadyRead = notification.readBy.some(read => 
-      read.staffId.toString() === staffId.toString()
+      read.staffId && read.staffId.toString() === staffId.toString()
     );
 
     if (!alreadyRead) {
@@ -73,6 +79,8 @@ exports.markNotificationAsRead = async (req, res) => {
       });
       await notification.save();
     }
+
+    cache.flushByPrefix('notifications:');
 
     res.status(200).json({
       success: true,
@@ -90,10 +98,15 @@ exports.markNotificationAsRead = async (req, res) => {
 // Get all notifications (admin only)
 exports.getAllNotifications = async (req, res) => {
   try {
-    const notifications = await Notification.find()
-      .sort({ createdAt: -1 })
-      .populate('clientId', 'name phone pendingAmount')
-      .populate('oldClientId', 'name phone totalAmount paidAmount');
+    const cacheKey = 'notifications:all';
+
+    const notifications = await cache.fetchOrCompute(cacheKey, async () => {
+      return await Notification.find()
+        .sort({ createdAt: -1 })
+        .populate('clientId', 'name phone pendingAmount')
+        .populate('oldClientId', 'name phone totalAmount paidAmount')
+        .lean();
+    }, 30);
 
     res.status(200).json({
       success: true,
@@ -118,6 +131,7 @@ exports.deleteNotification = async (req, res) => {
         message: 'Notification not found'
       });
     }
+    cache.flushByPrefix('notifications:');
     res.status(200).json({
       success: true,
       message: 'Notification deleted successfully'
@@ -146,6 +160,7 @@ exports.createManualNotification = async (req, res) => {
     });
     
     await notification.save();
+    cache.flushByPrefix('notifications:');
     
     res.status(201).json({
       success: true,

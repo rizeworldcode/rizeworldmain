@@ -4,6 +4,7 @@ const StudentAdmission = require('../models/StudentAdmission');
 const Sale = require('../models/Sale');
 const AssignedWorkReport = require('../models/AssignedWorkReport');
 const Transaction = require('../models/Transaction');
+const cache = require('../utils/cache');
 const fs = require('fs');
 const cloudinary = require('../config/cloudinary');
 const jwt = require('jsonwebtoken');
@@ -139,27 +140,43 @@ exports.createStaff = async (req, res) => {
 // Get all staff
 exports.getAllStaff = async (req, res) => {
   try {
-    const staff = await Staff.find({ isRemoved: { $ne: true } }).sort({ createdAt: -1 });
-    
-    // For each staff member, if they are a counselor, get their admissions count; if they are sales team, get sales count
-    const staffWithCounts = await Promise.all(
-      staff.map(async (staffMember) => {
-        const staffObj = staffMember.toObject();
+    const cacheKey = 'staff:all';
+
+    const staffWithCounts = await cache.fetchOrCompute(cacheKey, async () => {
+      // Exclude heavy multi-year embedded arrays to prune response size from ~90KB to ~8KB
+      const staff = await Staff.find({ isRemoved: { $ne: true } })
+        .select('-clock -attendance -salaryHistory -satisfactionHistory -commentHistory')
+        .sort({ createdAt: -1 })
+        .lean();
+      
+      // Group counts in 2 bulk aggregation queries instead of N+1 loop queries
+      const [admissionAgg, salesAgg] = await Promise.all([
+        StudentAdmission.aggregate([
+          { $group: { _id: '$counselorId', count: { $sum: 1 } } }
+        ]),
+        Sale.aggregate([
+          { $group: { _id: '$salesPersonId', count: { $sum: 1 } } }
+        ])
+      ]);
+
+      const admissionMap = new Map(admissionAgg.map(a => [String(a._id), a.count]));
+      const salesMap = new Map(salesAgg.map(s => [String(s._id), s.count]));
+
+      return staff.map((staffObj) => {
+        const staffIdStr = String(staffObj._id);
         if (staffObj.role === 'Counselor') {
-          const admissionsCount = await StudentAdmission.countDocuments({ counselorId: staffObj._id });
-          staffObj.admissionsCount = admissionsCount;
+          staffObj.admissionsCount = admissionMap.get(staffIdStr) || 0;
         }
         if (staffObj.role === 'Sales Team' || staffObj.role === 'Sales') {
-          const salesCount = await Sale.countDocuments({ salesPersonId: staffObj._id });
-          staffObj.salesCount = salesCount;
+          staffObj.salesCount = salesMap.get(staffIdStr) || 0;
         }
         return staffObj;
-      })
-    );
+      });
+    }, 60);
 
     res.status(200).json({
       success: true,
-      count: staff.length,
+      count: staffWithCounts.length,
       data: staffWithCounts
     });
   } catch (error) {
@@ -195,7 +212,8 @@ exports.getSalarySheet = async (req, res) => {
   try {
     const staff = await Staff.find({ isRemoved: { $ne: true } })
       .select('name employeeId department jobType monthlySalary joiningDate clock attendance leaves createdAt salaryRevisions')
-      .sort({ department: 1, name: 1 });
+      .sort({ department: 1, name: 1 })
+      .lean();
 
     const totalPayroll = staff.reduce((sum, s) => sum + (s.monthlySalary || 0), 0);
 
@@ -213,7 +231,7 @@ exports.getSalarySheet = async (req, res) => {
 // Get removed staff
 exports.getRemovedStaff = async (req, res) => {
   try {
-    const staff = await Staff.find({ isRemoved: true }).sort({ removedAt: -1, createdAt: -1 });
+    const staff = await Staff.find({ isRemoved: true }).sort({ removedAt: -1, createdAt: -1 }).lean();
 
     res.status(200).json({
       success: true,
@@ -233,7 +251,8 @@ exports.getAllCounselors = async (req, res) => {
   try {
     const counselors = await Staff.find({ role: 'Counselor', isRemoved: { $ne: true } })
       .select('name employeeId email')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
     res.status(200).json({
       success: true,
@@ -268,9 +287,11 @@ exports.createAdmission = async (req, res) => {
 // Get all admissions
 exports.getAllAdmissions = async (req, res) => {
   try {
-    // If counselorId is provided, filter by that counselor
-    const filter = req.query.counselorId ? { counselorId: req.query.counselorId } : {};
-    const admissions = await StudentAdmission.find(filter).sort({ createdAt: -1 });
+    const { counselorId } = req.query;
+    let filter = {};
+    if (counselorId) filter.counselorId = counselorId;
+
+    const admissions = await StudentAdmission.find(filter).sort({ createdAt: -1 }).lean();
     res.status(200).json({
       success: true,
       count: admissions.length,
@@ -352,8 +373,11 @@ exports.createSale = async (req, res) => {
 // Get all sales
 exports.getAllSales = async (req, res) => {
   try {
-    const filter = req.query.salesPersonId ? { salesPersonId: req.query.salesPersonId } : {};
-    const sales = await Sale.find(filter).sort({ saleDate: -1 });
+    const { salesPersonId } = req.query;
+    let filter = {};
+    if (salesPersonId) filter.salesPersonId = salesPersonId;
+
+    const sales = await Sale.find(filter).sort({ saleDate: -1 }).lean();
     res.status(200).json({
       success: true,
       count: sales.length,

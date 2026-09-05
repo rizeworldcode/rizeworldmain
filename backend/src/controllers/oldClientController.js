@@ -22,10 +22,7 @@ exports.createOldClient = async (req, res) => {
 // Get All Old Clients
 exports.getAllOldClients = async (req, res) => {
   try {
-    if (checkAndTransferCompletedClients) {
-      await checkAndTransferCompletedClients();
-    }
-    const oldClients = await OldClient.find().sort({ createdAt: -1 });
+    const oldClients = await OldClient.find().sort({ createdAt: -1 }).lean();
     res.status(200).json({
       success: true,
       count: oldClients.length,
@@ -42,7 +39,7 @@ exports.getAllOldClients = async (req, res) => {
 // Get Single Old Client
 exports.getOldClient = async (req, res) => {
   try {
-    const oldClient = await OldClient.findById(req.params.id);
+    const oldClient = await OldClient.findById(req.params.id).lean();
     if (!oldClient) {
       return res.status(404).json({
         success: false,

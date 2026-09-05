@@ -1,5 +1,6 @@
 const Client = require('../models/Client');
 const OldClient = require('../models/OldClient');
+const cache = require('../utils/cache');
 
 // Helper to parse work detail into tasks
 const parseWorkDetailToTasks = (workDetail) => {
@@ -181,6 +182,8 @@ exports.createClient = async (req, res) => {
     });
 
     await client.save();
+    cache.flushByPrefix('clients:');
+    cache.flushByPrefix('dashboard:');
 
     res.status(201).json({
       success: true,
@@ -198,8 +201,18 @@ exports.createClient = async (req, res) => {
 
 exports.getAllClients = async (req, res) => {
   try {
-    await checkAndTransferCompletedClients();
-    const clients = await Client.find().sort({ createdAt: -1 });
+    const cacheKey = 'clients:all';
+    const cachedData = cache.get(cacheKey);
+    if (cachedData) {
+      return res.status(200).json({
+        success: true,
+        data: cachedData
+      });
+    }
+
+    const clients = await Client.find().sort({ createdAt: -1 }).lean();
+    cache.set(cacheKey, clients, 60);
+
     res.status(200).json({
       success: true,
       data: clients
@@ -214,9 +227,9 @@ exports.getAllClients = async (req, res) => {
 
 exports.getClientById = async (req, res) => {
   try {
-    let client = await Client.findById(req.params.id);
+    let client = await Client.findById(req.params.id).lean();
     if (!client) {
-      const oldClientDoc = await OldClient.findById(req.params.id);
+      const oldClientDoc = await OldClient.findById(req.params.id).lean();
       if (oldClientDoc) {
         let tasks = (oldClientDoc.tasks && oldClientDoc.tasks.length > 0)
           ? oldClientDoc.tasks
@@ -342,6 +355,8 @@ exports.updateClient = async (req, res) => {
     }
 
     const updatedClient = await client.save();
+    cache.flushByPrefix('clients:');
+    cache.flushByPrefix('dashboard:');
 
     res.status(200).json({
       success: true,
@@ -405,6 +420,9 @@ exports.updateClientTasks = async (req, res) => {
         await delayWork.save();
       }
     }
+
+    cache.flushByPrefix('clients:');
+    cache.flushByPrefix('dashboard:');
 
     res.status(200).json({
       success: true,
@@ -524,6 +542,9 @@ exports.renewClientPackage = async (req, res) => {
       },
       { new: true, runValidators: true }
     );
+
+    cache.flushByPrefix('clients:');
+    cache.flushByPrefix('dashboard:');
 
     res.status(200).json({
       success: true,

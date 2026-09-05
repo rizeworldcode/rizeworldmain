@@ -44,4 +44,8 @@ const delayWorkSchema = new mongoose.Schema({
   timestamps: true
 });
 
+delayWorkSchema.index({ staffId: 1, createdAt: -1 });
+delayWorkSchema.index({ clientId: 1, createdAt: -1 });
+delayWorkSchema.index({ createdAt: -1 });
+
 module.exports = mongoose.model('DelayWork', delayWorkSchema);

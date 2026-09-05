@@ -2,15 +2,17 @@ const Client = require('../models/Client');
 const OldClient = require('../models/OldClient');
 const Staff = require('../models/Staff');
 const Transaction = require('../models/Transaction');
+const cache = require('../utils/cache');
 
 const getUnifiedTransactions = async () => {
-  // 1. Fetch from Transaction model
-  const transactions = await Transaction.find();
+  // Execute database reads concurrently with Promise.all
+  const [transactions, clients, oldClients] = await Promise.all([
+    Transaction.find().lean(),
+    Client.find({}, 'name email payments').lean(),
+    OldClient.find({}, 'name email payments').lean()
+  ]);
 
-  // 2. Fetch client payment history
   let clientPayments = [];
-  const clients = await Client.find({}, 'name email payments');
-  const oldClients = await OldClient.find({}, 'name email payments');
 
   clients.forEach(client => {
     (client.payments || []).forEach(payment => {
@@ -52,66 +54,64 @@ const getUnifiedTransactions = async () => {
     });
   });
 
-  // 3. Merge and sort by date descending
+  // Merge and sort by date descending
   return [
-    ...transactions.map(t => ({ ...t.toObject(), source: t.type })),
+    ...transactions.map(t => ({ ...t, source: t.type })),
     ...clientPayments,
   ].sort((a, b) => new Date(b.date) - new Date(a.date));
 };
 
 exports.getDashboardStats = async (req, res) => {
   try {
-    // Get total clients count
-    const totalClients = await Client.countDocuments();
+    const cacheKey = 'dashboard:stats';
 
-    // Get total projects count
-    const clients = await Client.find();
-    const totalProjects = clients.length;
+    // Use Single-Flight Request Coalescing to prevent cache stampedes
+    const responseData = await cache.fetchOrCompute(cacheKey, async () => {
+      // Execute all independent database queries in parallel
+      const [totalClients, activeStaff, allTransactions] = await Promise.all([
+        Client.countDocuments(),
+        Staff.find({ isRemoved: { $ne: true } }).select('work').lean(),
+        getUnifiedTransactions()
+      ]);
 
-    // Get today's assigned work count across active staff
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const todayEnd = new Date(todayStart);
-    todayEnd.setDate(todayEnd.getDate() + 1);
+      const totalProjects = totalClients;
 
-    const activeStaff = await Staff.find({ isRemoved: { $ne: true } });
-    const totalStaff = activeStaff.length;
-    let staffWithWorkCount = 0;
-    activeStaff.forEach(staff => {
-      const todayWork = (staff.work || []).find(w => {
-        const workDate = new Date(w.date);
-        return workDate >= todayStart && workDate < todayEnd;
+      // Get today's assigned work count across active staff
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const todayEnd = new Date(todayStart);
+      todayEnd.setDate(todayEnd.getDate() + 1);
+
+      const totalStaff = activeStaff.length;
+      let staffWithWorkCount = 0;
+      activeStaff.forEach(staff => {
+        const todayWork = (staff.work || []).find(w => {
+          const workDate = new Date(w.date);
+          return workDate >= todayStart && workDate < todayEnd;
+        });
+        if (todayWork && todayWork.tasks && todayWork.tasks.length > 0) {
+          staffWithWorkCount++;
+        }
       });
-      if (todayWork && todayWork.tasks && todayWork.tasks.length > 0) {
-        staffWithWorkCount++;
-      }
-    });
 
-    const todayAssignedWork = `${staffWithWorkCount}/${totalStaff}`;
+      const todayAssignedWork = `${staffWithWorkCount}/${totalStaff}`;
 
-    // Get unified transactions
-    const allTransactions = await getUnifiedTransactions();
+      // Calculate income and expenses
+      const totalIncome = allTransactions
+        .filter(t => t.type === 'client_payment' || t.type === 'income' || t.source === 'client_payment')
+        .reduce((sum, t) => sum + t.amount, 0);
 
-    // Calculate total income (client payments + other income)
-    const totalIncome = allTransactions
-      .filter(t => t.type === 'client_payment' || t.type === 'income' || t.source === 'client_payment')
-      .reduce((sum, t) => sum + t.amount, 0);
+      const totalExpense = allTransactions
+        .filter(t => t.type === 'salary' || t.type === 'other_expenses' || t.source === 'salary' || t.source === 'other_expenses')
+        .reduce((sum, t) => sum + t.amount, 0);
 
-    // Calculate total expenses (salaries + other expenses)
-    const totalExpense = allTransactions
-      .filter(t => t.type === 'salary' || t.type === 'other_expenses' || t.source === 'salary' || t.source === 'other_expenses')
-      .reduce((sum, t) => sum + t.amount, 0);
+      const totalPaidSalary = allTransactions
+        .filter(t => t.type === 'salary' || t.source === 'salary')
+        .reduce((sum, t) => sum + t.amount, 0);
 
-    const totalPaidSalary = allTransactions
-      .filter(t => t.type === 'salary' || t.source === 'salary')
-      .reduce((sum, t) => sum + t.amount, 0);
+      const totalRevenue = totalIncome - totalExpense;
 
-    // Net balance = total income - total expense
-    const totalRevenue = totalIncome - totalExpense;
-
-    res.status(200).json({
-      success: true,
-      data: {
+      return {
         totalClients,
         totalProjects,
         totalRevenue,
@@ -119,7 +119,12 @@ exports.getDashboardStats = async (req, res) => {
         totalClientRevenue: totalIncome,
         totalReceived: totalIncome,
         totalPaidSalary
-      }
+      };
+    }, 60);
+
+    res.status(200).json({
+      success: true,
+      data: responseData
     });
   } catch (error) {
     res.status(500).json({
@@ -135,111 +140,109 @@ exports.getRevenueAnalytics = async (req, res) => {
     const validPeriods = ['day', 'week', 'month'];
     const selectedPeriod = validPeriods.includes(period) ? period : 'month';
 
-    const allTransactions = await getUnifiedTransactions();
+    const cacheKey = `dashboard:revenue:${selectedPeriod}`;
 
-    // Calculate total income (client payments + other income)
-    const totalIncome = allTransactions
-      .filter(t => t.type === 'client_payment' || t.type === 'income' || t.source === 'client_payment')
-      .reduce((sum, t) => sum + t.amount, 0);
+    const responseData = await cache.fetchOrCompute(cacheKey, async () => {
+      const allTransactions = await getUnifiedTransactions();
 
-    // Calculate total expenses (salaries + other expenses)
-    const totalExpense = allTransactions
-      .filter(t => t.type === 'salary' || t.type === 'other_expenses' || t.source === 'salary' || t.source === 'other_expenses')
-      .reduce((sum, t) => sum + t.amount, 0);
+      const totalIncome = allTransactions
+        .filter(t => t.type === 'client_payment' || t.type === 'income' || t.source === 'client_payment')
+        .reduce((sum, t) => sum + t.amount, 0);
 
-    const totalRevenue = totalIncome - totalExpense;
+      const totalExpense = allTransactions
+        .filter(t => t.type === 'salary' || t.type === 'other_expenses' || t.source === 'salary' || t.source === 'other_expenses')
+        .reduce((sum, t) => sum + t.amount, 0);
 
-    const totalPaidSalary = allTransactions
-      .filter(t => t.type === 'salary' || t.source === 'salary')
-      .reduce((sum, t) => sum + t.amount, 0);
+      const totalRevenue = totalIncome - totalExpense;
 
-    let chartData = [];
+      const totalPaidSalary = allTransactions
+        .filter(t => t.type === 'salary' || t.source === 'salary')
+        .reduce((sum, t) => sum + t.amount, 0);
 
-    const isSameDay = (d1, d2) =>
-      d1.getDate() === d2.getDate() &&
-      d1.getMonth() === d2.getMonth() &&
-      d1.getFullYear() === d2.getFullYear();
+      let chartData = [];
 
-    if (selectedPeriod === 'day') {
-      for (let i = 6; i >= 0; i--) {
-        const date = new Date();
-        date.setDate(date.getDate() - i);
+      const isSameDay = (d1, d2) =>
+        d1.getDate() === d2.getDate() &&
+        d1.getMonth() === d2.getMonth() &&
+        d1.getFullYear() === d2.getFullYear();
 
-        // Sum income transactions on this day
-        const dayRevenue = allTransactions
-          .filter(t => {
-            const tDate = new Date(t.date);
-            return !isNaN(tDate) &&
-              (t.type === 'client_payment' || t.type === 'income' || t.source === 'client_payment') &&
-              isSameDay(tDate, date);
-          })
-          .reduce((acc, t) => acc + t.amount, 0);
+      if (selectedPeriod === 'day') {
+        for (let i = 6; i >= 0; i--) {
+          const date = new Date();
+          date.setDate(date.getDate() - i);
 
-        chartData.push({
-          name: date.toLocaleDateString('en-IN', { weekday: 'short' }),
-          revenue: dayRevenue
-        });
+          const dayRevenue = allTransactions
+            .filter(t => {
+              const tDate = new Date(t.date);
+              return !isNaN(tDate) &&
+                (t.type === 'client_payment' || t.type === 'income' || t.source === 'client_payment') &&
+                isSameDay(tDate, date);
+            })
+            .reduce((acc, t) => acc + t.amount, 0);
+
+          chartData.push({
+            name: date.toLocaleDateString('en-IN', { weekday: 'short' }),
+            revenue: dayRevenue
+          });
+        }
+      } else if (selectedPeriod === 'week') {
+        for (let i = 3; i >= 0; i--) {
+          const weekStart = new Date();
+          weekStart.setHours(0, 0, 0, 0);
+          weekStart.setDate(weekStart.getDate() - (i * 7) - weekStart.getDay());
+          const weekEnd = new Date(weekStart);
+          weekEnd.setDate(weekEnd.getDate() + 6);
+          weekEnd.setHours(23, 59, 59, 999);
+
+          const weekLabel = `${weekStart.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} - ${weekEnd.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`;
+
+          const weekRevenue = allTransactions
+            .filter(t => {
+              const tDate = new Date(t.date);
+              return !isNaN(tDate) &&
+                (t.type === 'client_payment' || t.type === 'income' || t.source === 'client_payment') &&
+                tDate >= weekStart && tDate <= weekEnd;
+            })
+            .reduce((acc, t) => acc + t.amount, 0);
+
+          chartData.push({ name: weekLabel, revenue: weekRevenue });
+        }
+      } else {
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                            'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        for (let i = 5; i >= 0; i--) {
+          const date = new Date();
+          date.setMonth(date.getMonth() - i);
+          const monthIndex = date.getMonth();
+          const year = date.getFullYear();
+
+          const monthRevenue = allTransactions
+            .filter(t => {
+              const tDate = new Date(t.date);
+              return !isNaN(tDate) &&
+                (t.type === 'client_payment' || t.type === 'income' || t.source === 'client_payment') &&
+                tDate.getMonth() === monthIndex &&
+                tDate.getFullYear() === year;
+            })
+            .reduce((acc, t) => acc + t.amount, 0);
+
+          chartData.push({ name: monthNames[monthIndex], revenue: monthRevenue });
+        }
       }
 
-    } else if (selectedPeriod === 'week') {
-      for (let i = 3; i >= 0; i--) {
-        const weekStart = new Date();
-        weekStart.setHours(0, 0, 0, 0);
-        weekStart.setDate(weekStart.getDate() - (i * 7) - weekStart.getDay());
-        const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekEnd.getDate() + 6);
-        weekEnd.setHours(23, 59, 59, 999);
-
-        const weekLabel = `${weekStart.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} - ${weekEnd.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`;
-
-        // Sum income transactions in this week
-        const weekRevenue = allTransactions
-          .filter(t => {
-            const tDate = new Date(t.date);
-            return !isNaN(tDate) &&
-              (t.type === 'client_payment' || t.type === 'income' || t.source === 'client_payment') &&
-              tDate >= weekStart && tDate <= weekEnd;
-          })
-          .reduce((acc, t) => acc + t.amount, 0);
-
-        chartData.push({ name: weekLabel, revenue: weekRevenue });
-      }
-
-    } else {
-      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                          'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      for (let i = 5; i >= 0; i--) {
-        const date = new Date();
-        date.setMonth(date.getMonth() - i);
-        const monthIndex = date.getMonth();
-        const year = date.getFullYear();
-
-        // Sum income transactions in this month
-        const monthRevenue = allTransactions
-          .filter(t => {
-            const tDate = new Date(t.date);
-            return !isNaN(tDate) &&
-              (t.type === 'client_payment' || t.type === 'income' || t.source === 'client_payment') &&
-              tDate.getMonth() === monthIndex &&
-              tDate.getFullYear() === year;
-          })
-          .reduce((acc, t) => acc + t.amount, 0);
-
-        chartData.push({ name: monthNames[monthIndex], revenue: monthRevenue });
-      }
-    }
-
-    res.status(200).json({
-      success: true,
-      data: {
-        totalRevenue: totalRevenue,
+      return {
+        totalRevenue,
         totalClientRevenue: totalIncome,
         totalPaidSalary,
         chartData,
         period: selectedPeriod
-      }
-    });
+      };
+    }, 60);
 
+    res.status(200).json({
+      success: true,
+      data: responseData
+    });
   } catch (error) {
     console.error('Revenue analytics error:', error);
     res.status(500).json({
@@ -248,4 +251,3 @@ exports.getRevenueAnalytics = async (req, res) => {
     });
   }
 };
-

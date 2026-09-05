@@ -96,4 +96,11 @@ const clientSchema = new mongoose.Schema({
   timestamps: true
 });
 
+clientSchema.index({ department: 1, status: 1 });
+clientSchema.index({ status: 1, createdAt: -1 });
+clientSchema.index({ department: 1 });
+clientSchema.index({ status: 1 });
+clientSchema.index({ createdAt: -1 });
+clientSchema.index({ phone: 1 });
+
 module.exports = mongoose.model('Client', clientSchema);

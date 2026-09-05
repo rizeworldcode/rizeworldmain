@@ -116,7 +116,7 @@ exports.getAllVisitingCards = async (req, res) => {
 
 
 
-    const cards = await VisitingCard.find().sort({ timestamp: -1 });
+    const cards = await VisitingCard.find().sort({ timestamp: -1 }).lean();
     res.status(200).json({ success: true, data: cards });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
