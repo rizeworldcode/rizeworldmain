@@ -19,7 +19,7 @@ import {
   Plus
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
-import { getAllClients, getAllOldClients, updateClient, updateOldClient, addClient } from '../api';
+import { getAllClients, getAllOldClients, updateClient, updateOldClient, addClient, BASE_URL } from '../api';
 
 const STATUS_OPTIONS = {
   'Pending': ['Present', 'On Hold', 'Completed'],
@@ -1626,7 +1626,7 @@ const handleAddPayment = async (data) => {
   }
 
   try {
-    const response = await fetch(`http://localhost:45000/api/clientPayment/${activeClientId}`, {
+    const response = await fetch(`${BASE_URL}/clientPayment/${activeClientId}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -1717,7 +1717,7 @@ const handleAddPayment = async (data) => {
     try {
       const submitData = { ...data, phone: `+91 ${cleanPhone}` };
 
-      const response = await fetch('http://localhost:45000/api/clients', {
+      const response = await fetch(`${BASE_URL}/clients`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -1756,7 +1756,7 @@ const handleAddPayment = async (data) => {
     try {
       const submitData = { ...data, phone: `+91 ${cleanPhone}` };
 
-      const response = await fetch('http://localhost:45000/api/old-clients', {
+      const response = await fetch(`${BASE_URL}/old-clients`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -1795,7 +1795,7 @@ const handleAddPayment = async (data) => {
     try {
       const submitData = { ...data, phone: `+91 ${cleanPhone}` };
 
-      const response = await fetch(`http://localhost:45000/api/old-clients/${id}`, {
+      const response = await fetch(`${BASE_URL}/old-clients/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
@@ -1855,7 +1855,7 @@ const handleAddPayment = async (data) => {
         payments: [...(activeOldClient.payments || []), paymentItem]
       };
 
-      const response = await fetch(`http://localhost:45000/api/old-clients/${activeOldClientId}`, {
+      const response = await fetch(`${BASE_URL}/old-clients/${activeOldClientId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'

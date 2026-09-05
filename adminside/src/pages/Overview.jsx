@@ -7,7 +7,7 @@ import RevenueChart from '../components/dashboard/RevenueChart';
 import RecentClients from '../components/dashboard/RecentClients';
 import StaffList from '../components/dashboard/StaffList';
 import DashboardMap from '../components/dashboard/DashboardMap';
-import { getDashboardStats, getAllStaff, markStaffLeave } from '../api';
+import { getDashboardStats, getAllStaff, markStaffLeave, prefetchAdminData } from '../api';
 
 const Overview = ({ onViewClient, onViewStaff }) => {
   const navigate = useNavigate();
@@ -50,6 +50,7 @@ const Overview = ({ onViewClient, onViewStaff }) => {
       }
     };
     fetchStats();
+    prefetchAdminData();
   }, []);
 
   const fetchStaffAndMarkLeave = async () => {

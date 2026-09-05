@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { getAllStaff, BASE_URL } from '../api';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft,
@@ -665,7 +666,7 @@ const PerformancePasswordGate = ({ onUnlock }) => {
     setError('');
     try {
       const token = localStorage.getItem('adminToken');
-      const res = await fetch('http://localhost:45000/api/staff/salary-sheet/verify', {
+      const res = await fetch(`${BASE_URL}/staff/salary-sheet/verify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -781,7 +782,7 @@ const StaffPerformance = ({ staffId, onBack }) => {
     if (!pic) return null;
     if (pic.startsWith('http://') || pic.startsWith('https://')) return pic;
     const base = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-      ? 'http://localhost:45000'
+      ? `${BASE_URL.replace('/api', '')}`
       : 'https://rizeworldmain.onrender.com';
     return `${base}${pic.startsWith('/') ? '' : '/'}${pic}`;
   };
@@ -792,7 +793,7 @@ const StaffPerformance = ({ staffId, onBack }) => {
     const formData = new FormData();
     formData.append('profilePic', file);
     try {
-      const res = await fetch(`http://localhost:45000/api/staff/${staffId}/profile-pic`, {
+      const res = await fetch(`${BASE_URL}/staff/${staffId}/profile-pic`, {
         method: 'POST',
         body: formData
       });
@@ -812,8 +813,7 @@ const StaffPerformance = ({ staffId, onBack }) => {
   useEffect(() => {
     const fetchStaffDetails = async () => {
       try {
-        const response = await fetch(`http://localhost:45000/api/staff`);
-        const result = await response.json();
+        const result = await getAllStaff();
         if (result.success) {
           setAllStaff(result.data);
           const foundStaff = result.data.find(s => s._id === staffId);
@@ -856,7 +856,7 @@ const StaffPerformance = ({ staffId, onBack }) => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      const response = await fetch(`http://localhost:45000/api/staff/${staffId}`, {
+      const response = await fetch(`${BASE_URL}/staff/${staffId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
@@ -910,7 +910,7 @@ const StaffPerformance = ({ staffId, onBack }) => {
       formData.append('document', selectedFile);
       formData.append('name', documentName || selectedFile.name);
 
-      const response = await fetch(`http://localhost:45000/api/staff/${staffId}/upload-document`, {
+      const response = await fetch(`${BASE_URL}/staff/${staffId}/upload-document`, {
         method: 'POST',
         body: formData
       });
@@ -938,7 +938,7 @@ const StaffPerformance = ({ staffId, onBack }) => {
     }
 
     try {
-      const response = await fetch(`http://localhost:45000/api/staff/${staffId}/document/${docId}`, {
+      const response = await fetch(`${BASE_URL}/staff/${staffId}/document/${docId}`, {
         method: 'DELETE'
       });
 

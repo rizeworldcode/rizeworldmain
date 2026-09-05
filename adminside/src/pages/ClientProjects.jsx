@@ -32,12 +32,10 @@ import {
   Edit3,
   User
 } from 'lucide-react';
+import { BASE_URL } from '../api';
 
 function getApiUrl(endpoint) {
-  const base = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-    ? 'http://localhost:45000/api'
-    : 'https://rizeworldmain.onrender.com/api';
-  return `${base}${endpoint}`;
+  return `${BASE_URL}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
 }
 
 // Helper to parse work detail into tasks for UI fallback
@@ -2043,7 +2041,7 @@ const ClientProjects = ({ onBack }) => {
     if (!clientId) return;
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:45000/api/clients/${clientId}`);
+      const response = await fetch(getApiUrl(`/clients/${clientId}`));
       const result = await response.json();
       if (result.success) {
         const clientData = result.data;
@@ -2098,7 +2096,7 @@ const ClientProjects = ({ onBack }) => {
   const handleProgressSubmit = async () => {
     try {
       const id = tempProjectData._id || tempProjectData.id;
-      const response = await fetch(`http://localhost:45000/api/clients/${id}/tasks`, {
+      const response = await fetch(getApiUrl(`/clients/${id}/tasks`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -2121,7 +2119,7 @@ const ClientProjects = ({ onBack }) => {
 
   const handleClientDetailsSubmit = async (clientData) => {
     try {
-      const response = await fetch(`http://localhost:45000/api/clients/${clientId}`, {
+      const response = await fetch(getApiUrl(`/clients/${clientId}`), {
         method: 'PUT',
         headers: getRequestHeaders(),
         body: JSON.stringify(clientData)
@@ -2142,7 +2140,7 @@ const ClientProjects = ({ onBack }) => {
 
   const handleProjectDetailsSubmit = async (projectData) => {
     try {
-      const response = await fetch(`http://localhost:45000/api/clients/${clientId}`, {
+      const response = await fetch(getApiUrl(`/clients/${clientId}`), {
         method: 'PUT',
         headers: getRequestHeaders(),
         body: JSON.stringify(projectData)
@@ -2174,7 +2172,7 @@ const ClientProjects = ({ onBack }) => {
     }
     try {
       const id = clientId;
-      const response = await fetch(`http://localhost:45000/api/clients/${id}/renew`, {
+      const response = await fetch(getApiUrl(`/clients/${id}/renew`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(renewFormData)
@@ -2214,7 +2212,7 @@ const ClientProjects = ({ onBack }) => {
       const project = projects.find(p => (p._id || p.id) === projectId);
       const updatedExtraTasks = project.extraTasks.filter((_, idx) => idx !== taskIndex);
       try {
-        const response = await fetch(`http://localhost:45000/api/clients/${projectId}/tasks`, {
+        const response = await fetch(getApiUrl(`/clients/${projectId}/tasks`), {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -2241,7 +2239,7 @@ const ClientProjects = ({ onBack }) => {
     const updatedTasks = taskType === 'tasks' ? [...project.tasks, newTask] : project.tasks;
     const updatedExtraTasks = taskType === 'extraTasks' ? [...project.extraTasks, newTask] : project.extraTasks;
     try {
-      const response = await fetch(`http://localhost:45000/api/clients/${project._id || project.id}/tasks`, {
+      const response = await fetch(getApiUrl(`/clients/${project._id || project.id}/tasks`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tasks: updatedTasks, extraTasks: updatedExtraTasks })

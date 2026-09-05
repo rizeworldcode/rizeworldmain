@@ -201,6 +201,35 @@ exports.createClient = async (req, res) => {
 
 exports.getAllClients = async (req, res) => {
   try {
+    const { limit, search, select } = req.query;
+
+    if (limit || search || select) {
+      let query = Client.find();
+      if (search) {
+        query = query.find({
+          $or: [
+            { name: { $regex: search, $options: 'i' } },
+            { email: { $regex: search, $options: 'i' } },
+            { phone: { $regex: search, $options: 'i' } },
+            { department: { $regex: search, $options: 'i' } }
+          ]
+        });
+      }
+      if (select) {
+        query = query.select(select);
+      }
+      query = query.sort({ createdAt: -1 });
+      if (limit) {
+        query = query.limit(parseInt(limit, 10));
+      }
+      const clients = await query.lean();
+      return res.status(200).json({
+        success: true,
+        count: clients.length,
+        data: clients
+      });
+    }
+
     const cacheKey = 'clients:all';
     const cachedData = cache.get(cacheKey);
     if (cachedData) {

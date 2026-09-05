@@ -25,6 +25,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import StaffPerformance from './StaffPerformance';
+import { getAllStaff, BASE_URL } from '../api';
 
 const PREDEFINED_ROLES = ['HR', 'Client Support', 'Admin', 'Data Analyst', 'Sales Team'];
 
@@ -674,7 +675,7 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
     if (!pic) return null;
     if (pic.startsWith('http://') || pic.startsWith('https://')) return pic;
     const base = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-      ? 'http://localhost:45000'
+      ? `${BASE_URL.replace('/api', '')}`
       : 'https://rizeworldmain.onrender.com';
     return `${base}${pic.startsWith('/') ? '' : '/'}${pic}`;
   };
@@ -753,9 +754,8 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
   useEffect(() => {
     const fetchStaff = async () => {
       try {
-        const response = await fetch('http://localhost:45000/api/staff');
-        const result = await response.json();
-        if (result.success) {
+        const result = await getAllStaff();
+        if (result && result.success) {
           setStaff(result.data);
         }
       } catch (error) {
@@ -785,7 +785,7 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
 
   const handleUpdateStaff = async (id, updatedData) => {
     try {
-      const response = await fetch(`http://localhost:45000/api/staff/${id}`, {
+      const response = await fetch(`${BASE_URL}/staff/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedData)
@@ -805,7 +805,7 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
     if (window.confirm('Are you sure you want to remove this employee? It will move them to the Removed Employees page.')) {
       try {
         const token = localStorage.getItem('adminToken');
-        const response = await fetch(`http://localhost:45000/api/staff/${id}`, {
+        const response = await fetch(`${BASE_URL}/staff/${id}`, {
           method: 'DELETE',
           headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
@@ -831,7 +831,7 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
 
     try {
       const token = localStorage.getItem('adminToken');
-      const response = await fetch(`http://localhost:45000/api/staff/${member._id}/clock-in`, {
+      const response = await fetch(`${BASE_URL}/staff/${member._id}/clock-in`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -866,7 +866,7 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
 
     try {
       const token = localStorage.getItem('adminToken');
-      const response = await fetch(`http://localhost:45000/api/staff/${member._id}/clock-out`, {
+      const response = await fetch(`${BASE_URL}/staff/${member._id}/clock-out`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -1116,7 +1116,7 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
     const { payout, fullLeaves, halfDays, casualLeaveUsed } = payoutData;
 
     try {
-      const response = await fetch(`http://localhost:45000/api/staff/${selectedStaffForSalary._id}/clear-salary`, {
+      const response = await fetch(`${BASE_URL}/staff/${selectedStaffForSalary._id}/clear-salary`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1152,7 +1152,7 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
     }
 
     try {
-      const response = await fetch(`http://localhost:45000/api/staff/${member._id}/revert-salary`, {
+      const response = await fetch(`${BASE_URL}/staff/${member._id}/revert-salary`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ month: targetMonth })

@@ -272,15 +272,35 @@ const WalletPage = () => {
   const fetchTransactions = async () => {
     try {
       setLoading(true);
-      const result = await getWalletTransactions('all');
-      if (result.success) {
-        setTransactions(result.data);
-      }
-      await fetchPendingDues();
+      await Promise.all([
+        getWalletTransactions('all').then(result => {
+          if (result && result.success) {
+            setTransactions(result.data);
+          }
+        }),
+        fetchPendingDues()
+      ]);
     } catch (error) {
       console.error('Error fetching transactions:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteTransaction = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this transaction?')) return;
+    const previous = transactions;
+    setTransactions(prev => prev.filter(t => t._id !== id));
+    try {
+      const result = await deleteWalletTransaction(id);
+      if (!result.success) {
+        setTransactions(previous);
+        alert(result.message || 'Failed to delete transaction');
+      }
+    } catch (error) {
+      setTransactions(previous);
+      console.error('Error deleting transaction:', error);
+      alert('Error deleting transaction');
     }
   };
 
@@ -485,20 +505,7 @@ const WalletPage = () => {
     }
   };
 
-  const handleDeleteTransaction = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this transaction?')) return;
-    try {
-      const result = await deleteWalletTransaction(id);
-      if (result.success) {
-        fetchTransactions();
-      } else {
-        alert(result.message || 'Failed to delete transaction');
-      }
-    } catch (error) {
-      console.error('Error deleting transaction:', error);
-      alert('Error deleting transaction');
-    }
-  };
+
 
   const formatDate = (date) => {
     return new Date(date).toLocaleDateString('en-IN', {

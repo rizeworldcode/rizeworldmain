@@ -12,14 +12,14 @@ import {
   UserPlus,
   X,
   Save,
-  CheckCircle2,
   Clock,
   RotateCcw,
   Landmark,
   Calculator
 } from 'lucide-react';
+import { BASE_URL } from '../api';
 
-const REMOVED_STAFF_API = 'http://localhost:45000/api/staff/removed';
+const REMOVED_STAFF_API = `${BASE_URL}/staff/removed`;
 const CALCULATION_START_DATE = new Date('2026-07-01T00:00:00.000Z');
 const STANDARD_HOURS_PER_DAY = 8.5;
 const EXPECTED_MONTHLY_HOURS = STANDARD_HOURS_PER_DAY * 30; // 255 hours
@@ -341,7 +341,7 @@ const RemovedEmployees = () => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      const response = await fetch(`http://localhost:45000/api/staff/${rejoiningEmployee._id}/rejoin`, {
+      const response = await fetch(`${BASE_URL}/staff/${rejoiningEmployee._id}/rejoin`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(rejoinForm)
@@ -389,7 +389,7 @@ const RemovedEmployees = () => {
     const amount = Number(salaryPaymentDetails.customAmount);
 
     try {
-      const response = await fetch(`http://localhost:45000/api/staff/${selectedStaffForSalary._id}/clear-salary`, {
+      const response = await fetch(`${BASE_URL}/staff/${selectedStaffForSalary._id}/clear-salary`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -433,7 +433,7 @@ const RemovedEmployees = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:45000/api/staff/${member._id}/revert-salary`, {
+      const response = await fetch(`${BASE_URL}/staff/${member._id}/revert-salary`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ month: targetMonth })

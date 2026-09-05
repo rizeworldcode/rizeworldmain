@@ -48,10 +48,9 @@ const RecentClients = ({ onClientClick }) => {
 
   const fetchClients = async () => {
     try {
-      const result = await getAllClients();
-      if (result && result.success) {
-        // Sort by createdAt descending (most recent first) and take top 5
-        const sorted = result.data.sort((a, b) => 
+      const result = await getAllClients({ limit: 5 });
+      if (result && result.success && Array.isArray(result.data)) {
+        const sorted = [...result.data].sort((a, b) => 
           new Date(b.createdAt || b._id).getTime() - new Date(a.createdAt || a._id).getTime()
         ).slice(0, 5);
         setClients(sorted);

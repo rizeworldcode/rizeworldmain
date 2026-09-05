@@ -10,11 +10,11 @@ import {
   Calendar,
   Mail,
   Phone,
-  Building2,
   FileText,
   Lock,
   Hash
 } from 'lucide-react';
+import { BASE_URL } from '../api';
 
 const PREDEFINED_ROLES = ['Counselor', 'HR', 'Client Support', 'Admin', 'Data Analyst', 'Sales Team'];
 
@@ -104,7 +104,7 @@ const AddStaff = ({ onBack }) => {
           : (formData.reportingPerson || [])
       };
 
-      const response = await fetch('http://localhost:45000/api/staff', {
+      const response = await fetch(`${BASE_URL}/staff`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)

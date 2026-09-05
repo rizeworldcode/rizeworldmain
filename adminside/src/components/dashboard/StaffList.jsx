@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Mail, Phone, Briefcase, Clock, Calendar, CheckCircle2, XCircle, MoreVertical, LogOut, LogIn, Trash2, Edit3 } from 'lucide-react';
+import { getAllStaff, BASE_URL } from '../../api';
 
 const container = {
   hidden: { opacity: 0 },
@@ -46,9 +47,8 @@ const StaffList = ({ onViewAll }) => {
 
   const fetchStaff = async () => {
     try {
-      const response = await fetch('http://localhost:45000/api/staff');
-      const result = await response.json();
-      if (result.success) {
+      const result = await getAllStaff();
+      if (result && result.success) {
         setStaffMembers(result.data);
       }
     } catch (error) {
@@ -82,7 +82,7 @@ const StaffList = ({ onViewAll }) => {
 
     try {
       const token = localStorage.getItem('adminToken');
-      const response = await fetch(`http://localhost:45000/api/staff/${id}/clock-out`, {
+      const response = await fetch(`${BASE_URL}/staff/${id}/clock-out`, {
         method: 'PATCH',
         headers: { 
           'Content-Type': 'application/json',
@@ -116,7 +116,7 @@ const StaffList = ({ onViewAll }) => {
 
     try {
       const token = localStorage.getItem('adminToken');
-      const response = await fetch(`http://localhost:45000/api/staff/${id}/clock-in`, {
+      const response = await fetch(`${BASE_URL}/staff/${id}/clock-in`, {
         method: 'PATCH',
         headers: { 
           'Content-Type': 'application/json',

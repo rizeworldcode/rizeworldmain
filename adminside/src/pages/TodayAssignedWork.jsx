@@ -79,25 +79,74 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
   };
 
   const handleToggleTask = async (staffId, taskIndex) => {
+    // Optimistically toggle in local state immediately
+    setStaffList(prevList => prevList.map(staff => {
+      if (staff._id !== staffId) return staff;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const updatedWork = (staff.work || []).map(w => {
+        const workDate = new Date(w.date);
+        if (workDate >= today && workDate < tomorrow) {
+          const updatedTasks = (w.tasks || []).map((t, idx) => {
+            if (idx === taskIndex) {
+              return { ...t, completed: !t.completed };
+            }
+            return t;
+          });
+          return { ...w, tasks: updatedTasks };
+        }
+        return w;
+      });
+      return { ...staff, work: updatedWork };
+    }));
+
     try {
       const result = await toggleStaffTask(staffId, taskIndex);
-      if (result.success) fetchStaff();
+      if (!result.success) {
+        fetchStaff();
+      }
     } catch (error) {
       console.error('Error toggling task:', error);
+      fetchStaff();
     }
   };
 
   const handleAddTask = async (staffId) => {
     const taskName = newTasks[staffId]?.trim();
     if (!taskName) return;
+
+    setNewTasks(prev => ({ ...prev, [staffId]: '' }));
+    
+    // Optimistically add task to local state
+    setStaffList(prevList => prevList.map(staff => {
+      if (staff._id !== staffId) return staff;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const updatedWork = (staff.work || []).map(w => {
+        const workDate = new Date(w.date);
+        if (workDate >= today && workDate < tomorrow) {
+          const updatedTasks = [...(w.tasks || []), { name: taskName, completed: false, isExtra: true }];
+          return { ...w, tasks: updatedTasks };
+        }
+        return w;
+      });
+      return { ...staff, work: updatedWork };
+    }));
+
     try {
       const result = await addStaffExtraTask(staffId, taskName);
-      if (result.success) {
+      if (!result.success) {
         fetchStaff();
-        setNewTasks(prev => ({ ...prev, [staffId]: '' }));
       }
     } catch (error) {
       console.error('Error adding task:', error);
+      fetchStaff();
     }
   };
 

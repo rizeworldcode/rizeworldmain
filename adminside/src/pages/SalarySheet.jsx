@@ -17,8 +17,9 @@ import {
   Download,
   RefreshCw
 } from 'lucide-react';
+import { BASE_URL } from '../api';
 
-const API_BASE = 'http://localhost:45000/api';
+const API_BASE = BASE_URL;
 
 const formatCurrency = (amount) => {
   if (!amount && amount !== 0) return '—';

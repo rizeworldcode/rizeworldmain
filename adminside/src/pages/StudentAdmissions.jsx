@@ -16,6 +16,7 @@ import {
   CheckCircle2,
   Clock
 } from 'lucide-react';
+import { BASE_URL } from '../api';
 
 const StudentAdmissions = ({ onBack }) => {
   const [admissions, setAdmissions] = useState([]);
@@ -34,15 +35,14 @@ const StudentAdmissions = ({ onBack }) => {
   const [selectedCounselor, setSelectedCounselor] = useState('');
 
   useEffect(() => {
-    fetchAdmissions();
-    fetchCounselors();
+    Promise.all([fetchAdmissions(), fetchCounselors()]);
   }, []);
 
   const fetchAdmissions = async () => {
     try {
       const url = selectedCounselor 
-        ? `http://localhost:45000/api/staff/admissions?counselorId=${selectedCounselor}`
-        : 'http://localhost:45000/api/staff/admissions';
+        ? `${BASE_URL}/staff/admissions?counselorId=${selectedCounselor}`
+        : `${BASE_URL}/staff/admissions`;
       const response = await fetch(url);
       const result = await response.json();
       if (result.success) {
@@ -57,7 +57,7 @@ const StudentAdmissions = ({ onBack }) => {
 
   const fetchCounselors = async () => {
     try {
-      const response = await fetch('http://localhost:45000/api/staff/counselors');
+      const response = await fetch(`${BASE_URL}/staff/counselors`);
       const result = await response.json();
       if (result.success) {
         setCounselors(result.data);
@@ -86,13 +86,13 @@ const StudentAdmissions = ({ onBack }) => {
       
       let response;
       if (editingAdmission) {
-        response = await fetch(`http://localhost:45000/api/staff/admissions/${editingAdmission._id}`, {
+        response = await fetch(`${BASE_URL}/staff/admissions/${editingAdmission._id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data)
         });
       } else {
-        response = await fetch('http://localhost:45000/api/staff/admissions', {
+        response = await fetch(`${BASE_URL}/staff/admissions`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data)
@@ -131,7 +131,7 @@ const StudentAdmissions = ({ onBack }) => {
     if (!window.confirm('Are you sure you want to delete this admission?')) return;
     
     try {
-      const response = await fetch(`http://localhost:45000/api/staff/admissions/${id}`, {
+      const response = await fetch(`${BASE_URL}/staff/admissions/${id}`, {
         method: 'DELETE'
       });
       const result = await response.json();

@@ -143,9 +143,9 @@ exports.getAllStaff = async (req, res) => {
     const cacheKey = 'staff:all';
 
     const staffWithCounts = await cache.fetchOrCompute(cacheKey, async () => {
-      // Exclude heavy multi-year embedded arrays to prune response size from ~90KB to ~8KB
+      // Exclude heavy multi-year embedded arrays and documents to prune response size
       const staff = await Staff.find({ isRemoved: { $ne: true } })
-        .select('-clock -attendance -salaryHistory -satisfactionHistory -commentHistory')
+        .select('-clock -attendance -salaryHistory -satisfactionHistory -commentHistory -documents')
         .sort({ createdAt: -1 })
         .lean();
       
@@ -162,6 +162,9 @@ exports.getAllStaff = async (req, res) => {
       const admissionMap = new Map(admissionAgg.map(a => [String(a._id), a.count]));
       const salesMap = new Map(salesAgg.map(s => [String(s._id), s.count]));
 
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+
       return staff.map((staffObj) => {
         const staffIdStr = String(staffObj._id);
         if (staffObj.role === 'Counselor') {
@@ -169,6 +172,14 @@ exports.getAllStaff = async (req, res) => {
         }
         if (staffObj.role === 'Sales Team' || staffObj.role === 'Sales') {
           staffObj.salesCount = salesMap.get(staffIdStr) || 0;
+        }
+        // Keep only today's work object in summary list to avoid multi-year work array bloat
+        if (staffObj.work && staffObj.work.length > 0) {
+          staffObj.work = staffObj.work.filter(w => {
+            if (!w.date) return false;
+            const d = new Date(w.date);
+            return d >= todayStart;
+          });
         }
         return staffObj;
       });
