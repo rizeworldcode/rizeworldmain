@@ -10,6 +10,7 @@ import {
   Calendar,
   Mail,
   Phone,
+  Building2,
   FileText,
   Lock,
   Hash
