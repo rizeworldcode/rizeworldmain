@@ -31,7 +31,7 @@ const StaffList = ({ onViewAll }) => {
 
     const todayClockRecord = staff.clock?.find(c => 
       new Date(c.date) >= today && new Date(c.date) < tomorrow
-    );
+    ) || (Array.isArray(staff.clock) && staff.clock.length > 0 ? staff.clock[0] : null);
 
     if (!todayClockRecord || !todayClockRecord.sessions?.length) {
       return { clockIn: '-', clockOut: '-', totalHours: '-' };

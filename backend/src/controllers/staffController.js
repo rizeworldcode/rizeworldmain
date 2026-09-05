@@ -145,7 +145,7 @@ exports.getAllStaff = async (req, res) => {
     const staffWithCounts = await cache.fetchOrCompute(cacheKey, async () => {
       // Exclude heavy multi-year embedded arrays and documents to prune response size
       const staff = await Staff.find({ isRemoved: { $ne: true } })
-        .select('-clock -attendance -salaryHistory -satisfactionHistory -commentHistory -documents')
+        .select('-attendance -salaryHistory -satisfactionHistory -commentHistory -documents')
         .sort({ createdAt: -1 })
         .lean();
       
@@ -180,6 +180,16 @@ exports.getAllStaff = async (req, res) => {
             const d = new Date(w.date);
             return d >= todayStart;
           });
+        }
+        // Keep only today's clock entry so clock in / clock out times display accurately
+        if (staffObj.clock && staffObj.clock.length > 0) {
+          staffObj.clock = staffObj.clock.filter(c => {
+            if (!c.date) return false;
+            const d = new Date(c.date);
+            return d >= todayStart;
+          });
+        } else {
+          staffObj.clock = [];
         }
         // Ensure documents array is defined for frontend safety
         staffObj.documents = staffObj.documents || [];
