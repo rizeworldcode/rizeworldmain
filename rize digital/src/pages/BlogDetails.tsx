@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import SEO from '../components/common/SEO';
 import Breadcrumbs from '../components/common/Breadcrumbs';
+import NotFound from './NotFound';
 import { getApiBaseUrl, getImageUrl, formatDate } from '../utils/api';
 
 export interface DynamicBlog {
@@ -32,6 +33,7 @@ export default function BlogDetails() {
   const navigate = useNavigate();
   const [fetchedBlog, setFetchedBlog] = useState<DynamicBlog | null>(null);
   const [allBlogs, setAllBlogs] = useState<NavBlog[]>(blogsList);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -88,21 +90,31 @@ export default function BlogDetails() {
         }
       } catch (err) {
         console.error('Error fetching all blogs for nav:', err);
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    loadBlog();
-    loadAllBlogs();
+    loadBlog().then(loadAllBlogs);
   }, [slug]);
 
-  const fallbackBlog = blogsData[slug || ''] || blogsData['why-your-business-needs-a-professional-digital-marketing-company'];
+  const fallbackBlog = blogsData[slug || ''];
+
+  if (!isLoading && !fetchedBlog && !fallbackBlog) {
+    return <NotFound />;
+  }
+
+  if (isLoading) {
+    return <div className="min-h-screen bg-stone-50 flex items-center justify-center pt-32 pb-24"><div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div></div>;
+  }
+
   const blog: DynamicBlog = fetchedBlog || {
-    title: fallbackBlog.title,
-    category: fallbackBlog.category,
-    date: fallbackBlog.date,
-    image: fallbackBlog.image,
-    intro: fallbackBlog.intro,
-    sections: fallbackBlog.sections,
+    title: fallbackBlog?.title || '',
+    category: fallbackBlog?.category || '',
+    date: fallbackBlog?.date || '',
+    image: fallbackBlog?.image || '',
+    intro: fallbackBlog?.intro || '',
+    sections: fallbackBlog?.sections,
     authorName: 'Marketing Team'
   };
 

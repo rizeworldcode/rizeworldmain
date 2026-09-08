@@ -11,9 +11,6 @@
   # Dynamic Blog Sitemap (Always up-to-date with backend database)
   RewriteRule ^sitemap-blogs\.xml$ https://rizeworldmain.onrender.com/sitemap-blogs.xml [R=301,L]
 
-  # Define Custom 404 Page
-  ErrorDocument 404 /404.html
-
   # 301 Redirects from old WordPress URLs (case-insensitive, optional trailing slash)
   RewriteRule ^custom-website-development-services/?$ /services/custom-website-development [R=301,L,NC]
   RewriteRule ^services/graphics-design/?$ /services/graphic-design [R=301,L,NC]
@@ -34,11 +31,27 @@
   # Return HTTP 404 for hacked or spam URLs
   RewriteRule ^(mostbet.*|vavada.*|casino.*|olimp.*|chicken-road.*|hello-world|2024/.*|2025/.*)$ - [R=404,L,NC]
 
-  # SPA routing fallback (only for valid routes)
-  RewriteRule ^index\.html$ - [L]
+  # 1. Direct hit on existing physical files (assets, images, etc.)
+  RewriteCond %{REQUEST_FILENAME} -f
+  RewriteRule ^ - [L]
+
+  # 2. Prerendered Static Directory Fallback
+  # If a request comes in for /services/seo and dist has /services/seo/index.html, serve it.
+  RewriteCond %{DOCUMENT_ROOT}%{REQUEST_URI}/index.html -f
+  RewriteRule ^(.+?)/?$ /$1/index.html [L]
+
+  # 3. SPA routing fallback for known static top-level app routes ONLY
+  # Inner dynamic routes (blogs/*, locations/*, services/*, case-studies/*) are NOT served here.
+  # If no prerendered file exists for them, Apache returns 404 (handled by ErrorDocument below).
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteCond %{REQUEST_URI} ^/(about|team|portfolio|careers|blogs|privacy|terms|accessibility|faq|pricing|case-studies|locations|service|services|contact)/? [NC,OR]
+  RewriteCond %{REQUEST_URI} !^/(blogs|services|locations|service|case-studies)/.+ [NC]
+  RewriteCond %{REQUEST_URI} ^/(about|team|portfolio|careers|blogs|privacy|terms|accessibility|faq|pricing|case-studies|locations|service|services|contact)/?$ [NC,OR]
   RewriteCond %{REQUEST_URI} ^/$
   RewriteRule . /index.html [L]
+
 </IfModule>
+
+# Custom 404: serve React SPA which renders <NotFound /> component
+# IMPORTANT: Apache will set HTTP status 404, React handles the visual rendering
+ErrorDocument 404 /index.html

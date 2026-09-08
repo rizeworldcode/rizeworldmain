@@ -227,6 +227,7 @@ export default function CityLandingPageTemplate({ data }: { data: CityContent })
       <SEO 
         title={data.title}
         description={data.metaDescription}
+        canonicalUrl={`https://rizeworld.in${window.location.pathname}`}
         schema={[localBusinessSchema, faqSchema, breadcrumbSchema]}
       />
 
