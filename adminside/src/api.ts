@@ -271,6 +271,21 @@ export const submitAllStaffReports = () =>
     method: 'POST',
   });
 
+export const approveAllStaffTasks = (staffIds?: string[]) => {
+  clearApiCache('staff');
+  return apiRequest('/staff/approve-all-tasks', {
+    method: 'POST',
+    body: JSON.stringify({ staffIds }),
+  });
+};
+
+export const approveStaffTasks = (staffId: string) => {
+  clearApiCache('staff');
+  return apiRequest(`/staff/${staffId}/approve-all-tasks`, {
+    method: 'PATCH',
+  });
+};
+
 export const getStaffWorkReports = (date: string) =>
   apiRequest(`/staff/reports?date=${date}`);
 
@@ -317,6 +332,8 @@ export default {
   addStaffExtraTask,
   submitStaffReport,
   submitAllStaffReports,
+  approveAllStaffTasks,
+  approveStaffTasks,
   getStaffWorkReports,
   getLiveLocations,
   getLocationHistory,

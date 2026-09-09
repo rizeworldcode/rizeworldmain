@@ -1430,6 +1430,182 @@ exports.toggleTaskComplete = async (req, res) => {
   }
 };
 
+// Approve all tasks for today across all active staff (or filtered staffIds)
+exports.approveAllTasks = async (req, res) => {
+  try {
+    const { staffIds } = req.body || {};
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const filter = { isRemoved: { $ne: true } };
+    if (Array.isArray(staffIds) && staffIds.length > 0) {
+      filter._id = { $in: staffIds };
+    }
+
+    const allStaff = await Staff.find(filter);
+    let totalUpdatedStaff = 0;
+    let totalApprovedTasks = 0;
+
+    for (const staff of allStaff) {
+      const todayWorkIndex = staff.work?.findIndex(w =>
+        new Date(w.date) >= today && new Date(w.date) < tomorrow
+      );
+
+      if (todayWorkIndex !== -1 && staff.work[todayWorkIndex]?.tasks?.length > 0) {
+        let staffTasksChanged = 0;
+        staff.work[todayWorkIndex].tasks.forEach(task => {
+          if (!task.completed) {
+            task.completed = true;
+            staffTasksChanged++;
+          }
+        });
+
+        if (staffTasksChanged > 0) {
+          staff.markModified('work');
+          const updatedStaff = await staff.save();
+          totalUpdatedStaff++;
+          totalApprovedTasks += staffTasksChanged;
+
+          // Emit socket event for real-time sync with staff/mobile app
+          const staffObj = updatedStaff.toObject();
+          const todayClock = staffObj.work?.find(w =>
+            new Date(w.date) >= today && new Date(w.date) < tomorrow
+          );
+          try {
+            const io = socketUtil.getIO();
+            io.emit(`staff-clock-update-${staffObj._id}`, {
+              ...staffObj,
+              id: staffObj._id,
+              todayClock: todayClock
+            });
+          } catch (err) {
+            console.error('Error emitting socket event for staff:', staffObj._id, err);
+          }
+
+          // If an AssignedWorkReport exists for today, update it as well
+          try {
+            const regularTasks = staff.work[todayWorkIndex].tasks.filter(t => !t.isExtra);
+            const extraTasks = staff.work[todayWorkIndex].tasks.filter(t => t.isExtra);
+            const completedRegular = regularTasks.filter(t => t.completed).length;
+            const completedExtra = extraTasks.filter(t => t.completed).length;
+            const totalRegular = regularTasks.length;
+            let progressPercentage = 100;
+            if (totalRegular > 0) {
+              const baseProgress = Math.round((completedRegular / totalRegular) * 100);
+              const bonusProgress = Math.round((completedExtra / totalRegular) * 100);
+              progressPercentage = baseProgress + bonusProgress;
+            } else if (completedExtra > 0) {
+              progressPercentage = completedExtra * 25;
+            }
+
+            await AssignedWorkReport.findOneAndUpdate(
+              { staffId: staff._id, date: { $gte: today, $lt: tomorrow } },
+              { tasks: staff.work[todayWorkIndex].tasks, progressPercentage }
+            );
+          } catch (reportErr) {
+            console.error('Error updating work report:', reportErr);
+          }
+        }
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Successfully approved ${totalApprovedTasks} tasks across ${totalUpdatedStaff} staff members`,
+      totalUpdatedStaff,
+      totalApprovedTasks
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Approve all tasks for a specific staff member for today
+exports.approveStaffTasks = async (req, res) => {
+  try {
+    const staffId = req.params.id;
+    const staff = await Staff.findById(staffId);
+    if (!staff) {
+      return res.status(404).json({ success: false, message: 'Staff not found' });
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const todayWorkIndex = staff.work?.findIndex(w =>
+      new Date(w.date) >= today && new Date(w.date) < tomorrow
+    );
+
+    if (todayWorkIndex === -1 || !staff.work[todayWorkIndex]?.tasks?.length) {
+      return res.status(404).json({ success: false, message: 'No tasks found for today' });
+    }
+
+    let approvedCount = 0;
+    staff.work[todayWorkIndex].tasks.forEach(task => {
+      if (!task.completed) {
+        task.completed = true;
+        approvedCount++;
+      }
+    });
+
+    staff.markModified('work');
+    const updatedStaff = await staff.save();
+
+    // Emit socket event
+    const staffObj = updatedStaff.toObject();
+    const todayClock = staffObj.work?.find(w =>
+      new Date(w.date) >= today && new Date(w.date) < tomorrow
+    );
+    try {
+      const io = socketUtil.getIO();
+      io.emit(`staff-clock-update-${staffObj._id}`, {
+        ...staffObj,
+        id: staffObj._id,
+        todayClock: todayClock
+      });
+    } catch (err) {
+      console.error('Error emitting socket event:', err);
+    }
+
+    // Update AssignedWorkReport if exists
+    try {
+      const regularTasks = staff.work[todayWorkIndex].tasks.filter(t => !t.isExtra);
+      const extraTasks = staff.work[todayWorkIndex].tasks.filter(t => t.isExtra);
+      const completedRegular = regularTasks.filter(t => t.completed).length;
+      const completedExtra = extraTasks.filter(t => t.completed).length;
+      const totalRegular = regularTasks.length;
+      let progressPercentage = 100;
+      if (totalRegular > 0) {
+        const baseProgress = Math.round((completedRegular / totalRegular) * 100);
+        const bonusProgress = Math.round((completedExtra / totalRegular) * 100);
+        progressPercentage = baseProgress + bonusProgress;
+      } else if (completedExtra > 0) {
+        progressPercentage = completedExtra * 25;
+      }
+
+      await AssignedWorkReport.findOneAndUpdate(
+        { staffId: staff._id, date: { $gte: today, $lt: tomorrow } },
+        { tasks: staff.work[todayWorkIndex].tasks, progressPercentage }
+      );
+    } catch (reportErr) {
+      console.error('Error updating work report:', reportErr);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Approved ${approvedCount} tasks for ${staff.name}`,
+      data: updatedStaff
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // Add extra task (admin-only)
 exports.addExtraTask = async (req, res) => {
   try {

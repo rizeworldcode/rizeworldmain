@@ -38,7 +38,9 @@ const {
   createSale,
   getAllSales,
   updateSale,
-  deleteSale
+  deleteSale,
+  approveAllTasks,
+  approveStaffTasks
 } = require('../controllers/staffController');
 const { protect } = require('../middleware/authMiddleware');
 const { requireOfficeWifi } = require('../middleware/officeWifi');
@@ -74,6 +76,7 @@ router.delete('/sales/:id', deleteSale);
 router.get('/reports', getWorkReports);
 router.get('/leaves/all', getStaffLeaves);
 router.post('/submit-all-reports', submitAllReports);
+router.post('/approve-all-tasks', approveAllTasks);
 router.post('/mark-leave', markLeave);
 
 // Dynamic parameter routes
@@ -85,6 +88,7 @@ router.patch('/:id/clock-out', requireOfficeWifi, clockOutStaff);
 router.patch('/:id/clock-in', requireOfficeWifi, clockInStaff);
 router.patch('/:id/today-work', updateTodayWork);
 router.patch('/:id/toggle-task', toggleTaskComplete);
+router.patch('/:id/approve-all-tasks', approveStaffTasks);
 router.post('/:id/add-extra-task', addExtraTask);
 router.post('/:id/submit-report', submitWorkReport);
 router.patch('/:id/clear-salary', clearSalary);

@@ -13,7 +13,8 @@ import {
   X,
   Plus,
   Zap,
-  Star
+  Star,
+  CheckCheck
 } from 'lucide-react';
 import { 
   getAllStaff, 
@@ -21,6 +22,8 @@ import {
   addStaffExtraTask, 
   submitStaffReport, 
   submitAllStaffReports, 
+  approveAllStaffTasks,
+  approveStaffTasks,
   getStaffWorkReports 
 } from '../api';
 
@@ -33,6 +36,8 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [submittingReport, setSubmittingReport] = useState(null);
   const [submittingAllReports, setSubmittingAllReports] = useState(false);
+  const [approvingAll, setApprovingAll] = useState(false);
+  const [approvingStaffId, setApprovingStaffId] = useState(null);
   const [newTasks, setNewTasks] = useState({});
 
   const fetchStaff = async () => {
@@ -174,6 +179,88 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
     }
   };
 
+  const handleApproveAll = async () => {
+    if (stats.pendingTasks === 0) {
+      alert('All tasks are already completed!');
+      return;
+    }
+
+    setApprovingAll(true);
+    const previousStaffList = staffList;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    // Optimistically mark all tasks for all staff as completed
+    setStaffList(prevList => prevList.map(staff => {
+      const updatedWork = (staff.work || []).map(w => {
+        const workDate = new Date(w.date);
+        if (workDate >= today && workDate < tomorrow) {
+          const updatedTasks = (w.tasks || []).map(t => ({ ...t, completed: true }));
+          return { ...w, tasks: updatedTasks };
+        }
+        return w;
+      });
+      return { ...staff, work: updatedWork };
+    }));
+
+    try {
+      const result = await approveAllStaffTasks();
+      if (result.success) {
+        alert(result.message || 'All tasks approved successfully!');
+      } else {
+        alert(result.message || 'Failed to approve all tasks');
+        setStaffList(previousStaffList);
+      }
+    } catch (error) {
+      console.error('Error approving all tasks:', error);
+      alert('Failed to approve all tasks');
+      setStaffList(previousStaffList);
+    } finally {
+      setApprovingAll(false);
+      fetchStaff();
+    }
+  };
+
+  const handleApproveStaff = async (staffId) => {
+    setApprovingStaffId(staffId);
+    const previousStaffList = staffList;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    // Optimistically mark this staff's tasks as completed
+    setStaffList(prevList => prevList.map(staff => {
+      if (staff._id !== staffId) return staff;
+      const updatedWork = (staff.work || []).map(w => {
+        const workDate = new Date(w.date);
+        if (workDate >= today && workDate < tomorrow) {
+          const updatedTasks = (w.tasks || []).map(t => ({ ...t, completed: true }));
+          return { ...w, tasks: updatedTasks };
+        }
+        return w;
+      });
+      return { ...staff, work: updatedWork };
+    }));
+
+    try {
+      const result = await approveStaffTasks(staffId);
+      if (!result.success) {
+        alert(result.message || 'Failed to approve tasks');
+        setStaffList(previousStaffList);
+      }
+    } catch (error) {
+      console.error('Error approving staff tasks:', error);
+      alert('Failed to approve tasks');
+      setStaffList(previousStaffList);
+    } finally {
+      setApprovingStaffId(null);
+      fetchStaff();
+    }
+  };
+
   const fetchReports = async (dateToFetch) => {
     const queryDate = dateToFetch || selectedDate;
     try {
@@ -225,17 +312,34 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
             {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} • Real-time Employee tracking
           </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={openReportModal}
-            className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white px-5 py-2.5 rounded-2xl font-bold text-sm hover:shadow-lg hover:shadow-purple-500/30 transition-all"
+            className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white px-5 py-2.5 rounded-2xl font-bold text-sm hover:shadow-lg hover:shadow-purple-500/30 transition-all active:scale-95"
           >
             <FileText size={18} /> View Reports
           </button>
           <button
+            onClick={handleApproveAll}
+            disabled={approvingAll || stats.pendingTasks === 0}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl font-bold text-sm transition-all active:scale-95 ${
+              stats.pendingTasks === 0
+                ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 cursor-not-allowed opacity-80'
+                : 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:shadow-lg hover:shadow-emerald-500/30 disabled:opacity-50 disabled:cursor-not-allowed'
+            }`}
+            title={stats.pendingTasks === 0 ? 'All tasks are already completed' : 'Approve all pending tasks for today'}
+          >
+            <CheckCheck size={18} />
+            {approvingAll
+              ? 'Approving All...'
+              : stats.pendingTasks === 0
+              ? 'All Approved'
+              : `Approve All (${stats.pendingTasks})`}
+          </button>
+          <button
             onClick={handleSubmitAllReports}
             disabled={submittingAllReports}
-            className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-5 py-2.5 rounded-2xl font-bold text-sm hover:shadow-lg hover:shadow-green-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-5 py-2.5 rounded-2xl font-bold text-sm hover:shadow-lg hover:shadow-green-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
           >
             <FileText size={18} />
             {submittingAllReports ? 'Submitting All...' : 'Submit All Reports'}
@@ -427,14 +531,27 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
                   {/* Regular Tasks */}
                   {regularTasks.length > 0 && (
                     <div>
-                      <div className="flex items-center gap-2 mb-3">
-                        <ListTodo size={16} className="text-gray-400 dark:text-gray-500" />
-                        <h5 className="text-sm font-bold text-gray-600 dark:text-gray-300 uppercase tracking-widest">
-                          Today's Tasks
-                          <span className="ml-2 text-gray-400 font-normal normal-case tracking-normal">
-                            {regularTasks.filter(t => t.completed).length}/{regularTasks.length} done
-                          </span>
-                        </h5>
+                      <div className="flex items-center justify-between gap-2 mb-3">
+                        <div className="flex items-center gap-2">
+                          <ListTodo size={16} className="text-gray-400 dark:text-gray-500" />
+                          <h5 className="text-sm font-bold text-gray-600 dark:text-gray-300 uppercase tracking-widest">
+                            Today's Tasks
+                            <span className="ml-2 text-gray-400 font-normal normal-case tracking-normal">
+                              {regularTasks.filter(t => t.completed).length}/{regularTasks.length} done
+                            </span>
+                          </h5>
+                        </div>
+                        {tasks.some(t => !t.completed) && (
+                          <button
+                            onClick={() => handleApproveStaff(staff._id)}
+                            disabled={approvingStaffId === staff._id}
+                            className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-600 hover:text-white dark:text-emerald-400 dark:hover:text-white rounded-xl text-xs font-bold transition-all active:scale-95 disabled:opacity-50"
+                            title="Approve all tasks for this employee"
+                          >
+                            <CheckCheck size={14} />
+                            {approvingStaffId === staff._id ? 'Approving...' : 'Approve All'}
+                          </button>
+                        )}
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {regularTasks.map((task, idx) => (
@@ -451,14 +568,27 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
                   {/* KEY CHANGE: Bonus / Extra Tasks section — visually distinct */}
                   {extraTasks.length > 0 && (
                     <div>
-                      <div className="flex items-center gap-2 mb-3">
-                        <Star size={16} className="text-amber-500" fill="currentColor" />
-                        <h5 className="text-sm font-bold text-amber-600 dark:text-amber-400 uppercase tracking-widest">
-                          Bonus Work
-                          <span className="ml-2 text-amber-400 font-normal normal-case tracking-normal">
-                            {extraTasks.filter(t => t.completed).length}/{extraTasks.length} done
-                          </span>
-                        </h5>
+                      <div className="flex items-center justify-between gap-2 mb-3">
+                        <div className="flex items-center gap-2">
+                          <Star size={16} className="text-amber-500" fill="currentColor" />
+                          <h5 className="text-sm font-bold text-amber-600 dark:text-amber-400 uppercase tracking-widest">
+                            Bonus Work
+                            <span className="ml-2 text-amber-400 font-normal normal-case tracking-normal">
+                              {extraTasks.filter(t => t.completed).length}/{extraTasks.length} done
+                            </span>
+                          </h5>
+                        </div>
+                        {regularTasks.length === 0 && extraTasks.some(t => !t.completed) && (
+                          <button
+                            onClick={() => handleApproveStaff(staff._id)}
+                            disabled={approvingStaffId === staff._id}
+                            className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-600 hover:text-white dark:text-emerald-400 dark:hover:text-white rounded-xl text-xs font-bold transition-all active:scale-95 disabled:opacity-50"
+                            title="Approve all tasks for this employee"
+                          >
+                            <CheckCheck size={14} />
+                            {approvingStaffId === staff._id ? 'Approving...' : 'Approve All'}
+                          </button>
+                        )}
                       </div>
                       {/* Amber tinted section */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 rounded-2xl bg-amber-500/5 border border-amber-500/20">
