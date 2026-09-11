@@ -15,7 +15,9 @@ import {
   Briefcase,
   ChevronDown,
   Download,
-  RefreshCw
+  RefreshCw,
+  Calendar,
+  CheckCircle2
 } from 'lucide-react';
 import { BASE_URL } from '../api';
 
@@ -124,18 +126,38 @@ const getSalaryForDate = (staffInfo, date) => {
   return { salary: activeSalary, jobType: activeJobType };
 };
 
-const calculatePayout = (emp) => {
-  const today = new Date();
-  const currentMonth = today.getMonth();
-  const currentYear = today.getFullYear();
+const calculatePayoutForMonth = (emp, monthStr) => {
+  if (!emp) return { payout: 0, isPaid: false, daysWorked: 0 };
+  
+  const now = new Date();
+  const defaultMonthStr = now.toLocaleString('default', { month: 'long', year: 'numeric' });
+  const targetMonth = monthStr || defaultMonthStr;
+  const cleanMonth = targetMonth.replace(/\s*\(Current\)/i, '').trim();
+
+  const match = cleanMonth.match(/([A-Za-z]+)\s+(\d+)/);
+  if (!match) return { payout: emp.monthlySalary || 0, isPaid: false, daysWorked: 0 };
+
+  const monthName = match[1];
+  const year = parseInt(match[2], 10);
+  const monthIndex = new Date(Date.parse(monthName + " 1, 2012")).getMonth();
+
+  const isCurrentMonth = now.getMonth() === monthIndex && now.getFullYear() === year;
+
+  // Check paid salary history for this specific month
+  const paidHistory = (emp.salaryHistory || []).find(h => {
+    const hClean = (h.month || '').replace(/\s*\(Current\)/i, '').trim();
+    return hClean === cleanMonth;
+  });
 
   const createdAt = emp.createdAt || emp.joiningDate;
-  const sequenceDates = get30DaySequenceDates(currentYear, currentMonth, createdAt);
+  const sequenceDates = get30DaySequenceDates(year, monthIndex, createdAt);
   
   const todayEnd = new Date();
   todayEnd.setHours(23, 59, 59, 999);
 
-  const validSequenceDates = sequenceDates.filter(d => d <= todayEnd);
+  const validSequenceDates = isCurrentMonth
+    ? sequenceDates.filter(d => d <= todayEnd)
+    : sequenceDates;
   const seqDateStrings = new Set(validSequenceDates.map(d => d.toDateString()));
 
   const monthlyClockRecords = (emp.clock || []).filter(r => {
@@ -229,7 +251,14 @@ const calculatePayout = (emp) => {
     totalPayout += hrs * dayHourlyRate;
   });
 
-  return Math.round(totalPayout);
+  const calculated = Math.round(totalPayout);
+  const payout = paidHistory ? paidHistory.payoutSalary : calculated;
+
+  return {
+    payout,
+    isPaid: !!paidHistory,
+    daysWorked: monthlyClockRecords.length
+  };
 };
 
 
@@ -343,6 +372,10 @@ const SalarySheetView = ({ onLock }) => {
   const [sortBy, setSortBy] = useState('name');
   const [sortDir, setSortDir] = useState('asc');
 
+  const now = new Date();
+  const currentMonthName = now.toLocaleString('default', { month: 'long', year: 'numeric' });
+  const [selectedMonth, setSelectedMonth] = useState(currentMonthName);
+
   const fetchData = async () => {
     setLoading(true);
     setError('');
@@ -367,6 +400,49 @@ const SalarySheetView = ({ onLock }) => {
 
   useEffect(() => { fetchData(); }, []);
 
+  // Compute available months dynamically from all staff clock, attendance, leaves, salaryHistory
+  const availableMonths = useMemo(() => {
+    const months = new Set();
+    months.add(currentMonthName);
+
+    const addDateMonth = (dateInput) => {
+      if (!dateInput) return;
+      const d = new Date(dateInput);
+      if (isNaN(d.getTime())) return;
+      const check = new Date(d);
+      check.setHours(0, 0, 0, 0);
+      if (check < CALCULATION_START_DATE) return;
+      if (d.getDate() === 31) {
+        const nextMonth = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+        months.add(nextMonth.toLocaleString('default', { month: 'long', year: 'numeric' }));
+      } else {
+        months.add(d.toLocaleString('default', { month: 'long', year: 'numeric' }));
+      }
+    };
+
+    staff.forEach(emp => {
+      (emp.clock || []).forEach(r => addDateMonth(r.date));
+      (emp.salaryHistory || []).forEach(h => {
+        if (h.month) months.add(h.month.replace(/\s*\(Current\)/i, '').trim());
+      });
+      (emp.attendance || []).forEach(a => addDateMonth(a.date));
+      (emp.leaves || []).forEach(l => addDateMonth(l.date));
+    });
+
+    return Array.from(months).filter(mStr => {
+      const match = mStr.match(/([A-Za-z]+)\s+(\d+)/);
+      if (!match) return false;
+      const mName = match[1];
+      const yr = parseInt(match[2], 10);
+      const mIdx = new Date(Date.parse(mName + " 1, 2012")).getMonth();
+      return yr > 2026 || (yr === 2026 && mIdx >= 6);
+    }).sort((a, b) => {
+      const dateA = new Date(Date.parse(a + " 1"));
+      const dateB = new Date(Date.parse(b + " 1"));
+      return dateB.getTime() - dateA.getTime();
+    });
+  }, [staff, currentMonthName]);
+
   const departments = useMemo(() => {
     const depts = [...new Set(staff.map(s => s.department).filter(Boolean))].sort();
     return ['All', ...depts];
@@ -389,9 +465,23 @@ const SalarySheetView = ({ onLock }) => {
         (s.department || '').toLowerCase().includes(q)
       );
     }
-    result.sort((a, b) => {
+    
+    // Attach payout and paid status for the selected month to each result
+    const withPayout = result.map(emp => {
+      const pInfo = calculatePayoutForMonth(emp, selectedMonth);
+      return {
+        ...emp,
+        _payout: pInfo.payout,
+        _isPaid: pInfo.isPaid,
+        _daysWorked: pInfo.daysWorked
+      };
+    });
+
+    withPayout.sort((a, b) => {
       let valA = a[sortBy], valB = b[sortBy];
-      if (sortBy === 'monthlySalary' || sortBy === 'payoutSalary') {
+      if (sortBy === '_payout' || sortBy === 'payoutSalary') {
+        valA = Number(a._payout) || 0; valB = Number(b._payout) || 0;
+      } else if (sortBy === 'monthlySalary') {
         valA = Number(valA) || 0; valB = Number(valB) || 0;
       } else {
         valA = String(valA || '').toLowerCase(); valB = String(valB || '').toLowerCase();
@@ -399,9 +489,9 @@ const SalarySheetView = ({ onLock }) => {
       const cmp = valA < valB ? -1 : valA > valB ? 1 : 0;
       return sortDir === 'asc' ? cmp : -cmp;
     });
-    // Attach payout to each result
-    return result.map(emp => ({ ...emp, _payout: calculatePayout(emp) }));
-  }, [staff, search, filterDept, filterType, sortBy, sortDir]);
+
+    return withPayout;
+  }, [staff, search, filterDept, filterType, sortBy, sortDir, selectedMonth]);
 
   const filteredTotal = useMemo(() => filtered.reduce((sum, s) => sum + (s.monthlySalary || 0), 0), [filtered]);
   const filteredPayout = useMemo(() => filtered.reduce((sum, s) => sum + (s._payout || 0), 0), [filtered]);
@@ -417,23 +507,33 @@ const SalarySheetView = ({ onLock }) => {
   };
 
   const handleExportCSV = () => {
+    const cleanMonth = selectedMonth.replace(/\s*\(Current\)/i, '').trim();
     const rows = [
-      ['Employee ID', 'Name', 'Department', 'Job Type', 'Base Salary (INR)', 'Payout Salary (INR)'],
-      ...filtered.map(s => [s.employeeId || '', s.name || '', s.department || '', s.jobType || '', s.monthlySalary || 0, s._payout || 0])
+      ['Employee ID', 'Name', 'Department', 'Job Type', 'Salary Month', 'Base Salary (INR)', 'Payout Salary (INR)', 'Payment Status'],
+      ...filtered.map(s => [
+        s.employeeId || '',
+        s.name || '',
+        s.department || '',
+        s.jobType || '',
+        cleanMonth,
+        s.monthlySalary || 0,
+        s._payout || 0,
+        s._isPaid ? 'PAID' : 'PENDING'
+      ])
     ];
-    const csvContent = rows.map(r => r.map(v => `"${v}"`).join(',')).join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const csvContent = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Salary_Sheet_${new Date().toLocaleDateString('en-IN').replace(/\//g, '-')}.csv`;
+    a.download = `Salary_Sheet_${cleanMonth.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/25">
             <IndianRupee className="w-6 h-6 text-white" />
@@ -446,18 +546,35 @@ const SalarySheetView = ({ onLock }) => {
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={fetchData} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors">
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Month Selector */}
+          <div className="relative">
+            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-indigo-500 pointer-events-none" />
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="pl-9 pr-8 py-2.5 rounded-xl text-sm font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50/90 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/30 hover:border-indigo-400 dark:hover:border-indigo-500/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer appearance-none shadow-sm transition-all"
+            >
+              {availableMonths.map(m => (
+                <option key={m} value={m} className="text-gray-900 dark:bg-gray-900 dark:text-white font-semibold">
+                  {m === currentMonthName ? `${m} (Current)` : m}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-indigo-500 pointer-events-none" />
+          </div>
+
+          <button onClick={fetchData} className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors">
             <RefreshCw className="w-4 h-4" />
             Refresh
           </button>
-          <button onClick={handleExportCSV} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors">
+          <button onClick={handleExportCSV} className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors shadow-sm">
             <Download className="w-4 h-4" />
             Export CSV
           </button>
           <button
             onClick={() => { sessionStorage.removeItem('salary_unlocked'); onLock(); }}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors"
+            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors"
           >
             <Lock className="w-4 h-4" />
             Lock
@@ -469,9 +586,9 @@ const SalarySheetView = ({ onLock }) => {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
             { icon: Users2, label: 'Total Employees', value: staff.length, color: 'from-blue-500 to-cyan-500' },
-            { icon: IndianRupee, label: 'Total Payroll', value: formatCurrency(totalPayroll), color: 'from-emerald-500 to-teal-500' },
-            { icon: Briefcase, label: 'Departments', value: departments.length - 1, color: 'from-purple-500 to-pink-500' },
-            { icon: TrendingUp, label: 'Avg. Salary', value: formatCurrency(staff.length ? Math.round(totalPayroll / staff.length) : 0), color: 'from-orange-500 to-amber-500' }
+            { icon: IndianRupee, label: 'Base Payroll', value: formatCurrency(totalPayroll), color: 'from-purple-500 to-indigo-500' },
+            { icon: TrendingUp, label: `${selectedMonth.replace(/\s*\(Current\)/i, '').trim()} Payout Total`, value: formatCurrency(filteredPayout), color: 'from-emerald-500 to-teal-500' },
+            { icon: Briefcase, label: 'Avg. Payout', value: formatCurrency(filtered.length ? Math.round(filteredPayout / filtered.length) : 0), color: 'from-orange-500 to-amber-500' }
           ].map(({ icon: Icon, label, value, color }) => (
             <div key={label} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-white/10 p-4 shadow-sm">
               <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center mb-3 shadow-md`}>
@@ -533,7 +650,8 @@ const SalarySheetView = ({ onLock }) => {
                       { key: 'department', label: 'Department' },
                       { key: 'jobType', label: 'Type' },
                       { key: 'monthlySalary', label: 'Base Salary / Month' },
-                      { key: 'payoutSalary', label: 'Payout Salary' }
+                      { key: '_payout', label: `Payout (${selectedMonth.replace(/\s*\(Current\)/i, '').trim()})` },
+                      { key: '_isPaid', label: 'Status' }
                     ].map(({ key, label }) => (
                       <th key={key} className="px-5 py-3.5 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors select-none" onClick={() => handleSort(key)}>
                         <div className="flex items-center gap-1">{label}<SortIcon col={key} /></div>
@@ -543,7 +661,7 @@ const SalarySheetView = ({ onLock }) => {
                 </thead>
                 <tbody className="divide-y divide-gray-50 dark:divide-white/5">
                   {filtered.length === 0 ? (
-                    <tr><td colSpan={6} className="px-5 py-16 text-center text-sm text-gray-400 dark:text-gray-600">No employees match your filters.</td></tr>
+                    <tr><td colSpan={7} className="px-5 py-16 text-center text-sm text-gray-400 dark:text-gray-600">No employees match your filters.</td></tr>
                   ) : filtered.map((emp, idx) => (
                     <motion.tr key={emp._id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.02 }}
                       className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
@@ -570,6 +688,18 @@ const SalarySheetView = ({ onLock }) => {
                           <span className="text-base font-extrabold text-emerald-600 dark:text-emerald-400">{formatCurrency(emp._payout)}</span>
                         </div>
                       </td>
+                      <td className="px-5 py-3.5">
+                        {emp._isPaid ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                            <CheckCircle2 size={12} />
+                            Paid
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                            Pending
+                          </span>
+                        )}
+                      </td>
                     </motion.tr>
                   ))}
                 </tbody>
@@ -587,12 +717,12 @@ const SalarySheetView = ({ onLock }) => {
               </div>
               <div className="flex items-center gap-4 flex-wrap">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500 dark:text-gray-400">{filtered.length === staff.length ? 'Total Payroll:' : 'Filtered Payroll:'}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">{filtered.length === staff.length ? 'Total Base Payroll:' : 'Filtered Base Payroll:'}</span>
                   <span className="text-base font-bold text-gray-500 dark:text-gray-400">{formatCurrency(filteredTotal)}</span>
                 </div>
                 <div className="w-px h-4 bg-gray-200 dark:bg-white/10" />
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500 dark:text-gray-400">Est. Payout Total:</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">{selectedMonth.replace(/\s*\(Current\)/i, '').trim()} Payout Total:</span>
                   <span className="text-lg font-extrabold text-emerald-600 dark:text-emerald-400">{formatCurrency(filteredPayout)}</span>
                 </div>
               </div>

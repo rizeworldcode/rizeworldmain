@@ -234,7 +234,7 @@ exports.verifySalaryPassword = async (req, res) => {
 exports.getSalarySheet = async (req, res) => {
   try {
     const staff = await Staff.find({ isRemoved: { $ne: true } })
-      .select('name employeeId department jobType monthlySalary joiningDate clock attendance leaves createdAt salaryRevisions')
+      .select('name employeeId department jobType monthlySalary joiningDate clock attendance leaves createdAt salaryRevisions salaryHistory')
       .sort({ department: 1, name: 1 })
       .lean();
 
