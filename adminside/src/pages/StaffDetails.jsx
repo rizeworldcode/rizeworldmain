@@ -25,7 +25,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import StaffPerformance from './StaffPerformance';
-import { getAllStaff, BASE_URL } from '../api';
+import { getAllStaff, getStaffById, BASE_URL } from '../api';
 
 const PREDEFINED_ROLES = ['HR', 'Client Support', 'Admin', 'Data Analyst', 'Sales Team'];
 
@@ -1051,8 +1051,18 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
     setIsEditModalOpen(true);
   };
 
-  const openSalaryModal = (member) => {
-    setSelectedStaffForSalary(member);
+  const openSalaryModal = async (member) => {
+    let fullMember = member;
+    try {
+      const res = await getStaffById(member._id);
+      if (res?.success && res.data) {
+        fullMember = res.data;
+      }
+    } catch (err) {
+      console.warn('Could not fetch full staff details for salary modal, using summary:', err);
+    }
+
+    setSelectedStaffForSalary(fullMember);
     setSalaryPaymentDetails({
       mode: 'online',
       method: 'phonepe',
@@ -1080,12 +1090,12 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
       }
     };
 
-    (member.clock || []).forEach(r => addDateMonth(r.date));
-    (member.salaryHistory || []).forEach(h => {
+    (fullMember.clock || []).forEach(r => addDateMonth(r.date));
+    (fullMember.salaryHistory || []).forEach(h => {
       if (h.month) months.add(h.month.replace(/\s*\(Current\)/i, '').trim());
     });
-    (member.attendance || []).forEach(a => addDateMonth(a.date));
-    (member.leaves || []).forEach(l => addDateMonth(l.date));
+    (fullMember.attendance || []).forEach(a => addDateMonth(a.date));
+    (fullMember.leaves || []).forEach(l => addDateMonth(l.date));
 
     const sorted = Array.from(months).filter(mStr => {
       const match = mStr.match(/([A-Za-z]+)\s+(\d+)/);
@@ -1100,7 +1110,7 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
       return dateB.getTime() - dateA.getTime();
     });
 
-    const paidSet = new Set((member.salaryHistory || []).map(h => (h.month || '').replace(/\s*\(Current\)/i, '').trim()));
+    const paidSet = new Set((fullMember.salaryHistory || []).map(h => (h.month || '').replace(/\s*\(Current\)/i, '').trim()));
     // Prefer past pending months first (exclude current month from auto-default if past pending month exists)
     const pendingMonths = sorted.filter(m => !paidSet.has(m));
     const pendingPastMonth = pendingMonths.find(m => m !== currentMonthName);
@@ -1454,35 +1464,48 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
                               );
                             }
                           })()}
-                          {member.salaryStatus === 'Pending' ? (
-                            <button
-                              onClick={() => openSalaryModal(member)}
-                              className="group/salary flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-2 text-emerald-600 shadow-lg shadow-emerald-500/10 transition-all hover:bg-emerald-500 hover:text-white"
-                              title="Clear Salary"
-                            >
-                              <CheckCircle2 size={16} className="transition-transform group-hover/salary:scale-110" />
-                              <span className="text-xs font-black uppercase tracking-widest">Clear Salary</span>
-                            </button>
-                          ) : (
-                            <div className="flex items-center gap-1.5">
-                              <button
-                                onClick={() => openSalaryModal(member)}
-                                className="flex items-center gap-1.5 rounded-xl border border-emerald-500/10 bg-emerald-500/5 px-3 py-2 text-emerald-500 hover:bg-emerald-500/20 transition-all"
-                                title="Salary Paid (Click to manage)"
-                              >
-                                <CheckCircle2 size={16} />
-                                <span className="text-xs font-black uppercase tracking-widest">Paid</span>
-                              </button>
-                              <button
-                                onClick={() => handleRevertSalary(member)}
-                                className="group/revert flex items-center gap-1.5 rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-rose-600 shadow-sm transition-all hover:bg-rose-500 hover:text-white"
-                                title="Revert Salary Payment"
-                              >
-                                <RotateCcw size={15} className="transition-transform group-hover/revert:-rotate-90" />
-                                <span className="text-xs font-black uppercase tracking-widest">Revert</span>
-                              </button>
-                            </div>
-                          )}
+                          {(() => {
+                            const now = new Date();
+                            const currentMonthName = now.toLocaleString('default', { month: 'long', year: 'numeric' });
+                            const isCurrentMonthPaid = (member.salaryHistory || []).some(h => {
+                              const hClean = (h.month || '').replace(/\s*\(Current\)/i, '').trim();
+                              return hClean === currentMonthName;
+                            });
+
+                            if (!isCurrentMonthPaid) {
+                              return (
+                                <button
+                                  onClick={() => openSalaryModal(member)}
+                                  className="group/salary flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-2 text-emerald-600 shadow-lg shadow-emerald-500/10 transition-all hover:bg-emerald-500 hover:text-white"
+                                  title="Clear Salary"
+                                >
+                                  <CheckCircle2 size={16} className="transition-transform group-hover/salary:scale-110" />
+                                  <span className="text-xs font-black uppercase tracking-widest">Clear Salary</span>
+                                </button>
+                              );
+                            }
+
+                            return (
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  onClick={() => openSalaryModal(member)}
+                                  className="flex items-center gap-1.5 rounded-xl border border-emerald-500/10 bg-emerald-500/5 px-3 py-2 text-emerald-500 hover:bg-emerald-500/20 transition-all"
+                                  title="Salary Paid (Click to manage)"
+                                >
+                                  <CheckCircle2 size={16} />
+                                  <span className="text-xs font-black uppercase tracking-widest">Paid</span>
+                                </button>
+                                <button
+                                  onClick={() => handleRevertSalary(member)}
+                                  className="group/revert flex items-center gap-1.5 rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-rose-600 shadow-sm transition-all hover:bg-rose-500 hover:text-white"
+                                  title="Revert Salary Payment"
+                                >
+                                  <RotateCcw size={15} className="transition-transform group-hover/revert:-rotate-90" />
+                                  <span className="text-xs font-black uppercase tracking-widest">Revert</span>
+                                </button>
+                              </div>
+                            );
+                          })()}
                         </div>
                         <div className="flex items-center gap-2">
                           <button

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { getAllStaff, BASE_URL } from '../api';
+import { getAllStaff, getStaffById, BASE_URL } from '../api';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft,
@@ -813,10 +813,16 @@ const StaffPerformance = ({ staffId, onBack }) => {
   useEffect(() => {
     const fetchStaffDetails = async () => {
       try {
-        const result = await getAllStaff();
-        if (result.success) {
-          setAllStaff(result.data);
-          const foundStaff = result.data.find(s => s._id === staffId);
+        setLoading(true);
+        const [staffRes, allStaffRes] = await Promise.all([
+          getStaffById(staffId),
+          getAllStaff()
+        ]);
+        if (allStaffRes?.success) {
+          setAllStaff(allStaffRes.data);
+        }
+        if (staffRes?.success && staffRes.data) {
+          const foundStaff = staffRes.data;
           setStaff(foundStaff);
           // Initialize edit form with staff data, fix legacy department value
           setEditForm({
@@ -841,7 +847,9 @@ const StaffPerformance = ({ staffId, onBack }) => {
         setLoading(false);
       }
     };
-    fetchStaffDetails();
+    if (staffId) {
+      fetchStaffDetails();
+    }
   }, [staffId]);
 
   // Reusable input change handler

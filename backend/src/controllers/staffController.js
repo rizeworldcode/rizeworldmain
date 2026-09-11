@@ -145,7 +145,7 @@ exports.getAllStaff = async (req, res) => {
     const staffWithCounts = await cache.fetchOrCompute(cacheKey, async () => {
       // Exclude heavy multi-year embedded arrays and documents to prune response size
       const staff = await Staff.find({ isRemoved: { $ne: true } })
-        .select('-attendance -salaryHistory -satisfactionHistory -commentHistory -documents')
+        .select('-attendance -satisfactionHistory -commentHistory -documents')
         .sort({ createdAt: -1 })
         .lean();
       
@@ -495,24 +495,35 @@ exports.getStaffById = async (req, res) => {
     res.status(200).json({
       success: true,
       data: {
+        _id: staff._id,
         id: staff._id,
         name: staff.name,
         employeeId: staff.employeeId,
         department: staff.department,
         email: staff.email,
+        phone: staff.phone,
         profilePic: staff.profilePic || '',
         joiningDate: staff.joiningDate,
+        createdAt: staff.createdAt,
         monthlySalary: staff.monthlySalary,
-        clock: staff.clock,
-        work: staff.work,
+        jobType: staff.jobType,
+        role: staff.role,
+        clock: staff.clock || [],
+        work: staff.work || [],
         status: staff.status,
         clock_status: staff.clock_status,
-        attendance: staff.attendance,
-        salaryHistory: staff.salaryHistory,
-        leaves: staff.leaves,
+        attendance: staff.attendance || [],
+        salaryStatus: staff.salaryStatus,
+        salaryHistory: staff.salaryHistory || [],
+        salaryRevisions: staff.salaryRevisions || [],
+        leaves: staff.leaves || [],
         totalCasualLeaves: staff.totalCasualLeaves,
         todayClock: todayClockRecord || null,
-        role: staff.role,
+        accountHolder: staff.accountHolder || '',
+        accountNumber: staff.accountNumber || '',
+        ifscCode: staff.ifscCode || '',
+        bankName: staff.bankName || '',
+        documents: staff.documents || [],
         reportingPerson: staff.reportingPerson || [],
         reportingPersonName,
         todaySatisfaction: staff.todaySatisfaction || 'none',
