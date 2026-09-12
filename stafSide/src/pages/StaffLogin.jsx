@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Lock, User, Eye, EyeOff, Loader2, Briefcase } from 'lucide-react';
+import { Lock, User, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const StaffLogin = ({ onLogin }) => {
@@ -73,18 +73,18 @@ const StaffLogin = ({ onLogin }) => {
         className="w-full max-w-md z-10"
       >
         <div className="glass-card p-8 rounded-[2.5rem] border border-gray-100 dark:border-white/5 shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-8 opacity-10">
-            <Briefcase size={80} className="text-blue-500" />
-          </div>
-
           <div className="text-center mb-8 relative z-10">
             <motion.div 
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ type: "spring", damping: 12, delay: 0.2 }}
-              className="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl shadow-blue-500/20"
+              className="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-4 flex items-center justify-center p-2.5 rounded-3xl bg-white/[0.06] border border-white/10 shadow-2xl shadow-blue-500/15 backdrop-blur-xl"
             >
-              <Lock className="text-white" size={32} />
+              <img 
+                src="/rw-logo.png" 
+                alt="RizeWorld Logo" 
+                className="w-full h-full object-contain rounded-2xl drop-shadow-[0_10px_20px_rgba(59,130,246,0.35)]" 
+              />
             </motion.div>
             <h2 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight uppercase">Employee Portal</h2>
             <p className="text-sm font-bold text-gray-500 dark:text-gray-400 mt-2 uppercase tracking-widest">Sign in with Employee ID</p>
