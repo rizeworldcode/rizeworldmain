@@ -259,68 +259,208 @@ const calculatePayout = (staffInfo) => {
   };
 };
 
+const calculatePayoutForMonth = (staffInfo, year, monthIndex, paidHistory = null) => {
+  if (!staffInfo) return null;
+  const baseSalary = paidHistory ? paidHistory.baseSalary : (staffInfo.monthlySalary || 0);
+  const hourlyRate = baseSalary / EXPECTED_MONTHLY_HOURS;
+
+  const today = new Date();
+  const isCurrentMonth = today.getMonth() === monthIndex && today.getFullYear() === year;
+
+  const createdAt = staffInfo.createdAt || staffInfo.joiningDate;
+  const sequenceDates = get30DaySequenceDates(year, monthIndex, createdAt);
+
+  const todayEnd = new Date();
+  todayEnd.setHours(23, 59, 59, 999);
+
+  const validSequenceDates = isCurrentMonth
+    ? sequenceDates.filter(d => d <= todayEnd)
+    : sequenceDates;
+
+  const seqDateStrings = new Set(validSequenceDates.map(d => d.toDateString()));
+
+  const monthlyClockRecords = (staffInfo.clock || []).filter(r => {
+    return seqDateStrings.has(new Date(r.date).toDateString());
+  });
+
+  const dailyHoursMap = {};
+  const creditedDates = new Set();
+
+  monthlyClockRecords.forEach(r => {
+    const dStr = new Date(r.date).toDateString();
+    const actualHrs = parseTotalHours(r.totalHours);
+    let hrs = 0;
+    if (actualHrs > 9) {
+      hrs = 8.5 + (actualHrs - 9);
+    } else if (actualHrs >= 8.5) {
+      hrs = 8.5;
+    } else {
+      hrs = actualHrs;
+    }
+    dailyHoursMap[dStr] = hrs;
+    creditedDates.add(dStr);
+  });
+
+  validSequenceDates.forEach(d => {
+    const dStr = d.toDateString();
+    if (d.getDay() === 0 && !creditedDates.has(dStr)) {
+      dailyHoursMap[dStr] = STANDARD_HOURS_PER_DAY;
+      creditedDates.add(dStr);
+    }
+  });
+
+  (staffInfo.leaves || []).forEach(leave => {
+    const ld = new Date(leave.date);
+    const ldStr = ld.toDateString();
+    if (seqDateStrings.has(ldStr) && !creditedDates.has(ldStr)) {
+      dailyHoursMap[ldStr] = STANDARD_HOURS_PER_DAY;
+      creditedDates.add(ldStr);
+    }
+  });
+
+  (staffInfo.attendance || []).forEach(att => {
+    if (att.status === 'On Leave') {
+      const ad = new Date(att.date);
+      const adStr = ad.toDateString();
+      if (seqDateStrings.has(adStr) && !creditedDates.has(adStr)) {
+        dailyHoursMap[adStr] = STANDARD_HOURS_PER_DAY;
+        creditedDates.add(adStr);
+      }
+    }
+  });
+
+  const absentDaysList = validSequenceDates.filter(d => {
+    if (d.getDay() === 0) return false;
+    return !creditedDates.has(d.toDateString());
+  });
+
+  const halfDayRecords = (staffInfo.attendance || []).filter(att => {
+    if (att.status !== 'Half-Day') return false;
+    const ad = new Date(att.date);
+    return seqDateStrings.has(ad.toDateString());
+  });
+  const halfDayLeaveUnits = Math.floor(halfDayRecords.length / 2);
+
+  let casualLeaveUsed = false;
+  if (absentDaysList.length > 0) {
+    const casualLeaveDate = absentDaysList[0];
+    const dStr = casualLeaveDate.toDateString();
+    dailyHoursMap[dStr] = STANDARD_HOURS_PER_DAY;
+    creditedDates.add(dStr);
+    casualLeaveUsed = true;
+  } else if (halfDayLeaveUnits > 0) {
+    for (let i = 0; i < 2; i++) {
+      const hdDate = new Date(halfDayRecords[i].date);
+      const dStr = hdDate.toDateString();
+      const cr = monthlyClockRecords.find(r => new Date(r.date).toDateString() === dStr);
+      const actualHrs = cr ? parseTotalHours(cr.totalHours) : 0;
+      const halfTarget = STANDARD_HOURS_PER_DAY / 2;
+      if (actualHrs < halfTarget) {
+        dailyHoursMap[dStr] = (dailyHoursMap[dStr] || actualHrs) + (halfTarget - actualHrs);
+      }
+    }
+    casualLeaveUsed = true;
+  }
+
+  let calculatedPayout = 0;
+  let totalHoursWorked = 0;
+
+  validSequenceDates.forEach(d => {
+    const dStr = d.toDateString();
+    const hrs = dailyHoursMap[dStr] || 0;
+    totalHoursWorked += hrs;
+    const { salary: daySalary } = getSalaryForDate(staffInfo, d);
+    const dayHourlyRate = daySalary / EXPECTED_MONTHLY_HOURS;
+    calculatedPayout += hrs * dayHourlyRate;
+  });
+
+  calculatedPayout = Math.round(calculatedPayout);
+
+  const presents = monthlyClockRecords.length;
+  const fullLeaves = Math.max(0, absentDaysList.length - (casualLeaveUsed && absentDaysList.length > 0 ? 1 : 0));
+  const finalPayout = paidHistory ? paidHistory.payoutSalary : calculatedPayout;
+  const deduction = Math.max(0, baseSalary - finalPayout);
+
+  return {
+    baseSalary,
+    salary: finalPayout,
+    payout: finalPayout,
+    totalLeaves: paidHistory ? (paidHistory.totalLeaves ?? fullLeaves) : fullLeaves,
+    totalHalfDays: paidHistory ? (paidHistory.totalHalfDays ?? halfDayRecords.length) : halfDayRecords.length,
+    isPaid: !!paidHistory,
+    totalHoursWorked: Math.round(totalHoursWorked * 100) / 100
+  };
+};
+
 // Function to generate monthly salary chart data
 const generateChartData = (staffInfo) => {
+  if (!staffInfo) return [];
   const months = [];
   const today = new Date();
   
-  // Parse joining date
-  let joiningDate;
+  let joiningDate = null;
   if (staffInfo.joiningDate) {
     joiningDate = new Date(staffInfo.joiningDate);
+    joiningDate.setHours(0, 0, 0, 0);
   }
   
-  // First use salaryHistory data
   const salaryHistory = staffInfo.salaryHistory || [];
-  
-  // Create a map of month-year to full record
-  const salaryMap = new Map();
-  salaryHistory.forEach(record => {
-    salaryMap.set(record.month, record);
-  });
   
   // Generate last 6 months data
   for (let i = 5; i >= 0; i--) {
-    const date = new Date(today);
-    date.setMonth(today.getMonth() - i);
+    const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
+    const year = date.getFullYear();
+    const monthIndex = date.getMonth();
     const monthName = date.toLocaleDateString('en-US', { month: 'short' });
     const fullMonthName = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
     
-    let salary = 0;
-    let baseSalary = staffInfo.monthlySalary || 0;
-    let totalLeaves = 0;
-    let totalHalfDays = 0;
-    
-    // Only calculate salary if month is on or after joining date
-    if (!joiningDate || 
-        (date.getFullYear() > joiningDate.getFullYear()) || 
-        (date.getFullYear() === joiningDate.getFullYear() && date.getMonth() >= joiningDate.getMonth())) {
-      
-      salary = staffInfo.monthlySalary || 0;
-      
-      // If we have a salaryHistory record for this month, use it
-      if (salaryMap.has(fullMonthName)) {
-        const record = salaryMap.get(fullMonthName);
-        salary = record.payoutSalary;
-        baseSalary = record.baseSalary;
-        totalLeaves = record.totalLeaves;
-        totalHalfDays = record.totalHalfDays;
-      } else if (i === 0) {
-        // For current month, calculate the payout
-        const { payout, fullLeaves, halfDays } = calculatePayout(staffInfo);
-        salary = payout;
-        totalLeaves = fullLeaves;
-        totalHalfDays = halfDays;
-      }
+    // Check if month is on or after joining date and on/after CALCULATION_START_DATE
+    const monthEndDate = new Date(year, monthIndex + 1, 0);
+    const isBeforeJoining = joiningDate && monthEndDate < joiningDate;
+    const isBeforeCalcStart = monthEndDate < CALCULATION_START_DATE;
+
+    if (isBeforeJoining || isBeforeCalcStart) {
+      months.push({
+        name: monthName,
+        fullName: fullMonthName,
+        salary: 0,
+        baseSalary: 0,
+        totalLeaves: 0,
+        totalHalfDays: 0,
+        isPaid: false
+      });
+      continue;
     }
-    
-    months.push({
-      name: monthName,
-      salary: salary,
-      baseSalary: baseSalary,
-      totalLeaves: totalLeaves,
-      totalHalfDays: totalHalfDays
+
+    // Check if paid in salaryHistory
+    const paidHistory = salaryHistory.find(h => {
+      const hCleaned = (h.month || '').replace(/\s*\(Current\)/i, '').trim();
+      return hCleaned === fullMonthName;
     });
+
+    const monthData = calculatePayoutForMonth(staffInfo, year, monthIndex, paidHistory);
+
+    if (monthData) {
+      months.push({
+        name: monthName,
+        fullName: fullMonthName,
+        salary: monthData.salary,
+        baseSalary: monthData.baseSalary,
+        totalLeaves: monthData.totalLeaves,
+        totalHalfDays: monthData.totalHalfDays,
+        isPaid: monthData.isPaid
+      });
+    } else {
+      months.push({
+        name: monthName,
+        fullName: fullMonthName,
+        salary: 0,
+        baseSalary: staffInfo.monthlySalary || 0,
+        totalLeaves: 0,
+        totalHalfDays: 0,
+        isPaid: false
+      });
+    }
   }
   return months;
 };
@@ -403,7 +543,7 @@ const ActionCard = ({ title, time, icon: Icon, color, onClick, disabled, type })
   </motion.button>
 );
 
-const Dashboard = () => {
+const Dashboard = ({ onNavigateToProgress }) => {
   const [greeting, setGreeting] = useState('');
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
   const [todayTasks, setTodayTasks] = useState([]);
@@ -2815,6 +2955,39 @@ const Dashboard = () => {
         />
       </section>
 
+      {/* Progress Report & Clock Cycle History Banner */}
+      <section>
+        <div className="clay-card p-6 sm:p-8 bg-gradient-to-r from-purple-500/10 via-indigo-500/10 to-purple-500/10 border-2 border-purple-500/20 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex items-center gap-4">
+            <div className="p-4 rounded-2xl clay-inset bg-purple-600 text-white shrink-0 shadow-lg shadow-purple-500/20">
+              <TrendingUp size={28} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-xl font-black text-black">My Progress & Clock Cycle Statement</h3>
+                <span className="px-2.5 py-0.5 bg-purple-500/10 text-purple-700 text-[10px] font-black uppercase rounded-lg border border-purple-500/20">
+                  New Feature
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 font-bold mt-1 max-w-xl">
+                Track all daily clock cycles by date, morning & evening in/out sessions, working duration, daily tasks, satisfaction zones, and download your monthly statements in PDF/CSV format.
+              </p>
+            </div>
+          </div>
+          {onNavigateToProgress && (
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={onNavigateToProgress}
+              className="px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-2xl font-black text-sm shadow-lg shadow-purple-500/25 flex items-center justify-center gap-2 transition-all whitespace-nowrap self-start md:self-auto cursor-pointer"
+            >
+              <span>View Progress & Download Report</span>
+              <ArrowUpRight size={18} />
+            </motion.button>
+          )}
+        </div>
+      </section>
+
       {/* Analytics & Distribution Grid */}
       <section className="grid grid-cols-1 gap-6 sm:gap-8">
         {/* Salary Chart */}
@@ -2842,20 +3015,42 @@ const Dashboard = () => {
                   tick={{ fill: '#000', fontSize: 10, fontWeight: 700 }}
                 />
                 <Tooltip 
-                  cursor={{ fill: 'rgba(139, 92, 246, 0.05)' }}
-                  contentStyle={{ 
-                    borderRadius: '20px', 
-                    border: 'none', 
-                    boxShadow: '10px 10px 20px #c8d0e7, -10px -10px 20px #ffffff',
-                    padding: '12px',
-                    color: '#000'
-                  }}
-                  formatter={(value, name, props) => {
-                    const data = props.payload;
-                    return [
-                      `₹${value.toLocaleString()}`,
-                      `Base: ₹${data.baseSalary?.toLocaleString()}\nPayout: ₹${data.salary?.toLocaleString()}\nLeaves: ${data.totalLeaves}\nHalf Days: ${data.totalHalfDays}`
-                    ];
+                  cursor={{ fill: 'rgba(139, 92, 246, 0.08)' }}
+                  content={({ active, payload }) => {
+                    if (active && payload && payload.length) {
+                      const data = payload[0].payload;
+                      return (
+                        <div className="bg-white/95 backdrop-blur-md p-4 rounded-2xl shadow-xl border border-purple-100 space-y-2 text-xs">
+                          <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-1.5">
+                            <span className="font-black text-slate-900 text-sm">{data.fullName || data.name}</span>
+                            {data.isPaid ? (
+                              <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 font-black text-[10px] rounded-md border border-emerald-200">
+                                ✓ Salary Cleared
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 bg-purple-50 text-purple-700 font-black text-[10px] rounded-md border border-purple-200">
+                                Calculated
+                              </span>
+                            )}
+                          </div>
+                          <div className="space-y-1 font-bold text-slate-600">
+                            <div className="flex justify-between gap-4">
+                              <span>Base Salary:</span>
+                              <span className="text-slate-900">₹{(data.baseSalary || 0).toLocaleString('en-IN')}</span>
+                            </div>
+                            <div className="flex justify-between gap-4 text-emerald-600 font-black text-sm">
+                              <span>Payout:</span>
+                              <span>₹{(data.salary || 0).toLocaleString('en-IN')}</span>
+                            </div>
+                            <div className="flex justify-between gap-4 text-slate-500 pt-1 border-t border-slate-100 text-[11px]">
+                              <span>Full Leaves: {data.totalLeaves || 0}d</span>
+                              <span>Half Days: {data.totalHalfDays || 0}d</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
                   }}
                 />
                 <Bar 

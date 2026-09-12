@@ -27,7 +27,19 @@ exports.protect = catchAsync(async (req, res, next) => {
     }
 
     // 2) Verification token
-    const decoded = await promisify(jwt.verify)(token, process.env.SECRET_KEY);
+    let decoded;
+    try {
+        decoded = await promisify(jwt.verify)(token, process.env.SECRET_KEY || 'default_secret');
+    } catch (err) {
+        if (err.name === 'TokenExpiredError') {
+            return next(
+                new AppError('Your session has expired! Please log in again.', 401)
+            );
+        }
+        return next(
+            new AppError('Invalid session token! Please log in again.', 401)
+        );
+    }
 
     // 3) High-speed user lookup with 30s cache and lean selection to avoid loading heavy arrays
     const cacheKey = `auth:user:${decoded.id}`;

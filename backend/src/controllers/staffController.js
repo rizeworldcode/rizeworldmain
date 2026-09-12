@@ -30,7 +30,7 @@ exports.loginStaff = async (req, res) => {
     const token = jwt.sign(
       { id: staff._id, employeeId: staff.employeeId, role: 'staff' },
       process.env.SECRET_KEY || 'default_secret',
-      { expiresIn: '24h' }
+      { expiresIn: '30d' }
     );
 
     // Save token in database as auth key
@@ -73,12 +73,20 @@ exports.loginStaff = async (req, res) => {
         clock_status: staff.clock_status,
         attendance: staff.attendance,
         salaryHistory: staff.salaryHistory,
+        salaryRevisions: staff.salaryRevisions || [],
+        jobType: staff.jobType || '',
+        createdAt: staff.createdAt,
         leaves: staff.leaves,
         totalCasualLeaves: staff.totalCasualLeaves,
         todayClock: todayClockRecord || null, // Send today's specific clock record
         role: staff.role, // Include role for notifications
         reportingPerson: staff.reportingPerson || [],
-        reportingPersonName
+        reportingPersonName,
+        todaySatisfaction: staff.todaySatisfaction || 'none',
+        satisfactionHistory: staff.satisfactionHistory || [],
+        todayComment: staff.todayComment || '',
+        commentHistory: staff.commentHistory || [],
+        commentUpdatedBy: staff.commentUpdatedBy || ''
       },
       token
     });
@@ -527,7 +535,9 @@ exports.getStaffById = async (req, res) => {
         reportingPerson: staff.reportingPerson || [],
         reportingPersonName,
         todaySatisfaction: staff.todaySatisfaction || 'none',
+        satisfactionHistory: staff.satisfactionHistory || [],
         todayComment: staff.todayComment || '',
+        commentHistory: staff.commentHistory || [],
         commentUpdatedBy: staff.commentUpdatedBy || ''
       }
     });

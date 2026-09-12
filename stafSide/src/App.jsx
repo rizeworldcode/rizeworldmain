@@ -11,9 +11,7 @@ import VisitingCards from './pages/VisitingCards';
 import Clients from './pages/Clients';
 import ClientProjects from './pages/ClientProjects';
 import BlogManagement from './pages/BlogManagement';
-
-
-
+import StaffProgressReport from './pages/StaffProgressReport';
 
 const MainLayout = ({ onLogout }) => {
   const navigate = useNavigate();
@@ -28,14 +26,10 @@ const MainLayout = ({ onLogout }) => {
   const isVisitingCardsAllowed = ['admin', 'data analyst'].includes(staffInfo.role?.toLowerCase());
   const isMarketing = (staffInfo.department?.toLowerCase() || '').includes('marketing') || (staffInfo.role?.toLowerCase() || '').includes('marketing');
 
-
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     navigate(`/dashboard?tab=${tab}`);
   };
-
-
-
 
   return (
     <div className="min-h-screen bg-[#eef2f6] flex flex-col relative overflow-hidden">
@@ -69,23 +63,39 @@ const MainLayout = ({ onLogout }) => {
 
       {/* Top Navbar */}
       <div className="flex items-center justify-between p-4 bg-[#eef2f6] z-40 sticky top-0">
-        <div className="flex items-center gap-4">
-          <img src="/logo.png" className="w-10 h-10 object-contain rounded-xl shadow-lg shadow-purple-500/10" alt="RizeWorld Logo" />
-          {isHR && (
-            <div className="flex items-center gap-2 bg-[#eef2f6] p-1 rounded-2xl clay-inset ml-2">
+        <div className="flex items-center gap-3 overflow-x-auto py-1 max-w-[85vw]">
+          <img src="/logo.png" className="w-10 h-10 object-contain rounded-xl shadow-lg shadow-purple-500/10 shrink-0 cursor-pointer" alt="RizeWorld Logo" onClick={() => handleTabChange('dashboard')} />
+          
+          {/* Universal Navigation Tabs Bar */}
+          <div className="flex items-center gap-1.5 sm:gap-2 bg-[#eef2f6] p-1 rounded-2xl clay-inset shrink-0">
+            <button 
+              onClick={() => handleTabChange('dashboard')}
+              className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                activeTab === 'dashboard'
+                  ? 'clay-flat text-[#8b5cf6] font-bold shadow-md shadow-purple-500/10'
+                  : 'text-[#64748b] hover:text-[#8b5cf6]'
+              }`}
+            >
+              <LayoutDashboard size={15} />
+              Dashboard
+            </button>
+
+            <button 
+              onClick={() => handleTabChange('progress')}
+              className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                activeTab === 'progress'
+                  ? 'clay-flat text-[#8b5cf6] font-bold shadow-md shadow-purple-500/10'
+                  : 'text-[#64748b] hover:text-[#8b5cf6]'
+              }`}
+            >
+              <TrendingUp size={15} />
+              Progress Report
+            </button>
+
+            {isHR && (
               <button 
-                onClick={() => setActiveTab('dashboard')}
-                className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all ${
-                  activeTab === 'dashboard'
-                    ? 'clay-flat text-[#8b5cf6] font-bold shadow-md shadow-purple-500/10'
-                    : 'text-[#64748b] hover:text-[#8b5cf6]'
-                }`}
-              >
-                Dashboard
-              </button>
-              <button 
-                onClick={() => setActiveTab('hearing')}
-                className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all ${
+                onClick={() => handleTabChange('hearing')}
+                className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all whitespace-nowrap ${
                   activeTab === 'hearing'
                     ? 'clay-flat text-[#8b5cf6] font-bold shadow-md shadow-purple-500/10'
                     : 'text-[#64748b] hover:text-[#8b5cf6]'
@@ -93,139 +103,96 @@ const MainLayout = ({ onLogout }) => {
               >
                 Hearing
               </button>
-            </div>
-          )}
-          {isCounselor && (
-            <div className="flex items-center gap-2 bg-[#eef2f6] p-1 rounded-2xl clay-inset ml-2">
+            )}
+
+            {isCounselor && (
               <button 
-                onClick={() => setActiveTab('dashboard')}
-                className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all ${
-                  activeTab === 'dashboard'
-                    ? 'clay-flat text-[#8b5cf6] font-bold shadow-md shadow-purple-500/10'
-                    : 'text-[#64748b] hover:text-[#8b5cf6]'
-                }`}
-              >
-                <LayoutDashboard size={16} className="inline mr-1" />
-                Dashboard
-              </button>
-              <button 
-                onClick={() => setActiveTab('admissions')}
-                className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all ${
+                onClick={() => handleTabChange('admissions')}
+                className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-1.5 ${
                   activeTab === 'admissions'
                     ? 'clay-flat text-[#8b5cf6] font-bold shadow-md shadow-purple-500/10'
                     : 'text-[#64748b] hover:text-[#8b5cf6]'
                 }`}
               >
-                <GraduationCap size={16} className="inline mr-1" />
+                <GraduationCap size={15} />
                 Admissions
               </button>
-            </div>
-          )}
-          {isSalesTeam && (
-            <div className="flex items-center gap-2 bg-[#eef2f6] p-1 rounded-2xl clay-inset ml-2">
+            )}
+
+            {isSalesTeam && (
               <button 
-                onClick={() => setActiveTab('dashboard')}
-                className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all ${
-                  activeTab === 'dashboard'
-                    ? 'clay-flat text-[#8b5cf6] font-bold shadow-md shadow-purple-500/10'
-                    : 'text-[#64748b] hover:text-[#8b5cf6]'
-                }`}
-              >
-                <LayoutDashboard size={16} className="inline mr-1" />
-                Dashboard
-              </button>
-              <button 
-                onClick={() => setActiveTab('sales')}
-                className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all ${
+                onClick={() => handleTabChange('sales')}
+                className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-1.5 ${
                   activeTab === 'sales'
                     ? 'clay-flat text-[#8b5cf6] font-bold shadow-md shadow-purple-500/10'
                     : 'text-[#64748b] hover:text-[#8b5cf6]'
                 }`}
               >
-                <TrendingUp size={16} className="inline mr-1" />
+                <TrendingUp size={15} />
                 Sales log
               </button>
-            </div>
-          )}
-          {isVisitingCardsAllowed && (
-            <div className="flex items-center gap-2 bg-[#eef2f6] p-1 rounded-2xl clay-inset ml-2">
-              <button 
-                onClick={() => handleTabChange('dashboard')}
-                className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all ${
-                  activeTab === 'dashboard'
-                    ? 'clay-flat text-[#8b5cf6] font-bold shadow-md shadow-purple-500/10'
-                    : 'text-[#64748b] hover:text-[#8b5cf6]'
-                }`}
-              >
-                <LayoutDashboard size={16} className="inline mr-1" />
-                Dashboard
-              </button>
-              <button 
-                onClick={() => handleTabChange('clients')}
-                className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all ${
-                  activeTab === 'clients'
-                    ? 'clay-flat text-[#8b5cf6] font-bold shadow-md shadow-purple-500/10'
-                    : 'text-[#64748b] hover:text-[#8b5cf6]'
-                }`}
-              >
-                <Users size={16} className="inline mr-1" />
-                Clients
-              </button>
-              <button 
-                onClick={() => handleTabChange('visitingCards')}
-                className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all ${
-                  activeTab === 'visitingCards'
-                    ? 'clay-flat text-[#8b5cf6] font-bold shadow-md shadow-purple-500/10'
-                    : 'text-[#64748b] hover:text-[#8b5cf6]'
-                }`}
-              >
-                <CreditCard size={16} className="inline mr-1" />
-                Visiting Cards
-              </button>
-            </div>
-          )}
-          {isMarketing && (
-            <div className="flex items-center gap-2 bg-[#eef2f6] p-1 rounded-2xl clay-inset ml-2">
-              <button 
-                onClick={() => handleTabChange('dashboard')}
-                className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all ${
-                  activeTab === 'dashboard'
-                    ? 'clay-flat text-[#8b5cf6] font-bold shadow-md shadow-purple-500/10'
-                    : 'text-[#64748b] hover:text-[#8b5cf6]'
-                }`}
-              >
-                <LayoutDashboard size={16} className="inline mr-1" />
-                Dashboard
-              </button>
+            )}
+
+            {isVisitingCardsAllowed && (
+              <>
+                <button 
+                  onClick={() => handleTabChange('clients')}
+                  className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                    activeTab === 'clients'
+                      ? 'clay-flat text-[#8b5cf6] font-bold shadow-md shadow-purple-500/10'
+                      : 'text-[#64748b] hover:text-[#8b5cf6]'
+                  }`}
+                >
+                  <Users size={15} />
+                  Clients
+                </button>
+                <button 
+                  onClick={() => handleTabChange('visitingCards')}
+                  className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                    activeTab === 'visitingCards'
+                      ? 'clay-flat text-[#8b5cf6] font-bold shadow-md shadow-purple-500/10'
+                      : 'text-[#64748b] hover:text-[#8b5cf6]'
+                  }`}
+                >
+                  <CreditCard size={15} />
+                  Visiting Cards
+                </button>
+              </>
+            )}
+
+            {isMarketing && (
               <button 
                 onClick={() => handleTabChange('blogs')}
-                className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all ${
+                className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-1.5 ${
                   activeTab === 'blogs'
                     ? 'clay-flat text-[#8b5cf6] font-bold shadow-md shadow-purple-500/10'
                     : 'text-[#64748b] hover:text-[#8b5cf6]'
                 }`}
               >
-                <BookOpen size={16} className="inline mr-1" />
+                <BookOpen size={15} />
                 Blog Editor
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
+
         <button 
           onClick={onLogout}
-          className="p-3 clay-flat rounded-xl text-[#64748b] hover:text-rose-500 hover:clay-inset transition-all"
+          className="p-3 clay-flat rounded-xl text-[#64748b] hover:text-rose-500 hover:clay-inset transition-all shrink-0"
+          title="Logout"
         >
-          <LogOut size={24} />
+          <LogOut size={22} />
         </button>
       </div>
       
       {/* Main Content */}
-      <main className="flex-1 p-4 md:p-10 relative z-10">
+      <main className="flex-1 p-4 md:p-8 relative z-10">
         {clientId ? (
           <ClientProjects onBack={() => navigate('/dashboard?tab=clients')} />
         ) : (
           <>
-            {activeTab === 'dashboard' && <Dashboard />}
+            {activeTab === 'dashboard' && <Dashboard onNavigateToProgress={() => handleTabChange('progress')} />}
+            {activeTab === 'progress' && <StaffProgressReport onBack={() => handleTabChange('dashboard')} />}
             {activeTab === 'hearing' && isHR && <HearingManagement />}
             {activeTab === 'admissions' && isCounselor && <StudentAdmissions onBack={() => handleTabChange('dashboard')} />}
             {activeTab === 'sales' && isSalesTeam && <SalesTeam onBack={() => handleTabChange('dashboard')} />}
