@@ -176,8 +176,7 @@ export default function Careers() {
               <div>
                 <Link
                   to={`/careers/${job.id}`}
-                  className="btn-primary w-full justify-center py-4!"
-                >
+                  className="btn-primary w-full justify-center py-4!">
                   Apply Position <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
                 </Link>
               </div>
