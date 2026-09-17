@@ -40,14 +40,14 @@
   RewriteCond %{DOCUMENT_ROOT}%{REQUEST_URI}/index.html -f
   RewriteRule ^(.+?)/?$ /$1/index.html [L]
 
-  # 3. SPA routing fallback for known static top-level app routes ONLY
-  # Inner dynamic routes (blogs/*, locations/*, services/*, case-studies/*) are NOT served here.
-  # If no prerendered file exists for them, Apache returns 404 (handled by ErrorDocument below).
+  # 3. Directory with existing index.html fallback
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteCond %{REQUEST_FILENAME}/index.html -f
+  RewriteRule ^ - [L]
+
+  # 4. Universal SPA routing fallback
+  # Send all non-file requests to /index.html so React Router can handle direct link pasting & refresh
   RewriteCond %{REQUEST_FILENAME} !-f
-  RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteCond %{REQUEST_URI} !^/(blogs|services|locations|service|case-studies)/.+ [NC]
-  RewriteCond %{REQUEST_URI} ^/(about|team|portfolio|careers|blogs|privacy|terms|accessibility|faq|pricing|case-studies|locations|service|services|contact)/?$ [NC,OR]
-  RewriteCond %{REQUEST_URI} ^/$
   RewriteRule . /index.html [L]
 
 </IfModule>

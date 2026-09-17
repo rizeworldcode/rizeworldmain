@@ -6,8 +6,8 @@ export default function Header() {
   const [isOpen, setIsOpen] = useState(false);
   const [isServicesOpen, setIsServicesOpen] = useState(false);
   const location = useLocation();
-  const isActive = (path: string) => location.pathname === path && location.hash === '';
-  const isServicesActive = () => location.pathname === '/services' || (location.pathname === '/' && location.hash === '#services');
+  const isActive = (path: string) => location.pathname === path;
+  const isServicesActive = () => location.pathname.startsWith('/services');
 
   const handleLogoClick = () => {
     if (location.pathname === '/') {
@@ -15,16 +15,7 @@ export default function Header() {
     }
   };
 
-  const handleServicesClick = (e: React.MouseEvent) => {
-    // If we're on Home, smooth scroll to #services, otherwise let the router navigate to /services
-    if (location.pathname === '/') {
-      e.preventDefault();
-      window.history.replaceState(null, '', '#services');
-      const el = document.getElementById('services');
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth' });
-      }
-    }
+  const handleServicesClick = () => {
     setIsOpen(false);
   };
 
@@ -208,6 +199,13 @@ export default function Header() {
             
             {isServicesOpen && (
               <div className="pl-6 flex flex-col gap-1 mt-1 border-l-2 border-blue-500/20 ml-5">
+                <Link 
+                  to="/services" 
+                  onClick={() => setIsOpen(false)}
+                  className="text-rize-primary font-bold tracking-wide px-4 py-2 rounded-xl transition-colors uppercase block text-left text-xs bg-blue-50/50 mb-1"
+                >
+                  All Services (Overview)
+                </Link>
                 <div className="flex flex-col">
                   <Link 
                     to="/services/digital-marketing" 

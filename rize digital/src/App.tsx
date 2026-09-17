@@ -1,5 +1,5 @@
 import { useEffect, Suspense, lazy } from 'react';
-import { Routes, Route, useLocation } from 'react-router-dom';
+import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Header from './components/common/Header';
@@ -62,6 +62,13 @@ import DigitalMarketingAgencyInChandigarh from './pages/services/DigitalMarketin
 
 function App() {
   const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (location.hash === '#services') {
+      navigate('/services', { replace: true });
+    }
+  }, [location.hash, navigate]);
 
   useEffect(() => {
     // Wrap animations in a gsap.context
