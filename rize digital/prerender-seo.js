@@ -126,6 +126,8 @@ async function runPrerender() {
         } else if (reqUrl.includes('/assets/') && !reqUrl.startsWith('http://localhost:4173/assets/')) {
           const newUrl = reqUrl.replace(/http:\/\/localhost:4173\/.*\/assets\//, 'http://localhost:4173/assets/');
           req.continue({ url: newUrl });
+        } else if (reqUrl.includes(':45000') || reqUrl.includes('/api/')) {
+          req.abort();
         } else {
           req.continue();
         }

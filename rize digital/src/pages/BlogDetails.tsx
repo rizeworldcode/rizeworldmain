@@ -31,17 +31,21 @@ export interface NavBlog {
 export default function BlogDetails() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  const fallbackBlog = blogsData[slug || ''];
   const [fetchedBlog, setFetchedBlog] = useState<DynamicBlog | null>(null);
   const [allBlogs, setAllBlogs] = useState<NavBlog[]>(blogsList);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState<boolean>(!fallbackBlog);
 
   useEffect(() => {
     window.scrollTo(0, 0);
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+
     const loadBlog = async () => {
       try {
         if (slug) {
-          const res = await fetch(`${getApiBaseUrl()}/blogs/${slug}`);
+          const res = await fetch(`${getApiBaseUrl()}/blogs/${slug}`, { signal: controller.signal });
           const data = await res.json();
           if (data.success && data.data) {
             const b = data.data;
@@ -67,13 +71,13 @@ export default function BlogDetails() {
           }
         }
       } catch (err) {
-        console.error('Error fetching blog detail:', err);
+        // Silently fall back to static blog data if fetch fails or times out
       }
     };
 
     const loadAllBlogs = async () => {
       try {
-        const res = await fetch(`${getApiBaseUrl()}/blogs`);
+        const res = await fetch(`${getApiBaseUrl()}/blogs`, { signal: controller.signal });
         const data = await res.json();
         if (data.success && Array.isArray(data.data) && data.data.length > 0) {
           const backendList: NavBlog[] = data.data.map((b: any) => ({
@@ -89,16 +93,19 @@ export default function BlogDetails() {
           setAllBlogs([...backendList, ...filteredStatic]);
         }
       } catch (err) {
-        console.error('Error fetching all blogs for nav:', err);
+        // Keep static allBlogs list
       } finally {
         setIsLoading(false);
       }
     };
 
     loadBlog().then(loadAllBlogs);
-  }, [slug]);
 
-  const fallbackBlog = blogsData[slug || ''];
+    return () => {
+      clearTimeout(timeoutId);
+      controller.abort();
+    };
+  }, [slug]);
 
   if (!isLoading && !fetchedBlog && !fallbackBlog) {
     return <NotFound />;
