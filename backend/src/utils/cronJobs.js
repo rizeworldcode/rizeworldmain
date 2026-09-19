@@ -19,24 +19,26 @@ async function checkAndSendClientNotifications() {
     const oldClients = await OldClient.find();
     
     for (const client of clients) {
-      if (client.deadline) {
+      const pending = Number(client.pendingAmount !== undefined ? client.pendingAmount : ((client.totalPrice || client.totalAmount || 0) - (client.paidAmount || 0)));
+      if (pending > 0 && client.deadline) {
         const daysUntilDeadline = calculateDaysDifference(today, client.deadline);
         
         if (daysUntilDeadline > 0 && daysUntilDeadline <= 5) {
           await notifyHRAndSupportPreDeadline(client, daysUntilDeadline);
-        } else if (daysUntilDeadline < 0) {
+        } else if (daysUntilDeadline <= 0) {
           await notifyHRAndSupportPostDeadline(client, Math.abs(daysUntilDeadline));
         }
       }
     }
     
     for (const oldClient of oldClients) {
-      if (oldClient.deliveredDate) {
+      const pending = Number((oldClient.totalAmount || 0) - (oldClient.paidAmount || 0));
+      if (pending > 0 && oldClient.deliveredDate) {
         const daysSinceDelivery = calculateDaysDifference(oldClient.deliveredDate, today);
         
         if (daysSinceDelivery > 0 && daysSinceDelivery <= 5) {
           await notifyHRAndSupportOldClientPreDeadline(oldClient, daysSinceDelivery);
-        } else if (daysSinceDelivery > 5 && oldClient.totalAmount > oldClient.paidAmount) {
+        } else if (daysSinceDelivery > 5) {
           await notifyHRAndSupportOldClientPostDeadline(oldClient, daysSinceDelivery);
         }
       }
@@ -53,7 +55,7 @@ async function notifyHRAndSupportPreDeadline(client, daysLeft) {
   const message = `Client ${client.name} (${client.phone}) has a project deadline in ${daysLeft} day${daysLeft > 1 ? 's' : ''}. Pending amount: ₹${client.pendingAmount}. Please follow up for payment.`;
   
   await notifyHRAndSupport(title, message, 'High', client._id, null);
-  console.log(`HR/Support notified about pre-deadline for client ${client.name}`);
+  console.log(`Client Support notified about pre-deadline for client ${client.name}`);
 }
 
 async function notifyHRAndSupportPostDeadline(client, daysOverdue) {
@@ -61,7 +63,7 @@ async function notifyHRAndSupportPostDeadline(client, daysOverdue) {
   const message = `URGENT: Client ${client.name} (${client.phone}) project deadline has passed by ${daysOverdue} day${daysOverdue > 1 ? 's' : ''}. Pending amount: ₹${client.pendingAmount}. Please follow up immediately for payment collection.`;
   
   await notifyHRAndSupport(title, message, 'Urgent', client._id, null);
-  console.log(`HR/Support notified about post-deadline for client ${client.name}`);
+  console.log(`Client Support notified about post-deadline for client ${client.name}`);
 }
 
 async function notifyHRAndSupportOldClientPreDeadline(oldClient, daysSinceDelivery) {
@@ -70,7 +72,7 @@ async function notifyHRAndSupportOldClientPreDeadline(oldClient, daysSinceDelive
   const message = `Old Client ${oldClient.name} (${oldClient.phone}) payment deadline in ${daysLeft} day${daysLeft > 1 ? 's' : ''}. Pending amount: ₹${oldClient.totalAmount - oldClient.paidAmount}. Please follow up.`;
   
   await notifyHRAndSupport(title, message, 'High', null, oldClient._id);
-  console.log(`HR/Support notified about pre-deadline for old client ${oldClient.name}`);
+  console.log(`Client Support notified about pre-deadline for old client ${oldClient.name}`);
 }
 
 async function notifyHRAndSupportOldClientPostDeadline(oldClient, daysSinceDelivery) {
@@ -79,7 +81,7 @@ async function notifyHRAndSupportOldClientPostDeadline(oldClient, daysSinceDeliv
   const message = `URGENT: Old Client ${oldClient.name} (${oldClient.phone}) payment deadline passed by ${daysOverdue} day${daysOverdue > 1 ? 's' : ''}. Pending amount: ₹${oldClient.totalAmount - oldClient.paidAmount}. Please follow up immediately.`;
   
   await notifyHRAndSupport(title, message, 'Urgent', null, oldClient._id);
-  console.log(`HR/Support notified about post-deadline for old client ${oldClient.name}`);
+  console.log(`Client Support notified about post-deadline for old client ${oldClient.name}`);
 }
 
 function initCronJobs() {

@@ -48,6 +48,58 @@ const formatDateFormatted = (dateStr) => {
   return d.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 };
 
+const isPaymentDueWarning = (client) => {
+  if (!client) return false;
+  const pending = Number(client.pendingAmount !== undefined ? client.pendingAmount : ((client.totalPrice || client.totalAmount || 0) - (client.paidAmount || 0)));
+  if (!pending || pending <= 0) return false;
+  if (!client.deadline) return false;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const deadlineDate = new Date(client.deadline);
+  deadlineDate.setHours(0, 0, 0, 0);
+
+  if (isNaN(deadlineDate.getTime())) return false;
+
+  const diffTime = deadlineDate.getTime() - today.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  // Only show if 5 days or fewer remaining until deadline or deadline already crossed
+  return diffDays <= 5;
+};
+
+const isOldClientPaymentDueWarning = (oldClient) => {
+  if (!oldClient) return false;
+  const pending = Number((oldClient.totalAmount || 0) - (oldClient.paidAmount || 0));
+  if (pending <= 0) return false;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  if (oldClient.deadline) {
+    const dDate = new Date(oldClient.deadline);
+    dDate.setHours(0, 0, 0, 0);
+    if (!isNaN(dDate.getTime())) {
+      const diffDays = Math.ceil((dDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      return diffDays <= 5;
+    }
+  }
+
+  if (oldClient.deliveredDate) {
+    const delDate = new Date(oldClient.deliveredDate);
+    delDate.setHours(0, 0, 0, 0);
+    if (!isNaN(delDate.getTime())) {
+      const deadlineDate = new Date(delDate);
+      deadlineDate.setDate(deadlineDate.getDate() + 5);
+      const diffDays = Math.ceil((deadlineDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      return diffDays <= 5;
+    }
+  }
+
+  return false;
+};
+
 const getProjectOptions = (client) => {
   if (!client) return [];
   const options = [];
@@ -2007,8 +2059,8 @@ const handleAddPayment = async (data) => {
                       className="flex items-center gap-4 text-left hover:opacity-80 transition-opacity group/client"
                     >
                       <div className="flex items-center gap-3">
-                        {client.pendingAmount > 0 && (
-                          <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse"></div>
+                        {isPaymentDueWarning(client) && (
+                          <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" title="Payment due (<= 5 days remaining or crossed deadline)"></div>
                         )}
                         <div className="w-10 h-10 rounded-full bg-blue-500/10 border border-gray-100 dark:border-white/20 flex items-center justify-center text-blue-600 dark:text-blue-400 group-hover/client:bg-blue-500 group-hover/client:text-white transition-all">
                           <User size={20} />
@@ -2169,8 +2221,8 @@ const handleAddPayment = async (data) => {
                             onClick={() => onClientClick?.(oldClient)}
                             className="flex items-center gap-3 text-left hover:opacity-80 transition-opacity group/client"
                           >
-                            {pendingAmount > 0 && (
-                              <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse"></div>
+                            {isOldClientPaymentDueWarning(oldClient) && (
+                              <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" title="Payment due (<= 5 days remaining or crossed deadline)"></div>
                             )}
                             <div className="w-8 h-8 rounded-full bg-amber-500/10 border border-gray-100 dark:border-white/20 flex items-center justify-center text-amber-600 dark:text-amber-400 group-hover/client:bg-amber-500 group-hover/client:text-white transition-all">
                               <User size={16} />
