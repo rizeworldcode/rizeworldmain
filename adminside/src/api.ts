@@ -100,6 +100,13 @@ export const markStaffLeave = (staffIds: string[], startDate: string, endDate: s
     body: JSON.stringify({ staffIds, startDate, endDate, type }),
   });
 };
+export const clockOutAllStaff = (clockOutTime?: string, staffIds?: string[]) => {
+  clearApiCache('staff');
+  return apiRequest('/staff/clock-out-all', {
+    method: 'PATCH',
+    body: JSON.stringify({ clockOutTime, staffIds }),
+  });
+};
 
 // Clients Endpoints
 export const getAllClients = (params?: { limit?: number; search?: string; select?: string }, useCache: boolean = true) => {
@@ -310,6 +317,7 @@ export default {
   getDashboardStats,
   getAllStaff,
   markStaffLeave,
+  clockOutAllStaff,
   getAllClients,
   addClient,
   updateClient,

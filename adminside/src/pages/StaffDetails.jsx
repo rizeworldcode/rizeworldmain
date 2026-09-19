@@ -25,7 +25,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import StaffPerformance from './StaffPerformance';
-import { getAllStaff, getStaffById, BASE_URL } from '../api';
+import { getAllStaff, getStaffById, clockOutAllStaff, BASE_URL } from '../api';
 
 const PREDEFINED_ROLES = ['HR', 'Client Support', 'Admin', 'Data Analyst', 'Sales Team'];
 
@@ -669,6 +669,7 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
   const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedStaffForPerformance, setSelectedStaffForPerformance] = useState(null);
+  const [isClockingOutAll, setIsClockingOutAll] = useState(false);
   const [fullImageModal, setFullImageModal] = useState({ isOpen: false, src: '', title: '' });
 
   const getProfilePicUrl = (pic) => {
@@ -887,6 +888,43 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
     } catch (error) {
       console.error('Error clocking out:', error);
       alert('Network error: Could not connect to server');
+    }
+  };
+
+  const handleClockOutAll = async () => {
+    const clockedInCount = staff.filter(s => s.clock_status === 'clock_in').length;
+    if (clockedInCount === 0) {
+      alert('No employees are currently clocked in.');
+      return;
+    }
+
+    const defaultTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+    const inputTime = prompt(
+      `Enter clock-out time for all ${clockedInCount} clocked-in employee(s) (e.g. "05:30 PM" or "17:30"):`,
+      defaultTime
+    );
+
+    if (inputTime === null) return;
+    if (!inputTime.trim()) {
+      alert('Invalid time entered');
+      return;
+    }
+
+    try {
+      setIsClockingOutAll(true);
+      const result = await clockOutAllStaff(inputTime.trim());
+      if (result && result.success) {
+        alert(result.message || `Successfully clocked out ${clockedInCount} employee(s)`);
+        const staffRes = await getAllStaff();
+        if (staffRes?.success) setStaff(staffRes.data);
+      } else {
+        alert(result?.message || 'Failed to clock out all staff');
+      }
+    } catch (error) {
+      console.error('Error clocking out all staff:', error);
+      alert('Network error while clocking out all staff');
+    } finally {
+      setIsClockingOutAll(false);
     }
   };
 
@@ -1244,6 +1282,34 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
           </select>
 
 
+
+          {(() => {
+            const clockedInCount = staff.filter(s => s.clock_status === 'clock_in').length;
+            return (
+              <button
+                onClick={handleClockOutAll}
+                disabled={isClockingOutAll || clockedInCount === 0}
+                className={`flex items-center gap-2 px-5 py-3 rounded-xl font-bold transition-all shadow-sm border ${
+                  clockedInCount > 0
+                    ? 'bg-rose-500/10 hover:bg-rose-500 text-rose-600 hover:text-white border-rose-500/20 shadow-rose-500/10 active:scale-95'
+                    : 'bg-black/5 dark:bg-white/5 border-gray-200 dark:border-white/10 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-60'
+                }`}
+                title={clockedInCount > 0 ? `Clock out all ${clockedInCount} active staff` : 'No staff currently clocked in'}
+              >
+                {isClockingOutAll ? (
+                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <LogOut size={18} />
+                )}
+                <span>Clock Out All</span>
+                {clockedInCount > 0 && (
+                  <span className="px-1.5 py-0.5 text-[10px] font-black rounded-full bg-rose-500 text-white">
+                    {clockedInCount}
+                  </span>
+                )}
+              </button>
+            );
+          })()}
 
           <button
             onClick={onAddStaff}
