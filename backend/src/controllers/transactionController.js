@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Transaction = require('../models/Transaction');
 const Staff = require('../models/Staff');
 const Client = require('../models/Client');
@@ -145,19 +146,169 @@ exports.getAllTransactions = async (req, res) => {
   }
 };
 
+// Helper to find client and payment for either standard ObjectId or synthetic composite IDs
+async function findClientAndPayment(id) {
+  let client = null;
+  let payment = null;
+  let paymentIndex = -1;
+  let isHistory = false;
+  let historyIndex = -1;
+  let modelName = 'Client';
+  let isDirectPayment = false;
+
+  const isValidObjectId = mongoose.Types.ObjectId.isValid(id);
+
+  if (isValidObjectId) {
+    // 1. Check active client current payments
+    client = await Client.findOne({ "payments._id": id });
+    if (client) {
+      paymentIndex = client.payments.findIndex(p => p._id && p._id.toString() === id);
+      if (paymentIndex !== -1) payment = client.payments[paymentIndex];
+    } else {
+      // 2. Check active client history payments
+      client = await Client.findOne({ "history.payments._id": id });
+      if (client) {
+        isHistory = true;
+        for (let i = 0; i < (client.history || []).length; i++) {
+          const hpIdx = (client.history[i].payments || []).findIndex(p => p._id && p._id.toString() === id);
+          if (hpIdx !== -1) {
+            payment = client.history[i].payments[hpIdx];
+            paymentIndex = hpIdx;
+            historyIndex = i;
+            break;
+          }
+        }
+      }
+    }
+
+    // 3. Check old client
+    if (!client || !payment) {
+      let oldClient = await OldClient.findOne({ "payments._id": id });
+      if (oldClient) {
+        modelName = 'OldClient';
+        client = oldClient;
+        paymentIndex = client.payments.findIndex(p => p._id && p._id.toString() === id);
+        if (paymentIndex !== -1) payment = client.payments[paymentIndex];
+      } else {
+        oldClient = await OldClient.findOne({ "history.payments._id": id });
+        if (oldClient) {
+          modelName = 'OldClient';
+          client = oldClient;
+          isHistory = true;
+          for (let i = 0; i < (client.history || []).length; i++) {
+            const hpIdx = (client.history[i].payments || []).findIndex(p => p._id && p._id.toString() === id);
+            if (hpIdx !== -1) {
+              payment = client.history[i].payments[hpIdx];
+              paymentIndex = hpIdx;
+              historyIndex = i;
+              break;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // 4. If not found and ID is composite (e.g. clientId_amount_timestamp or clientId_direct_payment)
+  if (!client || !payment) {
+    const parts = (id || '').split('_');
+    const targetClientId = parts[0];
+    if (mongoose.Types.ObjectId.isValid(targetClientId)) {
+      client = await Client.findById(targetClientId);
+      if (!client) {
+        client = await OldClient.findById(targetClientId);
+        if (client) modelName = 'OldClient';
+      }
+
+      if (client) {
+        if (parts[1] === 'direct' && parts[2] === 'payment') {
+          isDirectPayment = true;
+          payment = {
+            _id: id,
+            amount: Number(client.paidAmount || 0),
+            date: client.startDate || client.createdAt || new Date(),
+            mode: 'Online'
+          };
+        } else if (parts.length >= 3) {
+          const targetAmount = Number(parts[1]);
+          const targetTime = Number(parts[2]);
+
+          // Check current payments
+          for (let i = 0; i < (client.payments || []).length; i++) {
+            const p = client.payments[i];
+            const pTime = p.date ? new Date(p.date).getTime() : 0;
+            if (Number(p.amount) === targetAmount && (!targetTime || Math.abs(pTime - targetTime) < 60000 || pTime === targetTime)) {
+              payment = p;
+              paymentIndex = i;
+              isHistory = false;
+              break;
+            }
+          }
+
+          // Check history payments
+          if (!payment) {
+            for (let i = 0; i < (client.history || []).length; i++) {
+              const hPayments = client.history[i].payments || [];
+              for (let j = 0; j < hPayments.length; j++) {
+                const p = hPayments[j];
+                const pTime = p.date ? new Date(p.date).getTime() : 0;
+                if (Number(p.amount) === targetAmount && (!targetTime || Math.abs(pTime - targetTime) < 60000 || pTime === targetTime)) {
+                  payment = p;
+                  paymentIndex = j;
+                  isHistory = true;
+                  historyIndex = i;
+                  break;
+                }
+              }
+              if (payment) break;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return { client, payment, paymentIndex, isHistory, historyIndex, modelName, isDirectPayment };
+}
+
 exports.getTransactionById = async (req, res) => {
   try {
-    const transaction = await Transaction.findById(req.params.id);
-    if (!transaction) {
+    const isValidId = mongoose.Types.ObjectId.isValid(req.params.id);
+    let transaction = isValidId ? await Transaction.findById(req.params.id) : null;
+    if (transaction) {
+      return res.status(200).json({
+        success: true,
+        data: transaction,
+      });
+    }
+
+    const { client, payment, modelName } = await findClientAndPayment(req.params.id);
+    if (!client || !payment) {
       return res.status(404).json({
         success: false,
         message: 'Transaction not found',
       });
     }
 
+    const paymentResponse = {
+      _id: payment._id || req.params.id,
+      type: 'client_payment',
+      name: client.name,
+      amount: payment.amount,
+      date: payment.date,
+      mode: payment.mode,
+      method: (payment.mode || '').toLowerCase() === 'online' ? 'bank_transfer' : 'cash',
+      utrNumber: payment.utr || null,
+      referenceId: client._id,
+      referenceModel: modelName,
+      description: `Payment from ${modelName === 'OldClient' ? 'old client' : 'client'}: ${client.name}`,
+      source: 'client_payment',
+      createdAt: payment.date,
+    };
+
     res.status(200).json({
       success: true,
-      data: transaction,
+      data: paymentResponse,
     });
   } catch (error) {
     res.status(500).json({
@@ -171,8 +322,9 @@ exports.updateTransaction = async (req, res) => {
   try {
     const { type, name, amount, date, mode, method, utrNumber, description } = req.body;
 
-    // 1. Try to update in Transaction collection
-    let transaction = await Transaction.findById(req.params.id);
+    // 1. Try to update in Transaction collection if valid ObjectId
+    const isValidId = mongoose.Types.ObjectId.isValid(req.params.id);
+    let transaction = isValidId ? await Transaction.findById(req.params.id) : null;
     if (transaction) {
       if (mode === 'online') {
         const utrStr = (utrNumber || '').trim();
@@ -202,56 +354,7 @@ exports.updateTransaction = async (req, res) => {
     }
 
     // 2. If not found in Transaction collection, check if it's a client payment
-    let client = null;
-    let payment = null;
-    let isHistory = false;
-    let historyIndex = -1;
-    let modelName = 'Client';
-
-    // Search active Client current payments
-    client = await Client.findOne({ "payments._id": req.params.id });
-    if (client) {
-      payment = client.payments.find(p => p._id && p._id.toString() === req.params.id);
-    } else {
-      // Search active Client history payments
-      client = await Client.findOne({ "history.payments._id": req.params.id });
-      if (client) {
-        isHistory = true;
-        for (let i = 0; i < (client.history || []).length; i++) {
-          const hp = (client.history[i].payments || []).find(p => p._id && p._id.toString() === req.params.id);
-          if (hp) {
-            payment = hp;
-            historyIndex = i;
-            break;
-          }
-        }
-      }
-    }
-
-    // If not found in Client, search OldClient
-    if (!client) {
-      let oldClient = await OldClient.findOne({ "payments._id": req.params.id });
-      if (oldClient) {
-        modelName = 'OldClient';
-        client = oldClient;
-        payment = client.payments.find(p => p._id && p._id.toString() === req.params.id);
-      } else {
-        oldClient = await OldClient.findOne({ "history.payments._id": req.params.id });
-        if (oldClient) {
-          modelName = 'OldClient';
-          client = oldClient;
-          isHistory = true;
-          for (let i = 0; i < (client.history || []).length; i++) {
-            const hp = (client.history[i].payments || []).find(p => p._id && p._id.toString() === req.params.id);
-            if (hp) {
-              payment = hp;
-              historyIndex = i;
-              break;
-            }
-          }
-        }
-      }
-    }
+    const { client, payment, isHistory, historyIndex, modelName, isDirectPayment } = await findClientAndPayment(req.params.id);
 
     if (!client || !payment) {
       return res.status(404).json({
@@ -260,11 +363,15 @@ exports.updateTransaction = async (req, res) => {
       });
     }
 
-    const oldAmount = Number(payment.amount);
+    const oldAmount = Number(payment.amount || 0);
     const newAmount = amount !== undefined ? parseFloat(amount) : oldAmount;
     const diff = newAmount - oldAmount;
 
-    if (isHistory && historyIndex >= 0) {
+    if (isDirectPayment) {
+      client.paidAmount = newAmount;
+      client.pendingAmount = Math.max(0, Number(client.totalPrice || client.totalAmount || 0) - newAmount);
+      await client.save();
+    } else if (isHistory && historyIndex >= 0) {
       const histItem = client.history[historyIndex];
       const currentPending = Number(histItem.pendingAmount !== undefined ? histItem.pendingAmount : 0);
       if (diff > currentPending) {
@@ -324,13 +431,13 @@ exports.updateTransaction = async (req, res) => {
     cache.flushByPrefix('clients:');
 
     const updatedPaymentResponse = {
-      _id: payment._id,
+      _id: payment._id || req.params.id,
       type: 'client_payment',
       name: client.name,
       amount: payment.amount,
       date: payment.date,
       mode: payment.mode,
-      method: payment.mode?.toLowerCase() === 'online' ? 'bank_transfer' : 'cash',
+      method: (payment.mode || '').toLowerCase() === 'online' ? 'bank_transfer' : 'cash',
       utrNumber: payment.utr || null,
       referenceId: client._id,
       referenceModel: modelName,
@@ -353,74 +460,22 @@ exports.updateTransaction = async (req, res) => {
 
 exports.deleteTransaction = async (req, res) => {
   try {
-    // 1. Try to find and delete in Transaction collection
-    let transaction = await Transaction.findByIdAndDelete(req.params.id);
-    if (transaction) {
-      cache.flushByPrefix('transactions');
-      cache.flushByPrefix('dashboard:');
-      return res.status(200).json({
-        success: true,
-        message: 'Transaction deleted successfully',
-      });
+    // 1. Try to find and delete in Transaction collection if valid ObjectId
+    const isValidId = mongoose.Types.ObjectId.isValid(req.params.id);
+    if (isValidId) {
+      let transaction = await Transaction.findByIdAndDelete(req.params.id);
+      if (transaction) {
+        cache.flushByPrefix('transactions');
+        cache.flushByPrefix('dashboard:');
+        return res.status(200).json({
+          success: true,
+          message: 'Transaction deleted successfully',
+        });
+      }
     }
 
     // 2. If not found, check if it's a client payment
-    let client = null;
-    let payment = null;
-    let paymentIndex = -1;
-    let isHistory = false;
-    let historyIndex = -1;
-
-    // Search active Client current payments
-    client = await Client.findOne({ "payments._id": req.params.id });
-    if (client) {
-      paymentIndex = client.payments.findIndex(p => p._id && p._id.toString() === req.params.id);
-      if (paymentIndex !== -1) {
-        payment = client.payments[paymentIndex];
-      }
-    } else {
-      // Search active Client history payments
-      client = await Client.findOne({ "history.payments._id": req.params.id });
-      if (client) {
-        isHistory = true;
-        for (let i = 0; i < (client.history || []).length; i++) {
-          const hpIdx = (client.history[i].payments || []).findIndex(p => p._id && p._id.toString() === req.params.id);
-          if (hpIdx !== -1) {
-            payment = client.history[i].payments[hpIdx];
-            paymentIndex = hpIdx;
-            historyIndex = i;
-            break;
-          }
-        }
-      }
-    }
-
-    // If not found in Client, search OldClient
-    if (!client || !payment) {
-      let oldClient = await OldClient.findOne({ "payments._id": req.params.id });
-      if (oldClient) {
-        client = oldClient;
-        paymentIndex = client.payments.findIndex(p => p._id && p._id.toString() === req.params.id);
-        if (paymentIndex !== -1) {
-          payment = client.payments[paymentIndex];
-        }
-      } else {
-        oldClient = await OldClient.findOne({ "history.payments._id": req.params.id });
-        if (oldClient) {
-          client = oldClient;
-          isHistory = true;
-          for (let i = 0; i < (client.history || []).length; i++) {
-            const hpIdx = (client.history[i].payments || []).findIndex(p => p._id && p._id.toString() === req.params.id);
-            if (hpIdx !== -1) {
-              payment = client.history[i].payments[hpIdx];
-              paymentIndex = hpIdx;
-              historyIndex = i;
-              break;
-            }
-          }
-        }
-      }
-    }
+    const { client, payment, paymentIndex, isHistory, historyIndex, isDirectPayment } = await findClientAndPayment(req.params.id);
 
     if (!client || !payment) {
       return res.status(404).json({
@@ -429,17 +484,28 @@ exports.deleteTransaction = async (req, res) => {
       });
     }
 
-    if (isHistory && historyIndex >= 0) {
+    const paymentAmount = Number(payment.amount || 0);
+
+    if (isDirectPayment) {
+      client.paidAmount = Math.max(0, Number(client.paidAmount || 0) - paymentAmount);
+      client.pendingAmount = Math.max(0, Number(client.totalPrice || client.totalAmount || 0) - client.paidAmount);
+      await client.save();
+    } else if (isHistory && historyIndex >= 0) {
       const histItem = client.history[historyIndex];
-      histItem.paidAmount = Math.max(0, Number(histItem.paidAmount || 0) - Number(payment.amount));
-      histItem.pendingAmount = Number(histItem.pendingAmount || 0) + Number(payment.amount);
-      histItem.payments.splice(paymentIndex, 1);
+      histItem.paidAmount = Math.max(0, Number(histItem.paidAmount || 0) - paymentAmount);
+      const hTotal = Number(histItem.totalPrice !== undefined ? histItem.totalPrice : (histItem.totalAmount !== undefined ? histItem.totalAmount : 0));
+      histItem.pendingAmount = Math.max(0, hTotal - histItem.paidAmount);
+      if (paymentIndex >= 0) {
+        histItem.payments.splice(paymentIndex, 1);
+      }
       client.markModified('history');
       await client.save();
     } else {
-      client.paidAmount = Math.max(0, Number(client.paidAmount) - Number(payment.amount));
-      client.pendingAmount = Number(client.pendingAmount) + Number(payment.amount);
-      client.payments.splice(paymentIndex, 1);
+      client.paidAmount = Math.max(0, Number(client.paidAmount) - paymentAmount);
+      client.pendingAmount = Number(client.pendingAmount) + paymentAmount;
+      if (paymentIndex >= 0) {
+        client.payments.splice(paymentIndex, 1);
+      }
       await client.save();
     }
 

@@ -2066,11 +2066,22 @@ const ClientProjects = ({ onBack }) => {
   const [isEditClientOpen, setIsEditClientOpen] = useState(false);
   const [isEditProjectOpen, setIsEditProjectOpen] = useState(false);
 
+  const getRequestHeaders = () => {
+    const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+    return {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    };
+  };
+
   const fetchClientData = useCallback(async () => {
     if (!clientId) return;
     try {
       setLoading(true);
-      const response = await fetch(getApiUrl(`/clients/${clientId}`));
+      const response = await fetch(getApiUrl(`/clients/${clientId}`), {
+        headers: getRequestHeaders(),
+        credentials: 'include'
+      });
       const result = await response.json();
       if (result.success) {
         const clientData = result.data;
@@ -2078,6 +2089,38 @@ const ClientProjects = ({ onBack }) => {
         if (!clientData.tasks || clientData.tasks.length === 0) {
           clientData.tasks = parseWorkDetailToTasks(clientData.workDetail);
         }
+
+        // Guarantee all past cycles in history have properly formatted tasks and status
+        if (clientData.history && Array.isArray(clientData.history)) {
+          clientData.history = clientData.history.map(cycle => {
+            let cycleTasks = cycle.tasks;
+            if (!cycleTasks || cycleTasks.length === 0) {
+              cycleTasks = parseWorkDetailToTasks(cycle.workDetail || cycle.projectDetail);
+              if (cycleTasks.length === 0) {
+                cycleTasks = [{
+                  name: cycle.workDetail || cycle.projectDetail || 'Service Deliverables',
+                  total: 1,
+                  completed: 1,
+                  status: 'Completed',
+                  unit: 'Task'
+                }];
+              }
+            }
+            cycleTasks = cycleTasks.map(t => ({
+              ...t,
+              completed: (t.total !== undefined && t.total > 0) ? (t.completed !== undefined && t.completed > 0 ? t.completed : t.total) : 1,
+              status: 'Completed'
+            }));
+            return {
+              ...cycle,
+              tasks: cycleTasks,
+              extraTasks: cycle.extraTasks || [],
+              payments: cycle.payments || [],
+              status: 'Completed'
+            };
+          });
+        }
+
         setProjects([clientData]);
       }
     } catch (error) {
@@ -2090,14 +2133,6 @@ const ClientProjects = ({ onBack }) => {
   useEffect(() => {
     fetchClientData();
   }, [fetchClientData]);
-
-  const getRequestHeaders = () => {
-    const token = localStorage.getItem('adminToken');
-    return {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {})
-    };
-  };
 
   const openUpdateModal = (project) => {
     const projectToUpdate = JSON.parse(JSON.stringify(project));
@@ -2203,12 +2238,13 @@ const ClientProjects = ({ onBack }) => {
       const id = clientId;
       const response = await fetch(getApiUrl(`/clients/${id}/renew`), {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getRequestHeaders(),
+        credentials: 'include',
         body: JSON.stringify(renewFormData)
       });
       const result = await response.json();
       if (result.success) {
-        setProjects([result.data]);
+        await fetchClientData();
         setIsRenewModalOpen(false);
         setRenewModalData({
           package: '',
@@ -2217,7 +2253,9 @@ const ClientProjects = ({ onBack }) => {
           startDate: new Date().toISOString().split('T')[0],
           deadline: ''
         });
-        alert('Package renewed successfully for the next month!');
+        alert('Package renewed successfully for the next month! All past projects are preserved.');
+      } else {
+        alert(result.message || 'Failed to renew package');
       }
     } catch (error) {
       console.error('Error renewing package:', error);
