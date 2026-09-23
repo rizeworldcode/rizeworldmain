@@ -3,6 +3,7 @@ const Staff = require('../models/Staff');
 const Client = require('../models/Client');
 const OldClient = require('../models/OldClient');
 const cache = require('../utils/cache');
+const { extractClientPayments } = require('../utils/paymentExtractor');
 
 exports.createTransaction = async (req, res) => {
   try {
@@ -68,6 +69,10 @@ exports.createTransaction = async (req, res) => {
       // For staff, we might want to link to salary history
     }
 
+    cache.flushByPrefix('transactions');
+    cache.flushByPrefix('dashboard:');
+    cache.flushByPrefix('clients:');
+
     res.status(201).json({
       success: true,
       data: transaction,
@@ -109,60 +114,14 @@ exports.getAllTransactions = async (req, res) => {
     // Only fetch client payments if type is not 'expense' (they're always income)
     let clientPayments = [];
     if (!type || type === 'income' || type === 'client_payment') {
-      const clients = await Client.find({}, 'name email payments').lean();
-      const oldClients = await OldClient.find({}, 'name email payments').lean();
+      const [clients, oldClients] = await Promise.all([
+        Client.find({}, 'name email payments history startDate createdAt paidAmount').lean(),
+        OldClient.find({}, 'name email payments history startDate createdAt paidAmount').lean()
+      ]);
 
-      clients.forEach(client => {
-        (client.payments || []).forEach(payment => {
-          const paymentDate = new Date(payment.date);
-
-          // Apply date filter if provided
-          if (startDate && paymentDate < new Date(startDate)) return;
-          if (endDate && paymentDate > new Date(endDate + 'T23:59:59.999Z')) return;
-
-          clientPayments.push({
-            _id: payment._id,
-            type: 'client_payment',
-            name: client.name,
-            amount: payment.amount,
-            date: payment.date,
-            mode: payment.mode,
-            method: payment.mode?.toLowerCase() === 'online' ? 'bank_transfer' : 'cash',
-            utrNumber: payment.utr || null,
-            referenceId: client._id,
-            referenceModel: 'Client',
-            description: `Payment from client: ${client.name}`,
-            source: 'client_payment', // flag to distinguish in frontend
-            createdAt: payment.date,
-          });
-        });
-      });
-
-      oldClients.forEach(client => {
-        (client.payments || []).forEach(payment => {
-          const paymentDate = new Date(payment.date);
-
-          // Apply date filter if provided
-          if (startDate && paymentDate < new Date(startDate)) return;
-          if (endDate && paymentDate > new Date(endDate + 'T23:59:59.999Z')) return;
-
-          clientPayments.push({
-            _id: payment._id,
-            type: 'client_payment',
-            name: client.name,
-            amount: payment.amount,
-            date: payment.date,
-            mode: payment.mode,
-            method: payment.mode?.toLowerCase() === 'online' ? 'bank_transfer' : 'cash',
-            utrNumber: payment.utr || null,
-            referenceId: client._id,
-            referenceModel: 'OldClient',
-            description: `Payment from old client: ${client.name}`,
-            source: 'client_payment', // flag to distinguish in frontend
-            createdAt: payment.date,
-          });
-        });
-      });
+      const cp = extractClientPayments(clients, 'Client', startDate, endDate);
+      const ocp = extractClientPayments(oldClients, 'OldClient', startDate, endDate);
+      clientPayments = [...cp, ...ocp];
     }
 
     // --- 3. Merge and sort by date descending ---
@@ -195,6 +154,7 @@ exports.getTransactionById = async (req, res) => {
         message: 'Transaction not found',
       });
     }
+
     res.status(200).json({
       success: true,
       data: transaction,
@@ -231,6 +191,10 @@ exports.updateTransaction = async (req, res) => {
       transaction.description = description !== undefined ? description : transaction.description;
 
       const updatedTransaction = await transaction.save();
+
+      cache.flushByPrefix('transactions');
+      cache.flushByPrefix('dashboard:');
+
       return res.status(200).json({
         success: true,
         data: updatedTransaction,
@@ -238,57 +202,127 @@ exports.updateTransaction = async (req, res) => {
     }
 
     // 2. If not found in Transaction collection, check if it's a client payment
-    const client = await Client.findOne({ "payments._id": req.params.id });
+    let client = null;
+    let payment = null;
+    let isHistory = false;
+    let historyIndex = -1;
+    let modelName = 'Client';
+
+    // Search active Client current payments
+    client = await Client.findOne({ "payments._id": req.params.id });
+    if (client) {
+      payment = client.payments.find(p => p._id && p._id.toString() === req.params.id);
+    } else {
+      // Search active Client history payments
+      client = await Client.findOne({ "history.payments._id": req.params.id });
+      if (client) {
+        isHistory = true;
+        for (let i = 0; i < (client.history || []).length; i++) {
+          const hp = (client.history[i].payments || []).find(p => p._id && p._id.toString() === req.params.id);
+          if (hp) {
+            payment = hp;
+            historyIndex = i;
+            break;
+          }
+        }
+      }
+    }
+
+    // If not found in Client, search OldClient
     if (!client) {
+      let oldClient = await OldClient.findOne({ "payments._id": req.params.id });
+      if (oldClient) {
+        modelName = 'OldClient';
+        client = oldClient;
+        payment = client.payments.find(p => p._id && p._id.toString() === req.params.id);
+      } else {
+        oldClient = await OldClient.findOne({ "history.payments._id": req.params.id });
+        if (oldClient) {
+          modelName = 'OldClient';
+          client = oldClient;
+          isHistory = true;
+          for (let i = 0; i < (client.history || []).length; i++) {
+            const hp = (client.history[i].payments || []).find(p => p._id && p._id.toString() === req.params.id);
+            if (hp) {
+              payment = hp;
+              historyIndex = i;
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    if (!client || !payment) {
       return res.status(404).json({
         success: false,
         message: 'Transaction not found',
       });
     }
 
-    const paymentIndex = client.payments.findIndex(p => p._id.toString() === req.params.id);
-    if (paymentIndex === -1) {
-      return res.status(404).json({
-        success: false,
-        message: 'Payment not found in client record',
-      });
-    }
-
-    const payment = client.payments[paymentIndex];
     const oldAmount = Number(payment.amount);
     const newAmount = amount !== undefined ? parseFloat(amount) : oldAmount;
-    
-    // Check if new amount exceeds limit
     const diff = newAmount - oldAmount;
-    const currentPending = Number(client.pendingAmount);
-    if (diff > currentPending) {
-      return res.status(400).json({
-        success: false,
-        message: `Updated payment amount exceeds pending client amount by ₹${diff - currentPending}`,
-      });
-    }
 
-    if (mode === 'online' || (mode === undefined && payment.mode === 'Online')) {
-      const finalUtr = utrNumber !== undefined ? utrNumber : payment.utr;
-      const utrStr = (finalUtr || '').trim();
-      if (!utrStr || utrStr.length < 12 || utrStr.length > 16) {
-        return res.status(400).json({ success: false, message: 'UTR number must be between 12 and 16 characters for online payments.' });
+    if (isHistory && historyIndex >= 0) {
+      const histItem = client.history[historyIndex];
+      const currentPending = Number(histItem.pendingAmount !== undefined ? histItem.pendingAmount : 0);
+      if (diff > currentPending) {
+        return res.status(400).json({
+          success: false,
+          message: `Updated payment amount exceeds pending client amount by ₹${diff - currentPending}`,
+        });
       }
+
+      if (mode === 'online' || (mode === undefined && payment.mode === 'Online')) {
+        const finalUtr = utrNumber !== undefined ? utrNumber : payment.utr;
+        const utrStr = (finalUtr || '').trim();
+        if (!utrStr || utrStr.length < 12 || utrStr.length > 16) {
+          return res.status(400).json({ success: false, message: 'UTR number must be between 12 and 16 characters for online payments.' });
+        }
+      }
+
+      histItem.paidAmount = Number(histItem.paidAmount || 0) + diff;
+      histItem.pendingAmount = Math.max(0, currentPending - diff);
+      payment.amount = newAmount;
+      if (date) payment.date = new Date(date);
+      if (mode) payment.mode = mode === 'cash' ? 'Cash' : 'Online';
+      if (utrNumber !== undefined) payment.utr = mode === 'cash' ? '' : utrNumber;
+
+      client.markModified('history');
+      await client.save();
+    } else {
+      const currentPending = Number(client.pendingAmount || 0);
+      if (diff > currentPending) {
+        return res.status(400).json({
+          success: false,
+          message: `Updated payment amount exceeds pending client amount by ₹${diff - currentPending}`,
+        });
+      }
+
+      if (mode === 'online' || (mode === undefined && payment.mode === 'Online')) {
+        const finalUtr = utrNumber !== undefined ? utrNumber : payment.utr;
+        const utrStr = (finalUtr || '').trim();
+        if (!utrStr || utrStr.length < 12 || utrStr.length > 16) {
+          return res.status(400).json({ success: false, message: 'UTR number must be between 12 and 16 characters for online payments.' });
+        }
+      }
+
+      client.paidAmount = Number(client.paidAmount) + diff;
+      client.pendingAmount = Number(client.pendingAmount) - diff;
+
+      payment.amount = newAmount;
+      if (date) payment.date = new Date(date);
+      if (mode) payment.mode = mode === 'cash' ? 'Cash' : 'Online';
+      if (utrNumber !== undefined) payment.utr = mode === 'cash' ? '' : utrNumber;
+
+      await client.save();
     }
 
-    // Update Client fields
-    client.paidAmount = Number(client.paidAmount) + diff;
-    client.pendingAmount = Number(client.pendingAmount) - diff;
+    cache.flushByPrefix('transactions');
+    cache.flushByPrefix('dashboard:');
+    cache.flushByPrefix('clients:');
 
-    // Update subdocument
-    payment.amount = newAmount;
-    if (date) payment.date = new Date(date);
-    if (mode) payment.mode = mode === 'cash' ? 'Cash' : 'Online';
-    if (utrNumber !== undefined) payment.utr = mode === 'cash' ? '' : utrNumber;
-
-    await client.save();
-
-    // Map client payment structure to match transaction shape for response
     const updatedPaymentResponse = {
       _id: payment._id,
       type: 'client_payment',
@@ -299,8 +333,8 @@ exports.updateTransaction = async (req, res) => {
       method: payment.mode?.toLowerCase() === 'online' ? 'bank_transfer' : 'cash',
       utrNumber: payment.utr || null,
       referenceId: client._id,
-      referenceModel: 'Client',
-      description: `Payment from client: ${client.name}`,
+      referenceModel: modelName,
+      description: `Payment from ${modelName === 'OldClient' ? 'old client' : 'client'}: ${client.name}`,
       source: 'client_payment',
       createdAt: payment.date,
     };
@@ -322,6 +356,8 @@ exports.deleteTransaction = async (req, res) => {
     // 1. Try to find and delete in Transaction collection
     let transaction = await Transaction.findByIdAndDelete(req.params.id);
     if (transaction) {
+      cache.flushByPrefix('transactions');
+      cache.flushByPrefix('dashboard:');
       return res.status(200).json({
         success: true,
         message: 'Transaction deleted successfully',
@@ -329,29 +365,87 @@ exports.deleteTransaction = async (req, res) => {
     }
 
     // 2. If not found, check if it's a client payment
-    const client = await Client.findOne({ "payments._id": req.params.id });
-    if (!client) {
+    let client = null;
+    let payment = null;
+    let paymentIndex = -1;
+    let isHistory = false;
+    let historyIndex = -1;
+
+    // Search active Client current payments
+    client = await Client.findOne({ "payments._id": req.params.id });
+    if (client) {
+      paymentIndex = client.payments.findIndex(p => p._id && p._id.toString() === req.params.id);
+      if (paymentIndex !== -1) {
+        payment = client.payments[paymentIndex];
+      }
+    } else {
+      // Search active Client history payments
+      client = await Client.findOne({ "history.payments._id": req.params.id });
+      if (client) {
+        isHistory = true;
+        for (let i = 0; i < (client.history || []).length; i++) {
+          const hpIdx = (client.history[i].payments || []).findIndex(p => p._id && p._id.toString() === req.params.id);
+          if (hpIdx !== -1) {
+            payment = client.history[i].payments[hpIdx];
+            paymentIndex = hpIdx;
+            historyIndex = i;
+            break;
+          }
+        }
+      }
+    }
+
+    // If not found in Client, search OldClient
+    if (!client || !payment) {
+      let oldClient = await OldClient.findOne({ "payments._id": req.params.id });
+      if (oldClient) {
+        client = oldClient;
+        paymentIndex = client.payments.findIndex(p => p._id && p._id.toString() === req.params.id);
+        if (paymentIndex !== -1) {
+          payment = client.payments[paymentIndex];
+        }
+      } else {
+        oldClient = await OldClient.findOne({ "history.payments._id": req.params.id });
+        if (oldClient) {
+          client = oldClient;
+          isHistory = true;
+          for (let i = 0; i < (client.history || []).length; i++) {
+            const hpIdx = (client.history[i].payments || []).findIndex(p => p._id && p._id.toString() === req.params.id);
+            if (hpIdx !== -1) {
+              payment = client.history[i].payments[hpIdx];
+              paymentIndex = hpIdx;
+              historyIndex = i;
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    if (!client || !payment) {
       return res.status(404).json({
         success: false,
         message: 'Transaction not found',
       });
     }
 
-    // Find the specific payment to revert amounts
-    const paymentIndex = client.payments.findIndex(p => p._id.toString() === req.params.id);
-    if (paymentIndex === -1) {
-      return res.status(404).json({
-        success: false,
-        message: 'Payment not found in client record',
-      });
+    if (isHistory && historyIndex >= 0) {
+      const histItem = client.history[historyIndex];
+      histItem.paidAmount = Math.max(0, Number(histItem.paidAmount || 0) - Number(payment.amount));
+      histItem.pendingAmount = Number(histItem.pendingAmount || 0) + Number(payment.amount);
+      histItem.payments.splice(paymentIndex, 1);
+      client.markModified('history');
+      await client.save();
+    } else {
+      client.paidAmount = Math.max(0, Number(client.paidAmount) - Number(payment.amount));
+      client.pendingAmount = Number(client.pendingAmount) + Number(payment.amount);
+      client.payments.splice(paymentIndex, 1);
+      await client.save();
     }
 
-    const payment = client.payments[paymentIndex];
-    client.paidAmount = Number(client.paidAmount) - Number(payment.amount);
-    client.pendingAmount = Number(client.pendingAmount) + Number(payment.amount);
-    client.payments.splice(paymentIndex, 1);
-
-    await client.save();
+    cache.flushByPrefix('transactions');
+    cache.flushByPrefix('dashboard:');
+    cache.flushByPrefix('clients:');
 
     res.status(200).json({
       success: true,

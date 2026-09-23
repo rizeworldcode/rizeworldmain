@@ -1,4 +1,5 @@
 const clientModel = require('../models/Client');
+const cache = require('../utils/cache');
 
 exports.updateClientPaidAmount = async (req, res) => {
   const clientID = req.params.clientId;
@@ -63,6 +64,11 @@ exports.updateClientPaidAmount = async (req, res) => {
     client.payments.push(paymentEntry);
 
     const updatedClient = await client.save();
+
+    cache.flushByPrefix('transactions');
+    cache.flushByPrefix('dashboard:');
+    cache.flushByPrefix('clients:');
+
     return res.status(200).json({
       success: true,
       client: updatedClient,

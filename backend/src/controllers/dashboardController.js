@@ -3,63 +3,27 @@ const OldClient = require('../models/OldClient');
 const Staff = require('../models/Staff');
 const Transaction = require('../models/Transaction');
 const cache = require('../utils/cache');
+const { extractClientPayments } = require('../utils/paymentExtractor');
 
 const getUnifiedTransactions = async () => {
   // Execute database reads concurrently with Promise.all
   const [transactions, clients, oldClients] = await Promise.all([
     Transaction.find().lean(),
-    Client.find({}, 'name email payments').lean(),
-    OldClient.find({}, 'name email payments').lean()
+    Client.find({}, 'name email payments history startDate createdAt paidAmount').lean(),
+    OldClient.find({}, 'name email payments history startDate createdAt paidAmount').lean()
   ]);
 
-  let clientPayments = [];
-
-  clients.forEach(client => {
-    (client.payments || []).forEach(payment => {
-      clientPayments.push({
-        _id: payment._id,
-        type: 'client_payment',
-        name: client.name,
-        amount: payment.amount,
-        date: payment.date,
-        mode: payment.mode,
-        method: payment.mode?.toLowerCase() === 'online' ? 'bank_transfer' : 'cash',
-        utrNumber: payment.utr || null,
-        referenceId: client._id,
-        referenceModel: 'Client',
-        description: `Payment from client: ${client.name}`,
-        source: 'client_payment',
-        createdAt: payment.date,
-      });
-    });
-  });
-
-  oldClients.forEach(client => {
-    (client.payments || []).forEach(payment => {
-      clientPayments.push({
-        _id: payment._id,
-        type: 'client_payment',
-        name: client.name,
-        amount: payment.amount,
-        date: payment.date,
-        mode: payment.mode,
-        method: payment.mode?.toLowerCase() === 'online' ? 'bank_transfer' : 'cash',
-        utrNumber: payment.utr || null,
-        referenceId: client._id,
-        referenceModel: 'OldClient',
-        description: `Payment from old client: ${client.name}`,
-        source: 'client_payment',
-        createdAt: payment.date,
-      });
-    });
-  });
+  const clientPayments = extractClientPayments(clients, 'Client');
+  const oldClientPayments = extractClientPayments(oldClients, 'OldClient');
 
   // Merge and sort by date descending
   return [
     ...transactions.map(t => ({ ...t, source: t.type })),
     ...clientPayments,
+    ...oldClientPayments,
   ].sort((a, b) => new Date(b.date) - new Date(a.date));
 };
+
 
 exports.getDashboardStats = async (req, res) => {
   try {

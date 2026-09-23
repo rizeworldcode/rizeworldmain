@@ -19,7 +19,7 @@ import {
   Plus
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
-import { getAllClients, getAllOldClients, updateClient, updateOldClient, addClient, BASE_URL } from '../api';
+import { getAllClients, getAllOldClients, updateClient, updateOldClient, addClient, clearApiCache, BASE_URL } from '../api';
 
 const STATUS_OPTIONS = {
   'Pending': ['Present', 'On Hold', 'Completed'],
@@ -1739,6 +1739,9 @@ const handleAddPayment = async (data) => {
         }
         return c;
       }));
+      clearApiCache('transactions');
+      clearApiCache('dashboard');
+      clearApiCache('clients');
       alert('Payment added successfully!');
       fetchClients(); // Refresh from backend to sync latest data
       setIsAddPaymentOpen(false);
@@ -1918,6 +1921,9 @@ const handleAddPayment = async (data) => {
       const result = await response.json();
 
       if (result.success) {
+        clearApiCache('transactions');
+        clearApiCache('dashboard');
+        clearApiCache('old-clients');
         alert('Payment added successfully!');
         fetchOldClients(); // Refresh from backend to sync latest data
         setIsAddOldPaymentOpen(false);
@@ -2079,9 +2085,11 @@ const handleAddPayment = async (data) => {
                     <div className="flex flex-col gap-2">
                       <div className="flex items-center gap-2">
                         <div className="w-8 h-8 rounded-lg bg-black/5 dark:bg-white/5 border border-gray-100 dark:border-white/10 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-xs">
-                          {client.id === 1 ? '2' : '1'}
+                          {1 + (client.history?.length || 0)}
                         </div>
-                        <span className="text-xs font-bold text-black dark:text-white">Projects</span>
+                        <span className="text-xs font-bold text-black dark:text-white">
+                          {(1 + (client.history?.length || 0)) === 1 ? 'Project' : 'Projects'}
+                        </span>
                       </div>
                       <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-tighter bg-blue-500/10 px-2 py-0.5 rounded w-fit">
                         {client.department}

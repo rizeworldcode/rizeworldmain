@@ -81,10 +81,9 @@ const parseWorkDetailToTasks = (workDetail) => {
   return tasks;
 };
 
-// Helper to check and transfer clients whose work reached 100% completion 2+ days ago without renewal
+// Helper to check and mark clients whose work reached 100% completion
 const checkAndTransferCompletedClients = async () => {
   try {
-    const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
     const clients = await Client.find();
 
     for (const client of clients) {
@@ -95,56 +94,30 @@ const checkAndTransferCompletedClients = async () => {
       const is100Percent = (primaryTotal > 0 && totalCompleted >= primaryTotal) || client.status === 'Completed';
 
       if (is100Percent) {
+        let changed = false;
         if (!client.completedAt) {
           client.completedAt = client.updatedAt || new Date();
+          changed = true;
+        }
+        if (client.status !== 'Completed') {
+          client.status = 'Completed';
+          changed = true;
+        }
+        if (changed) {
           await client.save();
         }
-
-        if (client.completedAt && new Date(client.completedAt) <= twoDaysAgo) {
-          // Transfer client to OldClient collection
-          const projectDetailText = (client.workDetail && client.workDetail.trim()) || client.package || 'Completed Service Package';
-          const emailText = (client.email && client.email.trim()) || `${(client.name || 'client').toLowerCase().replace(/\s+/g, '')}@example.com`;
-          const phoneText = (client.phone && client.phone.trim()) || 'N/A';
-
-          const clientTasks = (client.tasks && client.tasks.length > 0)
-            ? client.tasks.map(t => ({ ...t, completed: t.total, status: 'Completed' }))
-            : parseWorkDetailToTasks(client.workDetail).map(t => ({ ...t, completed: t.total, status: 'Completed' }));
-
-          const oldClientData = {
-            name: client.name || 'Client',
-            phone: phoneText,
-            email: emailText,
-            projectDetail: projectDetailText,
-            workDetail: client.workDetail || projectDetailText,
-            package: client.package || 'Service Package',
-            department: client.department || 'Completed Project',
-            startDate: client.startDate || client.createdAt || new Date(),
-            deliveredDate: client.completedAt || client.deadline || new Date(),
-            totalAmount: client.totalPrice || 0,
-            paidAmount: client.paidAmount || 0,
-            address: 'N/A',
-            payments: client.payments || [],
-            tasks: clientTasks,
-            extraTasks: client.extraTasks || [],
-            history: client.history || []
-          };
-
-          const oldClient = new OldClient(oldClientData);
-          await oldClient.save();
-          await Client.findByIdAndDelete(client._id);
-          console.log(`[Auto-Transfer] Transferred client ${client.name} (${client._id}) to OldClients (100% completed > 2 days ago without renewal).`);
-        }
       } else {
-        if (client.completedAt) {
+        if (client.completedAt && client.status !== 'Completed') {
           client.completedAt = null;
           await client.save();
         }
       }
     }
   } catch (error) {
-    console.error('Error auto-transferring completed clients:', error);
+    console.error('Error checking completed clients:', error);
   }
 };
+
 
 exports.checkAndTransferCompletedClients = checkAndTransferCompletedClients;
 
@@ -306,6 +279,38 @@ exports.getClientById = async (req, res) => {
         message: 'Client not found'
       });
     }
+
+    // Normalize tasks in history so past cycles always display their deliverables and completed progress
+    if (client.history && client.history.length > 0) {
+      client.history = client.history.map(h => {
+        let tasks = (h.tasks && h.tasks.length > 0)
+          ? h.tasks
+          : parseWorkDetailToTasks(h.workDetail || h.projectDetail);
+
+        if (!tasks || tasks.length === 0) {
+          tasks = [{
+            name: h.workDetail || h.projectDetail || 'Project Scope & Deliverables',
+            total: 1,
+            completed: 1,
+            status: 'Completed',
+            unit: 'Task'
+          }];
+        } else {
+          tasks = tasks.map(t => ({
+            ...t,
+            completed: (t.completed !== undefined && t.completed > 0) ? t.completed : (t.total || 1),
+            status: 'Completed'
+          }));
+        }
+
+        return {
+          ...h,
+          tasks,
+          status: h.status || 'Completed'
+        };
+      });
+    }
+
     res.status(200).json({
       success: true,
       data: client
@@ -512,7 +517,7 @@ exports.renewClientPackage = async (req, res) => {
           tasks: generatedTasks,
           extraTasks: [],
           payments: [],
-          history: [historyEntry]
+          history: [...(oldClientDoc.history || []), historyEntry]
         });
 
         await activeClient.save();
@@ -574,6 +579,7 @@ exports.renewClientPackage = async (req, res) => {
 
     cache.flushByPrefix('clients:');
     cache.flushByPrefix('dashboard:');
+    cache.flushByPrefix('transactions');
 
     res.status(200).json({
       success: true,

@@ -66,6 +66,23 @@ const WalletPage = () => {
           pendingAmount: pending
         });
       }
+      (c.history || []).forEach((h, idx) => {
+        const hTotal = parseFloat(h.totalPrice !== undefined ? h.totalPrice : (h.totalAmount || 0));
+        const hPaid = parseFloat(h.paidAmount || 0);
+        const hPending = h.pendingAmount !== undefined ? parseFloat(h.pendingAmount || 0) : Math.max(0, hTotal - hPaid);
+        if (hPending > 0) {
+          list.push({
+            _id: `${c._id || c.id}_hist_${idx}`,
+            name: `${c.name} (Past Cycle)`,
+            phone: c.phone || '',
+            email: c.email || '',
+            type: 'Past Cycle',
+            totalAmount: hTotal,
+            paidAmount: hPaid,
+            pendingAmount: hPending
+          });
+        }
+      });
     });
     allOldClientsList.forEach(c => {
       const total = parseFloat(c.totalAmount || 0);
@@ -83,6 +100,23 @@ const WalletPage = () => {
           pendingAmount: pending
         });
       }
+      (c.history || []).forEach((h, idx) => {
+        const hTotal = parseFloat(h.totalPrice !== undefined ? h.totalPrice : (h.totalAmount || 0));
+        const hPaid = parseFloat(h.paidAmount || 0);
+        const hPending = h.pendingAmount !== undefined ? parseFloat(h.pendingAmount || 0) : Math.max(0, hTotal - hPaid);
+        if (hPending > 0) {
+          list.push({
+            _id: `${c._id || c.id}_oldhist_${idx}`,
+            name: `${c.name} (Past Cycle)`,
+            phone: c.phone || '',
+            email: c.email || '',
+            type: 'Past Cycle',
+            totalAmount: hTotal,
+            paidAmount: hPaid,
+            pendingAmount: hPending
+          });
+        }
+      });
     });
     return list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   }, [allClientsList, allOldClientsList]);
@@ -183,38 +217,7 @@ const WalletPage = () => {
   };
 
   const downloadPendingDuesReport = () => {
-    const pendingClients = [];
-    allClientsList.forEach(c => {
-      const pending = parseFloat(c.pendingAmount || 0);
-      if (pending > 0) {
-        pendingClients.push({
-          name: c.name,
-          phone: c.phone || '',
-          email: c.email || '',
-          type: 'New Client',
-          totalAmount: c.totalPrice || 0,
-          paidAmount: c.paidAmount || 0,
-          pendingAmount: pending
-        });
-      }
-    });
-    allOldClientsList.forEach(c => {
-      const total = parseFloat(c.totalAmount || 0);
-      const paid = parseFloat(c.paidAmount || 0);
-      const pending = total - paid;
-      if (pending > 0) {
-        pendingClients.push({
-          name: c.name,
-          phone: c.phone || '',
-          email: c.email || '',
-          type: 'Old Client',
-          totalAmount: total,
-          paidAmount: paid,
-          pendingAmount: pending
-        });
-      }
-    });
-    pendingClients.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    const pendingClients = [...pendingClientsList];
     const headers = ['Client Name', 'Phone Number', 'Email', 'Client Type', 'Total Amount', 'Paid Amount', 'Pending Dues'];
     const rows = pendingClients.map(c => [
       c.name || '',
@@ -240,6 +243,12 @@ const WalletPage = () => {
         setAllClientsList(newClientsRes.data);
         newClientsRes.data.forEach(client => {
           totalPending += parseFloat(client.pendingAmount || 0);
+          (client.history || []).forEach(h => {
+            const hTotal = parseFloat(h.totalPrice !== undefined ? h.totalPrice : (h.totalAmount || 0));
+            const hPaid = parseFloat(h.paidAmount || 0);
+            const hPending = h.pendingAmount !== undefined ? parseFloat(h.pendingAmount || 0) : Math.max(0, hTotal - hPaid);
+            totalPending += hPending;
+          });
         });
       }
       if (oldClientsRes.success && Array.isArray(oldClientsRes.data)) {
@@ -249,6 +258,12 @@ const WalletPage = () => {
           if (clientPending > 0) {
             totalPending += clientPending;
           }
+          (client.history || []).forEach(h => {
+            const hTotal = parseFloat(h.totalPrice !== undefined ? h.totalPrice : (h.totalAmount || 0));
+            const hPaid = parseFloat(h.paidAmount || 0);
+            const hPending = h.pendingAmount !== undefined ? parseFloat(h.pendingAmount || 0) : Math.max(0, hTotal - hPaid);
+            totalPending += hPending;
+          });
         });
       }
       setPendingDues(totalPending);
