@@ -184,7 +184,7 @@ const getEnrichedCycles = (client) => {
   const all = [current, ...historyList];
 
   // Sort chronologically ascending to assign permanent Month numbers (Month 1, Month 2, Month 3...)
-  all.sort((a, b) => new Date(a.startDate || a.createdAt || 0) - new Date(b.startDate || b.createdAt || 0));
+  all.sort((a, b) => new Date(a.startDate || a.createdAt || 0).getTime() - new Date(b.startDate || b.createdAt || 0).getTime());
 
   all.forEach((cycle, index) => {
     cycle.monthNumber = index + 1;
@@ -195,13 +195,13 @@ const getEnrichedCycles = (client) => {
 
   const currentCycle = all.find(c => c.isCurrent) || current;
   // Past cycles sorted descending (newest past month first, e.g. Month 2 then Month 1)
-  const pastSortedDesc = all.filter(c => !c.isCurrent).sort((a, b) => new Date(b.startDate || b.createdAt || 0) - new Date(a.startDate || a.createdAt || 0));
+  const pastSortedDesc = all.filter(c => !c.isCurrent).sort((a, b) => new Date(b.startDate || b.createdAt || 0).getTime() - new Date(a.startDate || a.createdAt || 0).getTime());
 
   return {
     current: currentCycle,
     past: pastSortedDesc,
     allChronological: all,
-    allReverse: [...all].sort((a, b) => new Date(b.startDate || b.createdAt || 0) - new Date(a.startDate || a.createdAt || 0))
+    allReverse: [...all].sort((a, b) => new Date(b.startDate || b.createdAt || 0).getTime() - new Date(a.startDate || a.createdAt || 0).getTime())
   };
 };
 
@@ -2788,7 +2788,7 @@ const ClientProjects = ({ onBack }) => {
   const sortedPastCycles = useMemo(() => {
     if (!enrichedCycles.past) return [];
     if (pastSortOrder === 'asc') {
-      return [...enrichedCycles.past].sort((a, b) => new Date(a.startDate || a.createdAt || 0) - new Date(b.startDate || b.createdAt || 0));
+      return [...enrichedCycles.past].sort((a, b) => new Date(a.startDate || a.createdAt || 0).getTime() - new Date(b.startDate || b.createdAt || 0).getTime());
     }
     return enrichedCycles.past;
   }, [enrichedCycles.past, pastSortOrder]);
