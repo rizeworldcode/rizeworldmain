@@ -119,90 +119,13 @@ const parseWorkDetailToTasks = (workDetail) => {
 
 
 
-const normalizeProjectTasks = (project) => {
-  if (!project) return [];
-  let tasks = (project.tasks && project.tasks.length > 0)
-    ? [...project.tasks]
-    : parseWorkDetailToTasks(project.workDetail || project.projectDetail);
-
-  if (!tasks || tasks.length === 0) {
-    const rawDetail = project.workDetail || project.projectDetail || 'Project Scope & Deliverables';
-    tasks = [{
-      name: rawDetail,
-      total: 1,
-      completed: (project.isHistory || project.status === 'Completed' || (project.paidAmount && project.paidAmount > 0 && (!project.pendingAmount || project.pendingAmount === 0))) ? 1 : 0,
-      status: (project.isHistory || project.status === 'Completed') ? 'Completed' : 'Pending',
-      unit: 'Deliverable'
-    }];
-  }
-
-  if (project.isHistory || project.status === 'Completed') {
-    tasks = tasks.map(t => ({
-      ...t,
-      completed: (t.completed !== undefined && t.completed > 0) ? t.completed : (t.total || 1),
-      status: 'Completed'
-    }));
-  }
-
-  return tasks;
-};
-
 const calculateProjectProgress = (project) => {
-  if (!project) return 0;
-  const primaryTasks = normalizeProjectTasks(project);
+  const primaryTasks = project.tasks || [];
   const extraTasks = project.extraTasks || [];
-  const primaryTotal = primaryTasks.reduce((acc, t) => acc + (t.total || 1), 0) || 1;
-  const totalCompleted = [...primaryTasks, ...extraTasks].reduce((acc, t) => {
-    const c = (t.completed !== undefined) ? t.completed : (project.isHistory || project.status === 'Completed' ? (t.total || 1) : 0);
-    return acc + c;
-  }, 0);
-
-  if (project.isHistory || project.status === 'Completed') {
-    return Math.max(100, Math.round((totalCompleted / primaryTotal) * 100));
-  }
+  if (primaryTasks.length === 0 && extraTasks.length === 0) return 0;
+  const primaryTotal = primaryTasks.reduce((acc, t) => acc + t.total, 0) || 1;
+  const totalCompleted = [...primaryTasks, ...extraTasks].reduce((acc, t) => acc + t.completed, 0);
   return Math.round((totalCompleted / primaryTotal) * 100);
-};
-
-const getEnrichedCycles = (client) => {
-  if (!client) return { current: null, past: [], allChronological: [], allReverse: [] };
-
-  const current = {
-    ...client,
-    isCurrent: true,
-    isHistory: false,
-    keyId: 'current'
-  };
-
-  const historyList = (client.history || []).map((h, idx) => ({
-    ...h,
-    isCurrent: false,
-    isHistory: true,
-    keyId: `history-${idx}`,
-    historyIndex: idx
-  }));
-
-  const all = [current, ...historyList];
-
-  // Sort chronologically ascending to assign permanent Month numbers (Month 1, Month 2, Month 3...)
-  all.sort((a, b) => new Date(a.startDate || a.createdAt || 0).getTime() - new Date(b.startDate || b.createdAt || 0).getTime());
-
-  all.forEach((cycle, index) => {
-    cycle.monthNumber = index + 1;
-    const d = cycle.startDate ? new Date(cycle.startDate) : null;
-    cycle.monthLabel = d ? d.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }) : `Cycle ${index + 1}`;
-    cycle.cycleDisplayName = `Month ${index + 1} (${cycle.monthLabel})`;
-  });
-
-  const currentCycle = all.find(c => c.isCurrent) || current;
-  // Past cycles sorted descending (newest past month first, e.g. Month 2 then Month 1)
-  const pastSortedDesc = all.filter(c => !c.isCurrent).sort((a, b) => new Date(b.startDate || b.createdAt || 0).getTime() - new Date(a.startDate || a.createdAt || 0).getTime());
-
-  return {
-    current: currentCycle,
-    past: pastSortedDesc,
-    allChronological: all,
-    allReverse: [...all].sort((a, b) => new Date(b.startDate || b.createdAt || 0).getTime() - new Date(a.startDate || a.createdAt || 0).getTime())
-  };
 };
 
 const CLIENT_DEPARTMENTS = ['SEO', 'SMM', 'PPC', 'Graphic Design & Video Editing', 'WEB DEvlopment'];
@@ -1042,18 +965,14 @@ const EditProjectModal = ({ isOpen, onClose, project, onSave }) => {
 const ProjectSection = ({
   project,
   isHistory = false,
-  cycleInfo = null,
   onUpdate = (_p) => { },
   onRenew = (_p) => { },
   onAddTask = (_p) => { },
   onDeleteExtraTask = (_pid, _idx) => { },
   client
 }) => {
-  const effectiveProject = { ...project, isHistory };
-  const displayTasks = normalizeProjectTasks(effectiveProject);
-  const projectProgress = calculateProjectProgress(effectiveProject);
+  const projectProgress = calculateProjectProgress(project);
   const [invoiceMenuOpen, setInvoiceMenuOpen] = useState(false);
-  const [reportMenuOpen, setReportMenuOpen] = useState(false);
 
   return (
     <div className={`grid grid-cols-1 lg:grid-cols-3 gap-8 ${isHistory ? 'opacity-95' : ''}`}>
@@ -1061,10 +980,11 @@ const ProjectSection = ({
       <div className="lg:col-span-2 space-y-6">
         {/* Work Progress Card */}
         <div className="bg-white dark:bg-[#111] p-8 rounded-[2rem] border border-gray-100 dark:border-white/5 shadow-sm relative overflow-hidden">
-          <div className="absolute top-0 right-0 px-4 py-1.5 bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest rounded-bl-xl shadow-sm flex items-center gap-1.5">
-            <span>{cycleInfo?.cycleDisplayName || (isHistory ? 'Completed Cycle' : 'Current Active Cycle')}</span>
-            {isHistory && <span className="bg-white/20 px-1.5 py-0.5 rounded text-[9px]">Completed</span>}
-          </div>
+          {isHistory && (
+            <div className="absolute top-0 right-0 px-4 py-1 bg-gray-500 text-white text-[10px] font-black uppercase tracking-widest rounded-bl-xl">
+              Completed Cycle
+            </div>
+          )}
           <div className="flex justify-between items-center mb-6">
             <div className="flex items-center gap-3">
               <h4 className="text-sm font-black text-gray-900 dark:text-white flex items-center gap-2">
@@ -1072,88 +992,44 @@ const ProjectSection = ({
                 WORK PROGRESS
               </h4>
               {client && (
-                <div className="flex items-center gap-2">
-                  <div className="relative">
-                    <button
-                      onClick={() => setInvoiceMenuOpen(!invoiceMenuOpen)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] uppercase tracking-widest transition-all"
-                    >
-                      <Download size={12} />
-                      Invoice
-                      <ChevronDown size={12} />
-                    </button>
-                    <AnimatePresence>
-                      {invoiceMenuOpen && (
-                        <motion.div
-                          initial={{ opacity: 0, y: -10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -10 }}
-                          className="absolute top-full left-0 mt-2 bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 rounded-xl shadow-lg z-10 overflow-hidden"
+                <div className="relative">
+                  <button
+                    onClick={() => setInvoiceMenuOpen(!invoiceMenuOpen)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] uppercase tracking-widest transition-all"
+                  >
+                    <Download size={12} />
+                    Invoice
+                    <ChevronDown size={12} />
+                  </button>
+                  <AnimatePresence>
+                    {invoiceMenuOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="absolute top-full left-0 mt-2 bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 rounded-xl shadow-lg z-10 overflow-hidden"
+                      >
+                        <button
+                          onClick={async () => {
+                            await downloadInvoice(project, client, true);
+                            setInvoiceMenuOpen(false);
+                          }}
+                          className="block w-full text-left px-4 py-2 text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10"
                         >
-                          <button
-                            onClick={async () => {
-                              await downloadInvoice(project, client, true);
-                              setInvoiceMenuOpen(false);
-                            }}
-                            className="block w-full text-left px-4 py-2 text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 whitespace-nowrap"
-                          >
-                            With GST (18%)
-                          </button>
-                          <button
-                            onClick={async () => {
-                              await downloadInvoice(project, client, false);
-                              setInvoiceMenuOpen(false);
-                            }}
-                            className="block w-full text-left px-4 py-2 text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 whitespace-nowrap"
-                          >
-                            Without GST
-                          </button>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-
-                  <div className="relative">
-                    <button
-                      onClick={() => setReportMenuOpen(!reportMenuOpen)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] uppercase tracking-widest transition-all"
-                    >
-                      <Download size={12} />
-                      Report
-                      <ChevronDown size={12} />
-                    </button>
-                    <AnimatePresence>
-                      {reportMenuOpen && (
-                        <motion.div
-                          initial={{ opacity: 0, y: -10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -10 }}
-                          className="absolute top-full left-0 mt-2 bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 rounded-xl shadow-lg z-10 overflow-hidden min-w-[170px]"
+                          With GST (18%)
+                        </button>
+                        <button
+                          onClick={async () => {
+                            await downloadInvoice(project, client, false);
+                            setInvoiceMenuOpen(false);
+                          }}
+                          className="block w-full text-left px-4 py-2 text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10"
                         >
-                          <button
-                            onClick={async () => {
-                              await downloadMonthlyReport(effectiveProject, client, cycleInfo);
-                              setReportMenuOpen(false);
-                            }}
-                            className="block w-full text-left px-4 py-2 text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 whitespace-nowrap"
-                          >
-                            Monthly Report (PDF)
-                          </button>
-                          <button
-                            onClick={async () => {
-                              const sDate = project.startDate ? new Date(project.startDate).toISOString().split('T')[0] : '';
-                              const eDate = project.deadline ? new Date(project.deadline).toISOString().split('T')[0] : '';
-                              await downloadDelayWork(client._id || client.id, sDate, eDate);
-                              setReportMenuOpen(false);
-                            }}
-                            className="block w-full text-left px-4 py-2 text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 whitespace-nowrap"
-                          >
-                            Daily Work (Excel)
-                          </button>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
+                          Without GST
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               )}
             </div>
@@ -1240,21 +1116,21 @@ const ProjectSection = ({
           </div>
 
           <div className="space-y-4">
-            {displayTasks.map((task, index) => {
-              const progress = Math.round(((task.completed || 0) / (task.total || 1)) * 100);
+            {project.tasks?.map((task, index) => {
+              const progress = Math.round((task.completed / task.total) * 100);
               return (
                 <div key={index} className="p-5 rounded-2xl bg-gray-50/50 dark:bg-white/[0.02] border border-gray-100 dark:border-white/5 hover:border-blue-500/30 transition-all group/task">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <div className={`p-2.5 rounded-xl ${progress >= 100 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-blue-500/10 text-blue-500'}`}>
-                        {progress >= 100 ? <CheckCircle2 size={16} /> : <Circle size={16} />}
+                      <div className={`p-2.5 rounded-xl ${progress === 100 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-blue-500/10 text-blue-500'}`}>
+                        {progress === 100 ? <CheckCircle2 size={16} /> : <Circle size={16} />}
                       </div>
                       <div>
-                        <span className={`text-sm font-bold block ${progress >= 100 ? 'text-gray-400 line-through' : 'text-gray-700 dark:text-gray-200'}`}>
+                        <span className={`text-sm font-bold block ${progress === 100 ? 'text-gray-400 line-through' : 'text-gray-700 dark:text-gray-200'}`}>
                           {task.name}
                         </span>
                         <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">
-                          {task.completed} / {task.total} {task.unit || 'TASK'}
+                          {task.completed} / {task.total} TASK
                         </span>
                       </div>
                     </div>
@@ -2108,359 +1984,6 @@ const downloadInvoice = async (project, client, includeGST = true) => {
   await htmlToPDF(html, `Invoice-${client.name.replace(/\s+/g, '-')}-${includeGST ? 'with-gst' : 'without-gst'}-${Date.now().toString().slice(-6)}.pdf`);
 };
 
-const generateMonthlyReportHTML = (project, client, cycleInfo = null) => {
-  const reportDate = new Date().toLocaleDateString('en-IN');
-  const startDateStr = project.startDate ? new Date(project.startDate).toLocaleDateString('en-IN') : 'N/A';
-  const deadlineStr = project.deadline ? new Date(project.deadline).toLocaleDateString('en-IN') : 'N/A';
-  const effectiveProject = { ...project };
-  const primaryTasks = normalizeProjectTasks(effectiveProject);
-  const extraTasks = effectiveProject.extraTasks || [];
-  const progress = calculateProjectProgress(effectiveProject);
-  const cycleHeader = cycleInfo?.cycleDisplayName || (project.isHistory ? 'Completed Cycle' : 'Current Active Cycle');
-
-  return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <title>Monthly Work Report - ${client.name}</title>
-      <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 24px; color: #111827; background: #fff; }
-        .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #3b82f6; padding-bottom: 16px; margin-bottom: 20px; }
-        .logo-title { font-size: 20px; font-weight: 900; color: #1e3a8a; letter-spacing: 0.5px; }
-        .logo-sub { font-size: 11px; color: #6b7280; font-weight: 600; text-transform: uppercase; margin-top: 2px; }
-        .report-badge { background: #eff6ff; color: #1d4ed8; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; text-align: right; border: 1px solid #bfdbfe; }
-        .meta-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }
-        .meta-card { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px 14px; }
-        .meta-label { font-size: 10px; font-weight: 800; text-transform: uppercase; color: #6b7280; margin-bottom: 3px; }
-        .meta-val { font-size: 13px; font-weight: 700; color: #111827; }
-        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
-        .stat-box { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 10px; text-align: center; }
-        .stat-label { font-size: 10px; font-weight: 700; color: #6b7280; text-transform: uppercase; }
-        .stat-num { font-size: 18px; font-weight: 900; margin-top: 4px; }
-        .section-title { font-size: 13px; font-weight: 800; text-transform: uppercase; color: #1e3a8a; border-left: 4px solid #3b82f6; padding-left: 8px; margin: 18px 0 10px 0; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 12px; }
-        th { background: #f3f4f6; text-align: left; padding: 8px 10px; font-size: 10px; font-weight: 800; text-transform: uppercase; color: #4b5563; border-bottom: 1px solid #e5e7eb; }
-        td { padding: 8px 10px; border-bottom: 1px solid #f3f4f6; }
-        .badge { display: inline-block; padding: 2px 8px; border-radius: 9999px; font-size: 10px; font-weight: 700; }
-        .badge-success { background: #dcfce7; color: #15803d; }
-        .badge-progress { background: #dbeafe; color: #1d4ed8; }
-        .badge-pending { background: #fef3c7; color: #b45309; }
-        .progress-bar-bg { width: 100%; height: 6px; background: #e5e7eb; border-radius: 9999px; overflow: hidden; margin-top: 4px; }
-        .progress-bar-fill { height: 100%; background: #10b981; border-radius: 9999px; }
-        .footer { margin-top: 24px; padding-top: 12px; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; font-size: 10px; color: #9ca3af; }
-      </style>
-    </head>
-    <body>
-      <div class="header">
-        <div>
-          <div class="logo-title">RIZE WORLD</div>
-          <div class="logo-sub">Made for India Ready for the World • Client Performance Report</div>
-        </div>
-        <div class="report-badge">
-          <div>${cycleHeader}</div>
-          <div style="font-size:10px; font-weight:normal; margin-top:2px;">Dated: ${reportDate}</div>
-        </div>
-      </div>
-
-      <div class="meta-grid">
-        <div class="meta-card">
-          <div class="meta-label">Client Name</div>
-          <div class="meta-val">${client.name}</div>
-          <div style="font-size:11px; color:#6b7280; margin-top:2px;">${client.phone || ''} | ${client.email || ''}</div>
-        </div>
-        <div class="meta-card">
-          <div class="meta-label">Package & Department</div>
-          <div class="meta-val">${project.package || client.package || 'Service Package'} (${project.department || client.department || 'Digital Marketing'})</div>
-          <div style="font-size:11px; color:#6b7280; margin-top:2px;">Cycle Period: ${startDateStr} - ${deadlineStr}</div>
-        </div>
-      </div>
-
-      <div class="stats-grid">
-        <div class="stat-box">
-          <div class="stat-label">Progress</div>
-          <div class="stat-num" style="color:#2563eb;">${progress}%</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-label">Package Price</div>
-          <div class="stat-num" style="color:#111827;">₹${(project.totalPrice || 0).toLocaleString('en-IN')}</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-label">Amount Paid</div>
-          <div class="stat-num" style="color:#16a34a;">₹${(project.paidAmount || 0).toLocaleString('en-IN')}</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-label">Pending Due</div>
-          <div class="stat-num" style="color:#dc2626;">₹${(project.pendingAmount || 0).toLocaleString('en-IN')}</div>
-        </div>
-      </div>
-
-      <div class="section-title">Deliverables & Work Progress</div>
-      <table>
-        <thead>
-          <tr>
-            <th style="width:40%;">Task / Deliverable</th>
-            <th style="width:20%; text-align:center;">Completed / Target</th>
-            <th style="width:25%;">Progress</th>
-            <th style="width:15%; text-align:center;">Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${primaryTasks.map(t => {
-            const pct = t.total > 0 ? Math.round(((t.completed || 0) / t.total) * 100) : 0;
-            const badgeClass = pct >= 100 ? 'badge-success' : pct > 0 ? 'badge-progress' : 'badge-pending';
-            const statusText = pct >= 100 ? 'Completed' : pct > 0 ? 'In Progress' : 'Pending';
-            return `
-              <tr>
-                <td style="font-weight:600;">${t.name}</td>
-                <td style="text-align:center; font-weight:700;">${t.completed} / ${t.total} ${t.unit || 'Tasks'}</td>
-                <td>
-                  <div>${pct}%</div>
-                  <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${pct}%;"></div></div>
-                </td>
-                <td style="text-align:center;"><span class="badge ${badgeClass}">${statusText}</span></td>
-              </tr>
-            `;
-          }).join('')}
-        </tbody>
-      </table>
-
-      ${extraTasks.length > 0 ? `
-        <div class="section-title">Extra Deliverables & Special Activities</div>
-        <table>
-          <thead>
-            <tr>
-              <th style="width:50%;">Activity Name</th>
-              <th style="width:25%; text-align:center;">Count</th>
-              <th style="width:25%; text-align:center;">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${extraTasks.map(t => `
-              <tr>
-                <td style="font-weight:600;">${t.name}</td>
-                <td style="text-align:center; font-weight:700;">${t.completed || t.total || 1} Completed</td>
-                <td style="text-align:center;"><span class="badge badge-success">Completed</span></td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      ` : ''}
-
-      ${(project.payments && project.payments.length > 0) ? `
-        <div class="section-title">Payment History for this Cycle</div>
-        <table>
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Mode</th>
-              <th>UTR / Reference</th>
-              <th style="text-align:right;">Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${project.payments.map(p => `
-              <tr>
-                <td>${p.date ? new Date(p.date).toLocaleDateString('en-IN') : 'N/A'}</td>
-                <td>${p.mode || 'Online'}</td>
-                <td>${p.utr || '-'}</td>
-                <td style="text-align:right; font-weight:700; color:#16a34a;">₹${(p.amount || 0).toLocaleString('en-IN')}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      ` : ''}
-
-      <div class="footer">
-        <div>This is a computer-generated performance report from RizeWorld CRM.</div>
-        <div>Confidential • For Client Reference Only</div>
-      </div>
-    </body>
-    </html>
-  `;
-};
-
-const downloadMonthlyReport = async (project, client, cycleInfo = null) => {
-  const effectiveProject = { ...project };
-  const html = generateMonthlyReportHTML(effectiveProject, client, cycleInfo);
-  const cycleName = cycleInfo?.cycleDisplayName
-    ? cycleInfo.cycleDisplayName.replace(/[^a-zA-Z0-9]/g, '-')
-    : (project.startDate ? new Date(project.startDate).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }) : 'Cycle');
-  await htmlToPDF(html, `Work-Report-${client.name.replace(/\s+/g, '-')}-${cycleName}.pdf`);
-};
-
-const generateAllMonthsReportHTML = (projects, client) => {
-  const enriched = getEnrichedCycles(projects[0] || client);
-  const allCycles = enriched.allChronological;
-  const reportDate = new Date().toLocaleDateString('en-IN');
-  let totalRev = 0;
-  let totalPaid = 0;
-  let totalPend = 0;
-  allCycles.forEach(c => {
-    totalRev += c.totalPrice || 0;
-    totalPaid += c.paidAmount || 0;
-    totalPend += c.pendingAmount || 0;
-  });
-
-  return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <title>All Months Comprehensive Report - ${client.name}</title>
-      <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 24px; color: #111827; background: #fff; }
-        .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #3b82f6; padding-bottom: 16px; margin-bottom: 20px; }
-        .logo-title { font-size: 20px; font-weight: 900; color: #1e3a8a; }
-        .logo-sub { font-size: 11px; color: #6b7280; font-weight: 600; text-transform: uppercase; margin-top: 2px; }
-        .report-badge { background: #eff6ff; color: #1d4ed8; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; text-align: right; border: 1px solid #bfdbfe; }
-        .meta-card { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px 14px; margin-bottom: 18px; }
-        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
-        .stat-box { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 10px; text-align: center; }
-        .stat-label { font-size: 10px; font-weight: 700; color: #6b7280; text-transform: uppercase; }
-        .stat-num { font-size: 18px; font-weight: 900; margin-top: 4px; }
-        .section-title { font-size: 13px; font-weight: 800; text-transform: uppercase; color: #1e3a8a; border-left: 4px solid #3b82f6; padding-left: 8px; margin: 18px 0 10px 0; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 11px; }
-        th { background: #f3f4f6; text-align: left; padding: 8px 10px; font-size: 10px; font-weight: 800; text-transform: uppercase; color: #4b5563; border-bottom: 1px solid #e5e7eb; }
-        td { padding: 8px 10px; border-bottom: 1px solid #f3f4f6; }
-        .badge { display: inline-block; padding: 2px 8px; border-radius: 9999px; font-size: 10px; font-weight: 700; }
-        .badge-success { background: #dcfce7; color: #15803d; }
-        .badge-active { background: #e0e7ff; color: #3730a3; }
-        .footer { margin-top: 24px; padding-top: 12px; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; font-size: 10px; color: #9ca3af; }
-      </style>
-    </head>
-    <body>
-      <div class="header">
-        <div>
-          <div class="logo-title">RIZE WORLD</div>
-          <div class="logo-sub">Made for India Ready for the World • Multi-Cycle Client Report</div>
-        </div>
-        <div class="report-badge">
-          <div>ALL MONTHS REPORT</div>
-          <div style="font-size:10px; font-weight:normal; margin-top:2px;">Dated: ${reportDate}</div>
-        </div>
-      </div>
-
-      <div class="meta-card">
-        <div style="font-size:15px; font-weight:800; color:#111827;">${client.name}</div>
-        <div style="font-size:12px; color:#4b5563; margin-top:3px;">
-          ${client.phone || ''} | ${client.email || ''} | ${client.department || ''}
-        </div>
-      </div>
-
-      <div class="stats-grid">
-        <div class="stat-box">
-          <div class="stat-label">Total Cycles</div>
-          <div class="stat-num" style="color:#2563eb;">${allCycles.length} Months</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-label">Total Billed</div>
-          <div class="stat-num" style="color:#111827;">₹${totalRev.toLocaleString('en-IN')}</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-label">Total Received</div>
-          <div class="stat-num" style="color:#16a34a;">₹${totalPaid.toLocaleString('en-IN')}</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-label">Total Pending</div>
-          <div class="stat-num" style="color:#dc2626;">₹${totalPend.toLocaleString('en-IN')}</div>
-        </div>
-      </div>
-
-      <div class="section-title">All Billing & Work Cycles Summary (Chronological Sequence)</div>
-      <table>
-        <thead>
-          <tr>
-            <th>Cycle / Month</th>
-            <th>Package</th>
-            <th style="text-align:right;">Total Price</th>
-            <th style="text-align:right;">Paid</th>
-            <th style="text-align:right;">Pending</th>
-            <th style="text-align:center;">Progress</th>
-            <th style="text-align:center;">Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${allCycles.map((cycle) => {
-            const start = cycle.startDate ? new Date(cycle.startDate).toLocaleDateString('en-IN') : 'N/A';
-            const end = cycle.deadline ? new Date(cycle.deadline).toLocaleDateString('en-IN') : 'N/A';
-            const progress = calculateProjectProgress(cycle);
-            const isCurr = cycle.isCurrent;
-            return `
-              <tr>
-                <td style="font-weight:700;">
-                  ${cycle.cycleDisplayName || (isCurr ? 'Current Active Cycle' : 'Past Cycle')}
-                  <div style="font-size:10px; font-weight:normal; color:#6b7280;">${start} - ${end}</div>
-                </td>
-                <td>${cycle.package || 'Service Package'}</td>
-                <td style="text-align:right; font-weight:600;">₹${(cycle.totalPrice || 0).toLocaleString('en-IN')}</td>
-                <td style="text-align:right; font-weight:600; color:#16a34a;">₹${(cycle.paidAmount || 0).toLocaleString('en-IN')}</td>
-                <td style="text-align:right; font-weight:600; color:#dc2626;">₹${(cycle.pendingAmount || 0).toLocaleString('en-IN')}</td>
-                <td style="text-align:center; font-weight:700;">${progress}%</td>
-                <td style="text-align:center;">
-                  <span class="badge ${isCurr ? 'badge-active' : 'badge-success'}">${isCurr ? 'Active' : 'Completed'}</span>
-                </td>
-              </tr>
-            `;
-          }).join('')}
-        </tbody>
-      </table>
-
-      <div class="section-title">Month-by-Month Work & Deliverables Breakdown</div>
-      ${allCycles.map((cycle) => {
-        const tasks = normalizeProjectTasks(cycle);
-        const extra = cycle.extraTasks || [];
-        const cycleProgress = calculateProjectProgress(cycle);
-        return `
-          <div style="background:#f9fafb; border:1px solid #e5e7eb; border-radius:10px; padding:12px; margin-bottom:14px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-              <div style="font-weight:800; font-size:12px; color:#1e3a8a;">${cycle.cycleDisplayName}</div>
-              <div style="font-weight:700; font-size:11px; color:#2563eb;">Progress: ${cycleProgress}%</div>
-            </div>
-            <table style="margin-bottom:0;">
-              <thead>
-                <tr>
-                  <th style="width:50%;">Deliverable</th>
-                  <th style="width:25%; text-align:center;">Delivered / Target</th>
-                  <th style="width:25%; text-align:center;">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${tasks.map(t => `
-                  <tr>
-                    <td style="font-weight:600;">${t.name}</td>
-                    <td style="text-align:center; font-weight:700;">${t.completed} / ${t.total} ${t.unit || 'Tasks'}</td>
-                    <td style="text-align:center;"><span class="badge badge-success">Completed</span></td>
-                  </tr>
-                `).join('')}
-                ${extra.map(t => `
-                  <tr>
-                    <td style="font-weight:600; color:#059669;">✨ ${t.name} (Bonus)</td>
-                    <td style="text-align:center; font-weight:700;">${t.completed} / ${t.total}</td>
-                    <td style="text-align:center;"><span class="badge badge-success">Completed</span></td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          </div>
-        `;
-      }).join('')}
-
-      <div class="footer">
-        <div>This is a computer-generated consolidated report from RizeWorld CRM.</div>
-        <div>Confidential • For Client Reference Only</div>
-      </div>
-    </body>
-    </html>
-  `;
-};
-
-const downloadAllMonthsReport = async (projects, client) => {
-  const html = generateAllMonthsReportHTML(projects, client);
-  await htmlToPDF(html, `All-Months-Report-${client.name.replace(/\s+/g, '-')}-${Date.now().toString().slice(-6)}.pdf`);
-};
-
-
 const downloadDelayWork = async (clientId, startDate, endDate) => {
   try {
     const params = new URLSearchParams();
@@ -2507,7 +2030,6 @@ const ClientProjects = ({ onBack }) => {
     startDate: new Date().toISOString().split('T')[0],
     deadline: ''
   });
-  const [pastSortOrder, setPastSortOrder] = useState('desc');
   const [allProjectsMenuOpen, setAllProjectsMenuOpen] = useState(false);
   const [currentProjectMenuOpen, setCurrentProjectMenuOpen] = useState(false);
   const [delayWorkStartDate, setDelayWorkStartDate] = useState('');
@@ -2523,15 +2045,9 @@ const ClientProjects = ({ onBack }) => {
       const result = await response.json();
       if (result.success) {
         const clientData = result.data;
+        // If tasks array is empty (old data), generate them from workDetail for the UI
         if (!clientData.tasks || clientData.tasks.length === 0) {
-          clientData.tasks = normalizeProjectTasks(clientData);
-        }
-        if (clientData.history && clientData.history.length > 0) {
-          clientData.history = clientData.history.map(h => ({
-            ...h,
-            tasks: normalizeProjectTasks({ ...h, isHistory: true }),
-            status: h.status || 'Completed'
-          }));
+          clientData.tasks = parseWorkDetailToTasks(clientData.workDetail);
         }
         setProjects([clientData]);
       }
@@ -2760,7 +2276,7 @@ const ClientProjects = ({ onBack }) => {
 
     allCycles.forEach(cycle => {
       totalProgress += calculateProjectProgress(cycle);
-      const allTasks = [...normalizeProjectTasks(cycle), ...(cycle.extraTasks || [])];
+      const allTasks = [...(cycle.tasks || []), ...(cycle.extraTasks || [])];
       allTasks.forEach(task => {
         if (task.status === 'Completed' || task.completed === task.total) totalTasksDone++;
         else totalTasksPending++;
@@ -2780,18 +2296,6 @@ const ClientProjects = ({ onBack }) => {
       cycleCount: allCycles.length
     };
   }, [projects]);
-
-  const enrichedCycles = useMemo(() => {
-    return getEnrichedCycles(projects[0]);
-  }, [projects]);
-
-  const sortedPastCycles = useMemo(() => {
-    if (!enrichedCycles.past) return [];
-    if (pastSortOrder === 'asc') {
-      return [...enrichedCycles.past].sort((a, b) => new Date(a.startDate || a.createdAt || 0).getTime() - new Date(b.startDate || b.createdAt || 0).getTime());
-    }
-    return enrichedCycles.past;
-  }, [enrichedCycles.past, pastSortOrder]);
 
   return (
     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-12 pb-20">
@@ -2902,18 +2406,6 @@ const ClientProjects = ({ onBack }) => {
 
               <div className="relative w-full md:w-auto">
                 <button
-                  onClick={async () => {
-                    await downloadAllMonthsReport(projects, projects[0]);
-                  }}
-                  className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm transition-all shadow-lg shadow-indigo-600/20 w-full"
-                >
-                  <Download size={18} />
-                  <span className="whitespace-nowrap">All Months Report</span>
-                </button>
-              </div>
-
-              <div className="relative w-full md:w-auto">
-                <button
                   onClick={() => setCurrentProjectMenuOpen(!currentProjectMenuOpen)}
                   className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition-all shadow-lg shadow-emerald-600/20 w-full"
                 >
@@ -2997,9 +2489,8 @@ const ClientProjects = ({ onBack }) => {
           </div>
 
           <ProjectSection
-            project={enrichedCycles.current || projects[0]}
+            project={projects[0]}
             client={projects[0]}
-            cycleInfo={enrichedCycles.current}
             onUpdate={openUpdateModal}
             onRenew={openRenewModal}
             onAddTask={(p) => {
@@ -3010,44 +2501,14 @@ const ClientProjects = ({ onBack }) => {
           />
 
           {/* History */}
-          {sortedPastCycles && sortedPastCycles.length > 0 && (
+          {projects[0].history && projects[0].history.length > 0 && (
             <div className="space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <h3 className="text-2xl font-black text-gray-900 dark:text-white">Past Cycles</h3>
-                  <p className="text-xs text-gray-500 font-medium mt-1">
-                    Work reports and deliverables ordered chronologically by month
-                  </p>
-                </div>
-                <div className="flex items-center gap-1 bg-gray-100 dark:bg-white/5 p-1 rounded-xl w-fit">
-                  <button
-                    onClick={() => setPastSortOrder('desc')}
-                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                      pastSortOrder === 'desc'
-                        ? 'bg-white dark:bg-[#222] text-blue-600 dark:text-blue-400 shadow-sm'
-                        : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
-                    }`}
-                  >
-                    Newest Month First
-                  </button>
-                  <button
-                    onClick={() => setPastSortOrder('asc')}
-                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                      pastSortOrder === 'asc'
-                        ? 'bg-white dark:bg-[#222] text-blue-600 dark:text-blue-400 shadow-sm'
-                        : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
-                    }`}
-                  >
-                    Oldest Month First
-                  </button>
-                </div>
-              </div>
-              {sortedPastCycles.map((cycle, index) => (
+              <h3 className="text-2xl font-black text-gray-900 dark:text-white">Past Cycles</h3>
+              {projects[0].history.map((cycle, index) => (
                 <ProjectSection
-                  key={cycle.keyId || index}
+                  key={index}
                   project={cycle}
                   client={projects[0]}
-                  cycleInfo={cycle}
                   isHistory={true}
                 />
               ))}
