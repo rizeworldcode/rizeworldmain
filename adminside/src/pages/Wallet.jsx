@@ -311,6 +311,8 @@ const WalletPage = () => {
       if (!result.success) {
         setTransactions(previous);
         alert(result.message || 'Failed to delete transaction');
+      } else {
+        fetchTransactions();
       }
     } catch (error) {
       setTransactions(previous);
@@ -865,8 +867,8 @@ const WalletPage = () => {
                     <td colSpan={8} className="px-6 py-12 text-center text-gray-500">No transactions yet</td>
                   </tr>
                 ) : (
-                  filteredTransactions.map((transaction) => (
-                    <tr key={transaction._id} className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
+                  filteredTransactions.map((transaction, idx) => (
+                    <tr key={transaction._id || `tx_${idx}`} className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
                       <td className="px-6 py-4">
                         <div className="font-semibold text-gray-900 dark:text-white">{transaction.name}</div>
                         {transaction.description && (

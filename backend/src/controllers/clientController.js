@@ -627,8 +627,24 @@ exports.renewClientPackage = async (req, res) => {
     // Check if there is an OldClient record with matching name to also merge its past cycles if any exist
     const oldDoc = await OldClient.findOne({ name: new RegExp(`^${client.name.trim()}$`, 'i') });
     let extraOldHistory = [];
-    if (oldDoc && (oldDoc.history || []).length > 0) {
-      extraOldHistory = oldDoc.history;
+    if (oldDoc) {
+      const oldRootHistoryEntry = {
+        package: oldDoc.package || 'Old Client',
+        workDetail: oldDoc.workDetail || oldDoc.projectDetail,
+        totalPrice: oldDoc.totalAmount || 0,
+        paidAmount: oldDoc.paidAmount || 0,
+        pendingAmount: Math.max(0, (oldDoc.totalAmount || 0) - (oldDoc.paidAmount || 0)),
+        startDate: oldDoc.startDate,
+        deadline: oldDoc.deliveredDate,
+        tasks: (oldDoc.tasks && oldDoc.tasks.length > 0)
+          ? oldDoc.tasks
+          : parseWorkDetailToTasks(oldDoc.workDetail || oldDoc.projectDetail),
+        extraTasks: oldDoc.extraTasks || [],
+        payments: oldDoc.payments || [],
+        status: 'Completed',
+        completedAt: oldDoc.deliveredDate || new Date()
+      };
+      extraOldHistory = [...(oldDoc.history || []), oldRootHistoryEntry];
       await OldClient.findByIdAndDelete(oldDoc._id);
     }
 

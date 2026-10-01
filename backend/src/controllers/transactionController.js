@@ -156,114 +156,237 @@ async function findClientAndPayment(id) {
   let modelName = 'Client';
   let isDirectPayment = false;
 
-  const isValidObjectId = mongoose.Types.ObjectId.isValid(id);
+  if (!id) return { client: null, payment: null, paymentIndex: -1, isHistory: false, historyIndex: -1, modelName: 'Client', isDirectPayment: false };
 
-  if (isValidObjectId) {
-    // 1. Check active client current payments
-    client = await Client.findOne({ "payments._id": id });
+  const idStr = String(id).trim();
+
+  // 1. Direct MongoDB ObjectId search if it's a valid 24-char hex ObjectId
+  if (mongoose.Types.ObjectId.isValid(idStr) && idStr.length === 24) {
+    const objId = new mongoose.Types.ObjectId(idStr);
+
+    // Check Client (both current and history payments, querying both string and ObjectId)
+    client = await Client.findOne({
+      $or: [
+        { "payments._id": idStr },
+        { "payments._id": objId },
+        { "history.payments._id": idStr },
+        { "history.payments._id": objId }
+      ]
+    });
+
     if (client) {
-      paymentIndex = client.payments.findIndex(p => p._id && p._id.toString() === id);
-      if (paymentIndex !== -1) payment = client.payments[paymentIndex];
-    } else {
-      // 2. Check active client history payments
-      client = await Client.findOne({ "history.payments._id": id });
-      if (client) {
-        isHistory = true;
-        for (let i = 0; i < (client.history || []).length; i++) {
-          const hpIdx = (client.history[i].payments || []).findIndex(p => p._id && p._id.toString() === id);
-          if (hpIdx !== -1) {
-            payment = client.history[i].payments[hpIdx];
-            paymentIndex = hpIdx;
-            historyIndex = i;
-            break;
-          }
+      paymentIndex = (client.payments || []).findIndex(p => p._id && p._id.toString() === idStr);
+      if (paymentIndex !== -1) {
+        payment = client.payments[paymentIndex];
+        return { client, payment, paymentIndex, isHistory: false, historyIndex: -1, modelName: 'Client', isDirectPayment: false };
+      }
+
+      for (let i = 0; i < (client.history || []).length; i++) {
+        const hpIdx = (client.history[i].payments || []).findIndex(p => p._id && p._id.toString() === idStr);
+        if (hpIdx !== -1) {
+          return {
+            client,
+            payment: client.history[i].payments[hpIdx],
+            paymentIndex: hpIdx,
+            isHistory: true,
+            historyIndex: i,
+            modelName: 'Client',
+            isDirectPayment: false
+          };
         }
       }
     }
 
-    // 3. Check old client
-    if (!client || !payment) {
-      let oldClient = await OldClient.findOne({ "payments._id": id });
-      if (oldClient) {
-        modelName = 'OldClient';
-        client = oldClient;
-        paymentIndex = client.payments.findIndex(p => p._id && p._id.toString() === id);
-        if (paymentIndex !== -1) payment = client.payments[paymentIndex];
-      } else {
-        oldClient = await OldClient.findOne({ "history.payments._id": id });
-        if (oldClient) {
-          modelName = 'OldClient';
-          client = oldClient;
-          isHistory = true;
-          for (let i = 0; i < (client.history || []).length; i++) {
-            const hpIdx = (client.history[i].payments || []).findIndex(p => p._id && p._id.toString() === id);
-            if (hpIdx !== -1) {
-              payment = client.history[i].payments[hpIdx];
-              paymentIndex = hpIdx;
-              historyIndex = i;
-              break;
-            }
-          }
+    // Check OldClient (both current and history payments)
+    let oldClient = await OldClient.findOne({
+      $or: [
+        { "payments._id": idStr },
+        { "payments._id": objId },
+        { "history.payments._id": idStr },
+        { "history.payments._id": objId }
+      ]
+    });
+
+    if (oldClient) {
+      paymentIndex = (oldClient.payments || []).findIndex(p => p._id && p._id.toString() === idStr);
+      if (paymentIndex !== -1) {
+        return {
+          client: oldClient,
+          payment: oldClient.payments[paymentIndex],
+          paymentIndex,
+          isHistory: false,
+          historyIndex: -1,
+          modelName: 'OldClient',
+          isDirectPayment: false
+        };
+      }
+
+      for (let i = 0; i < (oldClient.history || []).length; i++) {
+        const hpIdx = (oldClient.history[i].payments || []).findIndex(p => p._id && p._id.toString() === idStr);
+        if (hpIdx !== -1) {
+          return {
+            client: oldClient,
+            payment: oldClient.history[i].payments[hpIdx],
+            paymentIndex: hpIdx,
+            isHistory: true,
+            historyIndex: i,
+            modelName: 'OldClient',
+            isDirectPayment: false
+          };
         }
       }
     }
   }
 
-  // 4. If not found and ID is composite (e.g. clientId_amount_timestamp or clientId_direct_payment)
-  if (!client || !payment) {
-    const parts = (id || '').split('_');
-    const targetClientId = parts[0];
-    if (mongoose.Types.ObjectId.isValid(targetClientId)) {
-      client = await Client.findById(targetClientId);
-      if (!client) {
-        client = await OldClient.findById(targetClientId);
-        if (client) modelName = 'OldClient';
-      }
+  // 2. Structured ID matching (e.g. cp_clientId_curr_0, cp_clientId_hist_0_1, cp_clientId_direct)
+  if (idStr.includes('_curr_') || idStr.includes('_hist_') || idStr.endsWith('_direct') || idStr.endsWith('_direct_payment')) {
+    if (idStr.includes('_curr_')) {
+      const parts = idStr.split('_curr_');
+      const targetClientId = parts[0].replace(/^cp_|^client_payment_/, '');
+      const pIdx = parseInt(parts[1], 10);
 
+      client = await Client.findById(targetClientId) || await OldClient.findById(targetClientId);
       if (client) {
-        if (parts[1] === 'direct' && parts[2] === 'payment') {
-          isDirectPayment = true;
-          payment = {
-            _id: id,
+        modelName = client.constructor.modelName || (client.totalPrice !== undefined ? 'Client' : 'OldClient');
+        if (client.payments && client.payments[pIdx]) {
+          return {
+            client,
+            payment: client.payments[pIdx],
+            paymentIndex: pIdx,
+            isHistory: false,
+            historyIndex: -1,
+            modelName,
+            isDirectPayment: false
+          };
+        }
+      }
+    } else if (idStr.includes('_hist_')) {
+      const parts = idStr.split('_hist_');
+      const targetClientId = parts[0].replace(/^cp_|^client_payment_/, '');
+      const [hIdxStr, pIdxStr] = parts[1].split('_');
+      const hIdx = parseInt(hIdxStr, 10);
+      const pIdx = parseInt(pIdxStr, 10);
+
+      client = await Client.findById(targetClientId) || await OldClient.findById(targetClientId);
+      if (client) {
+        modelName = client.constructor.modelName || (client.totalPrice !== undefined ? 'Client' : 'OldClient');
+        if (client.history && client.history[hIdx] && client.history[hIdx].payments && client.history[hIdx].payments[pIdx]) {
+          return {
+            client,
+            payment: client.history[hIdx].payments[pIdx],
+            paymentIndex: pIdx,
+            isHistory: true,
+            historyIndex: hIdx,
+            modelName,
+            isDirectPayment: false
+          };
+        }
+      }
+    } else if (idStr.endsWith('_direct') || idStr.endsWith('_direct_payment')) {
+      const targetClientId = idStr.replace(/(_direct|_direct_payment)$/, '').replace(/^cp_|^client_payment_/, '');
+      client = await Client.findById(targetClientId) || await OldClient.findById(targetClientId);
+      if (client) {
+        modelName = client.constructor.modelName || (client.totalPrice !== undefined ? 'Client' : 'OldClient');
+        return {
+          client,
+          payment: {
+            _id: idStr,
             amount: Number(client.paidAmount || 0),
             date: client.startDate || client.createdAt || new Date(),
             mode: 'Online'
-          };
-        } else if (parts.length >= 3) {
-          const targetAmount = Number(parts[1]);
-          const targetTime = Number(parts[2]);
+          },
+          paymentIndex: -1,
+          isHistory: false,
+          historyIndex: -1,
+          modelName,
+          isDirectPayment: true
+        };
+      }
+    }
+  }
 
-          // Check current payments
-          for (let i = 0; i < (client.payments || []).length; i++) {
-            const p = client.payments[i];
-            const pTime = p.date ? new Date(p.date).getTime() : 0;
-            if (Number(p.amount) === targetAmount && (!targetTime || Math.abs(pTime - targetTime) < 60000 || pTime === targetTime)) {
-              payment = p;
-              paymentIndex = i;
-              isHistory = false;
-              break;
-            }
-          }
+  // 3. Fallback: Parse clientId_amount_timestamp format (e.g. 6a6c6bc1e7fdb3465d44f5c9_25000_1788566400000)
+  const parts = idStr.split('_');
+  const targetClientId = parts[0].replace(/^cp_|^client_payment_/, '');
+  if (mongoose.Types.ObjectId.isValid(targetClientId) && targetClientId.length === 24) {
+    client = await Client.findById(targetClientId);
+    if (!client) {
+      client = await OldClient.findById(targetClientId);
+      if (client) modelName = 'OldClient';
+    }
 
-          // Check history payments
-          if (!payment) {
-            for (let i = 0; i < (client.history || []).length; i++) {
-              const hPayments = client.history[i].payments || [];
-              for (let j = 0; j < hPayments.length; j++) {
-                const p = hPayments[j];
-                const pTime = p.date ? new Date(p.date).getTime() : 0;
-                if (Number(p.amount) === targetAmount && (!targetTime || Math.abs(pTime - targetTime) < 60000 || pTime === targetTime)) {
-                  payment = p;
-                  paymentIndex = j;
-                  isHistory = true;
-                  historyIndex = i;
-                  break;
-                }
-              }
-              if (payment) break;
-            }
+    if (client) {
+      modelName = client.constructor.modelName || (client.totalPrice !== undefined ? 'Client' : 'OldClient');
+      const targetAmount = parts.length >= 2 ? Number(parts[1]) : NaN;
+      const targetTime = parts.length >= 3 ? Number(parts[2]) : NaN;
+
+      // 3a. Search in client.payments
+      for (let i = 0; i < (client.payments || []).length; i++) {
+        const p = client.payments[i];
+        const pAmount = Number(p.amount);
+        const pTime = p.date ? new Date(p.date).getTime() : 0;
+        const cTime = client.createdAt ? new Date(client.createdAt).getTime() : 0;
+
+        const amountMatch = isNaN(targetAmount) || pAmount === targetAmount;
+        const timeMatch = isNaN(targetTime) || !targetTime ||
+          pTime === targetTime || Math.abs(pTime - targetTime) < 86400000 ||
+          cTime === targetTime || Math.abs(cTime - targetTime) < 86400000;
+
+        if (amountMatch && timeMatch) {
+          return { client, payment: p, paymentIndex: i, isHistory: false, historyIndex: -1, modelName, isDirectPayment: false };
+        }
+      }
+
+      // 3b. Search in client.history
+      for (let i = 0; i < (client.history || []).length; i++) {
+        const hPayments = client.history[i].payments || [];
+        for (let j = 0; j < hPayments.length; j++) {
+          const p = hPayments[j];
+          const pAmount = Number(p.amount);
+          const pTime = p.date ? new Date(p.date).getTime() : 0;
+          const hTime = client.history[i].completedAt ? new Date(client.history[i].completedAt).getTime() : 0;
+
+          const amountMatch = isNaN(targetAmount) || pAmount === targetAmount;
+          const timeMatch = isNaN(targetTime) || !targetTime ||
+            pTime === targetTime || Math.abs(pTime - targetTime) < 86400000 ||
+            hTime === targetTime || Math.abs(hTime - targetTime) < 86400000;
+
+          if (amountMatch && timeMatch) {
+            return { client, payment: p, paymentIndex: j, isHistory: true, historyIndex: i, modelName, isDirectPayment: false };
           }
         }
+      }
+
+      // 3c. If only amount matches anywhere in payments
+      if (!isNaN(targetAmount)) {
+        const pIdx = (client.payments || []).findIndex(p => Number(p.amount) === targetAmount);
+        if (pIdx !== -1) {
+          return { client, payment: client.payments[pIdx], paymentIndex: pIdx, isHistory: false, historyIndex: -1, modelName, isDirectPayment: false };
+        }
+        for (let i = 0; i < (client.history || []).length; i++) {
+          const hpIdx = (client.history[i].payments || []).findIndex(p => Number(p.amount) === targetAmount);
+          if (hpIdx !== -1) {
+            return { client, payment: client.history[i].payments[hpIdx], paymentIndex: hpIdx, isHistory: true, historyIndex: i, modelName, isDirectPayment: false };
+          }
+        }
+      }
+
+      // 3d. Check if it's the direct paidAmount
+      if (Number(client.paidAmount || 0) > 0) {
+        return {
+          client,
+          payment: {
+            _id: idStr,
+            amount: Number(client.paidAmount || 0),
+            date: client.startDate || client.createdAt || new Date(),
+            mode: 'Online'
+          },
+          paymentIndex: -1,
+          isHistory: false,
+          historyIndex: -1,
+          modelName,
+          isDirectPayment: true
+        };
       }
     }
   }
@@ -460,10 +583,12 @@ exports.updateTransaction = async (req, res) => {
 
 exports.deleteTransaction = async (req, res) => {
   try {
+    const id = req.params.id;
+
     // 1. Try to find and delete in Transaction collection if valid ObjectId
-    const isValidId = mongoose.Types.ObjectId.isValid(req.params.id);
+    const isValidId = mongoose.Types.ObjectId.isValid(id) && String(id).length === 24;
     if (isValidId) {
-      let transaction = await Transaction.findByIdAndDelete(req.params.id);
+      let transaction = await Transaction.findByIdAndDelete(id);
       if (transaction) {
         cache.flushByPrefix('transactions');
         cache.flushByPrefix('dashboard:');
@@ -475,7 +600,7 @@ exports.deleteTransaction = async (req, res) => {
     }
 
     // 2. If not found, check if it's a client payment
-    const { client, payment, paymentIndex, isHistory, historyIndex, isDirectPayment } = await findClientAndPayment(req.params.id);
+    const { client, payment, paymentIndex, isHistory, historyIndex, isDirectPayment } = await findClientAndPayment(id);
 
     if (!client || !payment) {
       return res.status(404).json({
@@ -488,22 +613,24 @@ exports.deleteTransaction = async (req, res) => {
 
     if (isDirectPayment) {
       client.paidAmount = Math.max(0, Number(client.paidAmount || 0) - paymentAmount);
-      client.pendingAmount = Math.max(0, Number(client.totalPrice || client.totalAmount || 0) - client.paidAmount);
+      const total = Number(client.totalPrice !== undefined ? client.totalPrice : (client.totalAmount || 0));
+      client.pendingAmount = Math.max(0, total - client.paidAmount);
       await client.save();
     } else if (isHistory && historyIndex >= 0) {
       const histItem = client.history[historyIndex];
       histItem.paidAmount = Math.max(0, Number(histItem.paidAmount || 0) - paymentAmount);
       const hTotal = Number(histItem.totalPrice !== undefined ? histItem.totalPrice : (histItem.totalAmount !== undefined ? histItem.totalAmount : 0));
       histItem.pendingAmount = Math.max(0, hTotal - histItem.paidAmount);
-      if (paymentIndex >= 0) {
+      if (paymentIndex >= 0 && Array.isArray(histItem.payments)) {
         histItem.payments.splice(paymentIndex, 1);
       }
       client.markModified('history');
       await client.save();
     } else {
-      client.paidAmount = Math.max(0, Number(client.paidAmount) - paymentAmount);
-      client.pendingAmount = Number(client.pendingAmount) + paymentAmount;
-      if (paymentIndex >= 0) {
+      client.paidAmount = Math.max(0, Number(client.paidAmount || 0) - paymentAmount);
+      const total = Number(client.totalPrice !== undefined ? client.totalPrice : (client.totalAmount || 0));
+      client.pendingAmount = Math.max(0, total - client.paidAmount);
+      if (paymentIndex >= 0 && Array.isArray(client.payments)) {
         client.payments.splice(paymentIndex, 1);
       }
       await client.save();
@@ -512,15 +639,17 @@ exports.deleteTransaction = async (req, res) => {
     cache.flushByPrefix('transactions');
     cache.flushByPrefix('dashboard:');
     cache.flushByPrefix('clients:');
+    cache.flushByPrefix('old-clients:');
 
     res.status(200).json({
       success: true,
       message: 'Client payment deleted successfully',
     });
   } catch (error) {
+    console.error('Error deleting transaction:', error);
     res.status(500).json({
       success: false,
-      message: error.message,
+      message: error.message || 'Error deleting transaction',
     });
   }
 };

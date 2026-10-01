@@ -1370,13 +1370,67 @@ const StatusDropdown = ({ currentStatus, onStatusChange }) => {
 };
 
 const PaymentModal = ({ client, isOpen, onClose, theme }) => {
+  const [selectedCycleTab, setSelectedCycleTab] = useState('all');
+
   if (!isOpen || !client) return null;
 
-  const paidPercent = Math.round((client.paidAmount / client.totalPrice) * 100);
-  const data = [
-    { name: 'Paid', value: client.paidAmount, color: '#10b981' },
-    { name: 'Pending', value: client.pendingAmount, color: '#ef4444' }
+  const allCycles = [
+    { ...client, cycleIndex: (client.history?.length || 0) + 1, isCurrent: true },
+    ...(client.history || []).map((h, idx) => ({ ...h, cycleIndex: idx + 1, isCurrent: false })).reverse()
   ];
+
+  const overallTotalPrice = allCycles.reduce((sum, c) => sum + (Number(c.totalPrice) || 0), 0);
+  const overallPaidAmount = allCycles.reduce((sum, c) => sum + (Number(c.paidAmount) || 0), 0);
+  const overallPendingAmount = allCycles.reduce((sum, c) => {
+    const pend = c.pendingAmount !== undefined ? Number(c.pendingAmount) : Math.max(0, (Number(c.totalPrice) || 0) - (Number(c.paidAmount) || 0));
+    return sum + pend;
+  }, 0);
+
+  const activeDataCycle = selectedCycleTab === 'all'
+    ? {
+        totalPrice: overallTotalPrice,
+        paidAmount: overallPaidAmount,
+        pendingAmount: overallPendingAmount,
+        status: client.status,
+        progress: calculateClientProgress(client)
+      }
+    : (allCycles.find(c => String(c.cycleIndex) === String(selectedCycleTab)) || client);
+
+  const displayTotal = activeDataCycle.totalPrice || 0;
+  const displayPaid = activeDataCycle.paidAmount || 0;
+  const displayPending = activeDataCycle.pendingAmount !== undefined ? activeDataCycle.pendingAmount : Math.max(0, displayTotal - displayPaid);
+  const paidPercent = displayTotal > 0 ? Math.min(100, Math.round((displayPaid / displayTotal) * 100)) : (displayPaid > 0 ? 100 : 0);
+
+  const chartData = [
+    { name: 'Paid', value: displayPaid, color: '#10b981' },
+    { name: 'Pending', value: displayPending, color: '#ef4444' }
+  ];
+
+  // Collect all payments across all cycles
+  const allPayments = [
+    ...(client.payments || []).map((p, pIdx) => ({
+      ...p,
+      uniqueKey: `current-${p._id || p.id || pIdx}`,
+      cycleLabel: `Current Cycle #${(client.history?.length || 0) + 1}`,
+      cycleIndex: (client.history?.length || 0) + 1,
+      periodText: p.projectPeriod || (p.periodFrom && p.periodTo ? `${formatDateFormatted(p.periodFrom)} - ${formatDateFormatted(p.periodTo)}` : (client.startDate && client.deadline ? `${formatDateFormatted(client.startDate)} - ${formatDateFormatted(client.deadline)}` : ''))
+    })),
+    ...(client.history || []).flatMap((h, hIdx) =>
+      (h.payments || []).map((p, pIdx) => ({
+        ...p,
+        uniqueKey: `hist-${hIdx}-${p._id || p.id || pIdx}`,
+        cycleLabel: `Past Cycle #${hIdx + 1}`,
+        cycleIndex: hIdx + 1,
+        periodText: p.projectPeriod || (p.periodFrom && p.periodTo ? `${formatDateFormatted(p.periodFrom)} - ${formatDateFormatted(p.periodTo)}` : (h.startDate && h.deadline ? `${formatDateFormatted(h.startDate)} - ${formatDateFormatted(h.deadline)}` : ''))
+      }))
+    )
+  ].sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
+
+  const filteredPayments = selectedCycleTab === 'all'
+    ? allPayments
+    : allPayments.filter(p => String(p.cycleIndex) === String(selectedCycleTab));
+
+  const firstDate = allCycles[0]?.startDate || client.createdAt;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -1391,7 +1445,7 @@ const PaymentModal = ({ client, isOpen, onClose, theme }) => {
         initial={{ scale: 0.9, opacity: 0, y: 20 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.9, opacity: 0, y: 20 }}
-        className="relative w-full max-w-2xl bg-white dark:bg-[#030303] rounded-3xl border border-gray-200 dark:border-white/10 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+        className="relative w-full max-w-3xl bg-white dark:bg-[#030303] rounded-3xl border border-gray-200 dark:border-white/10 shadow-2xl overflow-hidden max-h-[92vh] flex flex-col"
       >
         {/* Modal Header */}
         <div className="p-6 border-b border-gray-100 dark:border-white/10 flex justify-between items-center bg-gray-50 dark:bg-white/5">
@@ -1400,8 +1454,18 @@ const PaymentModal = ({ client, isOpen, onClose, theme }) => {
               <Banknote size={24} />
             </div>
             <div>
-              <h3 className="text-xl font-bold text-black dark:text-white">Payment Details</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">{client.name}</p>
+              <h3 className="text-xl font-bold text-black dark:text-white">Client Financial & Payment Details</h3>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">{client.name}</span>
+                {firstDate && (
+                  <span className="text-[10px] font-bold text-gray-700 dark:text-gray-400 bg-gray-100 dark:bg-white/10 px-2 py-0.5 rounded-md">
+                    📅 Added: {formatDateFormatted(firstDate)}
+                  </span>
+                )}
+                <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-md">
+                  {allCycles.length} Month{allCycles.length > 1 ? 's' : ''} on Panel
+                </span>
+              </div>
             </div>
           </div>
           <button
@@ -1412,32 +1476,74 @@ const PaymentModal = ({ client, isOpen, onClose, theme }) => {
           </button>
         </div>
 
+        {/* Cycle Filter Tabs */}
+        {allCycles.length > 1 && (
+          <div className="px-6 pt-4 pb-2 border-b border-gray-100 dark:border-white/10 flex gap-2 overflow-x-auto bg-gray-50/50 dark:bg-white/[0.02]">
+            <button
+              onClick={() => setSelectedCycleTab('all')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+                selectedCycleTab === 'all'
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
+                  : 'bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/10'
+              }`}
+            >
+              Overall All Cycles ({allCycles.length} Months)
+            </button>
+            {allCycles.map((c) => (
+              <button
+                key={c.cycleIndex}
+                onClick={() => setSelectedCycleTab(String(c.cycleIndex))}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+                  selectedCycleTab === String(c.cycleIndex)
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
+                    : 'bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/10'
+                }`}
+              >
+                {c.isCurrent ? `Active Cycle #${c.cycleIndex}` : `Month #${c.cycleIndex}`}
+                {c.startDate ? ` (${formatDateFormatted(c.startDate)})` : ''}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="p-6 overflow-y-auto space-y-8">
           {/* Top Summary & Graph */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
             <div className="space-y-4">
-              <div className="bg-gray-50 dark:bg-white/5 p-4 rounded-2xl border border-gray-100 dark:border-white/5">
-                <p className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest mb-1">Project Status</p>
-                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${client.status === 'Completed' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 border border-emerald-500/20' :
-                    (client.status === 'Present' || client.status === 'In Progress' || !client.status) ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20' :
-                      'bg-amber-500/10 text-amber-500 border border-amber-500/20'
-                  }`}>
-                  {calculateClientProgress(client)}%
+              <div className="bg-gray-50 dark:bg-white/5 p-4 rounded-2xl border border-gray-100 dark:border-white/5 flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest mb-1">
+                    {selectedCycleTab === 'all' ? 'All Months Summary' : `Cycle #${selectedCycleTab} Details`}
+                  </p>
+                  <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                    {activeDataCycle.package || client.package || 'Service Package'}
+                  </p>
+                </div>
+                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                  (activeDataCycle.status === 'Completed' || (activeDataCycle.isCurrent === false))
+                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 border border-emerald-500/20'
+                    : 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
+                }`}>
+                  {activeDataCycle.isCurrent === false ? 'Completed' : (client.status || 'Active')}
                 </span>
               </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-gray-50 dark:bg-white/5 p-4 rounded-2xl border border-gray-100 dark:border-white/5">
                   <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-500 uppercase tracking-widest mb-1">Paid</p>
-                  <p className="text-xl font-bold text-black dark:text-white">₹{client.paidAmount.toLocaleString('en-IN')}</p>
+                  <p className="text-xl font-bold text-black dark:text-white">₹{displayPaid.toLocaleString('en-IN')}</p>
                 </div>
                 <div className="bg-gray-50 dark:bg-white/5 p-4 rounded-2xl border border-gray-100 dark:border-white/5">
                   <p className="text-[10px] font-bold text-rose-600 dark:text-rose-500 uppercase tracking-widest mb-1">Pending</p>
-                  <p className="text-xl font-bold text-black dark:text-white">₹{client.pendingAmount.toLocaleString('en-IN')}</p>
+                  <p className="text-xl font-bold text-black dark:text-white">₹{displayPending.toLocaleString('en-IN')}</p>
                 </div>
               </div>
+
               <div className="bg-blue-500/5 p-4 rounded-2xl border border-blue-500/20">
-                <p className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest mb-1">Total Project Value</p>
-                <p className="text-2xl font-black text-black dark:text-white tracking-tight">₹{client.totalPrice.toLocaleString('en-IN')}</p>
+                <p className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest mb-1">
+                  {selectedCycleTab === 'all' ? 'Total Revenue (All Months)' : 'Cycle Project Value'}
+                </p>
+                <p className="text-2xl font-black text-black dark:text-white tracking-tight">₹{displayTotal.toLocaleString('en-IN')}</p>
               </div>
             </div>
 
@@ -1445,14 +1551,14 @@ const PaymentModal = ({ client, isOpen, onClose, theme }) => {
               <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                 <PieChart>
                   <Pie
-                    data={data}
+                    data={chartData}
                     innerRadius={60}
                     outerRadius={80}
                     paddingAngle={5}
                     dataKey="value"
                     stroke="none"
                   >
-                    {data.map((entry, index) => (
+                    {chartData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
@@ -1468,50 +1574,129 @@ const PaymentModal = ({ client, isOpen, onClose, theme }) => {
             </div>
           </div>
 
+          {/* Month by Month Breakdown Table */}
+          {allCycles.length > 1 && selectedCycleTab === 'all' && (
+            <div className="space-y-3">
+              <h4 className="text-sm font-bold text-black dark:text-white flex items-center gap-2">
+                <Calendar size={16} className="text-purple-500" /> Month-by-Month Cycle Breakdown
+              </h4>
+              <div className="rounded-2xl border border-gray-100 dark:border-white/10 overflow-hidden">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-gray-50 dark:bg-white/5 text-[10px] uppercase tracking-wider text-gray-700 dark:text-gray-400 font-bold border-b border-gray-100 dark:border-white/10">
+                      <th className="p-3">Month Cycle</th>
+                      <th className="p-3">Period</th>
+                      <th className="p-3 text-right">Total (₹)</th>
+                      <th className="p-3 text-right">Paid (₹)</th>
+                      <th className="p-3 text-right">Pending (₹)</th>
+                      <th className="p-3 text-center">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 dark:divide-white/5">
+                    {allCycles.map((c) => {
+                      const cPending = c.pendingAmount !== undefined ? Number(c.pendingAmount) : Math.max(0, (Number(c.totalPrice) || 0) - (Number(c.paidAmount) || 0));
+                      return (
+                        <tr key={c.cycleIndex} className="hover:bg-gray-50 dark:hover:bg-white/[0.02]">
+                          <td className="p-3 font-bold text-black dark:text-white">
+                            {c.isCurrent ? `Active Cycle #${c.cycleIndex}` : `Month #${c.cycleIndex}`}
+                            <span className="block text-[10px] font-normal text-gray-500">{c.package || 'Package'}</span>
+                          </td>
+                          <td className="p-3 text-gray-600 dark:text-gray-400 font-medium">
+                            {c.startDate && c.deadline ? `${formatDateFormatted(c.startDate)} - ${formatDateFormatted(c.deadline)}` : '—'}
+                          </td>
+                          <td className="p-3 text-right font-bold text-black dark:text-white">
+                            ₹{(c.totalPrice || 0).toLocaleString('en-IN')}
+                          </td>
+                          <td className="p-3 text-right font-bold text-emerald-600 dark:text-emerald-400">
+                            ₹{(c.paidAmount || 0).toLocaleString('en-IN')}
+                          </td>
+                          <td className="p-3 text-right font-bold text-rose-600 dark:text-rose-400">
+                            ₹{cPending.toLocaleString('en-IN')}
+                          </td>
+                          <td className="p-3 text-center">
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
+                              c.isCurrent ? 'bg-blue-500/10 text-blue-500' : 'bg-emerald-500/10 text-emerald-500'
+                            }`}>
+                              {c.isCurrent ? 'Active' : 'Completed'}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
           {/* Payment Tree/List */}
           <div>
-            <h4 className="text-sm font-bold text-black dark:text-white mb-4 flex items-center gap-2">
-              <TrendingUp size={16} className="text-blue-500" /> Payment History
+            <h4 className="text-sm font-bold text-black dark:text-white mb-4 flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <TrendingUp size={16} className="text-blue-500" /> Payment History ({filteredPayments.length} Payments)
+              </span>
+              {selectedCycleTab !== 'all' && (
+                <button
+                  onClick={() => setSelectedCycleTab('all')}
+                  className="text-[11px] text-blue-500 hover:underline font-bold"
+                >
+                  Show All Payments
+                </button>
+              )}
             </h4>
-            <div className="space-y-4 relative before:absolute before:left-[19px] before:top-4 before:bottom-4 before:w-[1px] before:bg-gray-100 dark:before:bg-white/10">
-              {client.payments.map((payment) => (
-                <div key={payment.id} className="relative pl-12">
-                  <div className="absolute left-0 top-1 w-10 h-10 rounded-full bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 flex items-center justify-center z-10">
-                    <CheckCircle2 size={16} className="text-emerald-500" />
-                  </div>
-                  <div className="bg-white dark:bg-[#030303] p-4 rounded-2xl border border-gray-100 dark:border-white/5 hover:border-gray-200 dark:hover:border-white/10 transition-colors">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className="text-sm font-bold text-black dark:text-white">₹{payment.amount.toLocaleString('en-IN')}</p>
-                        <div className="flex flex-col gap-1 mt-1">
-                          <p className="text-[11px] text-gray-600 dark:text-gray-400 font-medium">
-                            Received Date: {payment.date ? (new Date(payment.date).toString() !== 'Invalid Date' ? new Date(payment.date).toLocaleDateString('en-IN') : payment.date) : '—'}
-                          </p>
-                          {(payment.projectPeriod || (payment.periodFrom && payment.periodTo)) && (
-                            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded w-fit flex items-center gap-1">
-                              <span>📅 Period:</span> {payment.projectPeriod || `${formatDateFormatted(payment.periodFrom)} - ${formatDateFormatted(payment.periodTo)}`}
-                            </span>
-                          )}
-                          {!payment.projectPeriod && payment.month && (
-                            <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded w-fit">
-                              Month: {formatProjectMonth(payment.month)}
-                            </span>
+
+            {filteredPayments.length === 0 ? (
+              <div className="p-8 text-center bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
+                <p className="text-xs font-bold text-gray-700 dark:text-gray-400">No payment records logged for this cycle</p>
+              </div>
+            ) : (
+              <div className="space-y-4 relative before:absolute before:left-[19px] before:top-4 before:bottom-4 before:w-[1px] before:bg-gray-100 dark:before:bg-white/10">
+                {filteredPayments.map((payment) => (
+                  <div key={payment.uniqueKey || payment._id || payment.id} className="relative pl-12">
+                    <div className="absolute left-0 top-1 w-10 h-10 rounded-full bg-white dark:bg-[#030303] border border-gray-200 dark:border-white/10 flex items-center justify-center z-10">
+                      <CheckCircle2 size={16} className="text-emerald-500" />
+                    </div>
+                    <div className="bg-white dark:bg-[#030303] p-4 rounded-2xl border border-gray-100 dark:border-white/5 hover:border-gray-200 dark:hover:border-white/10 transition-colors">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-bold text-black dark:text-white">₹{payment.amount.toLocaleString('en-IN')}</p>
+                            {payment.cycleLabel && (
+                              <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded">
+                                {payment.cycleLabel}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex flex-col gap-1 mt-1">
+                            <p className="text-[11px] text-gray-600 dark:text-gray-400 font-medium">
+                              Received Date: {payment.date ? (new Date(payment.date).toString() !== 'Invalid Date' ? new Date(payment.date).toLocaleDateString('en-IN') : payment.date) : '—'}
+                            </p>
+                            {payment.periodText && (
+                              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded w-fit flex items-center gap-1">
+                                <span>📅 Period:</span> {payment.periodText}
+                              </span>
+                            )}
+                            {!payment.periodText && payment.month && (
+                              <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded w-fit">
+                                Month: {formatProjectMonth(payment.month)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded uppercase">
+                            {payment.mode || 'Online'}
+                          </span>
+                          {payment.utr && (
+                            <p className="text-[10px] text-gray-600 dark:text-gray-600 mt-1 font-mono">#{payment.utr}</p>
                           )}
                         </div>
                       </div>
-                      <div className="text-right">
-                        <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded uppercase">
-                          {payment.mode}
-                        </span>
-                        {payment.utr && (
-                          <p className="text-[10px] text-gray-600 dark:text-gray-600 mt-1 font-mono">#{payment.utr}</p>
-                        )}
-                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -2053,7 +2238,15 @@ const handleAddPayment = async (data) => {
                     <p className="text-sm font-bold text-gray-500 uppercase tracking-widest">No Clients Found</p>
                   </td>
                 </tr>
-              ) : [...clients].sort((a, b) => (a.name || "").localeCompare(b.name || "")).map((client) => (
+              ) : [...clients].sort((a, b) => {
+                const isAActive = a.status !== 'Completed';
+                const isBActive = b.status !== 'Completed';
+                if (isAActive && !isBActive) return -1;
+                if (!isAActive && isBActive) return 1;
+                const dateA = new Date(a.startDate || a.createdAt || 0).getTime();
+                const dateB = new Date(b.startDate || b.createdAt || 0).getTime();
+                return dateB - dateA;
+              }).map((client) => (
                 <motion.tr
                   key={client._id || client.id}
                   layout
@@ -2110,6 +2303,11 @@ const handleAddPayment = async (data) => {
                         <span className="text-gray-600 dark:text-gray-500">Pending:</span>
                         <span className="text-rose-600 dark:text-rose-500 font-bold">₹{client.pendingAmount.toLocaleString('en-IN')}</span>
                       </div>
+                      {client.history && client.history.length > 0 && (
+                        <div className="text-[10px] text-purple-600 dark:text-purple-400 font-bold pt-1 border-t border-gray-100 dark:border-white/5">
+                          Across {1 + client.history.length} Months
+                        </div>
+                      )}
                     </div>
                   </td>
                   <td className="py-6 px-4 text-xs font-medium text-gray-600 dark:text-gray-300">

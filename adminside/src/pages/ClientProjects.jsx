@@ -965,6 +965,7 @@ const EditProjectModal = ({ isOpen, onClose, project, onSave }) => {
 const ProjectSection = ({
   project,
   isHistory = false,
+  cycleNumber = null,
   onUpdate = (_p) => { },
   onRenew = (_p) => { },
   onAddTask = (_p) => { },
@@ -980,9 +981,19 @@ const ProjectSection = ({
       <div className="lg:col-span-2 space-y-6">
         {/* Work Progress Card */}
         <div className="bg-white dark:bg-[#111] p-8 rounded-[2rem] border border-gray-100 dark:border-white/5 shadow-sm relative overflow-hidden">
-          {isHistory && (
-            <div className="absolute top-0 right-0 px-4 py-1 bg-gray-500 text-white text-[10px] font-black uppercase tracking-widest rounded-bl-xl">
-              Completed Cycle
+          {isHistory ? (
+            <div className="absolute top-0 right-0 px-4 py-1.5 bg-purple-600 text-white text-[10px] font-black uppercase tracking-widest rounded-bl-2xl shadow-sm flex items-center gap-1.5">
+              <span>📅 Completed Month / Cycle #{cycleNumber || 1}</span>
+              {project.startDate && project.deadline && (
+                <span className="opacity-90 font-medium">({new Date(project.startDate).toLocaleDateString('en-IN')} - {new Date(project.deadline).toLocaleDateString('en-IN')})</span>
+              )}
+            </div>
+          ) : (
+            <div className="absolute top-0 right-0 px-4 py-1.5 bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest rounded-bl-2xl shadow-sm flex items-center gap-1.5">
+              <span>🚀 Active Month / Cycle #{cycleNumber || 1}</span>
+              {project.startDate && project.deadline && (
+                <span className="opacity-90 font-medium">({new Date(project.startDate).toLocaleDateString('en-IN')} - {new Date(project.deadline).toLocaleDateString('en-IN')})</span>
+              )}
             </div>
           )}
           <div className="flex justify-between items-center mb-6">
@@ -2536,6 +2547,7 @@ const ClientProjects = ({ onBack }) => {
           <ProjectSection
             project={projects[0]}
             client={projects[0]}
+            cycleNumber={(projects[0].history?.length || 0) + 1}
             onUpdate={openUpdateModal}
             onRenew={openRenewModal}
             onAddTask={(p) => {
@@ -2548,15 +2560,26 @@ const ClientProjects = ({ onBack }) => {
           {/* History */}
           {projects[0].history && projects[0].history.length > 0 && (
             <div className="space-y-6">
-              <h3 className="text-2xl font-black text-gray-900 dark:text-white">Past Cycles</h3>
-              {projects[0].history.map((cycle, index) => (
-                <ProjectSection
-                  key={index}
-                  project={cycle}
-                  client={projects[0]}
-                  isHistory={true}
-                />
-              ))}
+              <div className="flex items-center justify-between">
+                <h3 className="text-2xl font-black text-gray-900 dark:text-white flex items-center gap-3">
+                  <span>Past Cycles</span>
+                  <span className="text-xs font-bold bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 px-3 py-1 rounded-full uppercase tracking-wider">
+                    {projects[0].history.length} Previous Month{projects[0].history.length > 1 ? 's' : ''} Preserved
+                  </span>
+                </h3>
+              </div>
+              {[...projects[0].history]
+                .map((cycle, origIdx) => ({ cycle, cycleNumber: origIdx + 1 }))
+                .reverse()
+                .map(({ cycle, cycleNumber }, index) => (
+                  <ProjectSection
+                    key={`hist-${cycleNumber}-${index}`}
+                    project={cycle}
+                    client={projects[0]}
+                    isHistory={true}
+                    cycleNumber={cycleNumber}
+                  />
+                ))}
             </div>
           )}
         </div>
