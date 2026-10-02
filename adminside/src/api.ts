@@ -62,6 +62,17 @@ async function apiRequest<T = any>(
         headers,
       });
 
+      if (response.status === 401 && !endpoint.includes('login') && !endpoint.includes('verifyOtp')) {
+        localStorage.removeItem('isLoggedIn');
+        localStorage.removeItem('adminToken');
+        localStorage.removeItem('adminUser');
+        localStorage.removeItem('adminRole');
+        localStorage.removeItem('adminPermissions');
+        if (typeof window !== 'undefined' && window.location.pathname !== '/') {
+          window.location.href = '/';
+        }
+      }
+
       const result = await response.json();
 
       if (useCache && method === 'GET' && result && result.success !== false) {
@@ -105,6 +116,20 @@ export const clockOutAllStaff = (clockOutTime?: string, staffIds?: string[]) => 
   return apiRequest('/staff/clock-out-all', {
     method: 'PATCH',
     body: JSON.stringify({ clockOutTime, staffIds }),
+  });
+};
+export const updateStaff = (id: string, staffData: any) => {
+  clearApiCache('staff');
+  return apiRequest(`/staff/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(staffData),
+  });
+};
+export const updateStaffAccess = (id: string, accessData: { permissions?: string[]; password?: string }) => {
+  clearApiCache('staff');
+  return apiRequest(`/staff/${id}/access`, {
+    method: 'PATCH',
+    body: JSON.stringify(accessData),
   });
 };
 
@@ -303,6 +328,30 @@ export const getLocationHistory = (employeeId: string, date?: string) =>
 export const getLocationPhotos = () => apiRequest('/location/photos', {}, true);
 export const getAllVisitingCards = () => apiRequest('/visiting-card/all', {}, true);
 
+// Sub-admin management (Super Admin)
+export const getAllSubAdmins = () => apiRequest('/admin-users', {}, false);
+export const createSubAdmin = (data: { email: string; password?: string; name?: string; permissions?: string[] }) =>
+  apiRequest('/admin-users', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+export const updateSubAdmin = (id: string, data: { email?: string; password?: string; name?: string; permissions?: string[]; isActive?: boolean }) =>
+  apiRequest(`/admin-users/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+export const deleteSubAdmin = (id: string) =>
+  apiRequest(`/admin-users/${id}`, {
+    method: 'DELETE',
+  });
+
+// Change logged-in admin password (invalidates other sessions)
+export const changeAdminPassword = (data: { currentPassword?: string; newPassword: string }) =>
+  apiRequest('/admin/change-password', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+
 // Pre-fetch helper for navigation
 export const prefetchAdminData = () => {
   if (typeof window === 'undefined') return;
@@ -333,6 +382,7 @@ export default {
   verifyOtp,
   adminForgotPassword,
   adminLogout,
+  changeAdminPassword,
   getWalletTransactions,
   addWalletTransaction,
   updateWalletTransaction,
@@ -348,6 +398,10 @@ export default {
   getLocationHistory,
   getLocationPhotos,
   getAllVisitingCards,
+  getAllSubAdmins,
+  createSubAdmin,
+  updateSubAdmin,
+  deleteSubAdmin,
   prefetchAdminData,
   clearApiCache,
 };

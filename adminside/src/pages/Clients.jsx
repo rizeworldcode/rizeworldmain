@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 import { getAllClients, getAllOldClients, updateClient, updateOldClient, addClient, clearApiCache, BASE_URL } from '../api';
+import PasswordGate from '../components/auth/PasswordGate';
 
 const STATUS_OPTIONS = {
   'Pending': ['Present', 'On Hold', 'Completed'],
@@ -1770,7 +1771,7 @@ const clientsDataRaw = [
   }
 ];
 
-const Clients = ({ onClientClick, theme }) => {
+const ClientsView = ({ onClientClick, theme, onLock }) => {
   const [clients, setClients] = useState([]);
   const [oldClients, setOldClients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -2499,6 +2500,24 @@ const handleAddPayment = async (data) => {
         </div>
       </div>
     </motion.div>
+  );
+};
+
+const Clients = (props) => {
+  const [unlocked, setUnlocked] = useState(() => sessionStorage.getItem('clients_unlocked') === 'true');
+
+  return unlocked ? (
+    <ClientsView {...props} onLock={() => setUnlocked(false)} />
+  ) : (
+    <PasswordGate
+      title="Client Database"
+      subtitle="This page is confidential. Enter the admin password to view client accounts, project status, and payment details."
+      storageKey="clients_unlocked"
+      icon={User}
+      gradient="from-blue-600 to-indigo-600"
+      buttonText="Unlock Client Database"
+      onUnlock={() => setUnlocked(true)}
+    />
   );
 };
 

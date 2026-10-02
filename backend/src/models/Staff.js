@@ -175,6 +175,10 @@ const staffSchema = new mongoose.Schema({
   password: {
     type: String
   },
+  permissions: {
+    type: [String],
+    default: undefined
+  },
   authToken: {
     type: String
   },

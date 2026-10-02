@@ -49,7 +49,7 @@ exports.protect = catchAsync(async (req, res, next) => {
         let userRole = decoded.role;
 
         if (!userRole) {
-            currentUser = await Admin.findById(decoded.id).select('name email role').lean();
+            currentUser = await Admin.findById(decoded.id).select('name email role passwordChangedAt').lean();
             if (currentUser) {
                 userRole = 'admin';
             } else {
@@ -62,7 +62,7 @@ exports.protect = catchAsync(async (req, res, next) => {
             }
         } else {
             if (userRole === 'admin') {
-                currentUser = await Admin.findById(decoded.id).select('name email role').lean();
+                currentUser = await Admin.findById(decoded.id).select('name email role passwordChangedAt').lean();
             } else if (userRole === 'student' || userRole === 'staff') {
                 currentUser = await Student.findById(decoded.id)
                     .select('name employeeId email role isRemoved department reportingPerson')
@@ -93,6 +93,20 @@ exports.protect = catchAsync(async (req, res, next) => {
                 401
             )
         );
+    }
+
+    // Check if password was changed after this token was issued
+    if (userAuthData.currentUser.passwordChangedAt && decoded.iat) {
+        const changedTimestamp = parseInt(new Date(userAuthData.currentUser.passwordChangedAt).getTime() / 1000, 10);
+        if (decoded.iat < changedTimestamp - 1) {
+            cache.del(cacheKey);
+            return next(
+                new AppError(
+                    'Password was recently changed! Please log in again.',
+                    401
+                )
+            );
+        }
     }
 
     // GRANT ACCESS TO PROTECTED ROUTE

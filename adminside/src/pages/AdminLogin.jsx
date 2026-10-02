@@ -148,6 +148,14 @@ const AdminLogin = ({ onLogin }) => {
       const result = await adminLoginNew(formData.email, formData.password);
       if (result.success) {
         localStorage.setItem('adminToken', result.token);
+        if (result.user) {
+          localStorage.setItem('adminUser', JSON.stringify(result.user));
+          localStorage.setItem('adminRole', result.user.role || 'superadmin');
+          localStorage.setItem('adminPermissions', JSON.stringify(result.user.permissions || []));
+        } else {
+          localStorage.setItem('adminRole', 'superadmin');
+          localStorage.setItem('adminPermissions', JSON.stringify(['all']));
+        }
         if (formData.remember) {
           localStorage.setItem('adminEmail', formData.email);
         } else {

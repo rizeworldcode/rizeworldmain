@@ -12,6 +12,7 @@ import Clients from './pages/Clients';
 import ClientProjects from './pages/ClientProjects';
 import BlogManagement from './pages/BlogManagement';
 import StaffProgressReport from './pages/StaffProgressReport';
+import { canAccessFeature } from './utils/permissions';
 
 const MainLayout = ({ onLogout }) => {
   const navigate = useNavigate();
@@ -19,12 +20,30 @@ const MainLayout = ({ onLogout }) => {
   const { id: clientId } = useParams();
   const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'dashboard');
   const staffInfo = JSON.parse(localStorage.getItem('staffInfo') || '{}');
-  const isHR = staffInfo.role?.toLowerCase() === 'hr';
-  const isCounselor = staffInfo.role?.toLowerCase() === 'counselor';
-  const isSalesTeam = staffInfo.role?.toLowerCase() === 'sales team' || staffInfo.role?.toLowerCase() === 'sales';
-  const isDataAnalyst = staffInfo.role?.toLowerCase() === 'data analyst';
-  const isVisitingCardsAllowed = ['admin', 'data analyst'].includes(staffInfo.role?.toLowerCase());
-  const isMarketing = (staffInfo.department?.toLowerCase() || '').includes('marketing') || (staffInfo.role?.toLowerCase() || '').includes('marketing');
+
+  const isHearingAllowed = canAccessFeature(staffInfo, 'hearing');
+  const isAdmissionsAllowed = canAccessFeature(staffInfo, 'admissions');
+  const isSalesAllowed = canAccessFeature(staffInfo, 'sales');
+  const isClientsAllowed = canAccessFeature(staffInfo, 'clients');
+  const isVisitingCardsAllowed = canAccessFeature(staffInfo, 'visitingCards');
+  const isBlogsAllowed = canAccessFeature(staffInfo, 'blogs');
+
+  useEffect(() => {
+    const isAllowed =
+      (activeTab === 'dashboard' && canAccessFeature(staffInfo, 'dashboard')) ||
+      (activeTab === 'progress' && canAccessFeature(staffInfo, 'progress')) ||
+      (activeTab === 'hearing' && isHearingAllowed) ||
+      (activeTab === 'admissions' && isAdmissionsAllowed) ||
+      (activeTab === 'sales' && isSalesAllowed) ||
+      (activeTab === 'clients' && isClientsAllowed) ||
+      (activeTab === 'visitingCards' && isVisitingCardsAllowed) ||
+      (activeTab === 'blogs' && isBlogsAllowed);
+
+    if (!isAllowed) {
+      setActiveTab('dashboard');
+      navigate('/dashboard?tab=dashboard', { replace: true });
+    }
+  }, [activeTab, isHearingAllowed, isAdmissionsAllowed, isSalesAllowed, isClientsAllowed, isVisitingCardsAllowed, isBlogsAllowed, navigate]);
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
@@ -92,7 +111,7 @@ const MainLayout = ({ onLogout }) => {
               Progress Report
             </button>
 
-            {isHR && (
+            {isHearingAllowed && (
               <button 
                 onClick={() => handleTabChange('hearing')}
                 className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all whitespace-nowrap ${
@@ -105,7 +124,7 @@ const MainLayout = ({ onLogout }) => {
               </button>
             )}
 
-            {isCounselor && (
+            {isAdmissionsAllowed && (
               <button 
                 onClick={() => handleTabChange('admissions')}
                 className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-1.5 ${
@@ -119,7 +138,7 @@ const MainLayout = ({ onLogout }) => {
               </button>
             )}
 
-            {isSalesTeam && (
+            {isSalesAllowed && (
               <button 
                 onClick={() => handleTabChange('sales')}
                 className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-1.5 ${
@@ -133,34 +152,35 @@ const MainLayout = ({ onLogout }) => {
               </button>
             )}
 
-            {isVisitingCardsAllowed && (
-              <>
-                <button 
-                  onClick={() => handleTabChange('clients')}
-                  className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-1.5 ${
-                    activeTab === 'clients'
-                      ? 'clay-flat text-[#8b5cf6] font-bold shadow-md shadow-purple-500/10'
-                      : 'text-[#64748b] hover:text-[#8b5cf6]'
-                  }`}
-                >
-                  <Users size={15} />
-                  Clients
-                </button>
-                <button 
-                  onClick={() => handleTabChange('visitingCards')}
-                  className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-1.5 ${
-                    activeTab === 'visitingCards'
-                      ? 'clay-flat text-[#8b5cf6] font-bold shadow-md shadow-purple-500/10'
-                      : 'text-[#64748b] hover:text-[#8b5cf6]'
-                  }`}
-                >
-                  <CreditCard size={15} />
-                  Visiting Cards
-                </button>
-              </>
+            {isClientsAllowed && (
+              <button 
+                onClick={() => handleTabChange('clients')}
+                className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                  activeTab === 'clients'
+                    ? 'clay-flat text-[#8b5cf6] font-bold shadow-md shadow-purple-500/10'
+                    : 'text-[#64748b] hover:text-[#8b5cf6]'
+                }`}
+              >
+                <Users size={15} />
+                Clients
+              </button>
             )}
 
-            {isMarketing && (
+            {isVisitingCardsAllowed && (
+              <button 
+                onClick={() => handleTabChange('visitingCards')}
+                className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                  activeTab === 'visitingCards'
+                    ? 'clay-flat text-[#8b5cf6] font-bold shadow-md shadow-purple-500/10'
+                    : 'text-[#64748b] hover:text-[#8b5cf6]'
+                }`}
+              >
+                <CreditCard size={15} />
+                Visiting Cards
+              </button>
+            )}
+
+            {isBlogsAllowed && (
               <button 
                 onClick={() => handleTabChange('blogs')}
                 className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-1.5 ${
@@ -187,18 +207,18 @@ const MainLayout = ({ onLogout }) => {
       
       {/* Main Content */}
       <main className="flex-1 p-4 md:p-8 relative z-10">
-        {clientId ? (
+        {clientId && isClientsAllowed ? (
           <ClientProjects onBack={() => navigate('/dashboard?tab=clients')} />
         ) : (
           <>
             {activeTab === 'dashboard' && <Dashboard onNavigateToProgress={() => handleTabChange('progress')} />}
             {activeTab === 'progress' && <StaffProgressReport onBack={() => handleTabChange('dashboard')} />}
-            {activeTab === 'hearing' && isHR && <HearingManagement />}
-            {activeTab === 'admissions' && isCounselor && <StudentAdmissions onBack={() => handleTabChange('dashboard')} />}
-            {activeTab === 'sales' && isSalesTeam && <SalesTeam onBack={() => handleTabChange('dashboard')} />}
+            {activeTab === 'hearing' && isHearingAllowed && <HearingManagement />}
+            {activeTab === 'admissions' && isAdmissionsAllowed && <StudentAdmissions onBack={() => handleTabChange('dashboard')} />}
+            {activeTab === 'sales' && isSalesAllowed && <SalesTeam onBack={() => handleTabChange('dashboard')} />}
             {activeTab === 'visitingCards' && isVisitingCardsAllowed && <VisitingCards onBack={() => handleTabChange('dashboard')} />}
-            {activeTab === 'clients' && isVisitingCardsAllowed && <Clients onClientClick={(client) => navigate(`/clients/${client._id || client.id}`)} />}
-            {activeTab === 'blogs' && isMarketing && <BlogManagement onBack={() => handleTabChange('dashboard')} />}
+            {activeTab === 'clients' && isClientsAllowed && <Clients onClientClick={(client) => navigate(`/clients/${client._id || client.id}`)} />}
+            {activeTab === 'blogs' && isBlogsAllowed && <BlogManagement onBack={() => handleTabChange('dashboard')} />}
           </>
         )}
       </main>

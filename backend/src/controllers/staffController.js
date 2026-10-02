@@ -86,7 +86,8 @@ exports.loginStaff = async (req, res) => {
         satisfactionHistory: staff.satisfactionHistory || [],
         todayComment: staff.todayComment || '',
         commentHistory: staff.commentHistory || [],
-        commentUpdatedBy: staff.commentUpdatedBy || ''
+        commentUpdatedBy: staff.commentUpdatedBy || '',
+        permissions: staff.permissions
       },
       token
     });
@@ -538,7 +539,8 @@ exports.getStaffById = async (req, res) => {
         satisfactionHistory: staff.satisfactionHistory || [],
         todayComment: staff.todayComment || '',
         commentHistory: staff.commentHistory || [],
-        commentUpdatedBy: staff.commentUpdatedBy || ''
+        commentUpdatedBy: staff.commentUpdatedBy || '',
+        permissions: staff.permissions || []
       }
     });
   } catch (error) {
@@ -630,6 +632,7 @@ exports.updateStaff = async (req, res) => {
 
     // Save the staff (this will trigger pre-save middleware for password hashing)
     const updatedStaff = await staff.save();
+    cache.del('staff:all');
 
     res.status(200).json({
       success: true,
@@ -637,6 +640,52 @@ exports.updateStaff = async (req, res) => {
     });
   } catch (error) {
     res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// Update staff access permissions and/or password (Admin only)
+exports.updateStaffAccess = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { permissions, password } = req.body;
+
+    const staff = await Staff.findOne({ _id: id, isRemoved: { $ne: true } });
+    if (!staff) {
+      return res.status(404).json({
+        success: false,
+        message: 'Staff not found'
+      });
+    }
+
+    if (permissions !== undefined) {
+      staff.permissions = Array.isArray(permissions) ? permissions : [];
+    }
+
+    if (password && typeof password === 'string' && password.trim().length > 0) {
+      staff.password = password.trim();
+    }
+
+    const updatedStaff = await staff.save();
+    cache.del('staff:all');
+
+    res.status(200).json({
+      success: true,
+      message: 'Access permissions and password updated successfully',
+      data: {
+        _id: updatedStaff._id,
+        id: updatedStaff._id,
+        employeeId: updatedStaff.employeeId,
+        name: updatedStaff.name,
+        role: updatedStaff.role,
+        department: updatedStaff.department,
+        permissions: updatedStaff.permissions || []
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
       success: false,
       message: error.message
     });

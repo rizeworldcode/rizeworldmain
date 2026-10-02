@@ -1,13 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { IndianRupee, CalendarCheck, Briefcase, Wallet, Calendar, X } from 'lucide-react';
+import { IndianRupee, CalendarCheck, Briefcase, Wallet, Calendar, X, ChevronDown, Lock } from 'lucide-react';
 import StatsCard from '../components/dashboard/StatsCard';
 import RevenueChart from '../components/dashboard/RevenueChart';
 import RecentClients from '../components/dashboard/RecentClients';
 import StaffList from '../components/dashboard/StaffList';
 import DashboardMap from '../components/dashboard/DashboardMap';
 import { getDashboardStats, getAllStaff, markStaffLeave, prefetchAdminData } from '../api';
+import { getAvailableSalaryMonths, getMonthlySalarySummary } from '../utils/salaryCalculator';
 
 const Overview = ({ onViewClient, onViewStaff }) => {
   const navigate = useNavigate();
@@ -29,6 +30,7 @@ const Overview = ({ onViewClient, onViewStaff }) => {
     totalProjects: 0,
     totalPaidSalary: 0
   });
+  const [staffList, setStaffList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
@@ -36,22 +38,46 @@ const Overview = ({ onViewClient, onViewStaff }) => {
   const [leaveType, setLeaveType] = useState('Casual');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const now = new Date();
+  const currentMonthName = now.toLocaleString('default', { month: 'long', year: 'numeric' });
+  const [selectedSalaryMonth, setSelectedSalaryMonth] = useState(currentMonthName);
+
   useEffect(() => {
-    const fetchStats = async () => {
+    const fetchDashboardData = async () => {
       try {
-        const result = await getDashboardStats();
-        if (result.success) {
-          setStats(result.data);
+        const [statsRes, staffRes] = await Promise.all([
+          getDashboardStats(),
+          getAllStaff(true)
+        ]);
+        if (statsRes.success) {
+          setStats(statsRes.data);
+        }
+        if (staffRes.success && Array.isArray(staffRes.data)) {
+          setStaffList(staffRes.data);
         }
       } catch (error) {
-        console.error('Error fetching dashboard stats:', error);
+        console.error('Error fetching dashboard data:', error);
       } finally {
         setLoading(false);
       }
     };
-    fetchStats();
+    fetchDashboardData();
     prefetchAdminData();
   }, []);
+
+  const availableSalaryMonths = useMemo(() => {
+    return getAvailableSalaryMonths(staffList);
+  }, [staffList]);
+
+  const monthlySalarySummary = useMemo(() => {
+    return getMonthlySalarySummary(staffList, selectedSalaryMonth);
+  }, [staffList, selectedSalaryMonth]);
+
+  const salaryPaidPercentage = useMemo(() => {
+    if (!monthlySalarySummary.totalPayable || monthlySalarySummary.totalPayable === 0) return '0%';
+    const pct = Math.min(100, Math.round((monthlySalarySummary.totalPaid / monthlySalarySummary.totalPayable) * 100));
+    return `${pct}%`;
+  }, [monthlySalarySummary]);
 
   const fetchStaffAndMarkLeave = async () => {
     setIsSubmitting(true);
@@ -126,11 +152,27 @@ const Overview = ({ onViewClient, onViewStaff }) => {
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
         <StatsCard 
           title="Total Revenue" 
-          value={`₹${stats.totalRevenue.toLocaleString('en-IN')}`} 
+          value={
+            <span className="flex items-center gap-2 text-xl sm:text-2xl tracking-wider text-gray-500 dark:text-gray-400 font-mono font-bold">
+              <span>••••••••</span>
+              <Lock className="w-4 h-4 text-blue-500 dark:text-blue-400 inline shrink-0" />
+            </span>
+          }
           icon={IndianRupee}
           gradient="from-blue-600 to-indigo-600"
           loading={loading}
           onClick={() => navigate('/wallet')}
+          headerAction={
+            <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/50 shadow-sm">
+              <Lock className="w-2.5 h-2.5" />
+              Locked
+            </span>
+          }
+          subtitle={
+            <div className="text-[11px] font-medium text-blue-600 dark:text-blue-400 flex items-center gap-1 pt-0.5">
+              <span>Click to view in Wallet (Password Required)</span>
+            </div>
+          }
         />
         <StatsCard 
           title="Today's Assigned Work" 
@@ -149,12 +191,40 @@ const Overview = ({ onViewClient, onViewStaff }) => {
           onClick={() => navigate('/clients')}
         />
         <StatsCard 
-          title="Paid Salary (Monthly)" 
-          value={`₹${stats.totalPaidSalary.toLocaleString('en-IN')}`} 
+          title="Monthly Salary (To Pay)" 
+          value={`₹${monthlySalarySummary.totalPayable.toLocaleString('en-IN')}`} 
           icon={Wallet}
           gradient="from-orange-500 to-rose-500"
           loading={loading}
-          onClick={() => navigate('/wallet?filter=salary')}
+          onClick={() => navigate('/salary-sheet')}
+          progress={salaryPaidPercentage}
+          headerAction={
+            <div className="relative">
+              <select
+                value={selectedSalaryMonth}
+                onChange={(e) => setSelectedSalaryMonth(e.target.value)}
+                className="pl-2.5 pr-6 py-1 rounded-lg text-xs font-bold bg-white/70 dark:bg-gray-800/80 border border-orange-200 dark:border-white/10 text-orange-700 dark:text-orange-300 hover:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-500 cursor-pointer appearance-none shadow-sm backdrop-blur-md transition-all"
+                title="Select month to view salary to pay"
+              >
+                {availableSalaryMonths.map(m => (
+                  <option key={m} value={m} className="text-gray-900 dark:bg-gray-900 dark:text-white font-medium">
+                    {m === currentMonthName ? `${m} (Current)` : m}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-orange-600 dark:text-orange-400 pointer-events-none" />
+            </div>
+          }
+          subtitle={
+            <div className="flex items-center justify-between text-[11px] font-semibold text-gray-500 dark:text-gray-400 pt-0.5">
+              <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                Paid: ₹{monthlySalarySummary.totalPaid.toLocaleString('en-IN')}
+              </span>
+              <span className={monthlySalarySummary.totalPending > 0 ? "text-amber-600 dark:text-amber-400 font-bold" : "text-emerald-600 dark:text-emerald-400 font-bold"}>
+                {monthlySalarySummary.totalPending > 0 ? `To Pay: ₹${monthlySalarySummary.totalPending.toLocaleString('en-IN')}` : 'All Paid ✓'}
+              </span>
+            </div>
+          }
         />
       </section>
 

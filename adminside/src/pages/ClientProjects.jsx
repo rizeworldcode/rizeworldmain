@@ -33,6 +33,7 @@ import {
   User
 } from 'lucide-react';
 import { BASE_URL, clearApiCache } from '../api';
+import PasswordGate from '../components/auth/PasswordGate';
 
 function getApiUrl(endpoint) {
   return `${BASE_URL}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
@@ -2020,7 +2021,7 @@ const downloadDelayWork = async (clientId, startDate, endDate) => {
   }
 };
 
-const ClientProjects = ({ onBack }) => {
+const ClientProjectsView = ({ onBack, onLock }) => {
   const { id: clientId } = useParams();
   const navigateHook = useNavigate();
   const handleBack = onBack || (() => navigateHook('/clients'));
@@ -2871,6 +2872,24 @@ const ClientProjects = ({ onBack }) => {
       </AnimatePresence>
 
     </motion.div>
+  );
+};
+
+const ClientProjects = (props) => {
+  const [unlocked, setUnlocked] = useState(() => sessionStorage.getItem('clients_unlocked') === 'true');
+
+  return unlocked ? (
+    <ClientProjectsView {...props} onLock={() => setUnlocked(false)} />
+  ) : (
+    <PasswordGate
+      title="Client Projects"
+      subtitle="This page is confidential. Enter the admin password to view project details and task progress."
+      storageKey="clients_unlocked"
+      icon={Briefcase}
+      gradient="from-blue-600 to-indigo-600"
+      buttonText="Unlock Projects"
+      onUnlock={() => setUnlocked(true)}
+    />
   );
 };
 

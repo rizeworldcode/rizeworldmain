@@ -22,10 +22,18 @@ import {
   LogIn,
   LogOut,
   RotateCcw,
-  AlertTriangle
+  AlertTriangle,
+  KeyRound,
+  ShieldCheck,
+  Eye,
+  EyeOff,
+  Sparkles,
+  Lock,
+  Shield,
+  Check
 } from 'lucide-react';
 import StaffPerformance from './StaffPerformance';
-import { getAllStaff, getStaffById, clockOutAllStaff, BASE_URL } from '../api';
+import { getAllStaff, getStaffById, clockOutAllStaff, updateStaffAccess, BASE_URL } from '../api';
 
 const PREDEFINED_ROLES = ['HR', 'Client Support', 'Admin', 'Data Analyst', 'Sales Team'];
 
@@ -344,6 +352,394 @@ const EditStaffModal = ({ isOpen, onClose, staffMember, onUpdate }) => {
               className="flex-1 px-6 py-3 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20"
             >
               Update Staff Member
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </div>
+  );
+};
+
+export const AVAILABLE_FEATURES = [
+  {
+    id: 'dashboard',
+    name: 'Dashboard & Attendance',
+    description: 'View basic staff dashboard, task list, clock in / clock out',
+    category: 'Core',
+    color: 'emerald'
+  },
+  {
+    id: 'progress',
+    name: 'Progress Report',
+    description: 'View personal performance, satisfaction history & monthly stats',
+    category: 'Core',
+    color: 'blue'
+  },
+  {
+    id: 'clients',
+    name: 'Clients Section',
+    description: 'View client list, access client profile pages and project history',
+    category: 'Clients',
+    color: 'purple'
+  },
+  {
+    id: 'visitingCards',
+    name: 'Visiting Cards Section',
+    description: 'Scan new cards and view company visiting cards directory',
+    category: 'Sales & Field',
+    color: 'amber'
+  },
+  {
+    id: 'clientTaskUpdate',
+    name: 'Client Task Update',
+    description: 'Submit daily work reports directly against client accounts',
+    category: 'Clients',
+    color: 'orange'
+  },
+  {
+    id: 'hearing',
+    name: 'Hearing Management',
+    description: 'Manage staff hearing disputes, resolutions and logs',
+    category: 'HR',
+    color: 'violet'
+  },
+  {
+    id: 'admissions',
+    name: 'Student Admissions',
+    description: 'Access student admissions CRM, leads and counseling records',
+    category: 'Counseling',
+    color: 'cyan'
+  },
+  {
+    id: 'sales',
+    name: 'Sales Log & Team',
+    description: 'Submit daily sales logs, field visit reports and tracking',
+    category: 'Sales & Field',
+    color: 'green'
+  },
+  {
+    id: 'blogs',
+    name: 'Blog Management',
+    description: 'Create, edit and manage digital marketing blogs and posts',
+    category: 'Marketing',
+    color: 'pink'
+  },
+  {
+    id: 'satisfactionUpdate',
+    name: 'Staff Rating & Satisfaction',
+    description: 'Rate team performance (Green/Yellow/Red) and leave feedback',
+    category: 'Management',
+    color: 'rose'
+  }
+];
+
+export const getDefaultPermissionsForRole = (role = '', department = '', employeeId = '') => {
+  const r = (role || '').toLowerCase();
+  const d = (department || '').toLowerCase();
+  const perms = ['dashboard', 'progress'];
+
+  if (['admin', 'data analyst'].includes(r) && employeeId !== 'RW-4559') {
+    perms.push('clients', 'visitingCards', 'clientTaskUpdate');
+  }
+  if (r === 'hr') perms.push('hearing');
+  if (r === 'counselor') perms.push('admissions');
+  if (r === 'sales team' || r === 'sales') perms.push('sales', 'visitingCards');
+  if (d.includes('marketing') || r.includes('marketing')) perms.push('blogs');
+  if (['RW-9752', 'RW-1702'].includes(employeeId)) perms.push('satisfactionUpdate');
+
+  return perms;
+};
+
+const ManageAccessModal = ({ isOpen, onClose, staffMember, onSaveSuccess }) => {
+  const [selectedPermissions, setSelectedPermissions] = useState([]);
+  const [newPassword, setNewPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [successMsg, setSuccessMsg] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
+
+  useEffect(() => {
+    if (staffMember) {
+      if (Array.isArray(staffMember.permissions) && staffMember.permissions.length > 0) {
+        setSelectedPermissions(staffMember.permissions);
+      } else {
+        setSelectedPermissions(getDefaultPermissionsForRole(staffMember.role, staffMember.department, staffMember.employeeId));
+      }
+      setNewPassword('');
+      setShowPassword(false);
+      setSuccessMsg('');
+      setErrorMsg('');
+    }
+  }, [staffMember]);
+
+  if (!isOpen || !staffMember) return null;
+
+  const togglePermission = (permId) => {
+    setSelectedPermissions(prev =>
+      prev.includes(permId) ? prev.filter(p => p !== permId) : [...prev, permId]
+    );
+  };
+
+  const handleGrantAll = () => {
+    setSelectedPermissions(AVAILABLE_FEATURES.map(f => f.id));
+  };
+
+  const handleResetToRoleDefault = () => {
+    setSelectedPermissions(getDefaultPermissionsForRole(staffMember.role, staffMember.department, staffMember.employeeId));
+  };
+
+  const handleClearAll = () => {
+    setSelectedPermissions([]);
+  };
+
+  const handleGeneratePassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$';
+    let pass = 'RW@';
+    for (let i = 0; i < 5; i++) {
+      pass += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setNewPassword(pass);
+    setShowPassword(true);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsSaving(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+
+    try {
+      const payload = {
+        permissions: selectedPermissions
+      };
+      if (newPassword.trim()) {
+        payload.password = newPassword.trim();
+      }
+
+      const res = await updateStaffAccess(staffMember._id || staffMember.id, payload);
+      if (res && res.success) {
+        setSuccessMsg('Access permissions & security updated successfully!');
+        if (onSaveSuccess) onSaveSuccess(staffMember._id || staffMember.id, selectedPermissions);
+        setTimeout(() => {
+          onClose();
+        }, 1200);
+      } else {
+        setErrorMsg(res?.message || 'Failed to update access');
+      }
+    } catch (err) {
+      setErrorMsg(err.message || 'Failed to update access permissions');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="absolute inset-0 bg-black/80 backdrop-blur-md"
+      />
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0, y: 10 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.95, opacity: 0, y: 10 }}
+        className="relative w-full max-w-3xl glass rounded-3xl border border-white/10 p-6 sm:p-8 shadow-2xl overflow-y-auto max-h-[92vh]"
+      >
+        {/* Header */}
+        <div className="flex justify-between items-start mb-6 border-b border-gray-100 dark:border-white/10 pb-5">
+          <div className="flex items-center gap-3.5">
+            <div className="p-3 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl text-white shadow-lg shadow-indigo-500/20">
+              <ShieldCheck size={26} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h3 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white">
+                  Access & Security Controls
+                </h3>
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-indigo-500/10 text-indigo-500 border border-indigo-500/20">
+                  {staffMember.employeeId || 'Staff'}
+                </span>
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-1">
+                Configure module access permissions and update login password for <span className="font-bold text-gray-800 dark:text-gray-200">{staffMember.name}</span> ({staffMember.role} • {staffMember.department})
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-white transition-colors"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {errorMsg && (
+          <div className="mb-6 p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-500 text-sm font-bold flex items-center gap-2">
+            <AlertTriangle size={18} />
+            {errorMsg}
+          </div>
+        )}
+
+        {successMsg && (
+          <div className="mb-6 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-sm font-bold flex items-center gap-2">
+            <CheckCircle2 size={18} />
+            {successMsg}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Section 1: Password Management */}
+          <div className="p-5 sm:p-6 bg-black/5 dark:bg-white/5 rounded-3xl border border-gray-200 dark:border-white/10 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 dark:border-white/5 pb-3">
+              <div className="flex items-center gap-2">
+                <Lock size={18} className="text-amber-500" />
+                <h4 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-wider">
+                  Update Staff Password
+                </h4>
+              </div>
+              <span className="text-[11px] text-amber-600 dark:text-amber-400 font-bold bg-amber-500/10 px-2.5 py-1 rounded-xl border border-amber-500/20 w-fit">
+                Only Admin can update password
+              </span>
+            </div>
+
+            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+              Enter a new password for this staff ID if you wish to change it. Leave blank to keep their current password.
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Enter new password (leave blank to keep unchanged)"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full bg-white dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-2xl pl-4 pr-12 py-3 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:border-indigo-500 outline-none transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-white transition-colors"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleGeneratePassword}
+                className="px-4 py-3 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 rounded-2xl text-amber-600 dark:text-amber-400 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shrink-0"
+              >
+                <Sparkles size={16} />
+                Generate Password
+              </button>
+            </div>
+          </div>
+
+          {/* Section 2: Granular Feature Access Permissions */}
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Shield size={18} className="text-indigo-500" />
+                <h4 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-wider">
+                  Granted Feature Permissions ({selectedPermissions.length}/{AVAILABLE_FEATURES.length})
+                </h4>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={handleGrantAll}
+                  className="px-3 py-1.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 text-xs font-bold transition-all"
+                >
+                  Grant All
+                </button>
+                <button
+                  type="button"
+                  onClick={handleResetToRoleDefault}
+                  className="px-3 py-1.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-400 border border-purple-500/20 text-xs font-bold transition-all"
+                >
+                  Role Defaults
+                </button>
+                <button
+                  type="button"
+                  onClick={handleClearAll}
+                  className="px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/20 text-xs font-bold transition-all"
+                >
+                  Revoke All
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              {AVAILABLE_FEATURES.map((feature) => {
+                const isSelected = selectedPermissions.includes(feature.id);
+                return (
+                  <div
+                    key={feature.id}
+                    onClick={() => togglePermission(feature.id)}
+                    className={`p-4 rounded-2xl border transition-all cursor-pointer select-none flex items-start gap-3.5 ${
+                      isSelected
+                        ? 'bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border-indigo-500/40 shadow-md shadow-indigo-500/5'
+                        : 'bg-black/5 dark:bg-white/5 border-gray-200 dark:border-white/5 opacity-60 hover:opacity-90'
+                    }`}
+                  >
+                    <div
+                      className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5 transition-all ${
+                        isSelected
+                          ? 'bg-indigo-600 text-white shadow-sm'
+                          : 'border-2 border-gray-300 dark:border-white/20 bg-white/50 dark:bg-black/30'
+                      }`}
+                    >
+                      {isSelected && <Check size={14} strokeWidth={3} />}
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className={`text-sm font-black ${isSelected ? 'text-indigo-600 dark:text-indigo-300' : 'text-gray-900 dark:text-white'}`}>
+                          {feature.name}
+                        </span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-black/5 dark:bg-white/10 text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          {feature.category}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 font-medium line-clamp-2">
+                        {feature.description}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Form Actions */}
+          <div className="flex items-center gap-3 pt-4 border-t border-gray-100 dark:border-white/10">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-6 py-3 rounded-2xl border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white font-bold hover:bg-black/5 dark:hover:bg-white/5 transition-all"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSaving}
+              className="flex-1 px-6 py-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-black hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {isSaving ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Saving Changes...
+                </>
+              ) : (
+                <>
+                  <ShieldCheck size={18} />
+                  Save Access & Security
+                </>
+              )}
             </button>
           </div>
         </form>
@@ -695,6 +1091,21 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
   const redZoneMembers = useMemo(() => {
     return staff.filter(m => getRedZoneDaysCount(m) >= 7);
   }, [staff]);
+
+  // Access & Security modal state
+  const [isAccessModalOpen, setIsAccessModalOpen] = useState(false);
+  const [selectedStaffForAccess, setSelectedStaffForAccess] = useState(null);
+
+  const openAccessModal = (member) => {
+    setSelectedStaffForAccess(member);
+    setIsAccessModalOpen(true);
+  };
+
+  const handleAccessSaved = (id, newPermissions) => {
+    setStaff(prev => prev.map(m =>
+      (m._id === id || m.id === id) ? { ...m, permissions: newPermissions } : m
+    ));
+  };
 
   // Salary modal state
   const [isSalaryModalOpen, setIsSalaryModalOpen] = useState(false);
@@ -1573,13 +1984,29 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
                             );
                           })()}
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => openAccessModal(member)}
+                            className="group/access flex items-center gap-1.5 rounded-xl border border-indigo-500/20 bg-indigo-500/10 px-3 py-2 text-indigo-600 dark:text-indigo-400 shadow-lg shadow-indigo-500/10 transition-all hover:bg-indigo-600 hover:text-white"
+                            title="Manage Feature Access & Password"
+                          >
+                            <KeyRound size={15} className="transition-transform group-hover/access:scale-110" />
+                            <span className="text-xs font-black uppercase tracking-widest">Access & Pass</span>
+                          </button>
+                          <button
+                            onClick={() => openEditModal(member)}
+                            className="group/edit flex items-center gap-1.5 rounded-xl border border-blue-500/20 bg-blue-500/10 px-3 py-2 text-blue-600 dark:text-blue-400 shadow-lg shadow-blue-500/10 transition-all hover:bg-blue-600 hover:text-white"
+                            title="Edit Employee Details"
+                          >
+                            <Edit3 size={15} className="transition-transform group-hover/edit:scale-110" />
+                            <span className="text-xs font-black uppercase tracking-widest">Edit</span>
+                          </button>
                           <button
                             onClick={() => handleDeleteStaff(member._id)}
-                            className="group/remove flex items-center gap-2 rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-2 text-rose-600 shadow-lg shadow-rose-500/10 transition-all hover:bg-rose-500 hover:text-white"
+                            className="group/remove flex items-center gap-1.5 rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-rose-600 shadow-lg shadow-rose-500/10 transition-all hover:bg-rose-500 hover:text-white"
                             title="Remove Employee"
                           >
-                            <Trash2 size={16} className="transition-transform group-hover/remove:scale-110" />
+                            <Trash2 size={15} className="transition-transform group-hover/remove:scale-110" />
                             <span className="text-xs font-black uppercase tracking-widest">Remove</span>
                           </button>
                         </div>
@@ -1600,6 +2027,18 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
             onClose={() => setIsEditModalOpen(false)}
             staffMember={editingStaff}
             onUpdate={handleUpdateStaff}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Access & Password Management Modal */}
+      <AnimatePresence>
+        {isAccessModalOpen && selectedStaffForAccess && (
+          <ManageAccessModal
+            isOpen={isAccessModalOpen}
+            onClose={() => setIsAccessModalOpen(false)}
+            staffMember={selectedStaffForAccess}
+            onSaveSuccess={handleAccessSaved}
           />
         )}
       </AnimatePresence>

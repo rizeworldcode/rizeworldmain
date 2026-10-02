@@ -41,7 +41,8 @@ const {
   deleteSale,
   approveAllTasks,
   approveStaffTasks,
-  clockOutAllStaff
+  clockOutAllStaff,
+  updateStaffAccess
 } = require('../controllers/staffController');
 const { protect } = require('../middleware/authMiddleware');
 const { requireOfficeWifi } = require('../middleware/officeWifi');
@@ -85,6 +86,7 @@ router.post('/clock-out-all', requireOfficeWifi, clockOutAllStaff);
 // Dynamic parameter routes
 router.get('/:id', getStaffById);
 router.put('/:id', updateStaff);
+router.patch('/:id/access', updateStaffAccess);
 router.delete('/:id', deleteStaff);
 router.patch('/:id/rejoin', rejoinStaff);
 router.patch('/:id/clock-out', requireOfficeWifi, clockOutStaff);
