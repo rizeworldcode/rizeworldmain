@@ -19,7 +19,14 @@ export default function Footer() {
           {/* Logo & Main HQ */}
           <div className="flex flex-col sm:flex-row items-center gap-6 shrink-0 w-full xl:w-auto justify-between xl:justify-start">
             <Link to="/" className="flex items-center">
-              <img src="/images/logo/RW.png" alt="RizeWorld" className="h-24 object-contain" />
+              <img
+                src="/images/logo/RW.png"
+                alt="RizeWorld"
+                width={96}
+                height={96}
+                style={{ maxHeight: '96px', width: 'auto' }}
+                className="h-24 object-contain"
+              />
             </Link>
           </div>
 

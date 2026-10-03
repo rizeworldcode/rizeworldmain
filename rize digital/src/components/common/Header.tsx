@@ -27,7 +27,14 @@ export default function Header() {
 
         {/* Logo */}
         <Link to="/" onClick={handleLogoClick} className="flex items-center gap-2 cursor-pointer shrink-0">
-          <img src="/images/logo/RW.png" alt="RizeWorld" className="h-8 md:h-10 object-contain scale-[1.7] origin-left pl-1 shrink-0" />
+          <img
+            src="/images/logo/RW.png"
+            alt="RizeWorld"
+            width={40}
+            height={40}
+            style={{ maxHeight: '40px', width: 'auto' }}
+            className="h-8 md:h-10 object-contain scale-[1.7] origin-left pl-1 shrink-0"
+          />
         </Link>
 
         {/* Center Pill Nav */}

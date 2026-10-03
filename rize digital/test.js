@@ -1,38 +1,32 @@
 import puppeteer from 'puppeteer';
 
 (async () => {
-  const browser = await puppeteer.launch();
+  const browser = await puppeteer.launch({ headless: 'new' });
   const page = await browser.newPage();
   
-  await page.setRequestInterception(true);
-  page.on('request', (req) => {
-    const url = req.url();
-    if (['image', 'stylesheet', 'font', 'media'].includes(req.resourceType())) {
-      req.abort();
-    } else if (url.includes('/assets/') && !url.startsWith('http://localhost:4173/assets/')) {
-      const newUrl = url.replace(/http:\/\/localhost:4173\/.*\/assets\//, 'http://localhost:4173/assets/');
-      console.log('REWRITING:', url, '->', newUrl);
-      req.continue({ url: newUrl });
-    } else {
-      req.continue();
-    }
+  await page.evaluateOnNewDocument(() => {
+    Object.defineProperty(navigator, 'webdriver', { get: () => false });
   });
-  
-  page.on('response', res => {
-    console.log('RESPONSE:', res.url(), res.status());
-  });
+  await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
+  await page.setViewport({ width: 1440, height: 900 });
 
-  page.on('console', msg => console.log('PAGE LOG:', msg.text()));
-  
-  await page.goto('http://localhost:4173/locations/karnataka', { waitUntil: 'networkidle0' });
-  
-  const meta = await page.evaluate(() => {
-    return {
-      title: document.title,
-      canonical: document.querySelector('link[rel="canonical"]')?.href,
-      og: document.querySelector('meta[property="og:url"]')?.content
-    }
-  });
-  console.log(meta);
+  console.log('1. Loading Home page...');
+  await page.goto('http://localhost:5173/', { waitUntil: 'networkidle0' });
+  console.log('Current URL:', page.url());
+
+  console.log('2. Clicking Contact link in navbar...');
+  await page.click('a[href="/contact"]');
+  await new Promise(r => setTimeout(r, 600));
+  console.log('Current URL after link click:', page.url());
+
+  console.log('3. Reloading page while on Contact...');
+  await page.reload({ waitUntil: 'networkidle0' });
+  console.log('Current URL after reload:', page.url());
+
+  const scrollY = await page.evaluate(() => window.scrollY);
+  console.log('Scroll Y position after reload:', scrollY);
+
   await browser.close();
+  console.log('Done!');
 })();
+
