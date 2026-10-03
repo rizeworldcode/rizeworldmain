@@ -106,9 +106,49 @@ try {
   console.error('Error parsing Excel in vite.config.ts:', error.message);
 }
 
+function devPrerenderPlugin() {
+  return {
+    name: 'dev-prerender',
+    apply: 'serve' as const,
+    transformIndexHtml(html: string, ctx: any) {
+      try {
+        const rawUrl = ctx.originalUrl || ctx.path || '/';
+        const urlPath = rawUrl.split('?')[0].replace(/\/+$/, '') || '/';
+        
+        if (urlPath === '/' || urlPath === '') {
+          return html;
+        }
+        
+        const targetFile = path.join(__dirname, 'dist', urlPath, 'index.html');
+        if (fs.existsSync(targetFile)) {
+          const distHtml = fs.readFileSync(targetFile, 'utf-8');
+          
+          const rootMatch = distHtml.match(/<div id="root">([\s\S]*?)<\/div>\s*<\/body>/);
+          if (rootMatch && rootMatch[1]) {
+            html = html.replace(/<div id="root">[\s\S]*?<\/div>/, () => `<div id="root">${rootMatch[1]}</div>`);
+          }
+          
+          const titleMatch = distHtml.match(/<title>(.*?)<\/title>/);
+          if (titleMatch) {
+            html = html.replace(/<title>.*?<\/title>/, `<title>${titleMatch[1]}</title>`);
+          }
+          
+          const descMatch = distHtml.match(/<meta name="description" content="(.*?)" \/>/);
+          if (descMatch) {
+            html = html.replace(/<meta name="description".*?>/, `<meta name="description" content="${descMatch[1]}" />`);
+          }
+        }
+      } catch (e) {
+        // Fallback gracefully
+      }
+      return html;
+    }
+  };
+}
+
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), devPrerenderPlugin()],
   base: '/',
   server: {
     host: true

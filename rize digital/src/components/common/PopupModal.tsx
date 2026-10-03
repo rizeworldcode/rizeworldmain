@@ -6,6 +6,11 @@ export default function PopupModal() {
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
+    // Do not auto-open during prerendering or headless environments
+    if (typeof navigator !== 'undefined' && (navigator.userAgent.includes('Headless') || navigator.userAgent.includes('Puppeteer'))) {
+      return;
+    }
+
     // Open the popup after 2 seconds
     const timer = setTimeout(() => {
       setIsOpen(true);

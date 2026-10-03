@@ -145,8 +145,9 @@ async function runPrerender() {
             const canLink = document.querySelector('link[rel="canonical"]');
             const ogTag = document.querySelector('meta[property="og:url"]');
             const descTag = document.querySelector('meta[name="description"]');
-            
+            const root = document.getElementById('root');
             if (!title || !canLink || !ogTag || !descTag) return false;
+            if (!root || !root.firstElementChild || root.innerHTML.trim().length === 0) return false;
             
             const actualCanonical = canLink.href.replace(/https?:\/\/localhost:\d+/, 'https://rizeworld.in');
             const actualOg = ogTag.content.replace(/https?:\/\/localhost:\d+/, 'https://rizeworld.in');
@@ -174,6 +175,9 @@ async function runPrerender() {
 
         // Extract metadata
         const metadata = await page.evaluate(() => {
+          // Remove popup modal if open so it never gets captured in static HTML
+          document.querySelectorAll('[class*="z-9999"], [class*="z-[9999]"]').forEach(el => el.remove());
+
           const getMeta = (selector) => {
             const el = document.querySelector(selector);
             return el ? el.getAttribute('content') : null;
@@ -195,7 +199,8 @@ async function runPrerender() {
             ogImage: getMeta('meta[property="og:image"]'),
             twTitle: getMeta('meta[name="twitter:title"]'),
             twDesc: getMeta('meta[name="twitter:description"]'),
-            twImage: getMeta('meta[name="twitter:image"]')
+            twImage: getMeta('meta[name="twitter:image"]'),
+            rootHtml: document.getElementById('root')?.innerHTML || ''
           };
         });
 
@@ -280,6 +285,10 @@ async function runPrerender() {
           } else {
             html = html.replace('</head>', `  <link rel="canonical" href="${metadata.canonical}" />\n</head>`);
           }
+        }
+
+        if (metadata.rootHtml) {
+          html = html.replace(/<div id="root">[\s\S]*?<\/div>/, () => `<div id="root">${metadata.rootHtml}</div>`);
         }
 
         let outputPath = templatePath;
