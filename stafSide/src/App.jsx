@@ -12,7 +12,6 @@ import Clients from './pages/Clients';
 import ClientProjects from './pages/ClientProjects';
 import BlogManagement from './pages/BlogManagement';
 import StaffProgressReport from './pages/StaffProgressReport';
-import { canAccessFeature } from './utils/permissions';
 
 const MainLayout = ({ onLogout }) => {
   const navigate = useNavigate();
@@ -21,29 +20,29 @@ const MainLayout = ({ onLogout }) => {
   const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'dashboard');
   const staffInfo = JSON.parse(localStorage.getItem('staffInfo') || '{}');
 
-  const isHearingAllowed = canAccessFeature(staffInfo, 'hearing');
-  const isAdmissionsAllowed = canAccessFeature(staffInfo, 'admissions');
-  const isSalesAllowed = canAccessFeature(staffInfo, 'sales');
-  const isClientsAllowed = canAccessFeature(staffInfo, 'clients');
-  const isVisitingCardsAllowed = canAccessFeature(staffInfo, 'visitingCards');
-  const isBlogsAllowed = canAccessFeature(staffInfo, 'blogs');
+  const isHR = staffInfo.role?.toLowerCase() === 'hr';
+  const isCounselor = staffInfo.role?.toLowerCase() === 'counselor';
+  const isSalesTeam = staffInfo.role?.toLowerCase() === 'sales team' || staffInfo.role?.toLowerCase() === 'sales';
+  const isVisitingCardsAllowed = ['admin', 'data analyst'].includes(staffInfo.role?.toLowerCase()) && staffInfo.employeeId !== 'RW-4559';
+  const isClientsAllowed = ['admin', 'data analyst'].includes(staffInfo.role?.toLowerCase()) && staffInfo.employeeId !== 'RW-4559';
+  const isMarketing = (staffInfo.department?.toLowerCase() || '').includes('marketing') || (staffInfo.role?.toLowerCase() || '').includes('marketing');
 
   useEffect(() => {
     const isAllowed =
-      (activeTab === 'dashboard' && canAccessFeature(staffInfo, 'dashboard')) ||
-      (activeTab === 'progress' && canAccessFeature(staffInfo, 'progress')) ||
-      (activeTab === 'hearing' && isHearingAllowed) ||
-      (activeTab === 'admissions' && isAdmissionsAllowed) ||
-      (activeTab === 'sales' && isSalesAllowed) ||
+      activeTab === 'dashboard' ||
+      activeTab === 'progress' ||
+      (activeTab === 'hearing' && isHR) ||
+      (activeTab === 'admissions' && isCounselor) ||
+      (activeTab === 'sales' && isSalesTeam) ||
       (activeTab === 'clients' && isClientsAllowed) ||
       (activeTab === 'visitingCards' && isVisitingCardsAllowed) ||
-      (activeTab === 'blogs' && isBlogsAllowed);
+      (activeTab === 'blogs' && isMarketing);
 
     if (!isAllowed) {
       setActiveTab('dashboard');
       navigate('/dashboard?tab=dashboard', { replace: true });
     }
-  }, [activeTab, isHearingAllowed, isAdmissionsAllowed, isSalesAllowed, isClientsAllowed, isVisitingCardsAllowed, isBlogsAllowed, navigate]);
+  }, [activeTab, isHR, isCounselor, isSalesTeam, isClientsAllowed, isVisitingCardsAllowed, isMarketing, navigate]);
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
@@ -111,7 +110,7 @@ const MainLayout = ({ onLogout }) => {
               Progress Report
             </button>
 
-            {isHearingAllowed && (
+            {isHR && (
               <button 
                 onClick={() => handleTabChange('hearing')}
                 className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all whitespace-nowrap ${
@@ -124,7 +123,7 @@ const MainLayout = ({ onLogout }) => {
               </button>
             )}
 
-            {isAdmissionsAllowed && (
+            {isCounselor && (
               <button 
                 onClick={() => handleTabChange('admissions')}
                 className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-1.5 ${
@@ -138,7 +137,7 @@ const MainLayout = ({ onLogout }) => {
               </button>
             )}
 
-            {isSalesAllowed && (
+            {isSalesTeam && (
               <button 
                 onClick={() => handleTabChange('sales')}
                 className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-1.5 ${
@@ -180,7 +179,7 @@ const MainLayout = ({ onLogout }) => {
               </button>
             )}
 
-            {isBlogsAllowed && (
+            {isMarketing && (
               <button 
                 onClick={() => handleTabChange('blogs')}
                 className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-1.5 ${
@@ -213,12 +212,12 @@ const MainLayout = ({ onLogout }) => {
           <>
             {activeTab === 'dashboard' && <Dashboard onNavigateToProgress={() => handleTabChange('progress')} />}
             {activeTab === 'progress' && <StaffProgressReport onBack={() => handleTabChange('dashboard')} />}
-            {activeTab === 'hearing' && isHearingAllowed && <HearingManagement />}
-            {activeTab === 'admissions' && isAdmissionsAllowed && <StudentAdmissions onBack={() => handleTabChange('dashboard')} />}
-            {activeTab === 'sales' && isSalesAllowed && <SalesTeam onBack={() => handleTabChange('dashboard')} />}
+            {activeTab === 'hearing' && isHR && <HearingManagement />}
+            {activeTab === 'admissions' && isCounselor && <StudentAdmissions onBack={() => handleTabChange('dashboard')} />}
+            {activeTab === 'sales' && isSalesTeam && <SalesTeam onBack={() => handleTabChange('dashboard')} />}
             {activeTab === 'visitingCards' && isVisitingCardsAllowed && <VisitingCards onBack={() => handleTabChange('dashboard')} />}
             {activeTab === 'clients' && isClientsAllowed && <Clients onClientClick={(client) => navigate(`/clients/${client._id || client.id}`)} />}
-            {activeTab === 'blogs' && isBlogsAllowed && <BlogManagement onBack={() => handleTabChange('dashboard')} />}
+            {activeTab === 'blogs' && isMarketing && <BlogManagement onBack={() => handleTabChange('dashboard')} />}
           </>
         )}
       </main>
