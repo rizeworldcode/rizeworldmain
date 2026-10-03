@@ -9,14 +9,18 @@ export default function FloatingButtons() {
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Chat on WhatsApp"
-        className="group relative flex items-center justify-center w-14 h-14 rounded-full bg-[#25D366] text-white shadow-lg shadow-green-500/20 hover:shadow-green-500/40 hover:-translate-y-1 transition-all duration-300 animate-pulse-subtle"
+        style={{ width: '56px', height: '56px', minWidth: '56px', minHeight: '56px' }}
+        className="group relative flex items-center justify-center w-14 h-14 shrink-0 rounded-full bg-[#25D366] text-white shadow-lg shadow-green-500/20 hover:shadow-green-500/40 hover:-translate-y-1 transition-all duration-300 animate-pulse-subtle"
       >
         {/* Tooltip */}
-        <span className="absolute right-16 scale-0 group-hover:scale-100 bg-gray-900 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-all duration-200 shadow-md whitespace-nowrap">
+        <span className="absolute right-16 scale-0 group-hover:scale-100 bg-gray-900 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-all duration-200 shadow-md whitespace-nowrap pointer-events-none">
           WhatsApp Us
         </span>
         <svg
-          className="w-7 h-7 fill-current"
+          width="28"
+          height="28"
+          style={{ width: '28px', height: '28px', minWidth: '28px', minHeight: '28px', maxWidth: '28px', maxHeight: '28px' }}
+          className="w-7 h-7 shrink-0 fill-current"
           viewBox="0 0 24 24"
           xmlns="http://www.w3.org/2000/svg"
         >
@@ -27,13 +31,14 @@ export default function FloatingButtons() {
       <a
         href="tel:+919024615510"
         aria-label="Call Us"
-        className="group relative flex items-center justify-center w-14 h-14 rounded-full bg-orange-500 text-white shadow-lg shadow-orange-500/20 hover:shadow-orange-500/40 hover:-translate-y-1 transition-all duration-300 animate-pulse-subtle"
+        style={{ width: '56px', height: '56px', minWidth: '56px', minHeight: '56px' }}
+        className="group relative flex items-center justify-center w-14 h-14 shrink-0 rounded-full bg-orange-500 text-white shadow-lg shadow-orange-500/20 hover:shadow-orange-500/40 hover:-translate-y-1 transition-all duration-300 animate-pulse-subtle"
       >
         {/* Tooltip */}
-        <span className="absolute right-16 scale-0 group-hover:scale-100 bg-gray-900 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-all duration-200 shadow-md whitespace-nowrap">
+        <span className="absolute right-16 scale-0 group-hover:scale-100 bg-gray-900 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-all duration-200 shadow-md whitespace-nowrap pointer-events-none">
           Call Us
         </span>
-        <Phone className="w-6 h-6" />
+        <Phone size={24} style={{ width: '24px', height: '24px', minWidth: '24px', minHeight: '24px' }} className="w-6 h-6 shrink-0" />
       </a>
     </div>
   );

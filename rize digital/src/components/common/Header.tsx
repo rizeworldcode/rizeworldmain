@@ -21,10 +21,10 @@ export default function Header() {
 
   return (
     <header className="fixed top-6 left-0 w-full z-[100] pointer-events-auto flex flex-col items-center px-4 sm:px-8">
-      
+
       {/* Floating Pill Navbar */}
       <div className="w-full max-w-7xl bg-white/92 backdrop-blur-md rounded-full py-2.5 px-4 sm:px-6 flex items-center justify-between shadow-sm border border-gray-100 transition-all duration-300">
-        
+
         {/* Logo */}
         <Link to="/" onClick={handleLogoClick} className="flex items-center gap-2 cursor-pointer shrink-0">
           <img src="/images/logo/RW.png" alt="RizeWorld" className="h-8 md:h-10 object-contain scale-[1.7] origin-left pl-1 shrink-0" />
@@ -33,12 +33,12 @@ export default function Header() {
         {/* Center Pill Nav */}
         <nav className="hidden xl:flex items-center bg-gray-50/80 backdrop-blur-sm rounded-full p-1 gap-0.5 border border-gray-100">
           <Link to="/" className={`${isActive('/') ? 'bg-rize-primary text-white shadow-sm' : 'text-gray-600 hover:text-rize-primary'} text-xs font-bold tracking-wide px-5 py-2.5 rounded-full transition-all uppercase`}>Home</Link>
-          
+
           {/* Services Dropdown */}
           <div className="relative group">
-            <Link 
-              to="/services" 
-              onClick={handleServicesClick} 
+            <Link
+              to="/services"
+              onClick={handleServicesClick}
               className={`${isServicesActive() ? 'bg-rize-primary text-white shadow-sm' : 'text-gray-600 hover:text-rize-primary'} text-xs font-bold tracking-wide px-5 py-2.5 rounded-full transition-all uppercase block`}
             >
               Services
@@ -46,8 +46,8 @@ export default function Header() {
             <div className="absolute top-full left-1/2 -translate-x-1/2 pt-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50 min-w-[260px]">
               <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-2 flex flex-col gap-0.5">
                 <div className="relative group/sub">
-                  <Link 
-                    to="/services/digital-marketing" 
+                  <Link
+                    to="/services/digital-marketing"
                     className="text-gray-700 hover:bg-blue-50 hover:text-rize-primary text-[10px] font-bold tracking-wide px-4 py-3 rounded-xl transition-all uppercase flex justify-between items-center w-full"
                   >
                     <span>Digital Marketing</span>
@@ -64,8 +64,8 @@ export default function Header() {
                   </div>
                 </div>
                 <div className="relative group/sub">
-                  <Link 
-                    to="/services/web-development" 
+                  <Link
+                    to="/services/web-development"
                     className="text-gray-700 hover:bg-blue-50 hover:text-rize-primary text-[10px] font-bold tracking-wide px-4 py-3 rounded-xl transition-all uppercase flex justify-between items-center w-full"
                   >
                     <span>Web Development</span>
@@ -85,7 +85,7 @@ export default function Header() {
           </div>
 
           <Link to="/portfolio" className={`${isActive('/portfolio') ? 'bg-rize-primary text-white shadow-sm' : 'text-gray-600 hover:text-rize-primary'} text-xs font-bold tracking-wide px-5 py-2.5 rounded-full transition-all uppercase`}>Portfolio</Link>
-          
+
           {/* Locations Dropdown */}
           <div className="relative group">
             <Link to="/locations" className={`${isActive('/locations') || location.pathname.startsWith('/locations/') ? 'bg-rize-primary text-white shadow-sm' : 'text-gray-600 hover:text-rize-primary'} text-xs font-bold tracking-wide px-5 py-2.5 rounded-full transition-all uppercase block`}>
@@ -149,18 +149,18 @@ export default function Header() {
 
         {/* Right Actions */}
         <div className="flex items-center gap-2 sm:gap-3">
-          <a 
-            href="https://wa.me/919024615510" 
-            target="_blank" 
-            rel="noopener noreferrer" 
+          <a
+            href="https://wa.me/919024615510"
+            target="_blank"
+            rel="noopener noreferrer"
             className="hidden sm:flex items-center gap-2 btn-primary py-2.5! px-6! text-xs! rounded-full! uppercase tracking-wide shadow-none"
           >
             Let's Talk
           </a>
-          
+
 
           {/* Mobile Menu Button (3-dots) */}
-          <button 
+          <button
             onClick={() => setIsOpen(!isOpen)}
             className="xl:hidden flex items-center justify-center w-10 h-10 rounded-full bg-gray-50 hover:bg-gray-100 text-gray-700 transition-colors shrink-0 border border-gray-100"
             aria-label="Toggle Menu"
@@ -174,77 +174,77 @@ export default function Header() {
       {/* Mobile Menu Dropdown */}
       {isOpen && (
         <div className="w-full max-w-7xl mt-2 bg-white rounded-3xl p-4 shadow-lg border border-gray-100 flex flex-col gap-1 xl:hidden max-h-[70vh] overflow-y-auto">
-          <Link 
-            to="/" 
+          <Link
+            to="/"
             onClick={() => setIsOpen(false)}
             className={`${isActive('/') ? 'bg-rize-primary text-white' : 'text-gray-700 hover:bg-gray-50'} text-xs font-bold tracking-wide px-5 py-3 rounded-2xl transition-colors uppercase block`}
           >
             Company
           </Link>
-          <Link 
-            to="/about" 
+          <Link
+            to="/about"
             onClick={() => setIsOpen(false)}
             className={`${isActive('/about') ? 'bg-rize-primary text-white' : 'text-gray-700 hover:bg-gray-50'} text-xs font-bold tracking-wide px-5 py-3 rounded-2xl transition-colors uppercase block`}
           >
             About Us
           </Link>
           <div className="flex flex-col">
-            <button 
+            <button
               onClick={() => setIsServicesOpen(!isServicesOpen)}
               className={`${isServicesOpen || isServicesActive() ? 'bg-rize-primary text-white' : 'text-gray-700 hover:bg-gray-50'} text-xs font-bold tracking-wide px-5 py-3 rounded-2xl transition-colors uppercase flex justify-between items-center w-full cursor-pointer`}
             >
               <span>Our Services</span>
               <span className={`text-[8px] transition-transform duration-300 ${isServicesOpen ? 'rotate-90' : ''}`}>▶</span>
             </button>
-            
+
             {isServicesOpen && (
               <div className="pl-6 flex flex-col gap-1 mt-1 border-l-2 border-blue-500/20 ml-5">
-                <Link 
-                  to="/services" 
+                <Link
+                  to="/services"
                   onClick={() => setIsOpen(false)}
                   className="text-rize-primary font-bold tracking-wide px-4 py-2 rounded-xl transition-colors uppercase block text-left text-xs bg-blue-50/50 mb-1"
                 >
                   All Services (Overview)
                 </Link>
                 <div className="flex flex-col">
-                  <Link 
-                    to="/services/digital-marketing" 
+                  <Link
+                    to="/services/digital-marketing"
                     onClick={() => setIsOpen(false)}
                     className="text-gray-600 hover:bg-gray-50 text-xs font-bold tracking-wide px-4 py-2.5 rounded-xl transition-colors uppercase block text-left"
                   >
                     Digital Marketing Service
                   </Link>
                   <div className="pl-6 flex flex-col gap-1 mt-0.5 border-l border-blue-500/10 ml-4">
-                    <Link 
-                      to="/services/seo" 
+                    <Link
+                      to="/services/seo"
                       onClick={() => setIsOpen(false)}
                       className="text-gray-500 hover:bg-gray-50 text-[10px] font-semibold tracking-wide px-4 py-2 rounded-xl transition-colors uppercase block text-left"
                     >
                       Search Engine Optimization
                     </Link>
-                    <Link 
-                      to="/services/social-media-marketing" 
+                    <Link
+                      to="/services/social-media-marketing"
                       onClick={() => setIsOpen(false)}
                       className="text-gray-500 hover:bg-gray-50 text-[10px] font-semibold tracking-wide px-4 py-2 rounded-xl transition-colors uppercase block text-left"
                     >
                       Social Media Marketing
                     </Link>
-                    <Link 
-                      to="/services/content-marketing" 
+                    <Link
+                      to="/services/content-marketing"
                       onClick={() => setIsOpen(false)}
                       className="text-gray-500 hover:bg-gray-50 text-[10px] font-semibold tracking-wide px-4 py-2 rounded-xl transition-colors uppercase block text-left"
                     >
                       Content Marketing
                     </Link>
-                    <Link 
-                      to="/services/graphic-design" 
+                    <Link
+                      to="/services/graphic-design"
                       onClick={() => setIsOpen(false)}
                       className="text-gray-500 hover:bg-gray-50 text-[10px] font-semibold tracking-wide px-4 py-2 rounded-xl transition-colors uppercase block text-left"
                     >
                       Graphic Design
                     </Link>
-                    <Link 
-                      to="/services/paid-ads" 
+                    <Link
+                      to="/services/paid-ads"
                       onClick={() => setIsOpen(false)}
                       className="text-gray-500 hover:bg-gray-50 text-[10px] font-semibold tracking-wide px-4 py-2 rounded-xl transition-colors uppercase block text-left"
                     >
@@ -253,37 +253,37 @@ export default function Header() {
                   </div>
                 </div>
                 <div className="flex flex-col">
-                  <Link 
-                    to="/services/web-development" 
+                  <Link
+                    to="/services/web-development"
                     onClick={() => setIsOpen(false)}
                     className="text-gray-600 hover:bg-gray-50 text-xs font-bold tracking-wide px-4 py-2.5 rounded-xl transition-colors uppercase block text-left"
                   >
                     Web Development
                   </Link>
                   <div className="pl-6 flex flex-col gap-1 mt-0.5 border-l border-blue-500/10 ml-4">
-                    <Link 
-                      to="/services/wordpress-development" 
+                    <Link
+                      to="/services/wordpress-development"
                       onClick={() => setIsOpen(false)}
                       className="text-gray-500 hover:bg-gray-50 text-[10px] font-semibold tracking-wide px-4 py-2 rounded-xl transition-colors uppercase block text-left"
                     >
                       WordPress Development Services
                     </Link>
-                    <Link 
-                      to="/services/custom-website-development" 
+                    <Link
+                      to="/services/custom-website-development"
                       onClick={() => setIsOpen(false)}
                       className="text-gray-500 hover:bg-gray-50 text-[10px] font-semibold tracking-wide px-4 py-2 rounded-xl transition-colors uppercase block text-left"
                     >
                       Custom Website Development
                     </Link>
-                    <Link 
-                      to="/services/ecommerce-development" 
+                    <Link
+                      to="/services/ecommerce-development"
                       onClick={() => setIsOpen(false)}
                       className="text-gray-500 hover:bg-gray-50 text-[10px] font-semibold tracking-wide px-4 py-2 rounded-xl transition-colors uppercase block text-left"
                     >
                       Ecommerce Development
                     </Link>
-                    <Link 
-                      to="/services/ui-ux-design" 
+                    <Link
+                      to="/services/ui-ux-design"
                       onClick={() => setIsOpen(false)}
                       className="text-gray-500 hover:bg-gray-50 text-[10px] font-semibold tracking-wide px-4 py-2 rounded-xl transition-colors uppercase block text-left"
                     >
@@ -294,52 +294,52 @@ export default function Header() {
               </div>
             )}
           </div>
-          <Link 
-            to="/team" 
+          <Link
+            to="/team"
             onClick={() => setIsOpen(false)}
             className={`${isActive('/team') ? 'bg-rize-primary text-white' : 'text-gray-700 hover:bg-gray-50'} text-xs font-bold tracking-wide px-5 py-3 rounded-2xl transition-colors uppercase block`}
           >
             Our Team
           </Link>
-          <Link 
-            to="/portfolio" 
+          <Link
+            to="/portfolio"
             onClick={() => setIsOpen(false)}
             className={`${isActive('/portfolio') ? 'bg-rize-primary text-white' : 'text-gray-700 hover:bg-gray-50'} text-xs font-bold tracking-wide px-5 py-3 rounded-2xl transition-colors uppercase block`}
           >
             Our Portfolio
           </Link>
-          <Link 
-            to="/locations" 
+          <Link
+            to="/locations"
             onClick={() => setIsOpen(false)}
             className={`${isActive('/locations') ? 'bg-rize-primary text-white' : 'text-gray-700 hover:bg-gray-50'} text-xs font-bold tracking-wide px-5 py-3 rounded-2xl transition-colors uppercase block`}
           >
             Our Locations
           </Link>
-          <Link 
-            to="/careers" 
+          <Link
+            to="/careers"
             onClick={() => setIsOpen(false)}
             className={`${isActive('/careers') ? 'bg-rize-primary text-white' : 'text-gray-700 hover:bg-gray-50'} text-xs font-bold tracking-wide px-5 py-3 rounded-2xl transition-colors uppercase block`}
           >
             Careers
           </Link>
-          <Link 
-            to="/blogs" 
+          <Link
+            to="/blogs"
             onClick={() => setIsOpen(false)}
             className={`${isActive('/blogs') ? 'bg-rize-primary text-white' : 'text-gray-700 hover:bg-gray-50'} text-xs font-bold tracking-wide px-5 py-3 rounded-2xl transition-colors uppercase block`}
           >
             Blogs
           </Link>
-          <Link 
-            to="/contact" 
+          <Link
+            to="/contact"
             onClick={() => setIsOpen(false)}
             className={`${isActive('/contact') ? 'bg-rize-primary text-white' : 'text-gray-700 hover:bg-gray-50'} text-xs font-bold tracking-wide px-5 py-3 rounded-2xl transition-colors uppercase block`}
           >
             Contact Us
           </Link>
-          <a 
-            href="https://wa.me/919024615510" 
-            target="_blank" 
-            rel="noopener noreferrer" 
+          <a
+            href="https://wa.me/919024615510"
+            target="_blank"
+            rel="noopener noreferrer"
             onClick={() => setIsOpen(false)}
             className="flex sm:hidden items-center justify-between btn-primary text-xs font-bold px-5 py-3 rounded-2xl uppercase tracking-wide mt-2"
           >
@@ -348,7 +348,7 @@ export default function Header() {
           </a>
         </div>
       )}
-      
+
     </header>
   );
 }

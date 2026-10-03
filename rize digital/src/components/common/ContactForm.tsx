@@ -20,7 +20,8 @@ const SocialIconBtn = ({ href, children, label }: { href: string; children: Reac
     target="_blank" 
     rel="noopener noreferrer" 
     aria-label={label}
-    className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:border-orange-500 hover:text-orange-500 hover:bg-orange-50 transition-all duration-300 shadow-sm"
+    style={{ width: '40px', height: '40px', minWidth: '40px', minHeight: '40px' }}
+    className="w-10 h-10 shrink-0 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:border-orange-500 hover:text-orange-500 hover:bg-orange-50 transition-all duration-300 shadow-sm overflow-hidden"
   >
     {children}
   </a>
@@ -106,7 +107,7 @@ export default function ContactForm() {
                 href="https://www.facebook.com/share/1BcNrvpmuJ/" 
                 label="Facebook"
               >
-                <svg className="w-5 h-5 fill-none stroke-current" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="20" height="20" style={{ width: '20px', height: '20px', minWidth: '20px', minHeight: '20px' }} className="w-5 h-5 shrink-0 fill-none stroke-current" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
                 </svg>
               </SocialIconBtn>
@@ -115,7 +116,7 @@ export default function ContactForm() {
                 href="https://www.instagram.com/rizeworld?igsh=MWYxOGs5NGhhdnNsNA==" 
                 label="Instagram"
               >
-                <svg className="w-5 h-5 fill-none stroke-current" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="20" height="20" style={{ width: '20px', height: '20px', minWidth: '20px', minHeight: '20px' }} className="w-5 h-5 shrink-0 fill-none stroke-current" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
                   <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
                   <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
@@ -126,7 +127,7 @@ export default function ContactForm() {
                 href="https://www.linkedin.com/company/rizeworld/" 
                 label="LinkedIn"
               >
-                <svg className="w-5 h-5 fill-none stroke-current" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="20" height="20" style={{ width: '20px', height: '20px', minWidth: '20px', minHeight: '20px' }} className="w-5 h-5 shrink-0 fill-none stroke-current" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/>
                   <rect x="2" y="9" width="4" height="12"/>
                   <circle cx="4" cy="4" r="2"/>
@@ -233,7 +234,10 @@ export default function ContactForm() {
                 <span>{sending ? "Processing..." : "Submit & Send to WhatsApp"}</span>
                 {!sending && (
                   <svg
-                    className="w-4.5 h-4.5 fill-current"
+                    width="18"
+                    height="18"
+                    style={{ width: '18px', height: '18px', minWidth: '18px', minHeight: '18px' }}
+                    className="w-4.5 h-4.5 shrink-0 fill-current"
                     viewBox="0 0 24 24"
                     xmlns="http://www.w3.org/2000/svg"
                   >

@@ -175,8 +175,8 @@ async function runPrerender() {
 
         // Extract metadata
         const metadata = await page.evaluate(() => {
-          // Remove popup modal if open so it never gets captured in static HTML
-          document.querySelectorAll('[class*="z-9999"], [class*="z-[9999]"]').forEach(el => el.remove());
+          // Remove popup modal and floating action buttons from static HTML snapshot
+          document.querySelectorAll('[class*="z-9999"], [class*="z-[9999]"], [class*="z-[999]"]').forEach(el => el.remove());
 
           const getMeta = (selector) => {
             const el = document.querySelector(selector);

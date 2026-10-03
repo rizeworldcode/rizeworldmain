@@ -123,11 +123,6 @@ function devPrerenderPlugin() {
         if (fs.existsSync(targetFile)) {
           const distHtml = fs.readFileSync(targetFile, 'utf-8');
           
-          const rootMatch = distHtml.match(/<div id="root">([\s\S]*?)<\/div>\s*<\/body>/);
-          if (rootMatch && rootMatch[1]) {
-            html = html.replace(/<div id="root">[\s\S]*?<\/div>/, () => `<div id="root">${rootMatch[1]}</div>`);
-          }
-          
           const titleMatch = distHtml.match(/<title>(.*?)<\/title>/);
           if (titleMatch) {
             html = html.replace(/<title>.*?<\/title>/, `<title>${titleMatch[1]}</title>`);
@@ -136,6 +131,13 @@ function devPrerenderPlugin() {
           const descMatch = distHtml.match(/<meta name="description" content="(.*?)" \/>/);
           if (descMatch) {
             html = html.replace(/<meta name="description".*?>/, `<meta name="description" content="${descMatch[1]}" />`);
+          }
+
+          const h1Match = distHtml.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+          const h2Matches = Array.from(distHtml.matchAll(/<h2[^>]*>([\s\S]*?)<\/h2>/gi)).map(m => m[0]);
+          if (h1Match || h2Matches.length > 0) {
+            const headingsBlock = `<header style="opacity: 0; position: absolute; pointer-events: none;" aria-hidden="true">${h1Match ? h1Match[0] : ''}${h2Matches.slice(0, 3).join('')}</header>`;
+            html = html.replace(/<div id="root">[\s\S]*?<\/div>/, `<div id="root">${headingsBlock}</div>`);
           }
         }
       } catch (e) {

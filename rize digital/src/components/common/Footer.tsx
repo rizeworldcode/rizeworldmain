@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 export default function Footer() {
   return (
     <footer className="relative w-full bg-white pt-16 pb-8 px-4 sm:px-6 md:px-8 lg:px-12 overflow-hidden mt-10 z-10 border-t border-gray-200">
-      
+
       {/* Top Gradient Border */}
       <div className="absolute top-0 left-0 right-0 h-[2px] bg-linear-to-r from-rize-primary via-rize-indigo to-rize-cyan" />
 
@@ -12,10 +12,10 @@ export default function Footer() {
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(26,86,219,0.04)_0%,transparent_50%)] pointer-events-none" />
 
       <div className="relative z-10 w-full max-w-[1600px] mx-auto">
-        
+
         {/* TOP ROW: LOGO, LOCATIONS, SOCIALS */}
         <div className="flex flex-col xl:flex-row items-center justify-between gap-10 pb-12 border-b border-gray-200">
-          
+
           {/* Logo & Main HQ */}
           <div className="flex flex-col sm:flex-row items-center gap-6 shrink-0 w-full xl:w-auto justify-between xl:justify-start">
             <Link to="/" className="flex items-center">
@@ -28,18 +28,18 @@ export default function Footer() {
             <div className="flex items-center gap-6 text-gray-500">
               {/* Facebook */}
               <a href="https://www.facebook.com/share/1BcNrvpmuJ/" target="_blank" rel="noopener noreferrer">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 hover:text-rize-primary cursor-pointer transition-colors"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 hover:text-rize-primary cursor-pointer transition-colors"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" /></svg>
               </a>
               {/* LinkedIn */}
               <a href="https://www.linkedin.com/company/rizeworld/" target="_blank" rel="noopener noreferrer">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 hover:text-rize-primary cursor-pointer transition-colors"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 hover:text-rize-primary cursor-pointer transition-colors"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" /><rect x="2" y="9" width="4" height="12" /><circle cx="4" cy="4" r="2" /></svg>
               </a>
               {/* Instagram */}
               <a href="https://www.instagram.com/rizeworld?igsh=MWYxOGs5NGhhdnNsNA==" target="_blank" rel="noopener noreferrer">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 hover:text-rize-primary cursor-pointer transition-colors"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 hover:text-rize-primary cursor-pointer transition-colors"><rect x="2" y="2" width="20" height="20" rx="5" ry="5" /><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" /><line x1="17.5" y1="6.5" x2="17.51" y2="6.5" /></svg>
               </a>
             </div>
-            <a 
+            <a
               href="mailto:hr.rizeworld@gmail.com"
               className="flex items-center gap-3 rounded-full bg-gray-50 border border-gray-200 px-8 py-3 text-gray-800 font-medium hover:border-rize-primary hover:bg-gray-100 hover:text-rize-primary transition-all duration-300"
             >
@@ -51,7 +51,7 @@ export default function Footer() {
 
         {/* MIDDLE GRID: NAVIGATION LINKS */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-8 lg:gap-6 pt-12 pb-36">
-          
+
           {/* Column 1: Quick Links */}
           <div className="flex flex-col">
             <h4 className="text-gray-900 font-bold text-sm tracking-widest mb-5 uppercase">Quick Links</h4>
@@ -135,10 +135,10 @@ export default function Footer() {
                 <MapPin className="w-4 h-4 text-rize-primary shrink-0 mt-0.5" />
                 <div>
                   <span className="block text-gray-900 font-medium text-sm mb-0.5">HQ</span>
-                  <a 
-                    href="https://maps.google.com/?q=Rizeworld+Digital+Marketing+Pvt+Ltd+Company+C198,+near+Telco+Circle,+UIT+colony,+Shalimar+Nagar,+Alwar,+Rajasthan+301001" 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
+                  <a
+                    href="https://maps.google.com/?q=Rizeworld+Digital+Marketing+Pvt+Ltd+Company+C198,+near+Telco+Circle,+UIT+colony,+Shalimar+Nagar,+Alwar,+Rajasthan+301001"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="text-gray-600 hover:text-rize-primary transition-colors text-sm leading-relaxed block max-w-[200px]"
                   >
                     Alwar, Rajasthan 301001
@@ -151,11 +151,11 @@ export default function Footer() {
 
         {/* BOTTOM ROW: MASCOTS & CTA */}
         <div className="relative flex flex-col xl:flex-row items-center justify-between pt-0 pb-0 gap-8 -mt-24 pointer-events-none">
-          
+
           {/* Mascots (Inline Flex Item) */}
           <div className="w-[280px] sm:w-[350px] lg:w-[450px] pointer-events-none z-10 shrink-0">
-            <img 
-              src="/images/footer/mascots_transparent.png" 
+            <img
+              src="/images/footer/mascots_transparent.png"
               alt="RizeWorld Mascots"
               className="w-full h-auto object-contain filter drop-shadow-[0_0_25px_rgba(34,211,238,0.15)] brightness-95"
             />
