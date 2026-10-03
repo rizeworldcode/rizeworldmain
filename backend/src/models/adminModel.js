@@ -5,9 +5,29 @@ const adminSchema = new mongoose.Schema({
     email: {
         type: String,
         required: true,
+        unique: true,
+        lowercase: true,
+        trim: true,
     },
     password: {
         type: String,
+    },
+    name: {
+        type: String,
+        default: 'Admin User',
+    },
+    role: {
+        type: String,
+        enum: ['superadmin', 'subadmin'],
+        default: 'subadmin',
+    },
+    permissions: {
+        type: [String],
+        default: [],
+    },
+    isActive: {
+        type: Boolean,
+        default: true,
     },
     otp: {
         type: String,
@@ -28,6 +48,10 @@ const adminSchema = new mongoose.Schema({
     notificationToken: {
         type: String,
         default: null,
+    },
+    passwordChangedAt: {
+        type: Date,
+        default: Date.now,
     },
 
     created_at: {

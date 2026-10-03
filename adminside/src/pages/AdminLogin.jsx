@@ -148,6 +148,14 @@ const AdminLogin = ({ onLogin }) => {
       const result = await adminLoginNew(formData.email, formData.password);
       if (result.success) {
         localStorage.setItem('adminToken', result.token);
+        if (result.user) {
+          localStorage.setItem('adminUser', JSON.stringify(result.user));
+          localStorage.setItem('adminRole', result.user.role || 'superadmin');
+          localStorage.setItem('adminPermissions', JSON.stringify(result.user.permissions || []));
+        } else {
+          localStorage.setItem('adminRole', 'superadmin');
+          localStorage.setItem('adminPermissions', JSON.stringify(['all']));
+        }
         if (formData.remember) {
           localStorage.setItem('adminEmail', formData.email);
         } else {
@@ -238,7 +246,7 @@ const AdminLogin = ({ onLogin }) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 overflow-hidden">
       <Particles />
-      
+
       <AnimatePresence mode="wait">
         {showIntro ? (
           <IntroAnimation key="intro" onComplete={() => setShowIntro(false)} />
@@ -256,11 +264,11 @@ const AdminLogin = ({ onLogin }) => {
                 <div
                   className="relative hidden md:flex items-center justify-center overflow-hidden"
                 >
-                  <img
-                    src="/images/adminIMG.jpeg"
-                    alt="Admin Illustration"
-                    className="w-full h-[80vh] object-cover"
-                  />
+                    <img
+                      src="/images/digital-marketing-illustration-design_260839-10.avif"
+                      alt="Admin Illustration"
+                      className="w-full h-full object-cover"
+                    />
                 </div>
 
                 {/* Right Side - Forms */}
@@ -270,7 +278,7 @@ const AdminLogin = ({ onLogin }) => {
                   {/* Alert banners */}
                   <AnimatePresence>
                     {error && (
-                      <motion.div 
+                      <motion.div
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0 }}
@@ -280,7 +288,7 @@ const AdminLogin = ({ onLogin }) => {
                       </motion.div>
                     )}
                     {success && (
-                      <motion.div 
+                      <motion.div
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0 }}
@@ -348,7 +356,7 @@ const AdminLogin = ({ onLogin }) => {
                             />
                             <span className="text-sm text-gray-600">Remember me</span>
                           </label>
-                          <button 
+                          <button
                             type="button"
                             onClick={() => {
                               setError('');
@@ -385,9 +393,9 @@ const AdminLogin = ({ onLogin }) => {
                   {forgotStep === 'sendOtp' && (
                     <>
                       <div className="mb-8">
-                        <button 
-                          type="button" 
-                          onClick={() => setForgotStep('login')} 
+                        <button
+                          type="button"
+                          onClick={() => setForgotStep('login')}
                           className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 mb-4 transition-colors"
                         >
                           <ArrowLeft size={16} /> Back to Login
@@ -436,9 +444,9 @@ const AdminLogin = ({ onLogin }) => {
                   {forgotStep === 'verifyOtp' && (
                     <>
                       <div className="mb-8">
-                        <button 
-                          type="button" 
-                          onClick={() => setForgotStep('sendOtp')} 
+                        <button
+                          type="button"
+                          onClick={() => setForgotStep('sendOtp')}
                           className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 mb-4 transition-colors"
                         >
                           <ArrowLeft size={16} /> Change Email

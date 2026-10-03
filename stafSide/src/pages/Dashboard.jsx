@@ -26,6 +26,7 @@ import {
   Trash2,
   MessageSquare
 } from 'lucide-react';
+import { canAccessFeature } from '../utils/permissions';
 import { 
   BarChart, 
   Bar, 
@@ -1590,9 +1591,9 @@ const Dashboard = ({ onNavigateToProgress }) => {
 
     // Fetch notifications
     fetchNotifications();
-    // Only fetch Clients if user is a Data Analyst
+    // Fetch clients if user has access to client tasks or clients section
     const staffInfo = JSON.parse(localStorage.getItem('staffInfo') || '{}');
-    if (staffInfo.role?.toLowerCase() === 'data analyst') {
+    if (canAccessFeature(staffInfo, 'clientTaskUpdate') || canAccessFeature(staffInfo, 'clients')) {
       fetchClients();
     }
     // Refresh notifications every 5 minutes
@@ -2002,10 +2003,9 @@ const Dashboard = ({ onNavigateToProgress }) => {
 
   const handleDeleteTask = async (taskIndex) => {
     const staffInfo = JSON.parse(localStorage.getItem('staffInfo') || '{}');
-    const allowedEmployeeIds = ['RW-9752', 'RW-1702'];
 
-    if (!staffInfo.employeeId || !allowedEmployeeIds.includes(staffInfo.employeeId)) {
-      alert('Access Denied: Only employees with Employee ID RW-9752 or RW-1702 can remove daily work tasks.');
+    if (!canAccessFeature(staffInfo, 'satisfactionUpdate')) {
+      alert('Access Denied: You do not have permission to remove daily work tasks.');
       return;
     }
 
@@ -2040,10 +2040,9 @@ const Dashboard = ({ onNavigateToProgress }) => {
 
   const handleDeleteReporteeTask = async (memberId, taskIndex) => {
     const staffInfo = JSON.parse(localStorage.getItem('staffInfo') || '{}');
-    const allowedEmployeeIds = ['RW-9752', 'RW-1702'];
 
-    if (!staffInfo.employeeId || !allowedEmployeeIds.includes(staffInfo.employeeId)) {
-      alert('Access Denied: Only employees with Employee ID RW-9752 or RW-1702 can remove team members\' daily work tasks.');
+    if (!canAccessFeature(staffInfo, 'satisfactionUpdate')) {
+      alert('Access Denied: You do not have permission to remove team members\' daily work tasks.');
       return;
     }
 
@@ -2078,10 +2077,9 @@ const Dashboard = ({ onNavigateToProgress }) => {
 
   const handleUpdateSatisfaction = async (memberId, level) => {
     const staffInfo = JSON.parse(localStorage.getItem('staffInfo') || '{}');
-    const allowedEmployeeIds = ['RW-9752', 'RW-1702'];
 
-    if (!staffInfo.employeeId || !allowedEmployeeIds.includes(staffInfo.employeeId)) {
-      alert('Access Denied: Only employees with Employee ID RW-9752 or RW-1702 can mark satisfaction levels.');
+    if (!canAccessFeature(staffInfo, 'satisfactionUpdate')) {
+      alert('Access Denied: You do not have permission to mark satisfaction levels.');
       return;
     }
 
@@ -2110,10 +2108,9 @@ const Dashboard = ({ onNavigateToProgress }) => {
 
   const handleSaveMemberComment = async (memberId) => {
     const staffInfoLocal = JSON.parse(localStorage.getItem('staffInfo') || '{}');
-    const allowedEmployeeIds = ['RW-9752', 'RW-1702'];
 
-    if (!staffInfoLocal.employeeId || !allowedEmployeeIds.includes(staffInfoLocal.employeeId)) {
-      alert('Access Denied: Only employees with Employee ID RW-9752 or RW-1702 can add comments.');
+    if (!canAccessFeature(staffInfoLocal, 'satisfactionUpdate')) {
+      alert('Access Denied: You do not have permission to add comments.');
       return;
     }
 
@@ -2437,8 +2434,8 @@ const Dashboard = ({ onNavigateToProgress }) => {
       )}
 
 
-      {/* Client Task Update for Data Analyst */}
-      {staffInfo.role?.toLowerCase() === 'data analyst' && (
+      {/* Client Task Update */}
+      {canAccessFeature(staffInfo, 'clientTaskUpdate') && (
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -3238,7 +3235,7 @@ const Dashboard = ({ onNavigateToProgress }) => {
                     </span>
                   )}
                 </div>
-                {!task.isExtra && ['RW-9752', 'RW-1702'].includes(staffInfo.employeeId) && (
+                {!task.isExtra && canAccessFeature(staffInfo, 'satisfactionUpdate') && (
                   <button
                     onClick={() => handleDeleteTask(index)}
                     className="p-1.5 rounded-lg text-gray-500 hover:bg-red-500/10 hover:text-red-600 transition-all"
@@ -3431,7 +3428,7 @@ const Dashboard = ({ onNavigateToProgress }) => {
                 {/* Satisfaction Level Section */}
                 <div className="flex items-center justify-between p-2.5 rounded-xl bg-black/5 border border-black/5 mb-4">
                   <span className="text-[10px] font-black text-black uppercase tracking-wider">Satisfaction Level</span>
-                  {['RW-9752', 'RW-1702'].includes(staffInfo.employeeId) ? (
+                  {canAccessFeature(staffInfo, 'satisfactionUpdate') ? (
                     <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => handleUpdateSatisfaction(member.id || member._id, 'red')}
@@ -3482,7 +3479,7 @@ const Dashboard = ({ onNavigateToProgress }) => {
                 </div>
 
                 {/* Manager Comment Section */}
-                {['RW-9752', 'RW-1702'].includes(staffInfo.employeeId) ? (
+                {canAccessFeature(staffInfo, 'satisfactionUpdate') ? (
                   <div className="p-3 rounded-2xl bg-white border border-gray-300 shadow-sm mb-4 space-y-2">
                     <label className="text-[10px] font-black text-black uppercase tracking-widest block flex items-center gap-1.5">
                       <MessageSquare size={14} className="text-purple-600" /> Add Comment / Feedback
@@ -3544,7 +3541,7 @@ const Dashboard = ({ onNavigateToProgress }) => {
                               {task.name}
                             </span>
                           </div>
-                          {['RW-9752', 'RW-1702'].includes(staffInfo.employeeId) && (
+                          {canAccessFeature(staffInfo, 'satisfactionUpdate') && (
                             <button
                               onClick={() => handleDeleteReporteeTask(member.id || member._id, idx)}
                               className="p-1 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-500/10 transition-all cursor-pointer border-none bg-transparent"

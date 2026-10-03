@@ -1,4 +1,5 @@
 const clientModel = require('../models/Client');
+const cache = require('../utils/cache');
 
 exports.updateClientPaidAmount = async (req, res) => {
   const clientID = req.params.clientId;
@@ -53,16 +54,19 @@ exports.updateClientPaidAmount = async (req, res) => {
       histItem.payments.push(paymentEntry);
       client.markModified('history');
     } else {
-      const newPaidAmount = Number(client.paidAmount) + payingAmount;
+      const newPaidAmount = Number(client.paidAmount || 0) + payingAmount;
       const newPendingAmount = Number(client.totalPrice) - newPaidAmount;
       client.paidAmount = newPaidAmount;
       client.pendingAmount = newPendingAmount;
+      client.payments.push(paymentEntry);
     }
 
-    // Always record payment entry in client.payments array for global history
-    client.payments.push(paymentEntry);
-
     const updatedClient = await client.save();
+
+    cache.flushByPrefix('transactions');
+    cache.flushByPrefix('dashboard:');
+    cache.flushByPrefix('clients:');
+
     return res.status(200).json({
       success: true,
       client: updatedClient,

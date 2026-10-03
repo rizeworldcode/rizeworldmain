@@ -1,7 +1,21 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Wallet, Plus, IndianRupee, CreditCard, Filter, Edit2, Trash2, Download, ChevronDown } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Wallet, 
+  Plus, 
+  IndianRupee, 
+  CreditCard, 
+  Filter, 
+  Edit2, 
+  Trash2, 
+  Download, 
+  ChevronDown,
+  Users,
+  Receipt,
+  PieChart,
+  Calendar
+} from 'lucide-react';
 import { 
   AreaChart, 
   Area, 
@@ -19,12 +33,18 @@ import {
   getAllClients,
   getAllOldClients
 } from '../api';
+import PasswordGate from '../components/auth/PasswordGate';
 
-const WalletPage = () => {
+const WalletView = ({ onLock }) => {
   const [searchParams] = useSearchParams();
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState(searchParams.get('filter') || 'all');
+
+  const now = new Date();
+  const currentMonthName = now.toLocaleString('default', { month: 'long', year: 'numeric' });
+  const [selectedExpenseMonth, setSelectedExpenseMonth] = useState(currentMonthName);
+  const [selectedIncomeMonth, setSelectedIncomeMonth] = useState(currentMonthName);
 
   useEffect(() => {
     const filterFromUrl = searchParams.get('filter');
@@ -66,6 +86,23 @@ const WalletPage = () => {
           pendingAmount: pending
         });
       }
+      (c.history || []).forEach((h, idx) => {
+        const hTotal = parseFloat(h.totalPrice !== undefined ? h.totalPrice : (h.totalAmount || 0));
+        const hPaid = parseFloat(h.paidAmount || 0);
+        const hPending = h.pendingAmount !== undefined ? parseFloat(h.pendingAmount || 0) : Math.max(0, hTotal - hPaid);
+        if (hPending > 0) {
+          list.push({
+            _id: `${c._id || c.id}_hist_${idx}`,
+            name: `${c.name} (Past Cycle)`,
+            phone: c.phone || '',
+            email: c.email || '',
+            type: 'Past Cycle',
+            totalAmount: hTotal,
+            paidAmount: hPaid,
+            pendingAmount: hPending
+          });
+        }
+      });
     });
     allOldClientsList.forEach(c => {
       const total = parseFloat(c.totalAmount || 0);
@@ -83,6 +120,23 @@ const WalletPage = () => {
           pendingAmount: pending
         });
       }
+      (c.history || []).forEach((h, idx) => {
+        const hTotal = parseFloat(h.totalPrice !== undefined ? h.totalPrice : (h.totalAmount || 0));
+        const hPaid = parseFloat(h.paidAmount || 0);
+        const hPending = h.pendingAmount !== undefined ? parseFloat(h.pendingAmount || 0) : Math.max(0, hTotal - hPaid);
+        if (hPending > 0) {
+          list.push({
+            _id: `${c._id || c.id}_oldhist_${idx}`,
+            name: `${c.name} (Past Cycle)`,
+            phone: c.phone || '',
+            email: c.email || '',
+            type: 'Past Cycle',
+            totalAmount: hTotal,
+            paidAmount: hPaid,
+            pendingAmount: hPending
+          });
+        }
+      });
     });
     return list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   }, [allClientsList, allOldClientsList]);
@@ -109,11 +163,144 @@ const WalletPage = () => {
       .reduce((sum, t) => sum + (t.amount || 0), 0);
   }, [transactions]);
 
+  const availableIncomeMonths = useMemo(() => {
+    const months = new Set();
+    months.add(currentMonthName);
+    (transactions || []).forEach(t => {
+      if (t.type === 'client_payment' || t.type === 'income' || t.source === 'client_payment') {
+        if (t.date) {
+          const d = new Date(t.date);
+          if (!isNaN(d.getTime())) {
+            months.add(d.toLocaleString('default', { month: 'long', year: 'numeric' }));
+          }
+        }
+      }
+    });
+    for (let i = 0; i < 6; i++) {
+      const past = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.add(past.toLocaleString('default', { month: 'long', year: 'numeric' }));
+    }
+    return Array.from(months).sort((a, b) => {
+      const dateA = new Date(Date.parse(a + " 1"));
+      const dateB = new Date(Date.parse(b + " 1"));
+      return dateB.getTime() - dateA.getTime();
+    });
+  }, [transactions, currentMonthName]);
+
+  const monthlyIncome = useMemo(() => {
+    return (transactions || [])
+      .filter(t => {
+        if (t.type !== 'client_payment' && t.type !== 'income' && t.source !== 'client_payment') return false;
+        if (!t.date) return false;
+        const d = new Date(t.date);
+        return !isNaN(d.getTime()) && d.toLocaleString('default', { month: 'long', year: 'numeric' }) === selectedIncomeMonth;
+      })
+      .reduce((sum, t) => sum + (t.amount || 0), 0);
+  }, [transactions, selectedIncomeMonth]);
+
+  const totalOnlineIncome = useMemo(() => {
+    return (transactions || [])
+      .filter(t => (t.type === 'client_payment' || t.type === 'income' || t.source === 'client_payment') && t.mode === 'online')
+      .reduce((sum, t) => sum + (t.amount || 0), 0);
+  }, [transactions]);
+
+  const monthlyOnlineIncome = useMemo(() => {
+    return (transactions || [])
+      .filter(t => {
+        if (t.type !== 'client_payment' && t.type !== 'income' && t.source !== 'client_payment') return false;
+        if (t.mode !== 'online') return false;
+        if (!t.date) return false;
+        const d = new Date(t.date);
+        return !isNaN(d.getTime()) && d.toLocaleString('default', { month: 'long', year: 'numeric' }) === selectedIncomeMonth;
+      })
+      .reduce((sum, t) => sum + (t.amount || 0), 0);
+  }, [transactions, selectedIncomeMonth]);
+
+  const totalCashIncome = useMemo(() => {
+    return (transactions || [])
+      .filter(t => (t.type === 'client_payment' || t.type === 'income' || t.source === 'client_payment') && t.mode === 'cash')
+      .reduce((sum, t) => sum + (t.amount || 0), 0);
+  }, [transactions]);
+
+  const monthlyCashIncome = useMemo(() => {
+    return (transactions || [])
+      .filter(t => {
+        if (t.type !== 'client_payment' && t.type !== 'income' && t.source !== 'client_payment') return false;
+        if (t.mode !== 'cash') return false;
+        if (!t.date) return false;
+        const d = new Date(t.date);
+        return !isNaN(d.getTime()) && d.toLocaleString('default', { month: 'long', year: 'numeric' }) === selectedIncomeMonth;
+      })
+      .reduce((sum, t) => sum + (t.amount || 0), 0);
+  }, [transactions, selectedIncomeMonth]);
+
   const totalExpense = useMemo(() => {
     return (transactions || [])
       .filter(t => t.type === 'salary' || t.type === 'other_expenses' || t.source === 'salary' || t.source === 'other_expenses')
       .reduce((sum, t) => sum + (t.amount || 0), 0);
   }, [transactions]);
+
+  const totalSalaryExpense = useMemo(() => {
+    return (transactions || [])
+      .filter(t => t.type === 'salary' || t.source === 'salary')
+      .reduce((sum, t) => sum + (t.amount || 0), 0);
+  }, [transactions]);
+
+  const totalOtherExpense = useMemo(() => {
+    return (transactions || [])
+      .filter(t => t.type === 'other_expenses' || t.source === 'other_expenses')
+      .reduce((sum, t) => sum + (t.amount || 0), 0);
+  }, [transactions]);
+
+  const availableExpenseMonths = useMemo(() => {
+    const months = new Set();
+    months.add(currentMonthName);
+    (transactions || []).forEach(t => {
+      if (t.type === 'salary' || t.type === 'other_expenses' || t.source === 'salary' || t.source === 'other_expenses') {
+        if (t.date) {
+          const d = new Date(t.date);
+          if (!isNaN(d.getTime())) {
+            months.add(d.toLocaleString('default', { month: 'long', year: 'numeric' }));
+          }
+        }
+      }
+    });
+    for (let i = 0; i < 6; i++) {
+      const past = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.add(past.toLocaleString('default', { month: 'long', year: 'numeric' }));
+    }
+    return Array.from(months).sort((a, b) => {
+      const dateA = new Date(Date.parse(a + " 1"));
+      const dateB = new Date(Date.parse(b + " 1"));
+      return dateB.getTime() - dateA.getTime();
+    });
+  }, [transactions, currentMonthName]);
+
+  const monthlySalaryExpense = useMemo(() => {
+    return (transactions || [])
+      .filter(t => {
+        if (t.type !== 'salary' && t.source !== 'salary') return false;
+        if (!t.date) return false;
+        const d = new Date(t.date);
+        return !isNaN(d.getTime()) && d.toLocaleString('default', { month: 'long', year: 'numeric' }) === selectedExpenseMonth;
+      })
+      .reduce((sum, t) => sum + (t.amount || 0), 0);
+  }, [transactions, selectedExpenseMonth]);
+
+  const monthlyOtherExpense = useMemo(() => {
+    return (transactions || [])
+      .filter(t => {
+        if (t.type !== 'other_expenses' && t.source !== 'other_expenses') return false;
+        if (!t.date) return false;
+        const d = new Date(t.date);
+        return !isNaN(d.getTime()) && d.toLocaleString('default', { month: 'long', year: 'numeric' }) === selectedExpenseMonth;
+      })
+      .reduce((sum, t) => sum + (t.amount || 0), 0);
+  }, [transactions, selectedExpenseMonth]);
+
+  const monthlyTotalExpense = useMemo(() => {
+    return monthlySalaryExpense + monthlyOtherExpense;
+  }, [monthlySalaryExpense, monthlyOtherExpense]);
 
   const getClientPhone = (t) => {
     if (t.referenceId) {
@@ -183,38 +370,7 @@ const WalletPage = () => {
   };
 
   const downloadPendingDuesReport = () => {
-    const pendingClients = [];
-    allClientsList.forEach(c => {
-      const pending = parseFloat(c.pendingAmount || 0);
-      if (pending > 0) {
-        pendingClients.push({
-          name: c.name,
-          phone: c.phone || '',
-          email: c.email || '',
-          type: 'New Client',
-          totalAmount: c.totalPrice || 0,
-          paidAmount: c.paidAmount || 0,
-          pendingAmount: pending
-        });
-      }
-    });
-    allOldClientsList.forEach(c => {
-      const total = parseFloat(c.totalAmount || 0);
-      const paid = parseFloat(c.paidAmount || 0);
-      const pending = total - paid;
-      if (pending > 0) {
-        pendingClients.push({
-          name: c.name,
-          phone: c.phone || '',
-          email: c.email || '',
-          type: 'Old Client',
-          totalAmount: total,
-          paidAmount: paid,
-          pendingAmount: pending
-        });
-      }
-    });
-    pendingClients.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    const pendingClients = [...pendingClientsList];
     const headers = ['Client Name', 'Phone Number', 'Email', 'Client Type', 'Total Amount', 'Paid Amount', 'Pending Dues'];
     const rows = pendingClients.map(c => [
       c.name || '',
@@ -240,6 +396,12 @@ const WalletPage = () => {
         setAllClientsList(newClientsRes.data);
         newClientsRes.data.forEach(client => {
           totalPending += parseFloat(client.pendingAmount || 0);
+          (client.history || []).forEach(h => {
+            const hTotal = parseFloat(h.totalPrice !== undefined ? h.totalPrice : (h.totalAmount || 0));
+            const hPaid = parseFloat(h.paidAmount || 0);
+            const hPending = h.pendingAmount !== undefined ? parseFloat(h.pendingAmount || 0) : Math.max(0, hTotal - hPaid);
+            totalPending += hPending;
+          });
         });
       }
       if (oldClientsRes.success && Array.isArray(oldClientsRes.data)) {
@@ -249,6 +411,12 @@ const WalletPage = () => {
           if (clientPending > 0) {
             totalPending += clientPending;
           }
+          (client.history || []).forEach(h => {
+            const hTotal = parseFloat(h.totalPrice !== undefined ? h.totalPrice : (h.totalAmount || 0));
+            const hPaid = parseFloat(h.paidAmount || 0);
+            const hPending = h.pendingAmount !== undefined ? parseFloat(h.pendingAmount || 0) : Math.max(0, hTotal - hPaid);
+            totalPending += hPending;
+          });
         });
       }
       setPendingDues(totalPending);
@@ -296,6 +464,8 @@ const WalletPage = () => {
       if (!result.success) {
         setTransactions(previous);
         alert(result.message || 'Failed to delete transaction');
+      } else {
+        fetchTransactions();
       }
     } catch (error) {
       setTransactions(previous);
@@ -693,6 +863,9 @@ const WalletPage = () => {
                 <span className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 block">
                   ₹{(totalIncome || 0).toLocaleString('en-IN')}
                 </span>
+                <div className="text-[11px] font-medium text-gray-500 dark:text-gray-400 flex items-center gap-2 pt-0.5">
+                  <span>Monthly ({selectedIncomeMonth.split(' ')[0]}): <strong className="text-emerald-500">₹{(monthlyIncome || 0).toLocaleString('en-IN')}</strong></span>
+                </div>
               </div>
               <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 flex items-center justify-center">
                 <IndianRupee className="text-white" size={24} />
@@ -708,7 +881,7 @@ const WalletPage = () => {
             className="w-full text-left bg-transparent border-0 outline-none p-0 cursor-pointer block"
           >
             <div className={`glass rounded-3xl p-6 border transition-all duration-300 flex items-center justify-between hover:scale-[1.02] hover:shadow-2xl ${
-              filterType === 'expense'
+              filterType === 'expense' || filterType === 'salary' || filterType === 'other_expenses'
                 ? 'border-rose-500 shadow-rose-500/20 ring-2 ring-rose-500'
                 : 'border-gray-200/50 dark:border-white/5 shadow-xl'
             }`}>
@@ -717,6 +890,11 @@ const WalletPage = () => {
                 <span className="text-2xl font-extrabold text-rose-600 block">
                   ₹{(totalExpense || 0).toLocaleString('en-IN')}
                 </span>
+                <div className="text-[11px] font-medium text-gray-500 dark:text-gray-400 flex items-center gap-2 pt-0.5">
+                  <span>Salary: <strong className="text-rose-500">₹{(totalSalaryExpense || 0).toLocaleString('en-IN')}</strong></span>
+                  <span>•</span>
+                  <span>Other: <strong className="text-rose-500">₹{(totalOtherExpense || 0).toLocaleString('en-IN')}</strong></span>
+                </div>
               </div>
               <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-rose-500 to-orange-500 flex items-center justify-center">
                 <CreditCard className="text-white" size={24} />
@@ -750,6 +928,312 @@ const WalletPage = () => {
         </div>
       </section>
 
+      {/* Income Breakdown Section (Displayed when Total Income is active) */}
+      <AnimatePresence>
+        {filterType === 'client_payment' && (
+          <motion.section
+            initial={{ opacity: 0, y: -15, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: 'auto' }}
+            exit={{ opacity: 0, y: -15, height: 0 }}
+            transition={{ duration: 0.3 }}
+            className="overflow-hidden space-y-4"
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-emerald-50/60 dark:bg-emerald-950/20 p-4 rounded-2xl border border-emerald-200/60 dark:border-emerald-900/30">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                  <PieChart size={20} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-gray-900 dark:text-white">Income Breakdown & Analysis</h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Overview of all client payments and revenue streams</p>
+                </div>
+              </div>
+
+              {/* Month Selector for Monthly Income */}
+              <div className="flex items-center gap-2 bg-white dark:bg-gray-800 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-white/10 shadow-sm self-start sm:self-auto">
+                <Calendar size={15} className="text-emerald-500" />
+                <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">Active Month:</span>
+                <select
+                  value={selectedIncomeMonth}
+                  onChange={(e) => setSelectedIncomeMonth(e.target.value)}
+                  className="bg-transparent text-xs font-bold text-gray-900 dark:text-white border-0 outline-none cursor-pointer pr-1"
+                >
+                  {availableIncomeMonths.map((m) => (
+                    <option key={m} value={m} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
+                      {m}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* 1. Overall Total Income */}
+              <div className="text-left p-5 rounded-2xl glass border border-emerald-500 ring-2 ring-emerald-500/30 bg-emerald-500/5 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                      Total Income
+                    </span>
+                    <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
+                      <IndianRupee size={18} />
+                    </div>
+                  </div>
+                  <div className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 mb-1">
+                    ₹{(totalIncome || 0).toLocaleString('en-IN')}
+                  </div>
+                </div>
+                <div className="text-xs pt-2 border-t border-gray-100 dark:border-white/5 text-gray-500 mt-2">
+                  <span>All-time total collections</span>
+                </div>
+              </div>
+
+              {/* 2. Monthly Income with Month Selector */}
+              <div className="text-left p-5 rounded-2xl glass border border-teal-500 ring-2 ring-teal-500/30 bg-teal-500/5 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-3 gap-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                      Monthly Income
+                    </span>
+                    <div className="flex items-center gap-1 bg-teal-50 dark:bg-teal-900/30 px-2 py-1 rounded-lg border border-teal-200/60 dark:border-teal-800/40" onClick={(e) => e.stopPropagation()}>
+                      <Calendar size={13} className="text-teal-600 dark:text-teal-400" />
+                      <select
+                        value={selectedIncomeMonth}
+                        onChange={(e) => setSelectedIncomeMonth(e.target.value)}
+                        className="bg-transparent text-[11px] font-bold text-teal-700 dark:text-teal-300 border-0 outline-none cursor-pointer"
+                      >
+                        {availableIncomeMonths.map((m) => (
+                          <option key={m} value={m} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
+                            {m}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="text-2xl font-extrabold text-teal-600 dark:text-teal-400 mb-1">
+                    ₹{(monthlyIncome || 0).toLocaleString('en-IN')}
+                  </div>
+                </div>
+                <div className="flex items-center justify-between text-xs pt-2 border-t border-gray-100 dark:border-white/5 text-gray-500 mt-2">
+                  <span>For:</span>
+                  <span className="font-semibold text-gray-700 dark:text-gray-300">{selectedIncomeMonth}</span>
+                </div>
+              </div>
+
+              {/* 3. Online Payments */}
+              <div className="text-left p-5 rounded-2xl glass border border-gray-200/70 dark:border-white/10 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                      Online Payments
+                    </span>
+                    <div className="p-2 rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+                      <CreditCard size={18} />
+                    </div>
+                  </div>
+                  <div className="text-2xl font-extrabold text-blue-600 dark:text-blue-400 mb-1">
+                    ₹{(totalOnlineIncome || 0).toLocaleString('en-IN')}
+                  </div>
+                </div>
+                <div className="flex items-center justify-between text-xs pt-2 border-t border-gray-100 dark:border-white/5 text-gray-500 mt-2">
+                  <span>Monthly ({selectedIncomeMonth.split(' ')[0]}):</span>
+                  <span className="font-bold text-blue-600 dark:text-blue-400">₹{(monthlyOnlineIncome || 0).toLocaleString('en-IN')}</span>
+                </div>
+              </div>
+
+              {/* 4. Cash Payments */}
+              <div className="text-left p-5 rounded-2xl glass border border-gray-200/70 dark:border-white/10 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                      Cash Payments
+                    </span>
+                    <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
+                      <Wallet size={18} />
+                    </div>
+                  </div>
+                  <div className="text-2xl font-extrabold text-emerald-700 dark:text-emerald-300 mb-1">
+                    ₹{(totalCashIncome || 0).toLocaleString('en-IN')}
+                  </div>
+                </div>
+                <div className="flex items-center justify-between text-xs pt-2 border-t border-gray-100 dark:border-white/5 text-gray-500 mt-2">
+                  <span>Monthly ({selectedIncomeMonth.split(' ')[0]}):</span>
+                  <span className="font-bold text-emerald-700 dark:text-emerald-300">₹{(monthlyCashIncome || 0).toLocaleString('en-IN')}</span>
+                </div>
+              </div>
+            </div>
+          </motion.section>
+        )}
+      </AnimatePresence>
+
+      {/* Expense Breakdown Section (Displayed when Expense, Salary or Other Expenses is active) */}
+      <AnimatePresence>
+        {(filterType === 'expense' || filterType === 'salary' || filterType === 'other_expenses') && (
+          <motion.section
+            initial={{ opacity: 0, y: -15, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: 'auto' }}
+            exit={{ opacity: 0, y: -15, height: 0 }}
+            transition={{ duration: 0.3 }}
+            className="overflow-hidden space-y-4"
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-rose-50/60 dark:bg-rose-950/20 p-4 rounded-2xl border border-rose-200/60 dark:border-rose-900/30">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                  <PieChart size={20} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-gray-900 dark:text-white">Expense Breakdown & Analysis</h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Overview of all business expenditures, salaries and monthly payouts</p>
+                </div>
+              </div>
+
+              {/* Month Selector for Monthly Expenses */}
+              <div className="flex items-center gap-2 bg-white dark:bg-gray-800 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-white/10 shadow-sm self-start sm:self-auto">
+                <Calendar size={15} className="text-rose-500" />
+                <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">Active Month:</span>
+                <select
+                  value={selectedExpenseMonth}
+                  onChange={(e) => setSelectedExpenseMonth(e.target.value)}
+                  className="bg-transparent text-xs font-bold text-gray-900 dark:text-white border-0 outline-none cursor-pointer pr-1"
+                >
+                  {availableExpenseMonths.map((m) => (
+                    <option key={m} value={m} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
+                      {m}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* 1. Total Combined Expense Card */}
+              <button
+                type="button"
+                onClick={() => setFilterType('expense')}
+                className={`text-left p-5 rounded-2xl glass border transition-all duration-300 hover:scale-[1.01] hover:shadow-lg flex flex-col justify-between ${
+                  filterType === 'expense'
+                    ? 'border-rose-500 ring-2 ring-rose-500/30 bg-rose-500/5'
+                    : 'border-gray-200/70 dark:border-white/10'
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                      Total Expense
+                    </span>
+                    <div className="p-2 rounded-xl bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400">
+                      <CreditCard size={18} />
+                    </div>
+                  </div>
+                  <div className="text-2xl font-extrabold text-gray-900 dark:text-white mb-1">
+                    ₹{(totalExpense || 0).toLocaleString('en-IN')}
+                  </div>
+                </div>
+                <div className="flex items-center justify-between text-xs pt-2 border-t border-gray-100 dark:border-white/5 text-gray-500 mt-2">
+                  <span>Monthly ({selectedExpenseMonth.split(' ')[0]}):</span>
+                  <span className="font-bold text-rose-600 dark:text-rose-400">₹{(monthlyTotalExpense || 0).toLocaleString('en-IN')}</span>
+                </div>
+              </button>
+
+              {/* 2. Overall Salary Expense Card */}
+              <button
+                type="button"
+                onClick={() => setFilterType('salary')}
+                className={`text-left p-5 rounded-2xl glass border transition-all duration-300 hover:scale-[1.01] hover:shadow-lg flex flex-col justify-between ${
+                  filterType === 'salary'
+                    ? 'border-indigo-500 ring-2 ring-indigo-500/30 bg-indigo-500/5'
+                    : 'border-gray-200/70 dark:border-white/10'
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                      Overall Salary Expense
+                    </span>
+                    <div className="p-2 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400">
+                      <Users size={18} />
+                    </div>
+                  </div>
+                  <div className="text-2xl font-extrabold text-indigo-600 dark:text-indigo-400 mb-1">
+                    ₹{(totalSalaryExpense || 0).toLocaleString('en-IN')}
+                  </div>
+                </div>
+                <div className="text-xs pt-2 border-t border-gray-100 dark:border-white/5 text-gray-500 mt-2">
+                  <span>All-time cumulative salary</span>
+                </div>
+              </button>
+
+              {/* 3. Monthly Salary Expense Card (With Month Selector) */}
+              <div
+                onClick={() => setFilterType('salary')}
+                className={`text-left p-5 rounded-2xl glass border transition-all duration-300 hover:scale-[1.01] hover:shadow-lg flex flex-col justify-between cursor-pointer ${
+                  filterType === 'salary'
+                    ? 'border-blue-500 ring-2 ring-blue-500/30 bg-blue-500/5'
+                    : 'border-gray-200/70 dark:border-white/10'
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-3 gap-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                      Monthly Salary
+                    </span>
+                    <div className="flex items-center gap-1 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-lg border border-blue-200/60 dark:border-blue-800/40" onClick={(e) => e.stopPropagation()}>
+                      <Calendar size={13} className="text-blue-600 dark:text-blue-400" />
+                      <select
+                        value={selectedExpenseMonth}
+                        onChange={(e) => setSelectedExpenseMonth(e.target.value)}
+                        className="bg-transparent text-[11px] font-bold text-blue-700 dark:text-blue-300 border-0 outline-none cursor-pointer"
+                      >
+                        {availableExpenseMonths.map((m) => (
+                          <option key={m} value={m} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
+                            {m}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="text-2xl font-extrabold text-blue-600 dark:text-blue-400 mb-1">
+                    ₹{(monthlySalaryExpense || 0).toLocaleString('en-IN')}
+                  </div>
+                </div>
+                <div className="flex items-center justify-between text-xs pt-2 border-t border-gray-100 dark:border-white/5 text-gray-500 mt-2">
+                  <span>For:</span>
+                  <span className="font-semibold text-gray-700 dark:text-gray-300">{selectedExpenseMonth}</span>
+                </div>
+              </div>
+
+              {/* 4. Other Expenses Card */}
+              <button
+                type="button"
+                onClick={() => setFilterType('other_expenses')}
+                className={`text-left p-5 rounded-2xl glass border transition-all duration-300 hover:scale-[1.01] hover:shadow-lg flex flex-col justify-between ${
+                  filterType === 'other_expenses'
+                    ? 'border-amber-500 ring-2 ring-amber-500/30 bg-amber-500/5'
+                    : 'border-gray-200/70 dark:border-white/10'
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                      Other Expenses
+                    </span>
+                    <div className="p-2 rounded-xl bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
+                      <Receipt size={18} />
+                    </div>
+                  </div>
+                  <div className="text-2xl font-extrabold text-amber-600 dark:text-amber-400 mb-1">
+                    ₹{(totalOtherExpense || 0).toLocaleString('en-IN')}
+                  </div>
+                </div>
+                <div className="flex items-center justify-between text-xs pt-2 border-t border-gray-100 dark:border-white/5 text-gray-500 mt-2">
+                  <span>Monthly ({selectedExpenseMonth.split(' ')[0]}):</span>
+                  <span className="font-bold text-amber-600 dark:text-amber-400">₹{(monthlyOtherExpense || 0).toLocaleString('en-IN')}</span>
+                </div>
+              </button>
+            </div>
+          </motion.section>
+        )}
+      </AnimatePresence>
 
       {/* Filters */}
       <div className="flex items-center gap-4">
@@ -850,8 +1334,8 @@ const WalletPage = () => {
                     <td colSpan={8} className="px-6 py-12 text-center text-gray-500">No transactions yet</td>
                   </tr>
                 ) : (
-                  filteredTransactions.map((transaction) => (
-                    <tr key={transaction._id} className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
+                  filteredTransactions.map((transaction, idx) => (
+                    <tr key={transaction._id || `tx_${idx}`} className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
                       <td className="px-6 py-4">
                         <div className="font-semibold text-gray-900 dark:text-white">{transaction.name}</div>
                         {transaction.description && (
@@ -1232,6 +1716,24 @@ const WalletPage = () => {
         </div>
       )}
     </motion.div>
+  );
+};
+
+const WalletPage = () => {
+  const [unlocked, setUnlocked] = useState(() => sessionStorage.getItem('wallet_unlocked') === 'true');
+
+  return unlocked ? (
+    <WalletView onLock={() => setUnlocked(false)} />
+  ) : (
+    <PasswordGate
+      title="Wallet & Transactions"
+      subtitle="This page is confidential. Enter the admin password to access financial records, revenue, and expenses."
+      storageKey="wallet_unlocked"
+      icon={Wallet}
+      gradient="from-emerald-500 to-teal-600"
+      buttonText="Unlock Wallet"
+      onUnlock={() => setUnlocked(true)}
+    />
   );
 };
 

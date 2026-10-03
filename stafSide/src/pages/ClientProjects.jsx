@@ -993,6 +993,7 @@ const EditProjectModal = ({ isOpen, onClose, project, onSave }) => {
 const ProjectSection = ({
   project,
   isHistory = false,
+  cycleNumber = null,
   onUpdate = (_p) => { },
   onRenew = (_p) => { },
   onAddTask = (_p) => { },
@@ -1008,9 +1009,19 @@ const ProjectSection = ({
       <div className="lg:col-span-2 space-y-6">
         {/* Work Progress Card */}
         <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm relative overflow-hidden">
-          {isHistory && (
-            <div className="absolute top-0 right-0 px-4 py-1 bg-gray-500 text-white text-[10px] font-black uppercase tracking-widest rounded-bl-xl">
-              Completed Cycle
+          {isHistory ? (
+            <div className="absolute top-0 right-0 px-4 py-1.5 bg-purple-600 text-white text-[10px] font-black uppercase tracking-widest rounded-bl-2xl shadow-sm flex items-center gap-1.5">
+              <span>📅 Completed Month / Cycle #{cycleNumber || 1}</span>
+              {project.startDate && project.deadline && (
+                <span className="opacity-90 font-medium lowercase">({new Date(project.startDate).toLocaleDateString('en-IN')} - {new Date(project.deadline).toLocaleDateString('en-IN')})</span>
+              )}
+            </div>
+          ) : (
+            <div className="absolute top-0 right-0 px-4 py-1.5 bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest rounded-bl-2xl shadow-sm flex items-center gap-1.5">
+              <span>🚀 Active Month / Cycle #{cycleNumber || 1}</span>
+              {project.startDate && project.deadline && (
+                <span className="opacity-90 font-medium lowercase">({new Date(project.startDate).toLocaleDateString('en-IN')} - {new Date(project.deadline).toLocaleDateString('en-IN')})</span>
+              )}
             </div>
           )}
           <div className="flex justify-between items-center mb-6">
@@ -2066,11 +2077,22 @@ const ClientProjects = ({ onBack }) => {
   const [isEditClientOpen, setIsEditClientOpen] = useState(false);
   const [isEditProjectOpen, setIsEditProjectOpen] = useState(false);
 
+  const getRequestHeaders = () => {
+    const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+    return {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    };
+  };
+
   const fetchClientData = useCallback(async () => {
     if (!clientId) return;
     try {
       setLoading(true);
-      const response = await fetch(getApiUrl(`/clients/${clientId}`));
+      const response = await fetch(getApiUrl(`/clients/${clientId}`), {
+        headers: getRequestHeaders(),
+        credentials: 'include'
+      });
       const result = await response.json();
       if (result.success) {
         const clientData = result.data;
@@ -2078,6 +2100,38 @@ const ClientProjects = ({ onBack }) => {
         if (!clientData.tasks || clientData.tasks.length === 0) {
           clientData.tasks = parseWorkDetailToTasks(clientData.workDetail);
         }
+
+        // Guarantee all past cycles in history have properly formatted tasks and status
+        if (clientData.history && Array.isArray(clientData.history)) {
+          clientData.history = clientData.history.map(cycle => {
+            let cycleTasks = cycle.tasks;
+            if (!cycleTasks || cycleTasks.length === 0) {
+              cycleTasks = parseWorkDetailToTasks(cycle.workDetail || cycle.projectDetail);
+              if (cycleTasks.length === 0) {
+                cycleTasks = [{
+                  name: cycle.workDetail || cycle.projectDetail || 'Service Deliverables',
+                  total: 1,
+                  completed: 1,
+                  status: 'Completed',
+                  unit: 'Task'
+                }];
+              }
+            }
+            cycleTasks = cycleTasks.map(t => ({
+              ...t,
+              completed: (t.total !== undefined && t.total > 0) ? (t.completed !== undefined && t.completed > 0 ? t.completed : t.total) : 1,
+              status: 'Completed'
+            }));
+            return {
+              ...cycle,
+              tasks: cycleTasks,
+              extraTasks: cycle.extraTasks || [],
+              payments: cycle.payments || [],
+              status: 'Completed'
+            };
+          });
+        }
+
         setProjects([clientData]);
       }
     } catch (error) {
@@ -2090,14 +2144,6 @@ const ClientProjects = ({ onBack }) => {
   useEffect(() => {
     fetchClientData();
   }, [fetchClientData]);
-
-  const getRequestHeaders = () => {
-    const token = localStorage.getItem('adminToken');
-    return {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {})
-    };
-  };
 
   const openUpdateModal = (project) => {
     const projectToUpdate = JSON.parse(JSON.stringify(project));
@@ -2203,12 +2249,13 @@ const ClientProjects = ({ onBack }) => {
       const id = clientId;
       const response = await fetch(getApiUrl(`/clients/${id}/renew`), {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getRequestHeaders(),
+        credentials: 'include',
         body: JSON.stringify(renewFormData)
       });
       const result = await response.json();
       if (result.success) {
-        setProjects([result.data]);
+        await fetchClientData();
         setIsRenewModalOpen(false);
         setRenewModalData({
           package: '',
@@ -2217,7 +2264,9 @@ const ClientProjects = ({ onBack }) => {
           startDate: new Date().toISOString().split('T')[0],
           deadline: ''
         });
-        alert('Package renewed successfully for the next month!');
+        alert('Package renewed successfully for the next month! All past projects are preserved.');
+      } else {
+        alert(result.message || 'Failed to renew package');
       }
     } catch (error) {
       console.error('Error renewing package:', error);
@@ -2520,6 +2569,7 @@ const ClientProjects = ({ onBack }) => {
           <ProjectSection
             project={projects[0]}
             client={projects[0]}
+            cycleNumber={(projects[0].history?.length || 0) + 1}
             onUpdate={openUpdateModal}
             onRenew={openRenewModal}
             onAddTask={(p) => {
@@ -2532,15 +2582,26 @@ const ClientProjects = ({ onBack }) => {
           {/* History */}
           {projects[0].history && projects[0].history.length > 0 && (
             <div className="space-y-6">
-              <h3 className="text-2xl font-black text-black">Past Cycles</h3>
-              {projects[0].history.map((cycle, index) => (
-                <ProjectSection
-                  key={index}
-                  project={cycle}
-                  client={projects[0]}
-                  isHistory={true}
-                />
-              ))}
+              <div className="flex items-center justify-between">
+                <h3 className="text-2xl font-black text-black flex items-center gap-3">
+                  <span>Past Cycles</span>
+                  <span className="text-xs font-bold bg-purple-500/10 text-purple-600 border border-purple-500/20 px-3 py-1 rounded-full uppercase tracking-wider">
+                    {projects[0].history.length} Previous Month{projects[0].history.length > 1 ? 's' : ''} Preserved
+                  </span>
+                </h3>
+              </div>
+              {[...projects[0].history]
+                .map((cycle, origIdx) => ({ cycle, cycleNumber: origIdx + 1 }))
+                .reverse()
+                .map(({ cycle, cycleNumber }, index) => (
+                  <ProjectSection
+                    key={`hist-${cycleNumber}-${index}`}
+                    project={cycle}
+                    client={projects[0]}
+                    isHistory={true}
+                    cycleNumber={cycleNumber}
+                  />
+                ))}
             </div>
           )}
         </div>

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Mail, Phone, Briefcase, Clock, Calendar, CheckCircle2, XCircle, MoreVertical, LogOut, LogIn, Trash2, Edit3 } from 'lucide-react';
-import { getAllStaff, BASE_URL } from '../../api';
+import { getAllStaff, clockOutAllStaff, BASE_URL } from '../../api';
 
 const container = {
   hidden: { opacity: 0 },
@@ -19,6 +19,7 @@ const item = {
 const StaffList = ({ onViewAll }) => {
   const [staffMembers, setStaffMembers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isClockingOutAll, setIsClockingOutAll] = useState(false);
   const [activeMenu, setActiveMenu] = useState(null);
   const menuRef = useRef(null);
 
@@ -69,6 +70,43 @@ const StaffList = ({ onViewAll }) => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const clockedInCount = staffMembers.filter(s => s.clock_status === 'clock_in').length;
+
+  const handleClockOutAll = async () => {
+    if (clockedInCount === 0) {
+      alert('No employees are currently clocked in.');
+      return;
+    }
+
+    const defaultTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+    const inputTime = prompt(
+      `Enter clock-out time for all ${clockedInCount} clocked-in employee(s) (e.g. "05:30 PM" or "17:30"):`,
+      defaultTime
+    );
+
+    if (inputTime === null) return;
+    if (!inputTime.trim()) {
+      alert('Invalid time entered');
+      return;
+    }
+
+    try {
+      setIsClockingOutAll(true);
+      const result = await clockOutAllStaff(inputTime.trim());
+      if (result && result.success) {
+        alert(result.message || `Successfully clocked out ${clockedInCount} employee(s)`);
+        await fetchStaff();
+      } else {
+        alert(result?.message || 'Failed to clock out all staff');
+      }
+    } catch (error) {
+      console.error('Error clocking out all staff:', error);
+      alert('Network error while clocking out all staff');
+    } finally {
+      setIsClockingOutAll(false);
+    }
+  };
 
   const handleClockOut = async (id) => {
     const member = staffMembers.find(s => s._id === id);
@@ -148,17 +186,42 @@ const StaffList = ({ onViewAll }) => {
 
   return (
     <div className="glass-card p-6 rounded-2xl overflow-hidden transition-colors">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <div>
           <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">Employee Management</h3>
           <p className="text-sm text-gray-500 font-medium">Daily attendance and work tracking</p>
         </div>
-        <button 
-          onClick={onViewAll}
-          className="px-4 py-2 rounded-xl bg-black/5 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-xs font-bold text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-black/10 dark:hover:bg-white/10 transition-all"
-        >
-          View All Staff
-        </button>
+        <div className="flex items-center gap-2.5">
+          <button 
+            onClick={handleClockOutAll}
+            disabled={isClockingOutAll || clockedInCount === 0}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border shadow-sm ${
+              clockedInCount > 0 
+                ? 'bg-rose-500/10 hover:bg-rose-500 text-rose-600 hover:text-white border-rose-500/20 shadow-rose-500/10 hover:shadow-rose-500/30 active:scale-95' 
+                : 'bg-black/5 dark:bg-white/5 border-gray-200 dark:border-white/10 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-60'
+            }`}
+            title={clockedInCount > 0 ? `Clock out all ${clockedInCount} active staff` : 'No staff currently clocked in'}
+          >
+            {isClockingOutAll ? (
+              <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <LogOut size={14} />
+            )}
+            <span>Clock Out All</span>
+            {clockedInCount > 0 && (
+              <span className="px-1.5 py-0.5 text-[10px] font-black rounded-full bg-rose-500 text-white">
+                {clockedInCount}
+              </span>
+            )}
+          </button>
+
+          <button 
+            onClick={onViewAll}
+            className="px-4 py-2 rounded-xl bg-black/5 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-xs font-bold text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-black/10 dark:hover:bg-white/10 transition-all"
+          >
+            View All Staff
+          </button>
+        </div>
       </div>
 
       <div className="overflow-x-auto">

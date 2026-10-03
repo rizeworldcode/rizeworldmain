@@ -77,7 +77,7 @@ const sendEmailNotification = async (toEmails, subject, textContent) => {
   }
 };
 
-async function createNotification(title, message, type = 'Payment Reminder', priority = 'Medium', recipientRoles = ['HR', 'Client Support'], clientId = null, oldClientId = null) {
+async function createNotification(title, message, type = 'Payment Reminder', priority = 'Medium', recipientRoles = ['Client Support'], clientId = null, oldClientId = null) {
   try {
     const notification = new Notification({
       title,
@@ -96,16 +96,13 @@ async function createNotification(title, message, type = 'Payment Reminder', pri
     const io = getIO();
     io.emit('newNotification', savedNotification);
     
-    // Fetch all staff with recipient roles to send emails (only internal staff, no clients!)
+    // Fetch all staff with recipient roles to send emails (Client Support only, no HR!)
     const staffMembers = await Staff.find({ 
       role: { $in: recipientRoles } 
     });
     const emails = staffMembers.map(staff => staff.email).filter(email => email);
     
-    // Also add fallback emails from .env (still only HR and Client Support, no clients!)
-    if (process.env.HR_EMAIL && !emails.includes(process.env.HR_EMAIL)) {
-      emails.push(process.env.HR_EMAIL);
-    }
+    // Only send to CLIENT_SUPPORT_EMAIL from .env
     if (process.env.CLIENT_SUPPORT_EMAIL && !emails.includes(process.env.CLIENT_SUPPORT_EMAIL)) {
       emails.push(process.env.CLIENT_SUPPORT_EMAIL);
     }
@@ -132,7 +129,7 @@ async function notifyHRAndSupport(title, message, priority = 'High', clientId = 
     message,
     'Payment Reminder',
     priority,
-    ['HR', 'Client Support', 'Admin'],
+    ['Client Support'],
     clientId,
     oldClientId
   );

@@ -86,7 +86,8 @@ exports.loginStaff = async (req, res) => {
         satisfactionHistory: staff.satisfactionHistory || [],
         todayComment: staff.todayComment || '',
         commentHistory: staff.commentHistory || [],
-        commentUpdatedBy: staff.commentUpdatedBy || ''
+        commentUpdatedBy: staff.commentUpdatedBy || '',
+        permissions: staff.permissions
       },
       token
     });
@@ -538,7 +539,8 @@ exports.getStaffById = async (req, res) => {
         satisfactionHistory: staff.satisfactionHistory || [],
         todayComment: staff.todayComment || '',
         commentHistory: staff.commentHistory || [],
-        commentUpdatedBy: staff.commentUpdatedBy || ''
+        commentUpdatedBy: staff.commentUpdatedBy || '',
+        permissions: staff.permissions || []
       }
     });
   } catch (error) {
@@ -630,6 +632,7 @@ exports.updateStaff = async (req, res) => {
 
     // Save the staff (this will trigger pre-save middleware for password hashing)
     const updatedStaff = await staff.save();
+    cache.del('staff:all');
 
     res.status(200).json({
       success: true,
@@ -637,6 +640,52 @@ exports.updateStaff = async (req, res) => {
     });
   } catch (error) {
     res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// Update staff access permissions and/or password (Admin only)
+exports.updateStaffAccess = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { permissions, password } = req.body;
+
+    const staff = await Staff.findOne({ _id: id, isRemoved: { $ne: true } });
+    if (!staff) {
+      return res.status(404).json({
+        success: false,
+        message: 'Staff not found'
+      });
+    }
+
+    if (permissions !== undefined) {
+      staff.permissions = Array.isArray(permissions) ? permissions : [];
+    }
+
+    if (password && typeof password === 'string' && password.trim().length > 0) {
+      staff.password = password.trim();
+    }
+
+    const updatedStaff = await staff.save();
+    cache.del('staff:all');
+
+    res.status(200).json({
+      success: true,
+      message: 'Access permissions and password updated successfully',
+      data: {
+        _id: updatedStaff._id,
+        id: updatedStaff._id,
+        employeeId: updatedStaff.employeeId,
+        name: updatedStaff.name,
+        role: updatedStaff.role,
+        department: updatedStaff.department,
+        permissions: updatedStaff.permissions || []
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
       success: false,
       message: error.message
     });
@@ -1300,7 +1349,149 @@ exports.clockOutStaff = async (req, res) => {
     console.error(error);
     res.status(400).json({ success: false, message: error.message });
   }
-};// Update today's work
+};
+
+// Clock out all staff currently clocked in
+exports.clockOutAllStaff = async (req, res) => {
+  try {
+    console.log('=== Starting clock out all ===');
+    const { clockOutTime: rawInputTime, staffIds } = req.body || {};
+
+    const now = new Date();
+    const istNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+
+    let clockOutTime;
+    if (rawInputTime) {
+      let rawTime = rawInputTime.trim();
+      const time24Pattern = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
+      if (time24Pattern.test(rawTime)) {
+        const [h, m] = rawTime.split(':').map(Number);
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        const displayH = h % 12 || 12;
+        const displayM = m < 10 ? `0${m}` : m;
+        clockOutTime = `${displayH}:${displayM} ${ampm}`;
+      } else {
+        clockOutTime = rawTime;
+      }
+    } else {
+      clockOutTime = formatTime(istNow);
+    }
+    console.log('Bulk clock out time:', clockOutTime);
+
+    const filter = { isRemoved: { $ne: true }, clock_status: 'clock_in' };
+    if (Array.isArray(staffIds) && staffIds.length > 0) {
+      filter._id = { $in: staffIds };
+    }
+
+    const clockedInStaff = await Staff.find(filter);
+
+    if (!clockedInStaff || clockedInStaff.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: 'No staff members are currently clocked in.',
+        count: 0,
+        data: []
+      });
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const updatedStaffList = [];
+    let io = null;
+    try {
+      io = socketUtil.getIO();
+    } catch (e) {
+      // socket might not be initialized
+    }
+
+    for (const staff of clockedInStaff) {
+      let targetClockIndex = -1;
+      let targetSessionIndex = -1;
+
+      if (Array.isArray(staff.clock)) {
+        for (let i = staff.clock.length - 1; i >= 0; i--) {
+          const record = staff.clock[i];
+          if (Array.isArray(record.sessions)) {
+            for (let j = record.sessions.length - 1; j >= 0; j--) {
+              if (!record.sessions[j].clockOut) {
+                targetClockIndex = i;
+                targetSessionIndex = j;
+                break;
+              }
+            }
+          }
+          if (targetClockIndex !== -1) break;
+        }
+      }
+
+      if (targetClockIndex !== -1 && targetSessionIndex !== -1) {
+        const openSession = staff.clock[targetClockIndex].sessions[targetSessionIndex];
+        const sessionDuration = calculateDuration(openSession.clockIn, clockOutTime);
+
+        staff.clock[targetClockIndex].sessions[targetSessionIndex].clockOut = clockOutTime;
+        staff.clock[targetClockIndex].sessions[targetSessionIndex].duration = sessionDuration;
+        staff.clock[targetClockIndex].totalHours = calculateTotalHours(staff.clock[targetClockIndex].sessions);
+      }
+
+      staff.status = 'Clocked Out';
+      staff.clock_status = 'clock_out';
+      staff.markModified('clock');
+
+      const updatedStaff = await staff.save();
+      const updatedTodayClock = targetClockIndex !== -1 ? updatedStaff.clock[targetClockIndex] : null;
+
+      // Update attendance record
+      const totalHoursStr = updatedTodayClock?.totalHours || '-';
+      const [hours] = totalHoursStr.split('h').map(Number);
+      const attendanceStatus = (isNaN(hours) || hours < 4) ? 'Half-Day' : 'Present';
+
+      const todayAttendanceIndex = staff.attendance?.findIndex(a =>
+        new Date(a.date) >= today && new Date(a.date) < tomorrow
+      );
+
+      if (todayAttendanceIndex !== -1 && todayAttendanceIndex !== undefined) {
+        await Staff.findOneAndUpdate(
+          { _id: staff._id, "attendance.date": { $gte: today, $lt: tomorrow } },
+          { $set: { "attendance.$.status": attendanceStatus } }
+        );
+      } else {
+        await Staff.findByIdAndUpdate(staff._id, {
+          $push: { attendance: { date: now, status: attendanceStatus } }
+        });
+      }
+
+      const staffObj = updatedStaff.toObject();
+      if (io) {
+        try {
+          io.emit(`staff-clock-update-${staffObj._id}`, {
+            ...staffObj,
+            id: staffObj._id,
+            todayClock: updatedTodayClock
+          });
+        } catch (err) {
+          console.error('Error emitting socket event:', err);
+        }
+      }
+
+      updatedStaffList.push(staffObj);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Successfully clocked out ${updatedStaffList.length} staff member(s)`,
+      count: updatedStaffList.length,
+      data: updatedStaffList
+    });
+  } catch (error) {
+    console.error('=== Bulk clock out error ===', error);
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+// Update today's work
 exports.updateTodayWork = async (req, res) => {
   try {
     const { todayWork } = req.body;

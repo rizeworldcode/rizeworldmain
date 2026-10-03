@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard,
@@ -13,10 +13,11 @@ import {
   MapPin,
   Camera,
   CreditCard,
-  ShieldCheck
+  ShieldCheck,
+  KeyRound
 } from 'lucide-react';
 
-const navItems = [
+const allNavItems = [
   { icon: LayoutDashboard, label: 'Dashboard', id: 'dashboard' },
   { icon: CalendarCheck, label: 'Today assigned work', id: 'todayWork' },
   { icon: Users2, label: 'Employee Detail', id: 'staffDetail' },
@@ -28,11 +29,32 @@ const navItems = [
   { icon: Camera, label: 'Sales Photos', id: 'salesPhotos' },
   { icon: CreditCard, label: 'Visiting Cards', id: 'visitingCards' },
   { icon: ShieldCheck, label: 'Salary Sheet', id: 'salarySheet' },
-  // { icon: Settings, label: 'Settings', id: 'settings' },
+  { icon: KeyRound, label: 'Admin Accounts', id: 'adminUsers', superAdminOnly: true },
 ];
 
 const Sidebar = ({ activeTab, setActiveTab }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
+
+  const filteredNavItems = useMemo(() => {
+    const role = localStorage.getItem('adminRole') || 'superadmin';
+    let permissions = [];
+    try {
+      permissions = JSON.parse(localStorage.getItem('adminPermissions') || '[]');
+    } catch {
+      permissions = [];
+    }
+
+    if (role === 'superadmin' || permissions.includes('all')) {
+      return allNavItems;
+    }
+
+    return allNavItems.filter((item) => {
+      if (item.superAdminOnly) {
+        return permissions.includes('adminUsers');
+      }
+      return permissions.includes(item.id);
+    });
+  }, []);
 
   return (
     <motion.div
@@ -42,9 +64,6 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
     >
       {/* Logo Section */}
       <div className="p-6 flex items-center gap-3">
-        {/* <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
-          <Sparkles className="text-white w-6 h-6" />
-        </div> */}
         <AnimatePresence>
           {!isCollapsed && (
             <motion.span
@@ -54,16 +73,14 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
               className="flex items-center text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 whitespace-nowrap"
             >
               <div className='w-50 h-30'><img src="/images/logo_img.png" alt="" /></div>
-
-              {/* Rizeworld */}
             </motion.span>
           )}
         </AnimatePresence>
       </div>
 
       {/* Navigation Items */}
-      <nav className="flex-1 px-4 py-6 space-y-2">
-        {navItems.map((item) => (
+      <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+        {filteredNavItems.map((item) => (
           <button
             key={item.id}
             onClick={() => setActiveTab(item.id)}

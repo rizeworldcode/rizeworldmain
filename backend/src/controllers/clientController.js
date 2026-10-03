@@ -81,10 +81,9 @@ const parseWorkDetailToTasks = (workDetail) => {
   return tasks;
 };
 
-// Helper to check and transfer clients whose work reached 100% completion 2+ days ago without renewal
+// Helper to check and mark clients whose work reached 100% completion
 const checkAndTransferCompletedClients = async () => {
   try {
-    const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
     const clients = await Client.find();
 
     for (const client of clients) {
@@ -95,56 +94,30 @@ const checkAndTransferCompletedClients = async () => {
       const is100Percent = (primaryTotal > 0 && totalCompleted >= primaryTotal) || client.status === 'Completed';
 
       if (is100Percent) {
+        let changed = false;
         if (!client.completedAt) {
           client.completedAt = client.updatedAt || new Date();
+          changed = true;
+        }
+        if (client.status !== 'Completed') {
+          client.status = 'Completed';
+          changed = true;
+        }
+        if (changed) {
           await client.save();
         }
-
-        if (client.completedAt && new Date(client.completedAt) <= twoDaysAgo) {
-          // Transfer client to OldClient collection
-          const projectDetailText = (client.workDetail && client.workDetail.trim()) || client.package || 'Completed Service Package';
-          const emailText = (client.email && client.email.trim()) || `${(client.name || 'client').toLowerCase().replace(/\s+/g, '')}@example.com`;
-          const phoneText = (client.phone && client.phone.trim()) || 'N/A';
-
-          const clientTasks = (client.tasks && client.tasks.length > 0)
-            ? client.tasks.map(t => ({ ...t, completed: t.total, status: 'Completed' }))
-            : parseWorkDetailToTasks(client.workDetail).map(t => ({ ...t, completed: t.total, status: 'Completed' }));
-
-          const oldClientData = {
-            name: client.name || 'Client',
-            phone: phoneText,
-            email: emailText,
-            projectDetail: projectDetailText,
-            workDetail: client.workDetail || projectDetailText,
-            package: client.package || 'Service Package',
-            department: client.department || 'Completed Project',
-            startDate: client.startDate || client.createdAt || new Date(),
-            deliveredDate: client.completedAt || client.deadline || new Date(),
-            totalAmount: client.totalPrice || 0,
-            paidAmount: client.paidAmount || 0,
-            address: 'N/A',
-            payments: client.payments || [],
-            tasks: clientTasks,
-            extraTasks: client.extraTasks || [],
-            history: client.history || []
-          };
-
-          const oldClient = new OldClient(oldClientData);
-          await oldClient.save();
-          await Client.findByIdAndDelete(client._id);
-          console.log(`[Auto-Transfer] Transferred client ${client.name} (${client._id}) to OldClients (100% completed > 2 days ago without renewal).`);
-        }
       } else {
-        if (client.completedAt) {
+        if (client.completedAt && client.status !== 'Completed') {
           client.completedAt = null;
           await client.save();
         }
       }
     }
   } catch (error) {
-    console.error('Error auto-transferring completed clients:', error);
+    console.error('Error checking completed clients:', error);
   }
 };
+
 
 exports.checkAndTransferCompletedClients = checkAndTransferCompletedClients;
 
@@ -306,6 +279,38 @@ exports.getClientById = async (req, res) => {
         message: 'Client not found'
       });
     }
+
+    // Normalize tasks in history so past cycles always display their deliverables and completed progress
+    if (client.history && client.history.length > 0) {
+      client.history = client.history.map(h => {
+        let tasks = (h.tasks && h.tasks.length > 0)
+          ? h.tasks
+          : parseWorkDetailToTasks(h.workDetail || h.projectDetail);
+
+        if (!tasks || tasks.length === 0) {
+          tasks = [{
+            name: h.workDetail || h.projectDetail || 'Project Scope & Deliverables',
+            total: 1,
+            completed: 1,
+            status: 'Completed',
+            unit: 'Task'
+          }];
+        } else {
+          tasks = tasks.map(t => ({
+            ...t,
+            completed: (t.completed !== undefined && t.completed > 0) ? t.completed : (t.total || 1),
+            status: 'Completed'
+          }));
+        }
+
+        return {
+          ...h,
+          tasks,
+          status: h.status || 'Completed'
+        };
+      });
+    }
+
     res.status(200).json({
       success: true,
       data: client
@@ -470,12 +475,13 @@ exports.updateClientTasks = async (req, res) => {
 exports.renewClientPackage = async (req, res) => {
   try {
     const { package, workDetail, totalAmount, startDate, deadline } = req.body;
+    const clientId = req.params.id;
 
-    let client = await Client.findById(req.params.id);
+    let client = await Client.findById(clientId);
 
-    // If client is in OldClient collection, restore to active Client collection
+    // 1. If client is in OldClient collection, restore to active Client collection
     if (!client) {
-      const oldClientDoc = await OldClient.findById(req.params.id);
+      const oldClientDoc = await OldClient.findById(clientId);
       if (oldClientDoc) {
         const historyEntry = {
           package: oldClientDoc.package || 'Old Client',
@@ -485,12 +491,57 @@ exports.renewClientPackage = async (req, res) => {
           pendingAmount: Math.max(0, (oldClientDoc.totalAmount || 0) - (oldClientDoc.paidAmount || 0)),
           startDate: oldClientDoc.startDate,
           deadline: oldClientDoc.deliveredDate,
-          tasks: oldClientDoc.tasks || [],
+          tasks: (oldClientDoc.tasks && oldClientDoc.tasks.length > 0)
+            ? oldClientDoc.tasks
+            : parseWorkDetailToTasks(oldClientDoc.workDetail || oldClientDoc.projectDetail),
           extraTasks: oldClientDoc.extraTasks || [],
           payments: oldClientDoc.payments || [],
           status: 'Completed',
           completedAt: oldClientDoc.deliveredDate || new Date()
         };
+
+        // Check if an active client with the same name already exists
+        const existingActive = await Client.findOne({
+          name: new RegExp(`^${oldClientDoc.name.trim()}$`, 'i')
+        });
+
+        if (existingActive) {
+          // Merge history into existing active client so past projects are never lost
+          const combinedHistory = [
+            ...(existingActive.history || []),
+            ...(oldClientDoc.history || []),
+            historyEntry
+          ];
+
+          const generatedTasks = parseWorkDetailToTasks(workDetail);
+
+          existingActive.package = package;
+          existingActive.workDetail = workDetail;
+          existingActive.totalPrice = parseFloat(totalAmount) || 0;
+          existingActive.pendingAmount = parseFloat(totalAmount) || 0;
+          existingActive.paidAmount = 0;
+          existingActive.startDate = startDate ? new Date(startDate) : new Date();
+          existingActive.deadline = deadline ? new Date(deadline) : null;
+          existingActive.status = 'Present';
+          existingActive.completedAt = null;
+          existingActive.tasks = generatedTasks;
+          existingActive.extraTasks = [];
+          existingActive.payments = [];
+          existingActive.history = combinedHistory;
+
+          await existingActive.save();
+          await OldClient.findByIdAndDelete(oldClientDoc._id);
+
+          cache.flushByPrefix('clients:');
+          cache.flushByPrefix('dashboard:');
+          cache.flushByPrefix('transactions');
+
+          return res.status(200).json({
+            success: true,
+            message: 'Package renewed successfully and past projects preserved',
+            data: existingActive
+          });
+        }
 
         const generatedTasks = parseWorkDetailToTasks(workDetail);
 
@@ -512,16 +563,20 @@ exports.renewClientPackage = async (req, res) => {
           tasks: generatedTasks,
           extraTasks: [],
           payments: [],
-          history: [historyEntry]
+          history: [...(oldClientDoc.history || []), historyEntry]
         });
 
         await activeClient.save();
         await OldClient.findByIdAndDelete(oldClientDoc._id);
         console.log(`[Auto-Reactivate] Renewed old client ${oldClientDoc.name} (${oldClientDoc._id}) and moved back to active Clients collection.`);
 
+        cache.flushByPrefix('clients:');
+        cache.flushByPrefix('dashboard:');
+        cache.flushByPrefix('transactions');
+
         return res.status(200).json({
           success: true,
-          message: 'Package renewed successfully and client moved back to active clients list',
+          message: 'Package renewed successfully and past projects preserved',
           data: activeClient
         });
       }
@@ -534,26 +589,71 @@ exports.renewClientPackage = async (req, res) => {
       });
     }
 
-    // Push current state to history before resetting
+    // 2. Active Client Renewal
+    // Prepare current cycle as a completed past project in history
+    let pastTasks = (client.tasks && client.tasks.length > 0)
+      ? client.tasks
+      : parseWorkDetailToTasks(client.workDetail);
+
+    pastTasks = pastTasks.map(t => ({
+      ...t,
+      completed: (t.total !== undefined && t.total > 0) ? (t.completed !== undefined && t.completed > 0 ? t.completed : t.total) : 1,
+      status: 'Completed'
+    }));
+
+    const pastExtraTasks = (client.extraTasks || []).map(t => ({
+      ...t,
+      completed: (t.total !== undefined && t.total > 0) ? (t.completed !== undefined && t.completed > 0 ? t.completed : t.total) : 1,
+      status: 'Completed'
+    }));
+
     const historyEntry = {
-      package: client.package,
+      package: client.package || 'Service Package',
       workDetail: client.workDetail,
-      totalPrice: client.totalPrice,
-      paidAmount: client.paidAmount,
-      pendingAmount: client.pendingAmount,
-      startDate: client.startDate,
-      deadline: client.deadline,
-      tasks: client.tasks,
-      extraTasks: client.extraTasks,
-      payments: client.payments,
-      status: client.status,
-      completedAt: new Date()
+      totalPrice: client.totalPrice || 0,
+      paidAmount: client.paidAmount || 0,
+      pendingAmount: client.pendingAmount !== undefined ? client.pendingAmount : Math.max(0, (client.totalPrice || 0) - (client.paidAmount || 0)),
+      startDate: client.startDate || client.createdAt || new Date(),
+      deadline: client.deadline || new Date(),
+      tasks: pastTasks,
+      extraTasks: pastExtraTasks,
+      payments: client.payments || [],
+      status: 'Completed',
+      completedAt: client.completedAt || new Date()
     };
 
     const generatedTasks = parseWorkDetailToTasks(workDetail);
 
+    // Check if there is an OldClient record with matching name to also merge its past cycles if any exist
+    const oldDoc = await OldClient.findOne({ name: new RegExp(`^${client.name.trim()}$`, 'i') });
+    let extraOldHistory = [];
+    if (oldDoc) {
+      const oldRootHistoryEntry = {
+        package: oldDoc.package || 'Old Client',
+        workDetail: oldDoc.workDetail || oldDoc.projectDetail,
+        totalPrice: oldDoc.totalAmount || 0,
+        paidAmount: oldDoc.paidAmount || 0,
+        pendingAmount: Math.max(0, (oldDoc.totalAmount || 0) - (oldDoc.paidAmount || 0)),
+        startDate: oldDoc.startDate,
+        deadline: oldDoc.deliveredDate,
+        tasks: (oldDoc.tasks && oldDoc.tasks.length > 0)
+          ? oldDoc.tasks
+          : parseWorkDetailToTasks(oldDoc.workDetail || oldDoc.projectDetail),
+        extraTasks: oldDoc.extraTasks || [],
+        payments: oldDoc.payments || [],
+        status: 'Completed',
+        completedAt: oldDoc.deliveredDate || new Date()
+      };
+      extraOldHistory = [...(oldDoc.history || []), oldRootHistoryEntry];
+      await OldClient.findByIdAndDelete(oldDoc._id);
+    }
+
+    // Safely construct combined history preserving all past projects without ever losing any
+    const currentHistory = Array.isArray(client.history) ? client.history : [];
+    const combinedHistory = [...extraOldHistory, ...currentHistory, historyEntry];
+
     const updatedClient = await Client.findByIdAndUpdate(
-      req.params.id,
+      clientId,
       {
         package,
         workDetail,
@@ -567,17 +667,18 @@ exports.renewClientPackage = async (req, res) => {
         tasks: generatedTasks,
         extraTasks: [], // Reset extra tasks for the new month
         payments: [], // Clear payments for the new month
-        $push: { history: historyEntry }
+        history: combinedHistory
       },
       { new: true, runValidators: true }
     );
 
     cache.flushByPrefix('clients:');
     cache.flushByPrefix('dashboard:');
+    cache.flushByPrefix('transactions');
 
     res.status(200).json({
       success: true,
-      message: 'Package renewed successfully',
+      message: 'Package renewed successfully and all past projects preserved',
       data: updatedClient
     });
   } catch (error) {

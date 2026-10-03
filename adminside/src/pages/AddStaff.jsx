@@ -13,9 +13,13 @@ import {
   Building2,
   FileText,
   Lock,
-  Hash
+  Hash,
+  ShieldCheck,
+  Check,
+  Sparkles
 } from 'lucide-react';
 import { BASE_URL } from '../api';
+import { AVAILABLE_FEATURES, getDefaultPermissionsForRole } from './StaffDetails';
 
 const PREDEFINED_ROLES = ['Counselor', 'HR', 'Client Support', 'Admin', 'Data Analyst', 'Sales Team'];
 
@@ -37,7 +41,8 @@ const AddStaff = ({ onBack }) => {
     bankName: '',
     documents: [],
     employeeId: '',
-    password: ''
+    password: '',
+    permissions: getDefaultPermissionsForRole('HR', 'Development')
   });
 
   // Auto-generate employee ID and password on component mount or when needed
@@ -343,6 +348,82 @@ const AddStaff = ({ onBack }) => {
                 />
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Feature Permissions (Access Control) */}
+        <div className="glass p-8 rounded-3xl border border-gray-200 dark:border-white/10 space-y-6 transition-colors">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 dark:border-white/5 pb-4">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <ShieldCheck size={20} className="text-indigo-500" /> Feature Access & Permissions
+            </h3>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, permissions: AVAILABLE_FEATURES.map(f => f.id) })}
+                className="px-3 py-1.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 text-xs font-bold transition-all"
+              >
+                Grant All
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, permissions: getDefaultPermissionsForRole(formData.role, formData.department) })}
+                className="px-3 py-1.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-400 border border-purple-500/20 text-xs font-bold transition-all"
+              >
+                Role Defaults
+              </button>
+            </div>
+          </div>
+
+          <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+            Select the specific portal sections and capabilities granted to this employee ID.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            {AVAILABLE_FEATURES.map((feature) => {
+              const isSelected = (formData.permissions || []).includes(feature.id);
+              return (
+                <div
+                  key={feature.id}
+                  onClick={() => {
+                    const current = formData.permissions || [];
+                    const updated = isSelected
+                      ? current.filter(p => p !== feature.id)
+                      : [...current, feature.id];
+                    setFormData({ ...formData, permissions: updated });
+                  }}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer select-none flex items-start gap-3.5 ${
+                    isSelected
+                      ? 'bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border-indigo-500/40 shadow-md shadow-indigo-500/5'
+                      : 'bg-black/5 dark:bg-white/5 border-gray-200 dark:border-white/5 opacity-60 hover:opacity-90'
+                  }`}
+                >
+                  <div
+                    className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5 transition-all ${
+                      isSelected
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'border-2 border-gray-300 dark:border-white/20 bg-white/50 dark:bg-black/30'
+                    }`}
+                  >
+                    {isSelected && <Check size={14} strokeWidth={3} />}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <span className={`text-sm font-black ${isSelected ? 'text-indigo-600 dark:text-indigo-300' : 'text-gray-900 dark:text-white'}`}>
+                        {feature.name}
+                      </span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-black/5 dark:bg-white/10 text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        {feature.category}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 font-medium line-clamp-2">
+                      {feature.description}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 
