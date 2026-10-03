@@ -20,6 +20,24 @@ const templateHtml = fs.readFileSync(templatePath, 'utf-8');
 
 // Function to find all sitemap files in the public directory and extract URLs
 async function discoverRoutes() {
+  // 1. Synchronize latest blog sitemap from backend into public and dist
+  try {
+    let res = await fetch('http://localhost:45000/sitemap-blogs.xml').catch(() => null);
+    if (!res || !res.ok) {
+      res = await fetch('https://rizeworldmain.onrender.com/sitemap-blogs.xml').catch(() => null);
+    }
+    if (res && res.ok) {
+      const liveBlogXml = await res.text();
+      fs.writeFileSync(path.join(publicDir, 'sitemap-blogs.xml'), liveBlogXml, 'utf-8');
+      if (fs.existsSync(distDir)) {
+        fs.writeFileSync(path.join(distDir, 'sitemap-blogs.xml'), liveBlogXml, 'utf-8');
+      }
+      console.log('✓ Successfully synchronized latest blog sitemap from backend');
+    }
+  } catch (err) {
+    console.warn('Note: Using existing local sitemap-blogs.xml:', err.message);
+  }
+
   const routes = new Set();
   const files = fs.readdirSync(publicDir);
   const sitemapFiles = files.filter(f => f.startsWith('sitemap') && f.endsWith('.xml'));
@@ -123,6 +141,8 @@ async function runPrerender() {
         const reqUrl = req.url();
         if (['image', 'stylesheet', 'font', 'media'].includes(req.resourceType())) {
           req.abort();
+        } else if (reqUrl.includes('/api/blogs') || reqUrl.includes('/blogs')) {
+          req.continue();
         } else if (reqUrl.includes(':45000') || reqUrl.includes('/api/')) {
           req.abort();
         } else {

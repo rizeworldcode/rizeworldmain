@@ -144,6 +144,42 @@ function devPrerenderPlugin() {
         // Fallback gracefully
       }
       return html;
+    },
+    configureServer(server: any) {
+      server.middlewares.use(async (req: any, res: any, next: any) => {
+        const cleanUrl = (req.url || '').split('?')[0];
+
+        // Handle sitemap-blogs.xml with live dynamic blogs
+        if (cleanUrl === '/sitemap-blogs.xml') {
+          try {
+            let response = await fetch('http://localhost:45000/sitemap-blogs.xml').catch(() => null);
+            if (!response || !response.ok) {
+              response = await fetch('https://rizeworldmain.onrender.com/sitemap-blogs.xml').catch(() => null);
+            }
+            if (response && response.ok) {
+              let xml = await response.text();
+              const host = req.headers.host || 'localhost:5173';
+              xml = xml.replaceAll('https://rizeworld.in', `http://${host}`);
+              res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+              return res.end(xml);
+            }
+          } catch (e) {}
+        }
+
+        // Handle all sitemap XML files locally with local host URLs
+        if (cleanUrl.startsWith('/sitemap') && cleanUrl.endsWith('.xml')) {
+          const fileName = cleanUrl.replace(/^\//, '');
+          const filePath = path.join(__dirname, 'public', fileName);
+          if (fs.existsSync(filePath)) {
+            let xml = fs.readFileSync(filePath, 'utf-8');
+            const host = req.headers.host || 'localhost:5173';
+            xml = xml.replaceAll('https://rizeworld.in', `http://${host}`);
+            res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+            return res.end(xml);
+          }
+        }
+        next();
+      });
     }
   };
 }

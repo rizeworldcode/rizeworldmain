@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/sitemap-blogs.xml",
+      "destination": "https://rizeworldmain.onrender.com/sitemap-blogs.xml"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

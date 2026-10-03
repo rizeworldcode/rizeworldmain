@@ -8,9 +8,6 @@
   RewriteCond %{HTTPS} off
   RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
 
-  # Dynamic Blog Sitemap (Always up-to-date with backend database)
-  RewriteRule ^sitemap-blogs\.xml$ https://rizeworldmain.onrender.com/sitemap-blogs.xml [R=301,L]
-
   # 301 Redirects from old WordPress URLs (case-insensitive, optional trailing slash)
   RewriteRule ^custom-website-development-services/?$ /services/custom-website-development [R=301,L,NC]
   RewriteRule ^services/graphics-design/?$ /services/graphic-design [R=301,L,NC]
