@@ -53,6 +53,26 @@ const TEAM_MEMBERS = [
     role: "Web developer",
     image: "/team/aman.jpg.jpeg",
   },
+  {
+    name: "Vikas Jangid",
+    role: "Web Developer",
+    image: "/team/vikas.jpeg",
+  },
+  {
+    name: "Akash Saini",
+    role: "Graphic Designer",
+    image: "/team/akash.jpeg",
+  },
+  {
+    name: "Komal Saini",
+    role: "SEO Executive",
+    image: "/team/komal.jpeg",
+  },
+  {
+    name: "Ishika Sachdeva",
+    role: "SEO Executive",
+    image: "/team/ishika.jpeg",
+  },
 ];
 
 const TeamMemberCard = ({ data }: { data: typeof TEAM_MEMBERS[0] }) => (

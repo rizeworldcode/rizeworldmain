@@ -57,6 +57,30 @@ const TEAM_MEMBERS = [
     zoom: "scale-[1.35] group-hover:scale-[1.45]",
     socials: { linkedin: "#", twitter: "#", instagram: "#", facebook: "#" }
   },
+  {
+    name: "Vikas Jangid",
+    role: "Web Developer",
+    image: "/team/vikas.jpeg",
+    socials: { linkedin: "#", twitter: "#", instagram: "#", facebook: "#" }
+  },
+  {
+    name: "Akash Saini",
+    role: "Graphic Designer",
+    image: "/team/akash.jpeg",
+    socials: { linkedin: "#", twitter: "#", instagram: "#", facebook: "#" }
+  },
+  {
+    name: "Komal Saini",
+    role: "SEO Executive",
+    image: "/team/komal.jpeg",
+    socials: { linkedin: "#", twitter: "#", instagram: "#", facebook: "#" }
+  },
+  {
+    name: "Ishika Sachdeva",
+    role: "SEO Executive",
+    image: "/team/ishika.jpeg",
+    socials: { linkedin: "#", twitter: "#", instagram: "#", facebook: "#" }
+  },
 ];
 
 export default function Team() {
