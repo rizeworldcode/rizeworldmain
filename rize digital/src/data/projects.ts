@@ -339,7 +339,10 @@ export const PROJECTS: Project[] = [
     category: "Travel & Tourism",
     image: "/1920X1000/travelia/travel.jpg.jpeg",
     images: [
-      "/1920X1000/travelia/travel.jpg.jpeg"
+      "/1920X1000/travelia/TT 1.jpeg",
+      "/1920X1000/travelia/TT 2.png",
+      "/1920X1000/travelia/TT 3.png",
+      "/1920X1000/travelia/TT 4.png"
     ],
     fallback: "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&q=80&w=800",
     desc: "Premium travel planner and tour booking platform visual identity — crafting seamless travel experiences and visually engaging adventure itineraries."
