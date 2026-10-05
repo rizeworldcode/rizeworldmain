@@ -214,25 +214,6 @@ export default function Services() {
         </div>
       </section>
 
-      {/* Areas we serve summary */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-24 pt-20 border-t border-gray-200">
-        <div className="bg-gray-950 text-white rounded-[2.5rem] p-8 md:p-16 flex flex-col md:flex-row justify-between items-center gap-8 relative overflow-hidden">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(26,86,219,0.12),transparent_50%)] pointer-events-none" />
-          <div className="relative z-10 max-w-xl text-left">
-            <h2 className="text-2xl md:text-4xl font-bold uppercase mb-4">Areas We Serve</h2>
-            <p className="text-gray-400 text-sm leading-relaxed">
-              We deliver digital success across cities like Alwar, Udaipur, Prayagraj, Indore, and Chandigarh. Let us grow your local business presence.
-            </p>
-          </div>
-          <div className="relative z-10 flex flex-wrap gap-3 justify-center md:justify-end">
-            <Link to="/service/digital-marketing-agency-in-alwar" className="px-6 py-3 bg-zinc-800 hover:bg-rize-primary hover:text-white text-xs font-bold rounded-full transition-colors uppercase">Alwar</Link>
-            <Link to="/service/digital-marketing-agency-in-udaipur" className="px-6 py-3 bg-zinc-800 hover:bg-rize-primary hover:text-white text-xs font-bold rounded-full transition-colors uppercase">Udaipur</Link>
-            <Link to="/service/digital-marketing-agency-in-prayagraj" className="px-6 py-3 bg-zinc-800 hover:bg-rize-primary hover:text-white text-xs font-bold rounded-full transition-colors uppercase">Prayagraj</Link>
-            <Link to="/service/digital-marketing-agency-in-indore" className="px-6 py-3 bg-zinc-800 hover:bg-rize-primary hover:text-white text-xs font-bold rounded-full transition-colors uppercase">Indore</Link>
-            <Link to="/service/digital-marketing-agency-in-chandigarh" className="px-6 py-3 bg-zinc-800 hover:bg-rize-primary hover:text-white text-xs font-bold rounded-full transition-colors uppercase">Chandigarh</Link>
-          </div>
-        </div>
-      </section>
     </div>
   );
 }

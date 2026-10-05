@@ -164,7 +164,7 @@ export default function ProjectDetails() {
               <img 
                 src={PROJECT_LOGOS[project.id]} 
                 alt={project.title} 
-                className="h-24 md:h-32 object-contain object-left" 
+                className={`${project.id === 'medi-compares' ? 'h-20 md:h-24' : 'h-24 md:h-32'} object-contain object-left`} 
               />
             ) : (
               <span className={`text-5xl md:text-6xl font-black leading-none uppercase tracking-tighter block ${isDark ? "text-white" : "text-gray-950"}`}>

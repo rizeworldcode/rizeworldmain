@@ -14,7 +14,7 @@ export const LOGOS: LogoItem[] = [
   { src: "/logos/avantika.png", bg: "bg-white" },
   { src: "/logos/daily_prints-removebg-preview.png", bg: "bg-white" },
   { src: "/logos/Easyeyes_logo_-Recovered-__1_-1-1.jpg-removebg-preview (1).png", bg: "bg-white" },
-  { src: "/logos/Transparent_Mono_Logo-removebg-preview.png", bg: "bg-white" },
+  { src: "/logos/Transparent_Mono_Logo-removebg-preview.png", bg: "bg-white", customClass: "max-h-[72%] max-w-[72%]" },
   { src: "/logos/SHIV-NUTRATION-removebg-preview.png", bg: "bg-white" },
   { src: "/logos/aa.jpg-removebg-preview.png", bg: "bg-white" },
   { src: "/logos/logo1/bhavikdairy_14050326_165157844.jpg.jpeg_nobg.png", bg: "bg-blue-50" },
