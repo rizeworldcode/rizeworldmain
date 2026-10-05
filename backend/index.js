@@ -240,17 +240,24 @@ io.on('connection', (socket) => {
 app.set('views', path.join(__dirname, 'src/views'));
 app.set('view engine', 'ejs');
 
-// Connect to database and start server
-connectDB();
+// Connect to database and then start server
+const startServer = async () => {
+  try {
+    await connectDB();
+    
+    // Initialize cron jobs
+    const { initCronJobs } = require('./src/utils/cronJobs');
+    initCronJobs();
 
+    const PORT = process.env.PORT || 45000;
+    server.listen(PORT, () => {
+      console.log(`Server is running on http://localhost:${PORT}`);
+    });
+  } catch (err) {
+    console.error('Failed to start server:', err);
+  }
+};
 
-// Initialize cron jobs
-const { initCronJobs } = require('./src/utils/cronJobs');
-initCronJobs();
-
-
-server.listen(process.env.PORT || 45000, () => {
-  console.log(`Server is running on http://localhost:${process.env.PORT || 45000}`);
-});
+startServer();
 
 module.exports = { app, server };

@@ -7,7 +7,7 @@ import RevenueChart from '../components/dashboard/RevenueChart';
 import RecentClients from '../components/dashboard/RecentClients';
 import StaffList from '../components/dashboard/StaffList';
 import DashboardMap from '../components/dashboard/DashboardMap';
-import { getDashboardStats, getAllStaff, markStaffLeave, prefetchAdminData } from '../api';
+import { getDashboardStats, getAllStaff, markStaffLeave } from '../api';
 import { getAvailableSalaryMonths, getMonthlySalarySummary } from '../utils/salaryCalculator';
 
 const Overview = ({ onViewClient, onViewStaff }) => {
@@ -24,14 +24,31 @@ const Overview = ({ onViewClient, onViewStaff }) => {
       .join(' ');
   };
 
-  const [stats, setStats] = useState({
-    totalRevenue: 0,
-    todayAssignedWork: '0/0',
-    totalProjects: 0,
-    totalPaidSalary: 0
+  const [stats, setStats] = useState(() => {
+    try {
+      const cached = localStorage.getItem('rw_cached_overview_stats');
+      return cached ? JSON.parse(cached) : {
+        totalRevenue: 0,
+        todayAssignedWork: '0/0',
+        totalProjects: 0,
+        totalPaidSalary: 0
+      };
+    } catch {
+      return { totalRevenue: 0, todayAssignedWork: '0/0', totalProjects: 0, totalPaidSalary: 0 };
+    }
   });
-  const [staffList, setStaffList] = useState([]);
-  const [loading, setLoading] = useState(true);
+
+  const [staffList, setStaffList] = useState(() => {
+    try {
+      const cached = localStorage.getItem('rw_cached_overview_staff');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [statsLoading, setStatsLoading] = useState(() => !localStorage.getItem('rw_cached_overview_stats'));
+  const [staffLoading, setStaffLoading] = useState(() => !localStorage.getItem('rw_cached_overview_staff'));
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(null);
@@ -43,26 +60,31 @@ const Overview = ({ onViewClient, onViewStaff }) => {
   const [selectedSalaryMonth, setSelectedSalaryMonth] = useState(currentMonthName);
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        const [statsRes, staffRes] = await Promise.all([
-          getDashboardStats(),
-          getAllStaff(true)
-        ]);
-        if (statsRes.success) {
+    // 1. Fetch dashboard stats with ultra-fast direct resolution
+    getDashboardStats()
+      .then((statsRes) => {
+        if (statsRes && statsRes.success && statsRes.data) {
           setStats(statsRes.data);
+          try {
+            localStorage.setItem('rw_cached_overview_stats', JSON.stringify(statsRes.data));
+          } catch {}
         }
-        if (staffRes.success && Array.isArray(staffRes.data)) {
+      })
+      .catch((error) => console.error('Error fetching dashboard stats:', error))
+      .finally(() => setStatsLoading(false));
+
+    // 2. Fetch staff concurrently without blocking top stats cards
+    getAllStaff(true)
+      .then((staffRes) => {
+        if (staffRes && staffRes.success && Array.isArray(staffRes.data)) {
           setStaffList(staffRes.data);
+          try {
+            localStorage.setItem('rw_cached_overview_staff', JSON.stringify(staffRes.data));
+          } catch {}
         }
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchDashboardData();
-    prefetchAdminData();
+      })
+      .catch((error) => console.error('Error fetching staff list:', error))
+      .finally(() => setStaffLoading(false));
   }, []);
 
   const availableSalaryMonths = useMemo(() => {
@@ -160,7 +182,7 @@ const Overview = ({ onViewClient, onViewStaff }) => {
           }
           icon={IndianRupee}
           gradient="from-blue-600 to-indigo-600"
-          loading={loading}
+          loading={statsLoading}
           onClick={() => navigate('/wallet')}
           headerAction={
             <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/50 shadow-sm">
@@ -179,7 +201,7 @@ const Overview = ({ onViewClient, onViewStaff }) => {
           value={stats.todayAssignedWork || '0/0'} 
           icon={CalendarCheck}
           gradient="from-purple-600 to-pink-600"
-          loading={loading}
+          loading={statsLoading}
           onClick={() => navigate('/today-work')}
         />
         <StatsCard 
@@ -187,7 +209,7 @@ const Overview = ({ onViewClient, onViewStaff }) => {
           value={stats.totalProjects.toLocaleString()} 
           icon={Briefcase}
           gradient="from-emerald-600 to-teal-600"
-          loading={loading}
+          loading={statsLoading}
           onClick={() => navigate('/clients')}
         />
         <StatsCard 
@@ -195,7 +217,7 @@ const Overview = ({ onViewClient, onViewStaff }) => {
           value={`₹${monthlySalarySummary.totalPayable.toLocaleString('en-IN')}`} 
           icon={Wallet}
           gradient="from-orange-500 to-rose-500"
-          loading={loading}
+          loading={staffLoading}
           onClick={() => navigate('/salary-sheet')}
           progress={salaryPaidPercentage}
           headerAction={
@@ -245,7 +267,11 @@ const Overview = ({ onViewClient, onViewStaff }) => {
 
       {/* Staff List Section */}
       <section>
-        <StaffList onViewAll={onViewStaff} />
+        <StaffList 
+          staffMembers={staffList} 
+          loading={staffLoading} 
+          onViewAll={onViewStaff} 
+        />
       </section>
       
       {/* Leave Modal */}

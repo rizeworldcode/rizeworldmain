@@ -352,14 +352,8 @@ export const changeAdminPassword = (data: { currentPassword?: string; newPasswor
     body: JSON.stringify(data),
   });
 
-// Pre-fetch helper for navigation
-export const prefetchAdminData = () => {
-  if (typeof window === 'undefined') return;
-  setTimeout(() => {
-    getAllClients({ limit: 20 }, true).catch(() => {});
-    getAllStaff(true).catch(() => {});
-  }, 1000);
-};
+// Pre-fetch helper disabled per user request (only fetch data for the active page)
+export const prefetchAdminData = () => {};
 
 export default {
   BASE_URL,

@@ -1813,8 +1813,7 @@ const ClientsView = ({ onClientClick, theme, onLock }) => {
   };
 
   useEffect(() => {
-    fetchClients();
-    fetchOldClients();
+    Promise.all([fetchClients(), fetchOldClients()]);
   }, []);
 
   const handleStatusChange = async (clientId, newStatus) => {
@@ -1826,8 +1825,7 @@ const ClientsView = ({ onClientClick, theme, onLock }) => {
     try {
       const result = await updateClient(clientId, { status: newStatus });
       if (result && result.success) {
-        fetchClients();
-        fetchOldClients();
+        Promise.all([fetchClients(), fetchOldClients()]);
       } else {
         console.error('Failed to update status on backend:', result?.message);
         fetchClients();

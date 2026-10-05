@@ -31,21 +31,26 @@ exports.getDashboardStats = async (req, res) => {
 
     // Use Single-Flight Request Coalescing to prevent cache stampedes
     const responseData = await cache.fetchOrCompute(cacheKey, async () => {
-      // Execute all independent database queries in parallel
-      const [totalClients, activeStaff, allTransactions] = await Promise.all([
-        Client.countDocuments(),
-        Staff.find({ isRemoved: { $ne: true } }).select('work').lean(),
-        getUnifiedTransactions()
-      ]);
-
-      const totalProjects = totalClients;
-
-      // Get today's assigned work count across active staff
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
       const todayEnd = new Date(todayStart);
       todayEnd.setDate(todayEnd.getDate() + 1);
 
+      // Execute all independent database queries in parallel
+      const [totalClients, activeStaff, transactionTotals] = await Promise.all([
+        Client.countDocuments(),
+        Staff.find({ isRemoved: { $ne: true } }).select('work').lean(),
+        Transaction.aggregate([
+          {
+            $group: {
+              _id: '$type',
+              total: { $sum: '$amount' }
+            }
+          }
+        ])
+      ]);
+
+      const totalProjects = totalClients;
       const totalStaff = activeStaff.length;
       let staffWithWorkCount = 0;
       activeStaff.forEach(staff => {
@@ -60,18 +65,20 @@ exports.getDashboardStats = async (req, res) => {
 
       const todayAssignedWork = `${staffWithWorkCount}/${totalStaff}`;
 
-      // Calculate income and expenses
-      const totalIncome = allTransactions
-        .filter(t => t.type === 'client_payment' || t.type === 'income' || t.source === 'client_payment')
-        .reduce((sum, t) => sum + t.amount, 0);
+      let totalIncome = 0;
+      let totalExpense = 0;
+      let totalPaidSalary = 0;
 
-      const totalExpense = allTransactions
-        .filter(t => t.type === 'salary' || t.type === 'other_expenses' || t.source === 'salary' || t.source === 'other_expenses')
-        .reduce((sum, t) => sum + t.amount, 0);
-
-      const totalPaidSalary = allTransactions
-        .filter(t => t.type === 'salary' || t.source === 'salary')
-        .reduce((sum, t) => sum + t.amount, 0);
+      transactionTotals.forEach(item => {
+        if (item._id === 'client_payment' || item._id === 'income') {
+          totalIncome += item.total;
+        } else if (item._id === 'salary') {
+          totalExpense += item.total;
+          totalPaidSalary += item.total;
+        } else if (item._id === 'other_expenses') {
+          totalExpense += item.total;
+        }
+      });
 
       const totalRevenue = totalIncome - totalExpense;
 

@@ -43,8 +43,15 @@ const calculateClientProgress = (client) => {
 };
 
 const RecentClients = ({ onClientClick }) => {
-  const [clients, setClients] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [clients, setClients] = useState(() => {
+    try {
+      const cached = localStorage.getItem('rw_cached_recent_clients');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [loading, setLoading] = useState(() => !localStorage.getItem('rw_cached_recent_clients'));
 
   const fetchClients = async () => {
     try {
@@ -54,6 +61,9 @@ const RecentClients = ({ onClientClick }) => {
           new Date(b.createdAt || b._id).getTime() - new Date(a.createdAt || a._id).getTime()
         ).slice(0, 5);
         setClients(sorted);
+        try {
+          localStorage.setItem('rw_cached_recent_clients', JSON.stringify(sorted));
+        } catch {}
       }
     } catch (error) {
       console.error('Error fetching clients:', error);
