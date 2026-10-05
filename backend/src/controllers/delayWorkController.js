@@ -72,6 +72,7 @@ exports.getDelayWorkByStaff = async (req, res) => {
     const delayWork = await DelayWork.find({ staffId: req.params.staffId })
       .populate('clientId', 'name email phone')
       .populate('staffId', 'name email')
+      .sort({ createdAt: -1 })
       .lean();
     res.status(200).json({ success: true, count: delayWork.length, data: delayWork });
   } catch (error) {
@@ -85,6 +86,7 @@ exports.getDelayWorkByClient = async (req, res) => {
     const delayWork = await DelayWork.find({ clientId: req.params.clientId })
       .populate('clientId', 'name email phone')
       .populate('staffId', 'name email')
+      .sort({ createdAt: -1 })
       .lean();
     res.status(200).json({ success: true, count: delayWork.length, data: delayWork });
   } catch (error) {

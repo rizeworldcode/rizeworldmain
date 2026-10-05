@@ -163,7 +163,10 @@ exports.getLocationHistory = async (req, res) => {
       };
     }
 
-    const history = await EmployeeLocationHistory.find(filter).sort({ timestamp: 1 }).lean();
+    const history = await EmployeeLocationHistory.find(filter)
+      .select('employeeId employeeName latitude longitude accuracy speed heading timestamp photoUrl')
+      .sort({ timestamp: 1 })
+      .lean();
     res.status(200).json({ success: true, data: history });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

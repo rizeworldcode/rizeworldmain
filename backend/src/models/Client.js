@@ -102,5 +102,8 @@ clientSchema.index({ department: 1 });
 clientSchema.index({ status: 1 });
 clientSchema.index({ createdAt: -1 });
 clientSchema.index({ phone: 1 });
+clientSchema.index({ deadline: 1, status: 1 });
+clientSchema.index({ 'payments.utr': 1 });
+clientSchema.index({ 'payments.date': -1 });
 
 module.exports = mongoose.model('Client', clientSchema);

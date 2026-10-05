@@ -55,10 +55,16 @@ const oldClientSchema = new mongoose.Schema({
     month: { type: String },
     periodFrom: { type: Date },
     periodTo: { type: Date },
-    projectPeriod: { type: String }
   }]
 }, {
   timestamps: true
 });
+
+oldClientSchema.index({ email: 1 });
+oldClientSchema.index({ phone: 1 });
+oldClientSchema.index({ department: 1, deliveredDate: -1 });
+oldClientSchema.index({ deliveredDate: -1 });
+oldClientSchema.index({ createdAt: -1 });
+oldClientSchema.index({ 'payments.utr': 1 });
 
 module.exports = mongoose.model('OldClient', oldClientSchema);

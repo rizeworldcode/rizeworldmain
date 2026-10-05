@@ -30,7 +30,8 @@ import {
   Download,
   ChevronDown,
   Edit3,
-  User
+  User,
+  Link2
 } from 'lucide-react';
 import { BASE_URL, clearApiCache } from '../api';
 import PasswordGate from '../components/auth/PasswordGate';
@@ -2048,6 +2049,17 @@ const ClientProjectsView = ({ onBack, onLock }) => {
   const [delayWorkEndDate, setDelayWorkEndDate] = useState('');
   const [isEditClientOpen, setIsEditClientOpen] = useState(false);
   const [isEditProjectOpen, setIsEditProjectOpen] = useState(false);
+  const [taskMetrics, setTaskMetrics] = useState({});
+
+  const handleMetricChange = (index, key, value) => {
+    setTaskMetrics(prev => ({
+      ...prev,
+      [index]: {
+        ...prev[index],
+        [key]: value
+      }
+    }));
+  };
 
   const getRequestHeaders = () => {
     const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
@@ -2124,6 +2136,7 @@ const ClientProjectsView = ({ onBack, onLock }) => {
       projectToUpdate.tasks = parseWorkDetailToTasks(projectToUpdate.workDetail);
     }
     setTempProjectData(projectToUpdate);
+    setTaskMetrics({});
     setIsUpdateProgressOpen(true);
   };
 
@@ -2143,25 +2156,74 @@ const ClientProjectsView = ({ onBack, onLock }) => {
   const handleProgressSubmit = async () => {
     try {
       const id = tempProjectData._id || tempProjectData.id;
+
+      // Construct metrics payload for SMM/Shoot tasks
+      const metricsPayload = [];
+      const globalMetrics = taskMetrics['global'] || {};
+      if (globalMetrics.reach || globalMetrics.views) {
+        metricsPayload.push({
+          type: 'reel',
+          publishedLink: '',
+          totalAccountReach: globalMetrics.reach ? globalMetrics.reach.toString().trim() : '0',
+          totalAccountViews: globalMetrics.views ? globalMetrics.views.toString().trim() : '0',
+          count: 1
+        });
+      }
+
+      Object.keys(taskMetrics).forEach(indexStr => {
+        if (indexStr === 'global') return;
+        const index = parseInt(indexStr);
+        const task = tempProjectData.tasks?.[index];
+        if (!task) return;
+        const originalProject = projects.find(p => (p._id || p.id) === id);
+        const originalTask = originalProject?.tasks?.[index];
+        const diff = (task.completed || 0) - (originalTask?.completed || 0);
+
+        const metrics = taskMetrics[index];
+        const isReel = task.name?.toLowerCase().includes('reel');
+        const isPost = task.name?.toLowerCase().includes('post');
+        const isShoot = task.name?.toLowerCase().includes('shoot');
+
+        if ((isReel || isPost) && metrics?.publishedLink?.trim()) {
+          metricsPayload.push({
+            type: isReel ? 'reel' : 'post',
+            publishedLink: metrics.publishedLink.trim(),
+            totalAccountReach: '0',
+            totalAccountViews: '0',
+            count: diff > 0 ? diff : 1
+          });
+        } else if (isShoot && diff > 0) {
+          metricsPayload.push({
+            type: 'shoot',
+            count: diff
+          });
+        }
+      });
+
       const response = await fetch(getApiUrl(`/clients/${id}/tasks`), {
         method: 'PUT',
         headers: getRequestHeaders(),
         credentials: 'include',
         body: JSON.stringify({
           tasks: tempProjectData.tasks,
-          extraTasks: tempProjectData.extraTasks
+          extraTasks: tempProjectData.extraTasks,
+          metrics: metricsPayload
         })
       });
       const result = await response.json();
       if (result.success) {
         setProjects(prevProjects => prevProjects.map(p =>
-          (p._id || p.id) === (tempProjectData._id || tempProjectData.id) ? result.data : p
+          (p._id || p.id) === id ? result.data : p
         ));
         setIsUpdateProgressOpen(false);
         setTempProjectData(null);
+        setTaskMetrics({});
+      } else {
+        alert(result.message || 'Failed to update progress');
       }
     } catch (error) {
       console.error('Error updating progress:', error);
+      alert('Failed to update progress');
     }
   };
 
@@ -2653,30 +2715,98 @@ const ClientProjectsView = ({ onBack, onLock }) => {
                   <CheckCircle2 size={16} className="text-blue-500" /> Primary Tasks
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {tempProjectData.tasks?.map((task, index) => (
-                    <div key={index} className="p-4 rounded-2xl bg-gray-50 dark:bg-white/[0.02] border border-gray-200 dark:border-white/10">
-                      <p className="text-sm font-bold text-gray-900 dark:text-white mb-2">{task.name}</p>
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={() => handleTempTaskUpdate(index, -1)}
-                          disabled={task.completed <= 0}
-                          className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold hover:bg-blue-200 dark:hover:bg-blue-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <Minus size={16} />
-                        </button>
-                        <span className="text-lg font-black text-gray-900 dark:text-white flex-1 text-center">{task.completed} / {task.total}</span>
-                        <button
-                          onClick={() => handleTempTaskUpdate(index, 1)}
-                          disabled={task.completed >= task.total}
-                          className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <Plus size={16} />
-                        </button>
+                  {tempProjectData.tasks?.map((task, index) => {
+                    const isReel = task.name?.toLowerCase().includes('reel');
+                    const isPost = task.name?.toLowerCase().includes('post');
+                    const isSmm = isReel || isPost;
+
+                    return (
+                      <div key={index} className="p-4 rounded-2xl bg-gray-50 dark:bg-white/[0.02] border border-gray-200 dark:border-white/10 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <p className="text-sm font-bold text-gray-900 dark:text-white">{task.name}</p>
+                            {isReel && (
+                              <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400">Reel</span>
+                            )}
+                            {isPost && (
+                              <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">Post</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <button
+                              type="button"
+                              onClick={() => handleTempTaskUpdate(index, -1)}
+                              disabled={task.completed <= 0}
+                              className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold hover:bg-blue-200 dark:hover:bg-blue-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <Minus size={16} />
+                            </button>
+                            <span className="text-lg font-black text-gray-900 dark:text-white flex-1 text-center">{task.completed} / {task.total}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleTempTaskUpdate(index, 1)}
+                              disabled={task.completed >= task.total}
+                              className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <Plus size={16} />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Published Link Input for Reel / Post */}
+                        {isSmm && (
+                          <div className="mt-4 pt-3 border-t border-dashed border-gray-200 dark:border-white/10">
+                            <label className="text-[10px] font-black text-gray-700 dark:text-gray-300 uppercase tracking-wide block mb-1.5 flex items-center gap-1.5">
+                              <Link2 size={12} className="text-blue-500" />
+                              {isReel ? 'Reel Link (Published)' : 'Post Link (Published)'}
+                            </label>
+                            <input 
+                              type="url" 
+                              className="w-full p-2.5 bg-white dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-xl text-xs font-semibold text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                              placeholder={isReel ? "https://instagram.com/reel/..." : "https://instagram.com/p/..."}
+                              value={taskMetrics[index]?.publishedLink || ''}
+                              onChange={(e) => handleMetricChange(index, 'publishedLink', e.target.value)}
+                            />
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
+
+              {/* Account Reach & Views Metrics (Optional) */}
+              {tempProjectData.tasks?.some((task) => 
+                task.name?.toLowerCase().includes('reel') || task.name?.toLowerCase().includes('post')
+              ) && (
+                <div className="space-y-3 mb-8 p-5 rounded-2xl bg-gray-50 dark:bg-white/[0.02] border border-gray-200 dark:border-white/10">
+                  <h4 className="text-xs font-black text-gray-800 dark:text-gray-200 uppercase tracking-widest flex items-center gap-2">
+                    <TrendingUp size={15} className="text-blue-500" /> Account Reach & Views Metrics (Optional)
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wide block mb-1">Account Reach</label>
+                      <input 
+                        type="text" 
+                        className="w-full p-2.5 bg-white dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-xl text-xs font-semibold text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                        placeholder="e.g. 10k, 1.5M, 500"
+                        value={taskMetrics['global']?.reach || ''}
+                        onChange={(e) => handleMetricChange('global', 'reach', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wide block mb-1">Account Views</label>
+                      <input 
+                        type="text" 
+                        className="w-full p-2.5 bg-white dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-xl text-xs font-semibold text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                        placeholder="e.g. 25k, 2M, 1000"
+                        value={taskMetrics['global']?.views || ''}
+                        onChange={(e) => handleMetricChange('global', 'views', e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Extra Tasks */}
               {tempProjectData.extraTasks && tempProjectData.extraTasks.length > 0 && (

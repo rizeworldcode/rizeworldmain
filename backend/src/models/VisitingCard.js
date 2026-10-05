@@ -40,4 +40,7 @@ const visitingCardSchema = new mongoose.Schema({
   }
 });
 
+visitingCardSchema.index({ employeeId: 1, timestamp: -1 });
+visitingCardSchema.index({ timestamp: -1 });
+
 module.exports = mongoose.model('VisitingCard', visitingCardSchema);
