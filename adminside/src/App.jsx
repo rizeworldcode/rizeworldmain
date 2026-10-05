@@ -1,24 +1,31 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, lazy, Suspense } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Routes, Route, Navigate, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
-import Overview from './pages/Overview';
-import Clients from './pages/Clients';
-import ClientProjects from './pages/ClientProjects';
-import StaffDetails from './pages/StaffDetails';
-import RemovedEmployees from './pages/RemovedEmployees';
-import TodayAssignedWork from './pages/TodayAssignedWork';
-import AddStaff from './pages/AddStaff';
-import WalletPage from './pages/Wallet';
-import AdminLogin from './pages/AdminLogin';
-import SalesTracking from './pages/SalesTracking';
-import SalesPhotos from './pages/SalesPhotos';
-import VisitingCards from './pages/VisitingCards';
-import SalarySheet from './pages/SalarySheet';
-import AdminUsers from './pages/AdminUsers';
 import { adminLogout } from './api';
 import { ShieldAlert } from 'lucide-react';
+
+const Overview = lazy(() => import('./pages/Overview'));
+const Clients = lazy(() => import('./pages/Clients'));
+const ClientProjects = lazy(() => import('./pages/ClientProjects'));
+const StaffDetails = lazy(() => import('./pages/StaffDetails'));
+const RemovedEmployees = lazy(() => import('./pages/RemovedEmployees'));
+const TodayAssignedWork = lazy(() => import('./pages/TodayAssignedWork'));
+const AddStaff = lazy(() => import('./pages/AddStaff'));
+const WalletPage = lazy(() => import('./pages/Wallet'));
+const AdminLogin = lazy(() => import('./pages/AdminLogin'));
+const SalesTracking = lazy(() => import('./pages/SalesTracking'));
+const SalesPhotos = lazy(() => import('./pages/SalesPhotos'));
+const VisitingCards = lazy(() => import('./pages/VisitingCards'));
+const SalarySheet = lazy(() => import('./pages/SalarySheet'));
+const AdminUsers = lazy(() => import('./pages/AdminUsers'));
+
+const PageLoader = () => (
+  <div className="flex items-center justify-center min-h-[50vh]">
+    <div className="w-8 h-8 border-3 border-blue-500 border-t-transparent rounded-full animate-spin" />
+  </div>
+);
 
 const AccessDenied = ({ onGoToAllowed }) => (
   <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8">
@@ -215,134 +222,136 @@ function App() {
             <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-10">
               <div className="max-w-[1600px] mx-auto">
                 <AnimatePresence mode="wait">
-                  <Routes location={location} key={location.pathname}>
-                    <Route path="/" element={
-                      hasAccess('dashboard') ? (
-                        <Overview
-                          onViewClient={(client) => navigate(`/clients/${client._id || client.id}`)}
-                          onViewStaff={() => navigate('/staff')}
-                        />
-                      ) : (
-                        <AccessDenied onGoToAllowed={() => navigate(firstAllowedRoute)} />
-                      )
-                    } />
+                  <Suspense fallback={<PageLoader />}>
+                    <Routes location={location} key={location.pathname}>
+                      <Route path="/" element={
+                        hasAccess('dashboard') ? (
+                          <Overview
+                            onViewClient={(client) => navigate(`/clients/${client._id || client.id}`)}
+                            onViewStaff={() => navigate('/staff')}
+                          />
+                        ) : (
+                          <AccessDenied onGoToAllowed={() => navigate(firstAllowedRoute)} />
+                        )
+                      } />
 
-                    <Route path="/today-work" element={
-                      hasAccess('todayWork') ? (
-                        <TodayAssignedWork initialSearch={searchParams.get('search') || ''} />
-                      ) : (
-                        <AccessDenied onGoToAllowed={() => navigate(firstAllowedRoute)} />
-                      )
-                    } />
+                      <Route path="/today-work" element={
+                        hasAccess('todayWork') ? (
+                          <TodayAssignedWork initialSearch={searchParams.get('search') || ''} />
+                        ) : (
+                          <AccessDenied onGoToAllowed={() => navigate(firstAllowedRoute)} />
+                        )
+                      } />
 
-                    <Route path="/staff" element={
-                      hasAccess('staffDetail') ? (
-                        <StaffDetails
-                          onAddStaff={() => navigate('/staff/add')}
-                          onViewTasks={(name) => navigate(`/today-work?search=${encodeURIComponent(name)}`)}
-                        />
-                      ) : (
-                        <AccessDenied onGoToAllowed={() => navigate(firstAllowedRoute)} />
-                      )
-                    } />
+                      <Route path="/staff" element={
+                        hasAccess('staffDetail') ? (
+                          <StaffDetails
+                            onAddStaff={() => navigate('/staff/add')}
+                            onViewTasks={(name) => navigate(`/today-work?search=${encodeURIComponent(name)}`)}
+                          />
+                        ) : (
+                          <AccessDenied onGoToAllowed={() => navigate(firstAllowedRoute)} />
+                        )
+                      } />
 
-                    <Route path="/staff/add" element={
-                      hasAccess('addStaff') ? (
-                        <AddStaff onBack={() => navigate('/staff')} />
-                      ) : (
-                        <AccessDenied onGoToAllowed={() => navigate(firstAllowedRoute)} />
-                      )
-                    } />
+                      <Route path="/staff/add" element={
+                        hasAccess('addStaff') ? (
+                          <AddStaff onBack={() => navigate('/staff')} />
+                        ) : (
+                          <AccessDenied onGoToAllowed={() => navigate(firstAllowedRoute)} />
+                        )
+                      } />
 
-                    <Route path="/staff/removed" element={
-                      hasAccess('removedEmployees') ? (
-                        <RemovedEmployees />
-                      ) : (
-                        <AccessDenied onGoToAllowed={() => navigate(firstAllowedRoute)} />
-                      )
-                    } />
+                      <Route path="/staff/removed" element={
+                        hasAccess('removedEmployees') ? (
+                          <RemovedEmployees />
+                        ) : (
+                          <AccessDenied onGoToAllowed={() => navigate(firstAllowedRoute)} />
+                        )
+                      } />
 
-                    <Route path="/clients" element={
-                      hasAccess('clients') ? (
-                        <Clients onClientClick={(client) => navigate(`/clients/${client._id || client.id}`)} theme={theme} />
-                      ) : (
-                        <AccessDenied onGoToAllowed={() => navigate(firstAllowedRoute)} />
-                      )
-                    } />
+                      <Route path="/clients" element={
+                        hasAccess('clients') ? (
+                          <Clients onClientClick={(client) => navigate(`/clients/${client._id || client.id}`)} theme={theme} />
+                        ) : (
+                          <AccessDenied onGoToAllowed={() => navigate(firstAllowedRoute)} />
+                        )
+                      } />
 
-                    <Route path="/clients/:id" element={
-                      hasAccess('clients') ? (
-                        <ClientProjects onBack={() => navigate('/clients')} />
-                      ) : (
-                        <AccessDenied onGoToAllowed={() => navigate(firstAllowedRoute)} />
-                      )
-                    } />
+                      <Route path="/clients/:id" element={
+                        hasAccess('clients') ? (
+                          <ClientProjects onBack={() => navigate('/clients')} />
+                        ) : (
+                          <AccessDenied onGoToAllowed={() => navigate(firstAllowedRoute)} />
+                        )
+                      } />
 
-                    <Route path="/wallet" element={
-                      hasAccess('wallet') ? (
-                        <WalletPage />
-                      ) : (
-                        <AccessDenied onGoToAllowed={() => navigate(firstAllowedRoute)} />
-                      )
-                    } />
+                      <Route path="/wallet" element={
+                        hasAccess('wallet') ? (
+                          <WalletPage />
+                        ) : (
+                          <AccessDenied onGoToAllowed={() => navigate(firstAllowedRoute)} />
+                        )
+                      } />
 
-                    <Route path="/tracking" element={
-                      hasAccess('salesTracking') ? (
-                        <SalesTracking />
-                      ) : (
-                        <AccessDenied onGoToAllowed={() => navigate(firstAllowedRoute)} />
-                      )
-                    } />
+                      <Route path="/tracking" element={
+                        hasAccess('salesTracking') ? (
+                          <SalesTracking />
+                        ) : (
+                          <AccessDenied onGoToAllowed={() => navigate(firstAllowedRoute)} />
+                        )
+                      } />
 
-                    <Route path="/tracking/photos" element={
-                      hasAccess('salesPhotos') ? (
-                        <SalesPhotos />
-                      ) : (
-                        <AccessDenied onGoToAllowed={() => navigate(firstAllowedRoute)} />
-                      )
-                    } />
+                      <Route path="/tracking/photos" element={
+                        hasAccess('salesPhotos') ? (
+                          <SalesPhotos />
+                        ) : (
+                          <AccessDenied onGoToAllowed={() => navigate(firstAllowedRoute)} />
+                        )
+                      } />
 
-                    <Route path="/tracking/cards" element={
-                      hasAccess('visitingCards') ? (
-                        <VisitingCards />
-                      ) : (
-                        <AccessDenied onGoToAllowed={() => navigate(firstAllowedRoute)} />
-                      )
-                    } />
+                      <Route path="/tracking/cards" element={
+                        hasAccess('visitingCards') ? (
+                          <VisitingCards />
+                        ) : (
+                          <AccessDenied onGoToAllowed={() => navigate(firstAllowedRoute)} />
+                        )
+                      } />
 
-                    <Route path="/salary-sheet" element={
-                      hasAccess('salarySheet') ? (
-                        <SalarySheet />
-                      ) : (
-                        <AccessDenied onGoToAllowed={() => navigate(firstAllowedRoute)} />
-                      )
-                    } />
+                      <Route path="/salary-sheet" element={
+                        hasAccess('salarySheet') ? (
+                          <SalarySheet />
+                        ) : (
+                          <AccessDenied onGoToAllowed={() => navigate(firstAllowedRoute)} />
+                        )
+                      } />
 
-                    <Route path="/admin-users" element={
-                      hasAccess('adminUsers') ? (
-                        <AdminUsers />
-                      ) : (
-                        <AccessDenied onGoToAllowed={() => navigate(firstAllowedRoute)} />
-                      )
-                    } />
+                      <Route path="/admin-users" element={
+                        hasAccess('adminUsers') ? (
+                          <AdminUsers />
+                        ) : (
+                          <AccessDenied onGoToAllowed={() => navigate(firstAllowedRoute)} />
+                        )
+                      } />
 
-                    <Route path="/settings" element={
-                      <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="flex items-center justify-center h-[60vh]"
-                      >
-                        <div className="text-center">
-                          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                            Settings Section
-                          </h2>
-                          <p className="text-gray-500">Coming soon in the next update.</p>
-                        </div>
-                      </motion.div>
-                    } />
+                      <Route path="/settings" element={
+                        <motion.div
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          className="flex items-center justify-center h-[60vh]"
+                        >
+                          <div className="text-center">
+                            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                              Settings Section
+                            </h2>
+                            <p className="text-gray-500">Coming soon in the next update.</p>
+                          </div>
+                        </motion.div>
+                      } />
 
-                    <Route path="*" element={<Navigate to="/" replace />} />
-                  </Routes>
+                      <Route path="*" element={<Navigate to="/" replace />} />
+                    </Routes>
+                  </Suspense>
                 </AnimatePresence>
               </div>
             </main>

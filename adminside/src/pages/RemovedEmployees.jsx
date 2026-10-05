@@ -18,7 +18,7 @@ import {
   Landmark,
   Calculator
 } from 'lucide-react';
-import { BASE_URL } from '../api';
+import { BASE_URL, getRemovedStaff, rejoinStaff } from '../api';
 
 const REMOVED_STAFF_API = `${BASE_URL}/staff/removed`;
 const CALCULATION_START_DATE = new Date('2026-07-01T00:00:00.000Z');
@@ -33,31 +33,20 @@ const parseTotalHours = (str) => {
 };
 
 const get30DaySequenceDates = (year, monthIndex, createdAt = null) => {
+  const monthOffset = (year - 2026) * 12 + (monthIndex - 6);
+  if (monthOffset < 0) return [];
+
+  const cycleStart = new Date(CALCULATION_START_DATE);
+  cycleStart.setDate(cycleStart.getDate() + monthOffset * 30);
+
   const dates = [];
-  const prevMonthLastDay = new Date(year, monthIndex, 0);
-  const prevMonthDays = prevMonthLastDay.getDate();
-  
-  if (prevMonthDays === 31) {
-    const prevYear = prevMonthLastDay.getFullYear();
-    const prevMonth = prevMonthLastDay.getMonth();
-    dates.push(new Date(prevYear, prevMonth, 31));
-    for (let d = 1; d <= 29; d++) {
-      dates.push(new Date(year, monthIndex, d));
-    }
-  } else {
-    const currentMonthLastDay = new Date(year, monthIndex + 1, 0).getDate();
-    const endDay = Math.min(30, currentMonthLastDay);
-    for (let d = 1; d <= endDay; d++) {
-      dates.push(new Date(year, monthIndex, d));
-    }
+  for (let i = 0; i < 30; i++) {
+    const d = new Date(cycleStart);
+    d.setDate(d.getDate() + i);
+    dates.push(d);
   }
 
-  let filtered = dates.filter(d => {
-    const copy = new Date(d);
-    copy.setHours(0, 0, 0, 0);
-    return copy >= CALCULATION_START_DATE;
-  });
-
+  let filtered = dates;
   if (createdAt) {
     const created = new Date(createdAt);
     created.setHours(0, 0, 0, 0);
@@ -257,9 +246,16 @@ const calculatePayoutForSelectedMonth = (staffInfo, monthStr) => {
 };
 
 const RemovedEmployees = () => {
-  const [removedStaff, setRemovedStaff] = useState([]);
+  const [removedStaff, setRemovedStaff] = useState(() => {
+    try {
+      const cached = localStorage.getItem('rw_cached_removed_staff');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
   const [searchTerm, setSearchTerm] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !localStorage.getItem('rw_cached_removed_staff'));
 
   // Rejoin modal state
   const [isRejoinModalOpen, setIsRejoinModalOpen] = useState(false);
@@ -293,14 +289,12 @@ const RemovedEmployees = () => {
 
   const fetchRemovedStaff = useCallback(async () => {
     try {
-      const token = localStorage.getItem('adminToken');
-      const response = await fetch(REMOVED_STAFF_API, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
-      });
-      const result = await response.json();
-
-      if (result.success) {
-        setRemovedStaff(result.data || []);
+      const result = await getRemovedStaff(true);
+      if (result && result.success && Array.isArray(result.data)) {
+        setRemovedStaff(result.data);
+        try {
+          localStorage.setItem('rw_cached_removed_staff', JSON.stringify(result.data));
+        } catch {}
       }
     } catch (error) {
       console.error('Error fetching removed staff:', error);

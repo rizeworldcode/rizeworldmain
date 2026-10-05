@@ -112,34 +112,21 @@ const CALCULATION_START_DATE = new Date(2026, 6, 1); // July 1, 2026
 //   Cycle dates: Day 31 of prev month + Days 1..29 of current month = 30 days total.
 // - If the previous month did not have 31 days (Feb, Apr, Jun, Sep, Nov), cycle dates are Days 1..30 of current month (or up to last day if Feb).
 // - Day 31 of current month (if current month has 31 days) rolls over to next month's cycle.
-// - Records/dates before July 1, 2026 are not used for calculations.
 const get30DaySequenceDates = (year, monthIndex, createdAt = null) => {
+  const monthOffset = (year - 2026) * 12 + (monthIndex - 6);
+  if (monthOffset < 0) return [];
+
+  const cycleStart = new Date(CALCULATION_START_DATE);
+  cycleStart.setDate(cycleStart.getDate() + monthOffset * 30);
+
   const dates = [];
-  const prevMonthLastDay = new Date(year, monthIndex, 0);
-  const prevMonthDays = prevMonthLastDay.getDate();
-  
-  if (prevMonthDays === 31) {
-    const prevYear = prevMonthLastDay.getFullYear();
-    const prevMonth = prevMonthLastDay.getMonth();
-    dates.push(new Date(prevYear, prevMonth, 31));
-    for (let d = 1; d <= 29; d++) {
-      dates.push(new Date(year, monthIndex, d));
-    }
-  } else {
-    const currentMonthLastDay = new Date(year, monthIndex + 1, 0).getDate();
-    const endDay = Math.min(30, currentMonthLastDay);
-    for (let d = 1; d <= endDay; d++) {
-      dates.push(new Date(year, monthIndex, d));
-    }
+  for (let i = 0; i < 30; i++) {
+    const d = new Date(cycleStart);
+    d.setDate(d.getDate() + i);
+    dates.push(d);
   }
 
-  // Filter out any date before 1 July 2026
-  let filtered = dates.filter(d => {
-    const copy = new Date(d);
-    copy.setHours(0, 0, 0, 0);
-    return copy >= CALCULATION_START_DATE;
-  });
-
+  let filtered = dates;
   if (createdAt) {
     const created = new Date(createdAt);
     created.setHours(0, 0, 0, 0);
@@ -978,16 +965,14 @@ const StaffPerformance = ({ staffId, onBack }) => {
       if (!dateInput) return;
       const d = new Date(dateInput);
       if (isNaN(d.getTime())) return;
-      const check = new Date(d);
-      check.setHours(0, 0, 0, 0);
-      if (check < CALCULATION_START_DATE) return;
-
-      if (d.getDate() === 31) {
-        const nextMonth = new Date(d.getFullYear(), d.getMonth() + 1, 1);
-        months.add(nextMonth.toLocaleString('default', { month: 'long', year: 'numeric' }));
-      } else {
-        months.add(d.toLocaleString('default', { month: 'long', year: 'numeric' }));
-      }
+      d.setHours(0, 0, 0, 0);
+      const start = new Date(CALCULATION_START_DATE);
+      start.setHours(0, 0, 0, 0);
+      const diffDays = Math.round((d.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+      if (diffDays < 0) return;
+      const monthOffset = Math.floor(diffDays / 30);
+      const targetDate = new Date(2026, 6 + monthOffset, 1);
+      months.add(targetDate.toLocaleString('default', { month: 'long', year: 'numeric' }));
     };
 
     (staff.clock || []).forEach(r => addDateMonth(r.date));

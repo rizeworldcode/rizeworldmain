@@ -132,6 +132,14 @@ export const updateStaffAccess = (id: string, accessData: { permissions?: string
     body: JSON.stringify(accessData),
   });
 };
+export const getRemovedStaff = (useCache: boolean = true) => apiRequest('/staff/removed', {}, useCache);
+export const rejoinStaff = (id: string, rejoinData: any) => {
+  clearApiCache('staff');
+  return apiRequest(`/staff/rejoin/${id}`, {
+    method: 'POST',
+    body: JSON.stringify(rejoinData),
+  });
+};
 
 // Clients Endpoints
 export const getAllClients = (params?: { limit?: number; search?: string; select?: string }, useCache: boolean = true) => {

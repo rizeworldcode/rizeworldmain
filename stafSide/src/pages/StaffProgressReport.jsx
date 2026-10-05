@@ -45,31 +45,20 @@ const parseTotalHours = (totalHoursStr) => {
 };
 
 const get30DaySequenceDates = (year, monthIndex, createdAt = null) => {
-  const dates = [];
-  const prevMonthLastDay = new Date(year, monthIndex, 0);
-  const prevMonthDays = prevMonthLastDay.getDate();
+  const monthOffset = (year - 2026) * 12 + (monthIndex - 6);
+  if (monthOffset < 0) return [];
 
-  if (prevMonthDays === 31) {
-    const prevYear = prevMonthLastDay.getFullYear();
-    const prevMonth = prevMonthLastDay.getMonth();
-    dates.push(new Date(prevYear, prevMonth, 31));
-    for (let d = 1; d <= 29; d++) {
-      dates.push(new Date(year, monthIndex, d));
-    }
-  } else {
-    const currentMonthLastDay = new Date(year, monthIndex + 1, 0).getDate();
-    const endDay = Math.min(30, currentMonthLastDay);
-    for (let d = 1; d <= endDay; d++) {
-      dates.push(new Date(year, monthIndex, d));
-    }
+  const cycleStart = new Date(CALCULATION_START_DATE);
+  cycleStart.setDate(cycleStart.getDate() + monthOffset * 30);
+
+  const dates = [];
+  for (let i = 0; i < 30; i++) {
+    const d = new Date(cycleStart);
+    d.setDate(d.getDate() + i);
+    dates.push(d);
   }
 
-  let filtered = dates.filter(d => {
-    const copy = new Date(d);
-    copy.setHours(0, 0, 0, 0);
-    return copy >= CALCULATION_START_DATE;
-  });
-
+  let filtered = dates;
   if (createdAt) {
     const created = new Date(createdAt);
     created.setHours(0, 0, 0, 0);
