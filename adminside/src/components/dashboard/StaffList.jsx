@@ -16,9 +16,20 @@ const item = {
   show: { opacity: 1, y: 0 }
 };
 
-const StaffList = ({ onViewAll }) => {
-  const [staffMembers, setStaffMembers] = useState([]);
-  const [loading, setLoading] = useState(true);
+const StaffList = ({ onViewAll, staffMembers: externalStaff, loading: externalLoading }) => {
+  const [internalStaff, setInternalStaff] = useState(() => {
+    try {
+      const cached = localStorage.getItem('rw_cached_overview_staff');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [internalLoading, setInternalLoading] = useState(() => !localStorage.getItem('rw_cached_overview_staff'));
+  
+  const staffMembers = externalStaff !== undefined ? externalStaff : internalStaff;
+  const loading = externalLoading !== undefined ? externalLoading : internalLoading;
+
   const [isClockingOutAll, setIsClockingOutAll] = useState(false);
   const [activeMenu, setActiveMenu] = useState(null);
   const menuRef = useRef(null);
@@ -47,21 +58,29 @@ const StaffList = ({ onViewAll }) => {
   };
 
   const fetchStaff = async () => {
+    if (externalStaff !== undefined) return; // Skip if parent provided staff list
     try {
       const result = await getAllStaff();
-      if (result && result.success) {
-        setStaffMembers(result.data);
+      if (result && result.success && Array.isArray(result.data)) {
+        setInternalStaff(result.data);
+        try {
+          localStorage.setItem('rw_cached_overview_staff', JSON.stringify(result.data));
+        } catch {}
       }
     } catch (error) {
       console.error('Error fetching staff:', error);
     } finally {
-      setLoading(false);
+      setInternalLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchStaff();
+    if (externalStaff === undefined) {
+      fetchStaff();
+    }
+  }, [externalStaff]);
 
+  useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
         setActiveMenu(null);

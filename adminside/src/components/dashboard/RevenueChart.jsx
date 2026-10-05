@@ -55,9 +55,23 @@ const CustomTooltip = ({ active, payload, data }) => {
 
 const RevenueChart = () => {
   const [timeRange, setTimeRange] = useState('Month');
-  const [data, setData] = useState([]);
-  const [totalRevenue, setTotalRevenue] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState(() => {
+    try {
+      const cached = localStorage.getItem('rw_cached_revenue_chart_Month');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [totalRevenue, setTotalRevenue] = useState(() => {
+    try {
+      const cached = localStorage.getItem('rw_cached_revenue_total_Month');
+      return cached ? JSON.parse(cached) : 0;
+    } catch {
+      return 0;
+    }
+  });
+  const [loading, setLoading] = useState(() => !localStorage.getItem('rw_cached_revenue_chart_Month'));
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
@@ -70,12 +84,15 @@ const RevenueChart = () => {
   }, []);
 
   const fetchRevenueData = async (period) => {
-    setLoading(true);
     try {
       const result = await getRevenueAnalytics(period.toLowerCase());
       if (result.success) {
         setData(result.data.chartData);
         setTotalRevenue(result.data.totalRevenue);
+        try {
+          localStorage.setItem(`rw_cached_revenue_chart_${period}`, JSON.stringify(result.data.chartData));
+          localStorage.setItem(`rw_cached_revenue_total_${period}`, JSON.stringify(result.data.totalRevenue));
+        } catch {}
       }
     } catch (error) {
       console.error('Error fetching revenue analytics:', error);

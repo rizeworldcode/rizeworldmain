@@ -1574,8 +1574,7 @@ const Clients = ({ onClientClick, theme }) => {
   };
 
   useEffect(() => {
-    fetchClients();
-    fetchOldClients();
+    Promise.all([fetchClients(), fetchOldClients()]);
   }, []);
 
   const handleStatusChange = (clientId, newStatus) => {

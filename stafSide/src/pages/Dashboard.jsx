@@ -1540,20 +1540,21 @@ const Dashboard = ({ onNavigateToProgress }) => {
     const staffInfoLocal = JSON.parse(localStorage.getItem('staffInfo') || '{}');
     syncStaffDataStates(staffInfoLocal);
 
-    // Fetch latest staff data from backend on mount/reload
-    fetchStaffInfo();
-    fetchReportees();
+    // Fetch latest staff data from backend concurrently on mount/reload
+    const initialPromises = [fetchStaffInfo(), fetchReportees()];
     
     // Fetch admissions count if user is Counselor
     if (staffInfoLocal.role?.toLowerCase() === 'counselor') {
-      fetchAdmissionsCount();
+      initialPromises.push(fetchAdmissionsCount());
     }
 
     // Fetch master pool items if user is Technical TL or Digital Marketing Specialist
     const allowedRolesForMasterPool = ['technical tl', 'digital marketing specialist', 'technical tl & digital marketing specialist'];
     if (allowedRolesForMasterPool.includes(staffInfoLocal.role?.toLowerCase())) {
-      fetchMasterPoolItems();
+      initialPromises.push(fetchMasterPoolItems());
     }
+
+    Promise.allSettled(initialPromises);
 
     // Initialize Socket.IO connection
     const socketBase = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')

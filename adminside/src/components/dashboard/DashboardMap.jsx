@@ -52,23 +52,32 @@ const DashboardMap = () => {
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
-    const map = new mapboxgl.Map({
-      container: mapContainerRef.current,
-      style: 'mapbox://styles/mapbox/streets-v12',
-      center: [78.9629, 20.5937],
-      zoom: 4
-    });
+    let map = null;
+    let interval = null;
 
-    map.addControl(new mapboxgl.NavigationControl(), 'top-right');
-    mapRef.current = map;
+    // Small delay to let high-priority dashboard stats and staff data fetch first
+    const initTimer = setTimeout(() => {
+      if (!mapContainerRef.current) return;
 
-    fetchLiveTrackingData();
-    const interval = setInterval(fetchLiveTrackingData, 10000);
+      map = new mapboxgl.Map({
+        container: mapContainerRef.current,
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center: [78.9629, 20.5937],
+        zoom: 4
+      });
+
+      map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+      mapRef.current = map;
+
+      fetchLiveTrackingData();
+      interval = setInterval(fetchLiveTrackingData, 15000);
+    }, 100);
 
     return () => {
-      clearInterval(interval);
+      clearTimeout(initTimer);
+      if (interval) clearInterval(interval);
       if (mapRef.current) {
-        map.remove();
+        mapRef.current.remove();
         mapRef.current = null;
       }
     };
