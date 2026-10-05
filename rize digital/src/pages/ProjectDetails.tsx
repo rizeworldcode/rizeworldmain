@@ -24,7 +24,7 @@ function FallbackImage({ src, fallback, alt, className }: { src: string; fallbac
 
 const PROJECT_LOGOS: Record<string, string> = {
   "7one": "/logos/7 one 1.png",
-  "avantika": "/logos/avantika-removebg-preview.png",
+  "avantika": "/logos/avantika.png",
   "b-infra": "/logos/BHAVIKINFA-removebg-preview.png",
   "daily-prints": "/logos/daily_prints-removebg-preview.png",
   "mansukh": "/logos/m.png",
@@ -45,7 +45,7 @@ const PROJECT_LOGOS: Record<string, string> = {
   "shivaura": "/logos/logo1/shivaura_in_14050326_165054553.jpg-removebg-preview.png",
   "sigdi": "/logos/logo1/sigdiresort_14050326_165131449.jpg-removebg-preview.png",
   "zoniraz-jewel": "/logos/logo1/zonirazjewel_14050326_165120271.jpg-removebg-preview.png",
-  "shinelimos": "/logos/shinelimo-removebg-preview.png",
+  "shinelimos": "/logos/shinelimo.webp",
   "autodetox": "/logos/autodetox.png",
   "easy-eyes": "/logos/Easyeyes_logo_-Recovered-__1_-1-1.jpg-removebg-preview (1).png",
   "ambhuti": "/logos/aa.jpg-removebg-preview.png",

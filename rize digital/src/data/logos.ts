@@ -11,7 +11,7 @@ export const LOGOS: LogoItem[] = [
   { src: "/logos/yoga-removebg-preview.png", bg: "bg-white" },
   { src: "/logos/autodetox.png", bg: "bg-black" },
   { src: "/logos/BHAVIKINFA-removebg-preview.png", bg: "bg-white" },
-  { src: "/logos/avantika-removebg-preview.png", bg: "bg-white" },
+  { src: "/logos/avantika.png", bg: "bg-white" },
   { src: "/logos/daily_prints-removebg-preview.png", bg: "bg-white" },
   { src: "/logos/Easyeyes_logo_-Recovered-__1_-1-1.jpg-removebg-preview (1).png", bg: "bg-white" },
   { src: "/logos/Transparent_Mono_Logo-removebg-preview.png", bg: "bg-white" },
@@ -30,7 +30,7 @@ export const LOGOS: LogoItem[] = [
   { src: "/logos/logo1/shivaura_in_14050326_165054553.jpg-removebg-preview.png", bg: "bg-[#2d3748]" },
   { src: "/logos/logo1/sigdiresort_14050326_165131449.jpg-removebg-preview.png", bg: "bg-[#1c1917]" },
   { src: "/logos/logo1/zonirazjewel_14050326_165120271.jpg-removebg-preview.png", bg: "bg-black" },
-  { src: "/logos/shinelimo-removebg-preview.png", bg: "bg-black" },
+  { src: "/logos/shinelimo.webp", bg: "bg-black" },
   { src: "/logos/south-removebg-preview.png", bg: "bg-white" },
   { src: "/logos/TT-removebg-preview.png", bg: "bg-white" }
 ];
