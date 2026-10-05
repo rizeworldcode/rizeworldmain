@@ -340,7 +340,7 @@ export const PROJECTS: Project[] = [
     image: "/1920X1000/travelia/travel.jpg.jpeg",
     images: [
       "/1920X1000/travelia/TT 1.jpeg",
-      "/1920X1000/travelia/TT 2.png",
+      "/public/1920X1000/travelia/TT 2.png",
       "/1920X1000/travelia/TT 3.png",
       "/1920X1000/travelia/TT 4.png"
     ],

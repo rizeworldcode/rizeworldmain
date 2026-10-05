@@ -270,12 +270,12 @@ export default function About() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8 }}
-          className="relative w-full h-[180px] sm:h-[250px] md:h-[500px] rounded-3xl overflow-hidden mb-20 md:mb-32 border border-gray-150"
+          className="relative w-full h-[180px] sm:h-[260px] md:h-[460px] lg:h-[520px] rounded-3xl overflow-hidden mb-20 md:mb-32 border border-zinc-800 bg-black flex items-center justify-center"
         >
           <img 
-            src="/images/about/about 1.png" 
-            alt="Abstract design background" 
-            className="w-full h-full object-cover md:object-contain bg-neutral-100/50"
+            src="/images/about/Web Grid.png" 
+            alt="Crafting Brands, Igniting Growth - RizeWorld" 
+            className="w-full h-full object-contain bg-black"
           />
         </motion.div>
 
