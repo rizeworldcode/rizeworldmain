@@ -28,7 +28,7 @@ const PROJECT_LOGOS: Record<string, string> = {
   "b-infra": "/logos/BHAVIKINFA-removebg-preview.png",
   "daily-prints": "/logos/daily_prints-removebg-preview.png",
   "mansukh": "/logos/m.png",
-  "old-rao": "/logos/old rao .png",
+  "old-rao": "/logos/old rao.png",
   "shiv-nutrition": "/logos/SHIV-NUTRATION-removebg-preview.png",
   "south-street": "/logos/south-removebg-preview.png",
   "medi-compares": "/logos/Transparent_Mono_Logo-removebg-preview.png",
@@ -50,7 +50,7 @@ const PROJECT_LOGOS: Record<string, string> = {
   "easy-eyes": "/logos/Easyeyes_logo_-Recovered-__1_-1-1.jpg-removebg-preview (1).png",
   "ambhuti": "/logos/aa.jpg-removebg-preview.png",
   "bhavik-dairy": "/logos/logo1/bhavikdairy_14050326_165157844.jpg.jpeg_nobg.png",
-  "travelia": "/logos/TT-removebg-preview.png"
+  "travelia": "/logos/TT logo.png"
 };
 
 const PROJECT_THEMES: Record<string, { bg: string; text: string; isDark: boolean }> = {

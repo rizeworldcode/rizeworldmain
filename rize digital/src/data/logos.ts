@@ -6,7 +6,7 @@ export interface LogoItem {
 
 export const LOGOS: LogoItem[] = [
   { src: "/logos/7 one 1.png", bg: "bg-white" },
-  { src: "/logos/old rao .png", bg: "bg-zinc-100" },
+  { src: "/logos/old rao.png", bg: "bg-white" },
   { src: "/logos/m.png", bg: "bg-white" },
   { src: "/logos/yoga-removebg-preview.png", bg: "bg-white" },
   { src: "/logos/autodetox.png", bg: "bg-black" },
@@ -32,5 +32,5 @@ export const LOGOS: LogoItem[] = [
   { src: "/logos/logo1/zonirazjewel_14050326_165120271.jpg-removebg-preview.png", bg: "bg-black" },
   { src: "/logos/shinelimo.webp", bg: "bg-black" },
   { src: "/logos/south-removebg-preview.png", bg: "bg-white" },
-  { src: "/logos/TT-removebg-preview.png", bg: "bg-white" }
+  { src: "/logos/TT logo.png", bg: "bg-white" }
 ];
