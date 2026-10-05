@@ -38,7 +38,7 @@ const delayWorkSchema = new mongoose.Schema({
   staffId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Staff',
-    required: true
+    required: false
   }
 }, {
   timestamps: true

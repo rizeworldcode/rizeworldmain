@@ -439,20 +439,26 @@ exports.updateClientTasks = async (req, res) => {
     }
 
     // Save SMM metrics to DelayWork collection if sent
-    if (metrics && metrics.length > 0 && staffId) {
+    if (metrics && metrics.length > 0) {
       const DelayWork = require('../models/DelayWork');
       for (const m of metrics) {
-        const delayWork = new DelayWork({
-          type: m.type, // 'reel', 'post', 'shoot'
-          publishedLink: m.publishedLink || '',
-          totalAccountReach: m.totalAccountReach !== undefined ? m.totalAccountReach : '0',
-          totalAccountViews: m.totalAccountViews !== undefined ? m.totalAccountViews : '0',
-          count: m.count || 1,
-          clientId: req.params.id,
-          staffId: staffId
-        });
-        await delayWork.save();
+        if (m.publishedLink || m.totalAccountReach || m.totalAccountViews || m.type === 'shoot') {
+          const delayWorkData = {
+            type: m.type || 'reel', // 'reel', 'post', 'shoot'
+            publishedLink: m.publishedLink || '',
+            totalAccountReach: m.totalAccountReach !== undefined ? m.totalAccountReach : '0',
+            totalAccountViews: m.totalAccountViews !== undefined ? m.totalAccountViews : '0',
+            count: m.count || 1,
+            clientId: req.params.id
+          };
+          if (staffId) {
+            delayWorkData.staffId = staffId;
+          }
+          const delayWork = new DelayWork(delayWorkData);
+          await delayWork.save();
+        }
       }
+      cache.flushByPrefix('delaywork:');
     }
 
     cache.flushByPrefix('clients:');
