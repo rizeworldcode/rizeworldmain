@@ -84,33 +84,26 @@ const parseWorkDetailToTasks = (workDetail) => {
 // Helper to check and mark clients whose work reached 100% completion
 const checkAndTransferCompletedClients = async () => {
   try {
-    const clients = await Client.find();
+    const clients = await Client.find({ status: { $ne: 'Completed' } })
+      .select('tasks extraTasks status completedAt updatedAt');
 
     for (const client of clients) {
       const primaryTasks = client.tasks || [];
       const extraTasks = client.extraTasks || [];
       const primaryTotal = primaryTasks.reduce((acc, t) => acc + (t.total || 0), 0);
       const totalCompleted = [...primaryTasks, ...extraTasks].reduce((acc, t) => acc + (t.completed || 0), 0);
-      const is100Percent = (primaryTotal > 0 && totalCompleted >= primaryTotal) || client.status === 'Completed';
+      const is100Percent = (primaryTotal > 0 && totalCompleted >= primaryTotal);
 
       if (is100Percent) {
-        let changed = false;
-        if (!client.completedAt) {
-          client.completedAt = client.updatedAt || new Date();
-          changed = true;
-        }
-        if (client.status !== 'Completed') {
-          client.status = 'Completed';
-          changed = true;
-        }
-        if (changed) {
-          await client.save();
-        }
-      } else {
-        if (client.completedAt && client.status !== 'Completed') {
-          client.completedAt = null;
-          await client.save();
-        }
+        await Client.updateOne(
+          { _id: client._id },
+          {
+            $set: {
+              status: 'Completed',
+              completedAt: client.completedAt || client.updatedAt || new Date()
+            }
+          }
+        );
       }
     }
   } catch (error) {

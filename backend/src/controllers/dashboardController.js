@@ -6,9 +6,9 @@ const cache = require('../utils/cache');
 const { extractClientPayments } = require('../utils/paymentExtractor');
 
 const getUnifiedTransactions = async () => {
-  // Execute database reads concurrently with Promise.all
+  // Execute database reads concurrently with Promise.all and project only necessary fields
   const [transactions, clients, oldClients] = await Promise.all([
-    Transaction.find().lean(),
+    Transaction.find().select('type name amount date mode method utrNumber description referenceId').lean(),
     Client.find({}, 'name email payments history startDate createdAt paidAmount').lean(),
     OldClient.find({}, 'name email payments history startDate createdAt paidAmount').lean()
   ]);
