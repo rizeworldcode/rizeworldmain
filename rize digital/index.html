@@ -44,26 +44,8 @@
 
   <script>
     if ('scrollRestoration' in history) {
-      history.scrollRestoration = 'manual';
+      history.scrollRestoration = 'auto';
     }
-    window.scrollTo(0, 0);
-    (function () {
-      try {
-        var isPrerender = typeof navigator !== 'undefined' && (
-          navigator.webdriver ||
-          navigator.userAgent.indexOf('Headless') !== -1 ||
-          navigator.userAgent.indexOf('Puppeteer') !== -1 ||
-          /bot|googlebot|crawler|spider|robot|crawling/i.test(navigator.userAgent)
-        );
-        if (!isPrerender) {
-          var navEntries = window.performance && performance.getEntriesByType && performance.getEntriesByType('navigation');
-          var isReload = (navEntries && navEntries[0] && navEntries[0].type === 'reload') || (performance && performance.navigation && performance.navigation.type === 1);
-          if (isReload && window.location.pathname !== '/') {
-            window.location.replace('/');
-          }
-        }
-      } catch (e) {}
-    })();
   </script>
 </head>
 <!-- Google tag (gtag.js) -->

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, ExternalLink, Calendar, Tag, ShieldCheck, ZoomIn } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Calendar, Tag, ShieldCheck, ZoomIn, X } from 'lucide-react';
 import { PROJECTS } from '../data/projects';
 import SEO from '../components/common/SEO';
 import Breadcrumbs from '../components/common/Breadcrumbs';
@@ -142,7 +142,7 @@ export default function ProjectDetails() {
       {/* 1. BREADCRUMBS & NAVIGATION */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-12 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <button 
-          onClick={() => navigate('/portfolio')}
+          onClick={() => navigate(`/portfolio#${project.id}`)}
           className={`inline-flex items-center gap-2 text-xs font-black uppercase tracking-wider transition-colors group cursor-pointer w-fit ${isDark ? "text-white hover:text-rize-primary" : "text-gray-900 hover:text-rize-primary"}`}
         >
           <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" /> Back to Portfolio
@@ -260,10 +260,22 @@ export default function ProjectDetails() {
       {/* GALLERY LIGHTBOX MODAL */}
       {selectedGalleryImage && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md cursor-zoom-out"
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 md:p-8 bg-black/95 backdrop-blur-md cursor-zoom-out"
           onClick={() => setSelectedGalleryImage(null)}
         >
-          <div className="relative max-w-5xl max-h-[85vh] w-full flex items-center justify-center">
+          {/* Close button */}
+          <button 
+            onClick={() => setSelectedGalleryImage(null)}
+            className="absolute top-6 right-6 z-10 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer shadow-lg"
+            aria-label="Close preview"
+          >
+            <X size={22} />
+          </button>
+
+          <div 
+            className="relative max-w-5xl max-h-[88vh] w-full flex items-center justify-center cursor-default"
+            onClick={(e) => e.stopPropagation()}
+          >
             <FallbackImage
               src={selectedGalleryImage}
               fallback={project.fallback}

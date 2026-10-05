@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowUpRight, Phone, Mail, Award } from 'lucide-react';
@@ -25,6 +25,24 @@ function FallbackImage({ src, fallback, alt, className }: { src: string; fallbac
 
 export default function Portfolio() {
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const hash = window.location.hash;
+    const targetId = hash ? decodeURIComponent(hash.replace('#', '')) : null;
+    if (targetId) {
+      let attempts = 0;
+      const scrollToTarget = () => {
+        const el = document.getElementById(targetId) || document.getElementById(`project-${targetId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'instant', block: 'center' });
+        } else if (attempts < 20) {
+          attempts++;
+          setTimeout(scrollToTarget, 25);
+        }
+      };
+      scrollToTarget();
+    }
+  }, []);
 
   const breadcrumbSchema = {
     "@context": "https://schema.org",
@@ -224,12 +242,18 @@ export default function Portfolio() {
             {PROJECTS.map((project) => (
               <motion.div
                 layout
+                id={project.id}
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
                 transition={{ duration: 0.4 }}
                 key={project.title}
-                onClick={() => navigate(`/portfolio/${project.id}`)}
+                onClick={() => {
+                  try {
+                    window.history.replaceState(null, '', `/portfolio#${project.id}`);
+                  } catch (e) {}
+                  navigate(`/portfolio/${project.id}`);
+                }}
                 className="w-full bg-white rounded-4xl p-4 border border-gray-200/80 shadow-sm flex flex-col group hover:border-rize-primary/40 hover:shadow-[0_20px_50px_rgba(26,86,219,0.12)] transition-all duration-300 relative overflow-hidden cursor-pointer"
               >
                 {/* Image Box */}
