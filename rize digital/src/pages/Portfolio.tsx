@@ -7,31 +7,6 @@ import { LOGOS } from '../data/logos';
 import SEO from '../components/common/SEO';
 import Breadcrumbs from '../components/common/Breadcrumbs';
 
-const CATEGORIES = [
-  "All",
-  "Ambience & Experience",
-  "Auto Detailing",
-  "Banquet & Events",
-  "Community & Learning",
-  "Dining & Cuisine",
-  "Dining Experience",
-  "Electronics & Accessories",
-  "Fine Dine Restaurant",
-  "Food & Cuisine",
-  "Fragrances & Perfumes",
-  "Hospitality",
-  "Jewellery & Accessories",
-  "Lifestyle & Wellness",
-  "Medical & Healthcare",
-  "Multi-Cuisine Dining",
-  "Residential Projects",
-  "South Indian Restaurant",
-  "Travel & Tourism",
-  "Sports & Performance Nutrition",
-  "Uniform Supply",
-  "Yoga Practices"
-];
-
 function FallbackImage({ src, fallback, alt, className }: { src: string; fallback: string; alt: string; className: string }) {
   const [imgSrc, setImgSrc] = useState(src);
   return (
@@ -49,12 +24,7 @@ function FallbackImage({ src, fallback, alt, className }: { src: string; fallbac
 }
 
 export default function Portfolio() {
-  const [activeCategory, setActiveCategory] = useState("All");
   const navigate = useNavigate();
-
-  const filteredProjects = activeCategory === "All"
-    ? PROJECTS
-    : PROJECTS.filter(project => project.category === activeCategory);
 
   const breadcrumbSchema = {
     "@context": "https://schema.org",
@@ -210,7 +180,7 @@ export default function Portfolio() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
 
         {/* Top CTA strip */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-10 pb-8 border-b border-gray-200/60">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-10">
           <h2 className="text-3xl md:text-4xl font-bold text-gray-950 uppercase tracking-tight leading-tight max-w-2xl">
             We love collaborating with brands and founders. Ready to bring your next big idea to life?
           </h2>
@@ -244,22 +214,6 @@ export default function Portfolio() {
           </div>
         </div>
 
-        {/* Filter tags (scrolling horizontally) */}
-        <div className="flex items-center gap-3 overflow-x-auto pb-6 whitespace-nowrap mb-10 scrollbar-none">
-          {CATEGORIES.map((category, idx) => (
-            <button
-              key={idx}
-              onClick={() => setActiveCategory(category)}
-              className={`px-5 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all duration-300 shrink-0 cursor-pointer ${
-                activeCategory === category
-                  ? 'bg-rize-primary text-white shadow-md shadow-rize-primary/20'
-                  : 'bg-white text-gray-600 border border-gray-200 hover:border-rize-primary hover:text-rize-primary'
-              }`}
-            >
-              {category}
-            </button>
-          ))}
-        </div>
 
         {/* Full-width 3-column Grid */}
         <motion.div 
@@ -267,7 +221,7 @@ export default function Portfolio() {
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
         >
           <AnimatePresence mode="popLayout">
-            {filteredProjects.map((project) => (
+            {PROJECTS.map((project) => (
               <motion.div
                 layout
                 initial={{ opacity: 0, scale: 0.9 }}
@@ -314,7 +268,7 @@ export default function Portfolio() {
           </AnimatePresence>
         </motion.div>
 
-        {filteredProjects.length === 0 && (
+        {PROJECTS.length === 0 && (
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
