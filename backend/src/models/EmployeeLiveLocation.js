@@ -41,4 +41,6 @@ const employeeLiveLocationSchema = new mongoose.Schema({
   timestamps: true
 });
 
+employeeLiveLocationSchema.index({ lastUpdated: -1 });
+
 module.exports = mongoose.model('EmployeeLiveLocation', employeeLiveLocationSchema);

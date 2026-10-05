@@ -19,4 +19,6 @@ const masterPoolSchema = new mongoose.Schema({
   timestamps: true
 });
 
+masterPoolSchema.index({ staffId: 1, createdAt: -1 });
+
 module.exports = mongoose.model('MasterPool', masterPoolSchema);

@@ -47,6 +47,9 @@ const transactionSchema = new mongoose.Schema({
 });
 
 transactionSchema.index({ date: -1, type: 1 });
+transactionSchema.index({ type: 1, mode: 1, date: -1 });
+transactionSchema.index({ mode: 1, date: -1 });
+transactionSchema.index({ utrNumber: 1 });
 transactionSchema.index({ referenceId: 1 });
 transactionSchema.index({ createdAt: -1 });
 

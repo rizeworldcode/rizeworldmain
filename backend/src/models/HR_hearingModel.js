@@ -52,5 +52,7 @@ const hearingSchema = new mongoose.Schema({
     },
 });
 
+hearingSchema.index({ status: 1, created_at: -1 });
+
 const hearing = mongoose.model("hearing", hearingSchema);
 module.exports = hearing;

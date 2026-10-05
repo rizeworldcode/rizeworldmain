@@ -40,4 +40,8 @@ const employeeLocationHistorySchema = new mongoose.Schema({
   timestamps: true
 });
 
+employeeLocationHistorySchema.index({ employeeId: 1, timestamp: -1 });
+employeeLocationHistorySchema.index({ employeeId: 1, createdAt: -1 });
+employeeLocationHistorySchema.index({ timestamp: -1 });
+
 module.exports = mongoose.model('EmployeeLocationHistory', employeeLocationHistorySchema);
