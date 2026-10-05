@@ -399,5 +399,19 @@ export const PROJECTS: Project[] = [
     ],
     fallback: "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&q=80&w=800",
     desc: "Your Comfort Is Our Priority — Premium luxury transportation and chauffeur service brand identity, showcasing executive travel solutions, premium fleets, and style-driven passenger experience."
+  },
+  {
+    id: "politician",
+    title: "Politician",
+    category: "Politician",
+    image: "/1920X1000/politician/Bl.png",
+    images: [
+      "/1920X1000/politician/Balwant 1.png",
+      "/1920X1000/politician/Balwant  2.png",
+      "/1920X1000/politician/Balwant 3.png",
+      "/1920X1000/politician/Balwant 4.png"
+    ],
+    fallback: "https://images.unsplash.com/photo-1540910419892-4a36d2c3266c?auto=format&fit=crop&q=80&w=800",
+    desc: "Complete political branding, digital campaign, and visual promotion strategy for Balwant Yadav — Ward No. 16, Nagar Palika Bahadurpur."
   }
 ];
