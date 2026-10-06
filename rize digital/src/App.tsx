@@ -28,6 +28,7 @@ import TermsOfService from './pages/TermsOfService';
 import AccessibilityArrangements from './pages/AccessibilityArrangements';
 import Faq from './pages/Faq';
 import Pricing from './pages/Pricing';
+import PackageProposal from './pages/PackageProposal';
 import CaseStudies from './pages/CaseStudies';
 import DynamicCityLandingPage from './pages/services/DynamicCityLandingPage';
 
@@ -238,6 +239,7 @@ function App() {
           <Route path="/accessibility" element={<AccessibilityArrangements />} />
           <Route path="/faq" element={<Faq />} />
           <Route path="/pricing" element={<Pricing />} />
+          <Route path="/pricing/:packageId" element={<PackageProposal />} />
           <Route path="/case-studies" element={<CaseStudies />} />
           <Route path="/case-studies/:slug" element={<Suspense fallback={<div className="min-h-screen" />}><CaseStudyDetails /></Suspense>} />
           <Route path="/locations" element={<Locations />} />
