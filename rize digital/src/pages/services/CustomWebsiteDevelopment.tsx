@@ -3,12 +3,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
-  Search, 
+  Code, 
+  Layers, 
+  Smartphone, 
+  Cpu, 
   Share2, 
-  Palette, 
-  Edit3, 
-  Award, 
-  TrendingUp, 
+  Wrench, 
   Mail, 
   MessageSquare, 
   ChevronRight,
@@ -17,96 +17,119 @@ import {
   Sparkles
 } from 'lucide-react';
 import SEO from '../../components/common/SEO';
+import { LOGOS } from '../../data/logos';
 import Breadcrumbs from '../../components/common/Breadcrumbs';
 import AreasWeServe from '../../components/common/AreasWeServe';
-import { LOGOS } from '../../data/logos';
 
 const SERVICES_LIST = [
   {
-    title: "Search Engine Optimization",
-    desc: "It is the process of improving a website's visibility in the search engine results pages.",
-    tags: ["Rank", "Clicks", "Links", "Tags", "Words"],
-    icon: Search,
-    link: "/services/seo"
+    title: "Custom Website Development",
+    desc: "We build websites around your specific requirements rather than limiting the project to a pre-built template. From the page structure to custom functionality, each part is planned according to the project.",
+    tags: ["Custom Architecture", "Bespoke Logic", "Scalable", "Unique UI"],
+    icon: Code
   },
   {
-    title: "Social Media Marketing",
-    desc: "It is the use of social media platforms (like Facebook, LinkedIn, Instagram, Twitter etc.) to market your business.",
-    tags: ["Post", "Like", "Tag", "Chat", "Ad"],
-    icon: Share2,
-    link: "/services/social-media-marketing"
+    title: "Full-Stack Web Development",
+    desc: "Our development approach can cover both the front end that users interact with and the back end that supports your website's functionality, data, and integrations.",
+    tags: ["Frontend & Backend", "API Architecture", "Database Modeling", "High Performance"],
+    icon: Layers
   },
   {
-    title: "Web designing",
-    desc: "It is the process of creating the visual look and user experience of a website.",
-    tags: ["Page", "Font", "Form", "Menu", "Grid"],
-    icon: Palette,
-    link: "/services/web-development"
+    title: "Responsive Development",
+    desc: "Your customers may access your website from different devices. We create responsive layouts that adapt seamlessly to desktops, tablets, and mobile screens.",
+    tags: ["Mobile First", "Cross-Browser", "Fluid Layouts", "Consistent UX"],
+    icon: Smartphone
   },
   {
-    title: "Content Marketing",
-    desc: "It means using helpful or interesting content to attract customers instead of publishing ads.",
-    tags: ["Value", "Story", "Trust", "Lead", "Share"],
-    icon: Edit3,
-    link: "/services/digital-marketing"
+    title: "Business Web Applications",
+    desc: "When a standard website isn't enough, we can develop custom web applications and functionality designed around specific business processes and user requirements.",
+    tags: ["Web Portals", "Custom Dashboards", "Process Automation", "Secure Data"],
+    icon: Cpu
   },
   {
-    title: "Graphic Designing",
-    desc: "It is the process of making things look good and communicate clearly - like logos, posters, social media posts, websites and more.",
-    tags: ["Creative", "Visual", "Skilled", "Artistic", "Precise"],
-    icon: Award,
-    link: "/services/wordpress-development"
+    title: "API & Third-Party Integrations",
+    desc: "We can connect websites with suitable third-party tools and services when your project requires additional functionality or data exchange.",
+    tags: ["REST & GraphQL", "Payment Gateways", "CRM & ERP", "Data Sync"],
+    icon: Share2
   },
   {
-    title: "PPC Advertising",
-    desc: "PPC is an online advertisement where you only pay when someone clicks your ad.",
-    tags: ["Click", "Ad", "Bid", "Lead", "Cost"],
-    icon: TrendingUp,
-    link: "/services/paid-ads"
+    title: "Website Improvements & Maintenance",
+    desc: "Already have a website? We can work on existing projects to improve functionality, update features, fix issues, and make the platform easier to maintain.",
+    tags: ["Feature Upgrades", "Speed Optimization", "Code Refactoring", "Support"],
+    icon: Wrench
+  }
+];
+
+const FAQS = [
+  {
+    question: "What is custom website development?",
+    answer: "Custom website development means building a website around a business's specific goals, design requirements, features, and user experience instead of relying only on a pre-built template."
+  },
+  {
+    question: "What does custom website development include?",
+    answer: "It can include custom UI design, frontend and backend development, responsive layouts, database integration, APIs, third-party integrations, and performance optimization based on the project's requirements."
+  },
+  {
+    question: "Why choose a custom website instead of a template?",
+    answer: "A custom website provides more control over design, functionality, scalability, and user experience. It is particularly useful when standard templates cannot meet specific business requirements."
+  },
+  {
+    question: "Can you create a website from scratch?",
+    answer: "Yes. RizeWorld can develop a website from the ground up, starting with the structure and design and then building the required frontend, backend, and functionality."
+  },
+  {
+    question: "Can custom websites be optimized for SEO?",
+    answer: "Yes. A custom website can be developed with a clean structure, crawlable pages, optimized performance, proper headings, metadata, and other technical considerations that support SEO."
+  },
+  {
+    question: "Will a custom website work on mobile devices?",
+    answer: "Yes. Responsive development allows the website layout and content to adapt to different screen sizes, including smartphones, tablets, and desktops."
   }
 ];
 
 const STEPS = [
   {
     num: "1",
-    title: "Discovery and Consultation",
-    desc: "By meeting with clients we can understand the goal and requirements of the clients.",
-    details: ["Client Meeting", "Needs analysis", "Our techniques planning"]
+    title: "Discovery & Planning",
+    desc: "Understanding your business goals, target audience, and architecture requirements to outline an actionable development roadmap.",
+    details: ["Consultation & Scoping", "Architecture Strategy", "Technical Specifications"]
   },
   {
     num: "2",
-    title: "Design and Architecture",
-    desc: "Create a user centric design for software, apps, website.",
-    details: ["Wireframing", "Design Mockups"]
+    title: "Design & Prototyping",
+    desc: "Creating user-centric wireframes and interactive prototypes that ensure seamless UX and clear user journeys before coding.",
+    details: ["Wireframes & Flowcharts", "Interactive UI Mockups", "Responsive Design Systems"]
   },
   {
     num: "3",
-    title: "Implementation & Development",
-    desc: "Through initial meeting and consultations we can know the requirements and goals of our clients.",
-    details: ["Testing Plans", "debugging", "scrum"]
+    title: "Full-Stack Development",
+    desc: "Writing clean, scalable code for both frontend and backend systems, with custom API integrations and database modeling.",
+    details: ["Modern Frontend Frameworks", "Robust Backend Systems", "Custom API Integrations"]
   },
   {
     num: "4",
-    title: "Documentation & Launch",
-    desc: "understand client goal, challenges, and requirements through initial meeting and consultations.",
-    details: ["Testing Plans", "bug fixing", "agile development"]
+    title: "Testing, Launch & Growth",
+    desc: "Rigorous quality assurance, performance audits, and security checks before deploying your platform for live traffic.",
+    details: ["QA & Cross-Device Testing", "Speed & Security Hardening", "Live Deployment & Support"]
   }
 ];
 
 export default function CustomWebsiteDevelopment() {
   const navigate = useNavigate();
   const repeatedLogos = [...LOGOS, ...LOGOS, ...LOGOS];
-  
+  const [activeStep, setActiveStep] = useState(0);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
+
   const serviceSchema = {
     "@context": "https://schema.org",
     "@type": "Service",
-    "name": "Custom Website Development",
+    "name": "Custom Website Development Services",
     "provider": {
       "@type": "Organization",
       "name": "RizeWorld Digital",
       "url": "https://rizeworld.in/"
     },
-    "description": "Custom web development services utilizing React, Vite, Node, and modern databases. We build bespoke software solutions tailored to solve specific business needs."
+    "description": "Purpose-built custom websites designed around your business, users, and long-term goals with responsive full-stack architecture."
   };
 
   const breadcrumbSchema = {
@@ -134,16 +157,27 @@ export default function CustomWebsiteDevelopment() {
     ]
   };
 
-  const [activeStep, setActiveStep] = useState(0);
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": FAQS.map(faq => ({
+      "@type": "Question",
+      "name": faq.question,
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": faq.answer
+      }
+    }))
+  };
 
   return (
     <div className="min-h-screen bg-stone-50 pt-32 pb-24 overflow-hidden text-left font-sans selection:bg-orange-500 selection:text-white">
       
       <SEO 
         title="Custom Website Development Services | RizeWorld"
-        description="Looking for professional website development services? Our custom web design company offers full stack development and custom CMS development."
+        description="Purpose-built websites designed around your business, users, and long-term goals. RizeWorld develops responsive and scalable custom websites."
         canonicalUrl="https://rizeworld.in/services/custom-website-development"
-        schema={[serviceSchema, breadcrumbSchema]}
+        schema={[serviceSchema, breadcrumbSchema, faqSchema]}
       />
       
       {/* 1. BREADCRUMBS & NAVIGATION */}
@@ -172,9 +206,9 @@ export default function CustomWebsiteDevelopment() {
               className="bg-orange-100/70 border border-orange-200/60 rounded-4xl p-8 flex flex-col justify-center h-auto min-h-[180px] shadow-xs relative overflow-hidden group"
             >
               <div className="absolute top-0 right-0 w-24 h-24 bg-orange-200/30 rounded-full blur-2xl -mr-8 -mt-8 group-hover:scale-110 transition-transform duration-500" />
-              <span className="text-[10px] font-black text-orange-600 uppercase tracking-widest block mb-3">Planned Strategy</span>
-              <p className="text-gray-800 text-sm leading-relaxed font-semibold">
-                Developing specific strategy to optimize digital presence with strategic insight.
+              <span className="text-[10px] font-black text-orange-600 uppercase tracking-widest block mb-3">PLANNED STRATEGY</span>
+              <p className="text-gray-800 text-sm leading-relaxed font-semibold text-justify">
+                Building Custom Websites Around Your Business Requirements
               </p>
             </motion.div>
 
@@ -204,7 +238,7 @@ export default function CustomWebsiteDevelopment() {
               className="bg-white border border-gray-200/80 rounded-[2.5rem] p-8 md:p-12 shadow-sm flex flex-col justify-center grow relative overflow-hidden"
             >
               <span className="text-orange-500 font-black uppercase tracking-widest text-xs mb-4 flex items-center gap-1.5">
-                <Sparkles size={14} className="animate-pulse" /> Customized Growth Plans
+                <Sparkles size={14} className="animate-pulse" /> Scalable Full-Stack Architecture
               </span>
               <h1 className="text-4xl md:text-5xl lg:text-[3.5rem] font-black text-gray-950 leading-[1.05] uppercase tracking-tighter mb-6">
                 Custom Website <br />
@@ -215,37 +249,33 @@ export default function CustomWebsiteDevelopment() {
                   </svg>
                 </span>
               </h1>
-              <p className="text-gray-800 text-sm md:text-base leading-relaxed max-w-xl">
-                As a leading <strong>custom web design company</strong>, we deliver tailored <strong>custom website development services</strong>, high-performance <strong>full stack development</strong>, and <strong>responsive website development services</strong> designed to optimize conversion rates and power your business operations.
-              </p>
+              <div className="space-y-4 text-gray-800 text-sm md:text-base leading-relaxed max-w-xl text-justify">
+                <p className="font-semibold text-gray-900">
+                  Purpose-built websites designed around your business, users, and long-term goals.
+                </p>
+                <p>
+                  RizeWorld develops responsive and scalable websites with custom functionality, clean user experiences, and a technical foundation built for growth.
+                </p>
+                <p>
+                  Every business has different requirements, so a standard website solution does not always make sense. A custom website gives you more flexibility to create the features, structure, and user experience your business actually needs. At RizeWorld, we develop custom websites that combine thoughtful design with reliable functionality. We focus on understanding your business first, then building a website around your users, processes, and long-term goals.
+                </p>
+              </div>
             </motion.div>
 
-            {/* Happy Clients Badge Card */}
+            {/* Bottom Card */}
             <motion.div 
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
               className="bg-white border border-gray-200/80 rounded-4xl p-6 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-sm hover:shadow-md transition-shadow duration-300"
             >
-              <p className="text-gray-500 text-xs font-semibold max-w-sm text-center sm:text-left leading-relaxed">
-                Customized teams to navigate each client's journey with precision and expertise.
+              <p className="text-gray-700 text-xs sm:text-sm font-semibold max-w-sm text-justify leading-relaxed">
+                Custom development focused on functionality, usability, performance, and future growth.
               </p>
-              <div className="flex items-center gap-3.5 shrink-0">
-                <div className="flex -space-x-3">
-                  {[
-                    "/video/harsh tiwari.jpeg",
-                    "/video/k sir.jpg",
-                    "/video/mansukhhh.jpg",
-                    "/video/Untitled-1.jpg",
-                    "/video/nk s.jpg"
-                  ].map((avatar, i) => (
-                    <img key={i} src={avatar} alt="user" className="w-9 h-9 rounded-full border-2 border-white object-cover shadow-xs" />
-                  ))}
-                </div>
-                <div>
-                  <span className="text-base font-black text-gray-950 block leading-none">1000+</span>
-                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Happy Client Stories</span>
-                </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-orange-600 bg-orange-50 border border-orange-200/80 px-4 py-2 rounded-full shadow-2xs">
+                  CUSTOM • DEVELOPMENT • EXPERIENCE
+                </span>
               </div>
             </motion.div>
           </div>
@@ -260,14 +290,17 @@ export default function CustomWebsiteDevelopment() {
               className="bg-sky-50 border border-sky-100 rounded-4xl p-8 flex flex-col justify-center h-full min-h-[160px] shadow-xs hover:-translate-y-1 transition-transform duration-300"
             >
               <h4 className="text-sm font-black text-sky-950 uppercase tracking-wider mb-2 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-sky-500 rounded-full" /> Teamwork
+                <span className="w-1.5 h-1.5 bg-sky-500 rounded-full" /> TEAMWORK
               </h4>
+              <p className="text-sky-950 text-sm font-bold mb-1">
+                Design & Development Working Together
+              </p>
               <p className="text-sky-900/80 text-xs font-semibold leading-relaxed">
-                Driving success via work and shared accomplishments.
+                Planning • Development • Testing
               </p>
             </motion.div>
 
-            {/* Outcome Card */}
+            {/* Performance Card */}
             <motion.div 
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
@@ -275,10 +308,13 @@ export default function CustomWebsiteDevelopment() {
               className="bg-yellow-50/70 border border-yellow-100 rounded-4xl p-8 flex flex-col justify-center h-full min-h-[160px] shadow-xs hover:-translate-y-1 transition-transform duration-300"
             >
               <h4 className="text-sm font-black text-yellow-950 uppercase tracking-wider mb-2 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full" /> Outcome
+                <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full" /> PERFORMANCE
               </h4>
+              <p className="text-yellow-950 text-sm font-bold mb-1">
+                Scalable Architecture & Clean Code
+              </p>
               <p className="text-yellow-900/80 text-xs font-semibold leading-relaxed">
-                Specific results that show our agency's ability and effort.
+                Frontend • Backend • Security
               </p>
             </motion.div>
           </div>
@@ -287,7 +323,7 @@ export default function CustomWebsiteDevelopment() {
       </section>
 
       {/* 3. LOVED BY TEAMS LOGO MARQUEE */}
-      <section className="py-12 bg-white border-t border-b border-gray-200/80 overflow-hidden relative">
+      <section className="py-12 bg-[#ffffff] border-t border-b border-gray-200 py-8 flex flex-col items-center overflow-hidden shadow-sm relative">
         <style>
           {`
             @keyframes marquee-brands {
@@ -313,7 +349,6 @@ export default function CustomWebsiteDevelopment() {
                   src={item.src} 
                   alt="Client Logo" 
                   className={`${item.customClass || "max-h-[92%] max-w-[92%]"} object-contain`} 
-                 
                 />
               </div>
             ))}
@@ -324,12 +359,12 @@ export default function CustomWebsiteDevelopment() {
       {/* 4. SIX CORE SERVICES */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
         <div className="max-w-3xl mb-16">
-          <span className="text-xs font-bold uppercase tracking-widest text-orange-500">WE PROVIDE SMART SERVICE</span>
+          <span className="text-xs font-bold uppercase tracking-widest text-orange-500">OUR SPECIALIZED SERVICES</span>
           <h2 className="text-3xl md:text-5xl font-black text-gray-950 uppercase tracking-tight mt-1 mb-6 leading-tight">
-            To provide smart solutions that build bespoke, high-converting platforms tailored to solve specific business needs.
+            Our Custom Website <br />Development Services
           </h2>
-          <p className="text-gray-500 text-sm md:text-base leading-relaxed">
-            Offer a wide range of services to help businesses establish.
+          <p className="text-gray-500 text-sm md:text-base leading-relaxed text-justify">
+            We build flexible, custom websites engineered around your brand, technical workflows, and business goals.
           </p>
         </div>
 
@@ -343,7 +378,6 @@ export default function CustomWebsiteDevelopment() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-50px" }}
                 transition={{ duration: 0.6, delay: idx * 0.1 }}
-                onClick={() => navigate(srv.link)}
                 className="bg-white border border-gray-200/80 rounded-4xl p-8 flex flex-col justify-between group hover:border-orange-500/40 hover:shadow-[0_20px_50px_rgba(249,115,22,0.08)] transition-all duration-500 relative overflow-hidden cursor-pointer"
               >
                 <div>
@@ -354,7 +388,7 @@ export default function CustomWebsiteDevelopment() {
                   <h3 className="text-xl font-black uppercase text-gray-950 mb-3 group-hover:text-orange-500 transition-colors">
                     {srv.title}
                   </h3>
-                  <p className="text-gray-500 text-sm leading-relaxed mb-6 h-12 overflow-hidden line-clamp-2">
+                  <p className="text-gray-600 text-sm leading-relaxed mb-6 text-justify">
                     {srv.desc}
                   </p>
 
@@ -373,20 +407,23 @@ export default function CustomWebsiteDevelopment() {
         </div>
       </section>
 
-      {/* 5. PROCESS TIMELINE WORKFLOW */}
+      {/* 5. PROCESS / WHY CHOOSE RIZEWORLD */}
       <section className="bg-white border-t border-b border-gray-200 py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.8fr] gap-16 items-start mb-20">
             <div>
-              <span className="text-xs font-bold uppercase tracking-widest text-orange-500 block mb-3">TO PROVIDE SMART SOLUTION</span>
+              <span className="text-xs font-bold uppercase tracking-widest text-orange-500 block mb-3">WHY CHOOSE RIZEWORLD?</span>
               <h2 className="text-4xl md:text-5xl font-black text-gray-950 uppercase tracking-tight">
-                OUR SOLUTION <br />PROCESS
+                DEVELOPMENT WITH PERFORMANCE & SCALABILITY IN MIND.
               </h2>
             </div>
             <div>
-              <p className="text-gray-500 text-sm md:text-base leading-relaxed">
-                Digital agency can be different size and specialization. Every digital marketing agency have a different focus. Such as some is for healthcare some is e-commerce marketing.
+              <p className="text-gray-600 text-sm md:text-base leading-relaxed text-justify mb-4">
+                A custom website should not only perform its required functions; it should also provide a smooth experience for users. We pay attention to website structure, responsive behavior, performance, usability, and maintainability during development. We also consider SEO requirements where appropriate, so the technical foundation of the website can support your wider online marketing efforts.
+              </p>
+              <p className="text-gray-600 text-sm md:text-base leading-relaxed text-justify">
+                We combine web design, development, SEO, and digital marketing knowledge to build websites with the bigger picture in mind. Instead of creating features simply because they are available, we focus on what your business actually needs. The result is a website that is easier to use, more aligned with your goals, and flexible enough to grow with your business.
               </p>
             </div>
           </div>
@@ -436,7 +473,7 @@ export default function CustomWebsiteDevelopment() {
                   <h3 className="text-2xl md:text-3xl font-black uppercase text-gray-950 mb-4 pr-24 leading-tight">
                     {STEPS[activeStep].title}
                   </h3>
-                  <p className="text-gray-600 text-sm md:text-base leading-relaxed mb-8 max-w-xl">
+                  <p className="text-gray-600 text-sm md:text-base leading-relaxed mb-8 max-w-xl text-justify">
                     {STEPS[activeStep].desc}
                   </p>
 
@@ -460,22 +497,71 @@ export default function CustomWebsiteDevelopment() {
         </div>
       </section>
 
+      {/* FAQS SECTION */}
+      <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <div className="text-center mb-16">
+          <span className="text-xs font-bold uppercase tracking-widest text-orange-500">FAQ</span>
+          <h2 className="text-3xl md:text-5xl font-black text-gray-950 uppercase tracking-tight mt-2">
+            Custom Website Development – FAQs
+          </h2>
+        </div>
+
+        <div className="space-y-4">
+          {FAQS.map((faq, idx) => {
+            const isOpen = openFaq === idx;
+            return (
+              <div 
+                key={idx}
+                className="bg-white border border-gray-200/85 rounded-3xl overflow-hidden transition-all duration-300"
+              >
+                <button
+                  onClick={() => setOpenFaq(isOpen ? null : idx)}
+                  className="w-full flex items-center justify-between p-6 text-left cursor-pointer hover:bg-stone-50/50"
+                >
+                  <span className="text-sm sm:text-base font-bold text-gray-950 uppercase tracking-tight pr-6">
+                    {faq.question}
+                  </span>
+                  <ChevronRight 
+                    size={18} 
+                    className={`text-orange-500 transition-transform duration-300 shrink-0 ${isOpen ? 'rotate-90' : ''}`} 
+                  />
+                </button>
+                <AnimatePresence initial={false}>
+                  {isOpen && (
+                    <motion.div
+                      initial={{ height: 0 }}
+                      animate={{ height: "auto" }}
+                      exit={{ height: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <div className="p-6 pt-0 border-t border-gray-100 text-gray-600 text-sm leading-relaxed text-justify">
+                        {faq.answer}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
       {/* Areas We Serve */}
       <AreasWeServe />
 
-      {/* 6. CONTACT SECTION */}
-      <section className="bg-zinc-950 text-white py-24">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col lg:flex-row gap-16 items-start justify-between relative">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(249,115,22,0.06),transparent_60%)] pointer-events-none" />
-
+      {/* 6. DYNAMIC LET'S TALK PANEL */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+        <div className="bg-gray-950 text-white rounded-[2.5rem] p-8 md:p-16 flex flex-col lg:flex-row lg:items-stretch justify-between gap-12 relative overflow-hidden shadow-2xl border border-zinc-800">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(249,115,22,0.12),transparent_50%)] pointer-events-none" />
+          
           <div className="relative z-10 max-w-2xl flex flex-col justify-between">
             <div>
-              <span className="text-xs font-black uppercase tracking-widest text-orange-500 block mb-4">LET'S TALK</span>
+              <span className="text-xs font-black uppercase tracking-widest text-orange-500 block mb-4">LET’S TALK</span>
               <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tight leading-none mb-6">
                 Connect Us
               </h2>
               <p className="text-gray-400 text-sm md:text-base leading-relaxed mb-8">
-                Prepare a contact text for a digital agency. Consisting of providing essential information for eligible clients or collaborators to reach out.
+                Reach out today to discuss your custom website project and build a tailored digital platform.
               </p>
             </div>
 
@@ -531,15 +617,15 @@ export default function CustomWebsiteDevelopment() {
           <div className="relative z-10 shrink-0 flex flex-col sm:flex-row lg:flex-col lg:justify-center gap-4 min-w-[240px]">
             <Link 
               to="/contact" 
-              className="inline-flex items-center justify-center gap-2.5 bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs uppercase tracking-wider py-4 px-8 rounded-full transition-all shadow-md shadow-orange-500/10 group cursor-pointer"
+              className="inline-flex items-center justify-center gap-2.5 bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs uppercase tracking-wider py-4.5 px-8 rounded-full transition-all shadow-md shadow-orange-500/10 group cursor-pointer"
             >
               Get In Touch <MessageSquare size={14} className="group-hover:scale-105 transition-transform" />
             </Link>
             <a 
               href="mailto:hr.rizeworld@gmail.com" 
-              className="inline-flex items-center justify-center gap-2.5 bg-zinc-800 hover:bg-orange-500 text-white font-bold text-xs uppercase tracking-wider py-4 px-8 rounded-full transition-all cursor-pointer"
+              className="inline-flex items-center justify-center gap-2.5 bg-zinc-800 hover:bg-orange-500 text-white font-bold text-xs uppercase tracking-wider py-4.5 px-8 rounded-full transition-all cursor-pointer"
             >
-              Contact Now <Mail size={14} />
+              Contact now <Mail size={14} />
             </a>
           </div>
         </div>

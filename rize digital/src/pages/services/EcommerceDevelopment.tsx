@@ -3,11 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
-  Search, 
-  Share2, 
-  Palette, 
-  Edit3, 
-  Award, 
+  ShoppingBag, 
+  CreditCard, 
+  Layers, 
+  TrendingUp, 
+  ShieldCheck, 
   Mail, 
   MessageSquare, 
   ChevronRight,
@@ -24,33 +24,60 @@ import { LOGOS } from '../../data/logos';
 const SERVICES_LIST = [
   {
     title: "Custom Storefront Design",
-    desc: "Structuring fully bespoke storefront interfaces tailored to highlight your product catalog and optimize user navigation.",
-    tags: ["UI/UX Tuning", "Responsive Design", "Product Grids", "Creative Layouts"],
-    icon: Search
+    desc: "We create clean, responsive storefronts that make it easy for customers to explore products, compare options, and complete their purchases across different devices.",
+    tags: ["UI/UX Design", "Responsive Design", "Product Pages", "Store Layouts"],
+    icon: ShoppingBag
   },
   {
     title: "Payment Gateway Integration",
-    desc: "Configuring ultra-secure payment routing, multi-currency processing, and instant merchant account settlements.",
-    tags: ["Stripe Integration", "PayPal Setup", "UPI Configuration", "SSL Encryption"],
-    icon: Share2
+    desc: "We integrate reliable payment solutions to provide a smooth and secure checkout experience, including payment gateways, multiple payment methods, and transaction workflows.",
+    tags: ["Payment Integration", "Checkout Setup", "Payment Methods", "Secure Transactions"],
+    icon: CreditCard
   },
   {
-    title: "Inventory & Catalog Systems",
-    desc: "Building back-end systems that sync stock parameters, catalog tags, attributes, and discount workflows smoothly.",
-    tags: ["Stock Synchronization", "Multi-Warehouse Setup", "Product Tags", "Bulk Uploads"],
-    icon: Palette
+    title: "Inventory & Catalog Management",
+    desc: "Keep products, categories, pricing, and stock information organized with an ecommerce setup designed to make catalog and inventory management easier.",
+    tags: ["Product Catalog", "Stock Management", "Product Categories", "Inventory Sync"],
+    icon: Layers
   },
   {
     title: "Checkout Optimization",
-    desc: "Streamlining multi-step checkout funnels to limit cart abandonment ratios and increase conversions.",
-    tags: ["One-Page Checkout", "Address Autocomplete", "Order Summary Panels"],
-    icon: Edit3
+    desc: "A complicated checkout can lead to abandoned carts. We simplify the purchase journey with clear checkout flows, streamlined forms, and user-friendly order summaries.",
+    tags: ["Checkout Experience", "Cart Optimization", "Order Forms", "Conversion Optimization"],
+    icon: TrendingUp
   },
   {
-    title: "eCommerce Maintenance & Support",
-    desc: "Monitoring system updates, security patches, plugin states, database health, and server scaling parameters.",
-    tags: ["Database Optimization", "WAF Rules Setup", "Periodic Backups"],
-    icon: Award
+    title: "Ecommerce Maintenance & Support",
+    desc: "We help keep ecommerce websites reliable with regular updates, performance checks, security improvements, backups, and ongoing technical support.",
+    tags: ["Website Maintenance", "Security Updates", "Performance Monitoring", "Technical Support"],
+    icon: ShieldCheck
+  }
+];
+
+const FAQS = [
+  {
+    question: "What is ecommerce development?",
+    answer: "Ecommerce development is the process of building an online store where customers can browse products, add items to a cart, make payments, and manage their orders."
+  },
+  {
+    question: "What ecommerce development services does RizeWorld provide?",
+    answer: "RizeWorld provides custom ecommerce website development, storefront design, payment integration, catalog and inventory solutions, checkout optimization, and ongoing website support."
+  },
+  {
+    question: "Can you build a custom ecommerce website?",
+    answer: "Yes. We can build a custom online store around your products, business model, customer journey, and required features rather than relying entirely on a pre-designed template."
+  },
+  {
+    question: "Can you integrate payment gateways into an ecommerce website?",
+    answer: "Yes. Payment gateway integration can be configured according to the store's requirements, including suitable payment methods and secure transaction workflows."
+  },
+  {
+    question: "Can you help with product catalog and inventory management?",
+    answer: "Yes. Ecommerce websites can be structured to make products, categories, pricing, attributes, and inventory easier to organize and manage."
+  },
+  {
+    question: "How can checkout optimization improve an online store?",
+    answer: "A simpler checkout process can reduce unnecessary steps and make purchasing easier for customers. Clear forms, order summaries, and a smooth payment flow can contribute to a better shopping experience."
   }
 ];
 
@@ -58,20 +85,20 @@ const STEPS = [
   {
     num: "1",
     title: "Strategy & Platform Selection",
-    desc: "We analyze your products, target market, and operational scale to outline the optimal tech stack (WooCommerce, Shopify, or Custom headless).",
-    details: ["Platform Consulting", "Feature Mapping", "SEO Structuring"]
+    desc: "We analyze your products, customer journey, and operational requirements to outline the optimal ecommerce tech stack and storefront architecture.",
+    details: ["Platform Strategy", "Catalog Architecture", "Checkout Planning"]
   },
   {
     num: "2",
     title: "Design & Development",
-    desc: "Our eCommerce engineers build custom templates, integrate secure payment rails, and configure product inventory structures.",
-    details: ["Responsive UI Coding", "API Integration", "Secure Checkout Setup"]
+    desc: "Our commerce engineers build responsive storefronts, configure secure payment gateways, and establish robust inventory management systems.",
+    details: ["Responsive Storefront Coding", "Payment Gateway Setup", "Inventory & Order Integration"]
   },
   {
     num: "3",
-    title: "Testing & Launch",
-    desc: "We run comprehensive stress tests on checkouts, check performance speeds, and launch the platform securely.",
-    details: ["Load Testing", "Security Auditing", "Live Deployment"]
+    title: "Testing, Launch & Optimization",
+    desc: "Rigorous load tests across carts and checkout funnels, security hardening, and seamless live deployment with conversion analytics.",
+    details: ["Checkout Funnel Testing", "Security & PCI Compliance", "Live Launch & Continuous Support"]
   }
 ];
 
@@ -111,17 +138,20 @@ const TESTIMONIALS = [
 export default function EcommerceDevelopment() {
   const navigate = useNavigate();
   const repeatedLogos = [...LOGOS, ...LOGOS, ...LOGOS];
+  const [activeStep, setActiveStep] = useState(0);
+  const [activeTestimonial, setActiveTestimonial] = useState(0);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   const serviceSchema = {
     "@context": "https://schema.org",
     "@type": "Service",
-    "name": "Ecommerce Development",
+    "name": "Ecommerce Development Services",
     "provider": {
       "@type": "Organization",
       "name": "RizeWorld Digital",
       "url": "https://rizeworld.in/"
     },
-    "description": "Build secure, high-conversion online stores. We develop custom e-commerce checkouts, cart optimization, Shopify and WooCommerce setups to scale sales."
+    "description": "RizeWorld builds fast, secure, and user-friendly ecommerce websites designed around your products, customers, and business goals."
   };
 
   const breadcrumbSchema = {
@@ -149,17 +179,27 @@ export default function EcommerceDevelopment() {
     ]
   };
 
-  const [activeStep, setActiveStep] = useState(0);
-  const [activeTestimonial, setActiveTestimonial] = useState(0);
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": FAQS.map(faq => ({
+      "@type": "Question",
+      "name": faq.question,
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": faq.answer
+      }
+    }))
+  };
 
   return (
     <div className="min-h-screen bg-stone-50 pt-32 pb-24 overflow-hidden text-left font-sans selection:bg-orange-500 selection:text-white">
       
       <SEO 
-        title="Ecommerce Development Company & Shopify Setup | RizeWorld"
-        description="Looking for an ecommerce website development company? Our ecommerce web development agency specializes in high-converting shopify ecommerce development."
+        title="Ecommerce Development Services & Online Store Agency | RizeWorld"
+        description="Fast, secure, and user-friendly ecommerce websites built around your products, customers, and business goals. Custom ecommerce solutions by RizeWorld."
         canonicalUrl="https://rizeworld.in/services/ecommerce-development"
-        schema={[serviceSchema, breadcrumbSchema]}
+        schema={[serviceSchema, breadcrumbSchema, faqSchema]}
       />
       
       {/* 1. BREADCRUMBS & NAVIGATION */}
@@ -188,9 +228,9 @@ export default function EcommerceDevelopment() {
               className="bg-orange-100/70 border border-orange-200/60 rounded-4xl p-8 flex flex-col justify-center h-auto min-h-[180px] shadow-xs relative overflow-hidden group"
             >
               <div className="absolute top-0 right-0 w-24 h-24 bg-orange-200/30 rounded-full blur-2xl -mr-8 -mt-8 group-hover:scale-110 transition-transform duration-500" />
-              <span className="text-[10px] font-black text-orange-600 uppercase tracking-widest block mb-3">Who We Are</span>
-              <p className="text-gray-800 text-sm leading-relaxed font-semibold">
-                RizeWorld – Scalable & Secure eCommerce Solutions
+              <span className="text-[10px] font-black text-orange-600 uppercase tracking-widest block mb-3">HIGH-PERFORMANCE COMMERCE</span>
+              <p className="text-gray-800 text-sm leading-relaxed font-semibold text-justify">
+                RizeWorld – Scalable & Secure eCommerce Solutions Designed for Growth
               </p>
             </motion.div>
 
@@ -220,48 +260,44 @@ export default function EcommerceDevelopment() {
               className="bg-white border border-gray-200/80 rounded-[2.5rem] p-8 md:p-12 shadow-sm flex flex-col justify-center grow relative overflow-hidden"
             >
               <span className="text-orange-500 font-black uppercase tracking-widest text-xs mb-4 flex items-center gap-1.5">
-                <Sparkles size={14} className="animate-pulse" /> High-Performance Digital Stores
+                <Sparkles size={14} className="animate-pulse" /> High-Performance Commerce Platforms
               </span>
               <h1 className="text-4xl md:text-5xl lg:text-[3.5rem] font-black text-gray-950 leading-[1.05] uppercase tracking-tighter mb-6">
                 Ecommerce <br />
                 Development <span className="relative inline-block px-4 py-1 mx-1 mt-1">
-                  Company
+                  Services
                   <svg className="absolute inset-0 w-full h-full text-orange-500" viewBox="0 0 100 100" preserveAspectRatio="none">
                     <path d="M 5, 50 C 5, 20 95, 20 95, 50 C 95, 80 5, 80 5, 50 Z" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="300" strokeDashoffset="0" className="animate-[dash_2s_ease-in-out_infinite]" />
                   </svg>
                 </span>
               </h1>
-              <p className="text-gray-800 text-sm md:text-base leading-relaxed max-w-xl">
-                As a leading <strong>ecommerce development company</strong>, we deliver custom <strong>ecommerce website development</strong> and <strong>ecommerce development services</strong>. Our <strong>ecommerce web development agency</strong> builds secure, high-conversion online stores to scale your sales.
-              </p>
+              <div className="space-y-4 text-gray-800 text-sm md:text-base leading-relaxed max-w-xl text-justify">
+                <p className="font-semibold text-gray-900">
+                  RizeWorld builds fast, secure, and user-friendly ecommerce websites designed around your products, customers, and business goals.
+                </p>
+                <p>
+                  From store setup and custom features to responsive design and checkout optimization, we create online shopping experiences that make it easier for customers to browse, buy, and return.
+                </p>
+                <p>
+                  Custom ecommerce solutions built to simplify shopping journeys, improve user experience, and support sustainable online growth.
+                </p>
+              </div>
             </motion.div>
 
-            {/* Happy Clients Badge Card */}
+            {/* Bottom Card */}
             <motion.div 
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
               className="bg-white border border-gray-200/80 rounded-4xl p-6 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-sm hover:shadow-md transition-shadow duration-300"
             >
-              <p className="text-gray-500 text-xs font-semibold max-w-sm text-center sm:text-left leading-relaxed">
-                Empowering businesses with optimized checkout funnels that limit dropoffs.
+              <p className="text-gray-700 text-xs sm:text-sm font-semibold max-w-sm text-justify leading-relaxed">
+                Custom ecommerce solutions built to simplify shopping journeys, improve user experience, and support sustainable online growth.
               </p>
-              <div className="flex items-center gap-3.5 shrink-0">
-                <div className="flex -space-x-3">
-                  {[
-                    "/video/harsh tiwari.jpeg",
-                    "/video/k sir.jpg",
-                    "/video/mansukhhh.jpg",
-                    "/video/Untitled-1.jpg",
-                    "/video/nk s.jpg"
-                  ].map((avatar, i) => (
-                    <img key={i} src={avatar} alt="user" className="w-9 h-9 rounded-full border-2 border-white object-cover shadow-xs" />
-                  ))}
-                </div>
-                <div>
-                  <span className="text-base font-black text-gray-950 block leading-none">16+</span>
-                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">eCommerce Launches</span>
-                </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-orange-600 bg-orange-50 border border-orange-200/80 px-4 py-2 rounded-full shadow-2xs">
+                  ECOMMERCE • DEVELOPMENT • GROWTH
+                </span>
               </div>
             </motion.div>
           </div>
@@ -275,10 +311,10 @@ export default function EcommerceDevelopment() {
               className="bg-sky-50 border border-sky-100 rounded-4xl p-8 flex flex-col justify-center h-full min-h-[160px] shadow-xs hover:-translate-y-1 transition-transform duration-300"
             >
               <h4 className="text-sm font-black text-sky-950 uppercase tracking-wider mb-2 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-sky-500 rounded-full" /> Developers
+                <span className="w-1.5 h-1.5 bg-sky-500 rounded-full" /> DEVELOPERS
               </h4>
-              <p className="text-sky-900/85 text-2xl font-black mb-1">12+</p>
-              <p className="text-sky-900/70 text-xs font-semibold uppercase tracking-wider">
+              <p className="text-sky-900/85 text-3xl font-black mb-1">12+</p>
+              <p className="text-sky-900/80 text-xs font-semibold uppercase tracking-wider">
                 Full-Stack Commerce Engineers
               </p>
             </motion.div>
@@ -290,11 +326,11 @@ export default function EcommerceDevelopment() {
               className="bg-yellow-50/70 border border-yellow-100 rounded-4xl p-8 flex flex-col justify-center h-full min-h-[160px] shadow-xs hover:-translate-y-1 transition-transform duration-300"
             >
               <h4 className="text-sm font-black text-yellow-950 uppercase tracking-wider mb-2 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full" /> Security
+                <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full" /> SECURITY
               </h4>
-              <p className="text-yellow-900/85 text-2xl font-black mb-1">100%</p>
-              <p className="text-yellow-900/70 text-xs font-semibold uppercase tracking-wider">
-                PCI-DSS Compliant Infrastructure
+              <p className="text-yellow-900/85 text-3xl font-black mb-1">100%</p>
+              <p className="text-yellow-900/80 text-xs font-semibold uppercase tracking-wider">
+                Security-Focused Infrastructure
               </p>
             </motion.div>
           </div>
@@ -329,7 +365,6 @@ export default function EcommerceDevelopment() {
                   src={item.src} 
                   alt="Client Logo" 
                   className={`${item.customClass || "max-h-[92%] max-w-[92%]"} object-contain`} 
-                 
                 />
               </div>
             ))}
@@ -340,12 +375,12 @@ export default function EcommerceDevelopment() {
       {/* 4. CORE SERVICES */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
         <div className="max-w-3xl mb-16">
-          <span className="text-xs font-bold uppercase tracking-widest text-orange-500">Solution Provide</span>
+          <span className="text-xs font-bold uppercase tracking-widest text-orange-500">OUR COMMERCE EXPERTISE</span>
           <h2 className="text-3xl md:text-5xl font-black text-gray-950 uppercase tracking-tight mt-1 mb-6 leading-tight">
-            Delivering Reliable eCommerce Solutions.
+            Ecommerce Development <br />Services We Offer
           </h2>
-          <p className="text-gray-500 text-sm md:text-base leading-relaxed">
-            We build features that optimize inventory, streamline checkouts, and protect buyer data pipelines.
+          <p className="text-gray-500 text-sm md:text-base leading-relaxed text-justify">
+            From intuitive storefronts to robust inventory synchronization and frictionless checkouts, we build online shopping experiences tailored to convert.
           </p>
         </div>
 
@@ -369,7 +404,7 @@ export default function EcommerceDevelopment() {
                   <h3 className="text-xl font-black uppercase text-gray-950 mb-3 group-hover:text-orange-500 transition-colors">
                     {srv.title}
                   </h3>
-                  <p className="text-gray-500 text-sm leading-relaxed mb-6 h-12 overflow-hidden line-clamp-2">
+                  <p className="text-gray-600 text-sm leading-relaxed mb-6 text-justify">
                     {srv.desc}
                   </p>
 
@@ -393,14 +428,14 @@ export default function EcommerceDevelopment() {
           
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.8fr] gap-16 items-start mb-20">
             <div>
-              <span className="text-xs font-bold uppercase tracking-widest text-orange-500 block mb-3">Our Process</span>
+              <span className="text-xs font-bold uppercase tracking-widest text-orange-500 block mb-3">OUR PROVEN METHODOLOGY</span>
               <h2 className="text-4xl md:text-5xl font-black text-gray-950 uppercase tracking-tight">
                 3 STEPS TO ECOMMERCE <br />GROWTH.
               </h2>
             </div>
             <div>
-              <p className="text-gray-500 text-sm md:text-base leading-relaxed">
-                We handle the end-to-end design and coding of your shop with total reliability.
+              <p className="text-gray-600 text-sm md:text-base leading-relaxed text-justify">
+                We handle the end-to-end design, secure payment integrations, and performance engineering of your store to ensure high conversions and smooth operational reliability.
               </p>
             </div>
           </div>
@@ -446,7 +481,7 @@ export default function EcommerceDevelopment() {
                   <h3 className="text-2xl md:text-3xl font-black uppercase text-gray-950 mb-4 pr-24 leading-tight">
                     {STEPS[activeStep].title}
                   </h3>
-                  <p className="text-gray-600 text-sm md:text-base leading-relaxed mb-8 max-w-xl">
+                  <p className="text-gray-600 text-sm md:text-base leading-relaxed mb-8 max-w-xl text-justify">
                     {STEPS[activeStep].desc}
                   </p>
 
@@ -466,6 +501,55 @@ export default function EcommerceDevelopment() {
             </div>
           </div>
 
+        </div>
+      </section>
+
+      {/* FAQS SECTION */}
+      <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <div className="text-center mb-16">
+          <span className="text-xs font-bold uppercase tracking-widest text-orange-500">FAQ</span>
+          <h2 className="text-3xl md:text-5xl font-black text-gray-950 uppercase tracking-tight mt-2">
+            Ecommerce Development – FAQs
+          </h2>
+        </div>
+
+        <div className="space-y-4">
+          {FAQS.map((faq, idx) => {
+            const isOpen = openFaq === idx;
+            return (
+              <div 
+                key={idx}
+                className="bg-white border border-gray-200/85 rounded-3xl overflow-hidden transition-all duration-300"
+              >
+                <button
+                  onClick={() => setOpenFaq(isOpen ? null : idx)}
+                  className="w-full flex items-center justify-between p-6 text-left cursor-pointer hover:bg-stone-50/50"
+                >
+                  <span className="text-sm sm:text-base font-bold text-gray-950 uppercase tracking-tight pr-6">
+                    {faq.question}
+                  </span>
+                  <ChevronRight 
+                    size={18} 
+                    className={`text-orange-500 transition-transform duration-300 shrink-0 ${isOpen ? 'rotate-90' : ''}`} 
+                  />
+                </button>
+                <AnimatePresence initial={false}>
+                  {isOpen && (
+                    <motion.div
+                      initial={{ height: 0 }}
+                      animate={{ height: "auto" }}
+                      exit={{ height: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <div className="p-6 pt-0 border-t border-gray-100 text-gray-600 text-sm leading-relaxed text-justify">
+                        {faq.answer}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            );
+          })}
         </div>
       </section>
 
@@ -493,7 +577,7 @@ export default function EcommerceDevelopment() {
                   exit={{ opacity: 0, x: -15 }}
                   transition={{ duration: 0.3 }}
                 >
-                  <p className="text-gray-700 text-base md:text-lg leading-relaxed font-medium mb-8 pr-12 italic">
+                  <p className="text-gray-700 text-base md:text-lg leading-relaxed font-medium mb-8 pr-12 italic text-justify">
                     "{TESTIMONIALS[activeTestimonial].quote}"
                   </p>
                   
@@ -535,7 +619,7 @@ export default function EcommerceDevelopment() {
       {/* Areas We Serve */}
       <AreasWeServe />
 
-      {/* 5. LET'S TALK PANEL */}
+      {/* 6. LET'S TALK PANEL */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
         <div className="bg-gray-950 text-white rounded-[2.5rem] p-8 md:p-16 flex flex-col lg:flex-row lg:items-stretch justify-between gap-12 relative overflow-hidden shadow-2xl border border-zinc-800">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(249,115,22,0.12),transparent_50%)] pointer-events-none" />
@@ -547,7 +631,7 @@ export default function EcommerceDevelopment() {
                 Connect Us
               </h2>
               <p className="text-gray-400 text-sm md:text-base leading-relaxed mb-8">
-                Reach out today to discuss your project and discover how we can grow your brand online.
+                Reach out today to discuss your ecommerce project and build a high-converting digital storefront.
               </p>
             </div>
 

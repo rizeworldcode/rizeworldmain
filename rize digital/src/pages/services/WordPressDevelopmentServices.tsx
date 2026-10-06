@@ -25,34 +25,67 @@ import AreasWeServe from '../../components/common/AreasWeServe';
 
 const SERVICES_LIST = [
   {
-    title: "Custom WordPress Website Design",
-    desc: "Crafting unique, visually appealing websites tailored to your brand and business goals.",
-    tags: ["Unique Layouts", "Branding Integration", "Interactive Elements", "Visual Consistency", "User-Centric Design", "Creative UI"],
+    title: "Custom WordPress Websites",
+    desc: "We create WordPress websites around your brand, content, functionality, and business requirements rather than forcing your project into a standard template.",
+    tags: ["Custom Websites", "Brand Focused", "Unique UI", "Scalable"],
     icon: Search
   },
   {
-    title: "Theme & Plugin Development",
-    desc: "Build highly optimized templates and custom functional extensions to run your platform seamlessly.",
-    tags: ["Clean PHP", "API Hooking", "Custom Extensions", "Block Library"],
-    icon: Share2
-  },
-  {
-    title: "WooCommerce Solutions",
-    desc: "Configure robust eCommerce setups with safe payment configurations and high product inventory options.",
-    tags: ["eCommerce Grid", "Gateways Setup", "Subscriptions Plan"],
+    title: "Theme Customization",
+    desc: "If you already have a WordPress theme, we can customize its layout, styling, and functionality to better match your brand and website requirements.",
+    tags: ["Theme Styling", "Layout Tuning", "Brand Match", "UI Tweaks"],
     icon: Palette
   },
   {
-    title: "Speed & Security Optimization",
-    desc: "Mitigate loading delays, harden security boundaries, and resolve cache database concerns.",
-    tags: ["Core Web Vitals", "WAF Rules Setup", "DB Compression"],
+    title: "Plugin Development & Integration",
+    desc: "We can integrate suitable plugins and develop custom functionality when standard solutions do not meet your specific requirements.",
+    tags: ["Plugin Integrations", "Custom Features", "API Connections", "Workflow"],
+    icon: Share2
+  },
+  {
+    title: "Responsive WordPress Development",
+    desc: "Your website should work properly across desktops, tablets, and mobile devices. We focus on responsive layouts and a consistent user experience across screen sizes.",
+    tags: ["Mobile Friendly", "Tablet & Desktop", "Consistent UX", "Responsive"],
     icon: Edit3
   },
   {
-    title: "Maintenance & Support",
-    desc: "Keep plugins up-to-date and maintain periodic site back-up routines for zero-downtime operations.",
-    tags: ["Periodic Audits", "Uptime Checks", "Bug Fix Operations"],
+    title: "Website Optimization",
+    desc: "An existing WordPress website may need improvements in performance, structure, usability, or functionality. We can review the website and identify practical areas for improvement.",
+    tags: ["Speed Optimization", "Core Web Vitals", "Security Audits", "Structure"],
     icon: Award
+  },
+  {
+    title: "WordPress Ecommerce Development",
+    desc: "For businesses selling online, we can build and customize WordPress-based ecommerce experiences with a focus on product presentation, navigation, usability, and conversions.",
+    tags: ["WooCommerce", "Cart & Checkout", "Product Grids", "Payment Gateways"],
+    icon: Palette
+  }
+];
+
+const FAQS = [
+  {
+    question: "What is WordPress?",
+    answer: "WordPress is a content management system (CMS) that allows businesses and individuals to create, manage, and update websites without having to build every part of the website from scratch."
+  },
+  {
+    question: "What WordPress development services does RizeWorld offer?",
+    answer: "RizeWorld provides custom WordPress development, theme customization, plugin integration, responsive development, ecommerce websites, website optimization, and ongoing improvements."
+  },
+  {
+    question: "Can you build a custom WordPress website?",
+    answer: "Yes. We can create a WordPress website based on your brand, content, functionality, audience, and specific business requirements."
+  },
+  {
+    question: "Can you customize an existing WordPress theme?",
+    answer: "Yes. An existing theme can be customized to better match your brand, layout, functionality, and user experience requirements."
+  },
+  {
+    question: "Is WordPress suitable for business websites?",
+    answer: "Yes. WordPress can be used for many types of business websites, including service websites, corporate websites, blogs, portfolios, and ecommerce platforms. The right setup depends on the business requirements."
+  },
+  {
+    question: "Can WordPress websites be optimized for SEO?",
+    answer: "Yes. WordPress websites can be structured and optimized for search engines through proper page structure, content organization, technical SEO, performance improvements, and other relevant practices."
   }
 ];
 
@@ -113,6 +146,9 @@ const TESTIMONIALS = [
 export default function WordPressDevelopmentServices() {
   const navigate = useNavigate();
   const repeatedLogos = [...LOGOS, ...LOGOS, ...LOGOS];
+  const [activeStep, setActiveStep] = useState(0);
+  const [activeTestimonial, setActiveTestimonial] = useState(0);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
   
   const serviceSchema = {
     "@context": "https://schema.org",
@@ -123,7 +159,7 @@ export default function WordPressDevelopmentServices() {
       "name": "RizeWorld Digital",
       "url": "https://rizeworld.in/"
     },
-    "description": "Custom WordPress development services. Custom theme/plugin coding, WooCommerce storefront configurations, security tightening, and SEO alignments."
+    "description": "Reliable WordPress websites built around your brand, users, and business requirements with custom theme design and performance optimization."
   };
 
   const breadcrumbSchema = {
@@ -151,17 +187,27 @@ export default function WordPressDevelopmentServices() {
     ]
   };
 
-  const [activeStep, setActiveStep] = useState(0);
-  const [activeTestimonial, setActiveTestimonial] = useState(0);
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": FAQS.map(faq => ({
+      "@type": "Question",
+      "name": faq.question,
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": faq.answer
+      }
+    }))
+  };
 
   return (
     <div className="min-h-screen bg-stone-50 pt-32 pb-24 overflow-hidden text-left font-sans selection:bg-orange-500 selection:text-white">
       
       <SEO 
         title="WordPress Development Services & Custom Company | RizeWorld"
-        description="Looking for a professional WordPress website development company? RizeWorld provides enterprise WordPress development and custom theme design."
+        description="Reliable WordPress websites built around your brand, users, and business requirements. RizeWorld creates responsive and scalable WordPress websites."
         canonicalUrl="https://rizeworld.in/services/wordpress-development"
-        schema={[serviceSchema, breadcrumbSchema]}
+        schema={[serviceSchema, breadcrumbSchema, faqSchema]}
       />
       
       {/* 1. BREADCRUMBS & NAVIGATION */}
@@ -182,7 +228,7 @@ export default function WordPressDevelopmentServices() {
           
           {/* LEFT COLLAGE BLOCK */}
           <div className="flex flex-col gap-6">
-            {/* Strategy Banner Card */}
+            {/* Left Card (WHO WE ARE) */}
             <motion.div 
               initial={{ opacity: 0, x: -40 }}
               animate={{ opacity: 1, x: 0 }}
@@ -190,9 +236,9 @@ export default function WordPressDevelopmentServices() {
               className="bg-orange-100/70 border border-orange-200/60 rounded-4xl p-8 flex flex-col justify-center h-auto min-h-[180px] shadow-xs relative overflow-hidden group"
             >
               <div className="absolute top-0 right-0 w-24 h-24 bg-orange-200/30 rounded-full blur-2xl -mr-8 -mt-8 group-hover:scale-110 transition-transform duration-500" />
-              <span className="text-[10px] font-black text-orange-600 uppercase tracking-widest block mb-3">Who We Are</span>
-              <p className="text-gray-800 text-sm leading-relaxed font-semibold">
-                RizeWorld – Empowering Brands Through WordPress Excellence
+              <span className="text-[10px] font-black text-orange-600 uppercase tracking-widest block mb-3">WHO WE ARE</span>
+              <p className="text-gray-800 text-sm leading-relaxed font-semibold text-justify">
+                RizeWorld – Building Flexible WordPress Experiences for Growing Brands
               </p>
             </motion.div>
 
@@ -222,55 +268,51 @@ export default function WordPressDevelopmentServices() {
               className="bg-white border border-gray-200/80 rounded-[2.5rem] p-8 md:p-12 shadow-sm flex flex-col justify-center grow relative overflow-hidden"
             >
               <span className="text-orange-500 font-black uppercase tracking-widest text-xs mb-4 flex items-center gap-1.5">
-                <Sparkles size={14} className="animate-pulse" /> Offer a wide range of services
+                <Sparkles size={14} className="animate-pulse" /> Scalable CMS & Custom Themes
               </span>
               <h1 className="text-4xl md:text-5xl lg:text-[3.5rem] font-black text-gray-950 leading-[1.05] uppercase tracking-tighter mb-6">
                 WordPress Development <br />
                 Services <span className="relative inline-block px-4 py-1 mx-1 mt-1">
-                  Company
+                  Studio
                   <svg className="absolute inset-0 w-full h-full text-orange-500" viewBox="0 0 100 100" preserveAspectRatio="none">
                     <path d="M 5, 50 C 5, 20 95, 20 95, 50 C 95, 80 5, 80 5, 50 Z" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="300" strokeDashoffset="0" className="animate-[dash_2s_ease-in-out_infinite]" />
                   </svg>
                 </span>
               </h1>
-              <p className="text-gray-800 text-sm md:text-base leading-relaxed max-w-xl">
-                As a leading <strong>WordPress development company</strong>, we deliver custom <strong>WordPress development services</strong>, custom plugin development, and <strong>professional WordPress development services</strong> tailored to secure and scale your enterprise.
-              </p>
+              <div className="space-y-4 text-gray-800 text-sm md:text-base leading-relaxed max-w-xl text-justify">
+                <p className="font-semibold text-gray-900">
+                  Reliable WordPress websites built around your brand, users, and business requirements.
+                </p>
+                <p>
+                  RizeWorld creates responsive and scalable WordPress websites with practical functionality, clean design, and a focus on usability and performance.
+                </p>
+                <p>
+                  WordPress gives businesses a flexible way to build and manage their online presence, but a good website needs more than a basic theme and a few plugins. It should be secure, responsive, easy to manage, and designed around the needs of your audience. At RizeWorld, we provide WordPress development services for businesses that need a reliable website built around their goals.
+                </p>
+              </div>
             </motion.div>
 
-            {/* Happy Clients Badge Card */}
+            {/* Bottom Card */}
             <motion.div 
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
               className="bg-white border border-gray-200/80 rounded-4xl p-6 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-sm hover:shadow-md transition-shadow duration-300"
             >
-              <p className="text-gray-500 text-xs font-semibold max-w-sm text-center sm:text-left leading-relaxed">
-                Dedicated block builders and custom theme engineers working on your setups.
+              <p className="text-gray-700 text-xs sm:text-sm font-semibold max-w-sm text-justify leading-relaxed">
+                Dedicated WordPress development focused on usability, performance, and long-term flexibility.
               </p>
-              <div className="flex items-center gap-3.5 shrink-0">
-                <div className="flex -space-x-3">
-                  {[
-                    "/video/harsh tiwari.jpeg",
-                    "/video/k sir.jpg",
-                    "/video/mansukhhh.jpg",
-                    "/video/Untitled-1.jpg",
-                    "/video/nk s.jpg"
-                  ].map((avatar, i) => (
-                    <img key={i} src={avatar} alt="user" className="w-9 h-9 rounded-full border-2 border-white object-cover shadow-xs" />
-                  ))}
-                </div>
-                <div>
-                  <span className="text-base font-black text-gray-950 block leading-none">16+</span>
-                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">World-wide Clients</span>
-                </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-orange-600 bg-orange-50 border border-orange-200/80 px-4 py-2 rounded-full shadow-2xs">
+                  WORDPRESS • DEVELOPMENT • OPTIMIZATION
+                </span>
               </div>
             </motion.div>
           </div>
 
           {/* RIGHT STATS COLUMN */}
           <div className="flex flex-col gap-6">
-            {/* Experts Card */}
+            {/* Right Card 1 (EXPERTISE) */}
             <motion.div 
               initial={{ opacity: 0, x: 40 }}
               animate={{ opacity: 1, x: 0 }}
@@ -278,15 +320,17 @@ export default function WordPressDevelopmentServices() {
               className="bg-sky-50 border border-sky-100 rounded-4xl p-8 flex flex-col justify-center h-full min-h-[160px] shadow-xs hover:-translate-y-1 transition-transform duration-300"
             >
               <h4 className="text-sm font-black text-sky-950 uppercase tracking-wider mb-2 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-sky-500 rounded-full" /> Experts
+                <span className="w-1.5 h-1.5 bg-sky-500 rounded-full" /> EXPERTISE
               </h4>
-              <p className="text-sky-900/85 text-2xl font-black mb-1">70+</p>
-              <p className="text-sky-900/70 text-xs font-semibold uppercase tracking-wider">
-                Professional Experts
+              <p className="text-sky-950 text-sm font-bold mb-1">
+                WordPress Design & Development
+              </p>
+              <p className="text-sky-900/80 text-xs font-semibold leading-relaxed">
+                Custom Websites • Plugins • Optimization
               </p>
             </motion.div>
 
-            {/* Projects Card */}
+            {/* Right Card 2 (SCALABILITY) */}
             <motion.div 
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
@@ -294,11 +338,13 @@ export default function WordPressDevelopmentServices() {
               className="bg-yellow-50/70 border border-yellow-100 rounded-4xl p-8 flex flex-col justify-center h-full min-h-[160px] shadow-xs hover:-translate-y-1 transition-transform duration-300"
             >
               <h4 className="text-sm font-black text-yellow-950 uppercase tracking-wider mb-2 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full" /> Projects
+                <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full" /> SCALABILITY
               </h4>
-              <p className="text-yellow-900/85 text-2xl font-black mb-1">20+</p>
-              <p className="text-yellow-900/70 text-xs font-semibold uppercase tracking-wider">
-                Projects Complete
+              <p className="text-yellow-950 text-sm font-bold mb-1">
+                Responsive & Scalable Frameworks
+              </p>
+              <p className="text-yellow-900/80 text-xs font-semibold leading-relaxed">
+                Themes • WooCommerce • Performance
               </p>
             </motion.div>
           </div>
@@ -344,12 +390,12 @@ export default function WordPressDevelopmentServices() {
       {/* 4. SIX CORE SERVICES */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
         <div className="max-w-3xl mb-16">
-          <span className="text-xs font-bold uppercase tracking-widest text-orange-500">Solution Provide</span>
+          <span className="text-xs font-bold uppercase tracking-widest text-orange-500">OUR SERVICES</span>
           <h2 className="text-3xl md:text-5xl font-black text-gray-950 uppercase tracking-tight mt-1 mb-6 leading-tight">
-            Delivering Powerful WordPress Experiences.
+            Our WordPress Development Services
           </h2>
-          <p className="text-gray-500 text-sm md:text-base leading-relaxed">
-            We craft powerful WordPress websites that drive growth and elevate your online presence.
+          <p className="text-gray-600 text-sm md:text-base leading-relaxed text-justify">
+            We create WordPress websites around your brand, content, functionality, and business requirements rather than forcing your project into a standard template.
           </p>
         </div>
 
@@ -373,7 +419,7 @@ export default function WordPressDevelopmentServices() {
                   <h3 className="text-xl font-black uppercase text-gray-950 mb-3 group-hover:text-orange-500 transition-colors">
                     {srv.title}
                   </h3>
-                  <p className="text-gray-500 text-sm leading-relaxed mb-6 h-12 overflow-hidden line-clamp-2">
+                  <p className="text-gray-600 text-sm leading-relaxed mb-6 text-justify">
                     {srv.desc}
                   </p>
 
@@ -392,20 +438,23 @@ export default function WordPressDevelopmentServices() {
         </div>
       </section>
 
-      {/* 5. PROCESS TIMELINE WORKFLOW */}
+      {/* 5. PROCESS / WHY CHOOSE RIZEWORLD */}
       <section className="bg-white border-t border-b border-gray-200 py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.8fr] gap-16 items-start mb-20">
             <div>
-              <span className="text-xs font-bold uppercase tracking-widest text-orange-500 block mb-3">Our Solution Process</span>
+              <span className="text-xs font-bold uppercase tracking-widest text-orange-500 block mb-3">WHY CHOOSE RIZEWORLD?</span>
               <h2 className="text-4xl md:text-5xl font-black text-gray-950 uppercase tracking-tight">
-                3 STEPS WE HAVE <br />FOLLOWING.
+                WORDPRESS DEVELOPMENT WITH <br />SEO & GROWTH IN MIND.
               </h2>
             </div>
             <div>
-              <p className="text-gray-500 text-sm md:text-base leading-relaxed">
-                Delivering high-performance WordPress websites to enhance your online presence, engage users, and drive business growth.
+              <p className="text-gray-600 text-sm md:text-base leading-relaxed text-justify mb-4">
+                A website should be built with search visibility in mind from the beginning. We consider elements such as page structure, content organization, mobile usability, performance, internal linking, and technical SEO while developing websites. This helps your WordPress website provide a better experience for visitors while creating a stronger foundation for your wider digital marketing strategy.
+              </p>
+              <p className="text-gray-600 text-sm md:text-base leading-relaxed text-justify">
+                We look beyond just building a website. Our experience with SEO, web design, content, and digital marketing allows us to consider how your WordPress website fits into your overall online strategy. Whether you are starting from scratch or improving an existing website, our focus is on creating something that is functional, easy to use, scalable, and aligned with your business goals.
               </p>
             </div>
           </div>
@@ -455,7 +504,7 @@ export default function WordPressDevelopmentServices() {
                   <h3 className="text-2xl md:text-3xl font-black uppercase text-gray-950 mb-4 pr-24 leading-tight">
                     {STEPS[activeStep].title}
                   </h3>
-                  <p className="text-gray-600 text-sm md:text-base leading-relaxed mb-8 max-w-xl">
+                  <p className="text-gray-600 text-sm md:text-base leading-relaxed mb-8 max-w-xl text-justify">
                     {STEPS[activeStep].desc}
                   </p>
 
@@ -476,6 +525,55 @@ export default function WordPressDevelopmentServices() {
 
           </div>
 
+        </div>
+      </section>
+
+      {/* FAQS SECTION */}
+      <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <div className="text-center mb-16">
+          <span className="text-xs font-bold uppercase tracking-widest text-orange-500">FAQ</span>
+          <h2 className="text-3xl md:text-5xl font-black text-gray-950 uppercase tracking-tight mt-2">
+            WordPress Development – FAQs
+          </h2>
+        </div>
+
+        <div className="space-y-4">
+          {FAQS.map((faq, idx) => {
+            const isOpen = openFaq === idx;
+            return (
+              <div 
+                key={idx}
+                className="bg-white border border-gray-200/85 rounded-3xl overflow-hidden transition-all duration-300"
+              >
+                <button
+                  onClick={() => setOpenFaq(isOpen ? null : idx)}
+                  className="w-full flex items-center justify-between p-6 text-left cursor-pointer hover:bg-stone-50/50"
+                >
+                  <span className="text-sm sm:text-base font-bold text-gray-950 uppercase tracking-tight pr-6">
+                    {faq.question}
+                  </span>
+                  <ChevronRight 
+                    size={18} 
+                    className={`text-orange-500 transition-transform duration-300 shrink-0 ${isOpen ? 'rotate-90' : ''}`} 
+                  />
+                </button>
+                <AnimatePresence initial={false}>
+                  {isOpen && (
+                    <motion.div
+                      initial={{ height: 0 }}
+                      animate={{ height: "auto" }}
+                      exit={{ height: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <div className="p-6 pt-0 border-t border-gray-100 text-gray-600 text-sm leading-relaxed text-justify">
+                        {faq.answer}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            );
+          })}
         </div>
       </section>
 

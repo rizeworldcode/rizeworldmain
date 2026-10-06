@@ -3,11 +3,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
-  Search, 
-  Share2, 
   Palette, 
-  Edit3, 
-  Award, 
+  Layout, 
+  Monitor, 
+  Smartphone, 
+  Layers, 
+  SearchCheck, 
   Mail, 
   MessageSquare, 
   ChevronRight,
@@ -19,37 +20,71 @@ import {
 import SEO from '../../components/common/SEO';
 import Breadcrumbs from '../../components/common/Breadcrumbs';
 import AreasWeServe from '../../components/common/AreasWeServe';
+import { LOGOS } from '../../data/logos';
 
 const SERVICES_LIST = [
   {
-    title: "User Research & Discovery",
-    desc: "Understanding buyer psychology, building maps, evaluating expectations, and setting up structural briefs.",
-    tags: ["User Personas", "Discovery Audits", "Customer Journeys", "Goal Mapping"],
-    icon: Search
-  },
-  {
-    title: "Wireframing & Prototyping",
-    desc: "Drawing structural low-fidelity outlines and high-fidelity clickable interactive prototypes.",
-    tags: ["Figma Layouts", "Clickable Demos", "UX Workflows", "A/B Testing Structure"],
-    icon: Share2
-  },
-  {
-    title: "Visual Interface (UI) Design",
-    desc: "Crafting beautiful grids, dark-mode/light-mode stylesheets, font pairings, and responsive visual patterns.",
-    tags: ["UI Styles", "Color Palette Rules", "Typography Pairs", "Responsive UI"],
+    title: "User Interface Design",
+    desc: "We design clean and consistent interfaces that make digital products visually appealing while keeping important information easy to find and understand.",
+    tags: ["Visual Design", "Design Systems", "Responsive UI"],
     icon: Palette
   },
   {
-    title: "Interaction Design & Micro-animations",
-    desc: "Adding custom transitions, hover triggers, button micro-feedback states to enhance client interactions.",
-    tags: ["Transitions", "Lottie Assets", "Micro-feedback", "Hover States"],
-    icon: Edit3
+    title: "User Experience Design",
+    desc: "We focus on how people interact with a website or application, creating logical navigation and user flows that reduce friction throughout the journey.",
+    tags: ["User Flows", "Navigation", "UX Strategy"],
+    icon: Layout
   },
   {
-    title: "Usability Testing & Refinements",
-    desc: "Observing user navigations, heatmaps, identifying design bottlenecks, and executing final design fixes.",
-    tags: ["Usability Audits", "Heatmap Analysis", "Design Refinements"],
-    icon: Award
+    title: "Website UI/UX Design",
+    desc: "From landing pages to complete websites, we create layouts that balance brand identity, usability, accessibility, and conversion-focused design.",
+    tags: ["Website Design", "Wireframes", "Prototyping"],
+    icon: Monitor
+  },
+  {
+    title: "Mobile App UI/UX",
+    desc: "We design mobile experiences with simple navigation, clear interactions, and layouts that work comfortably across different screen sizes.",
+    tags: ["Mobile Design", "App Interfaces", "Interaction Design"],
+    icon: Smartphone
+  },
+  {
+    title: "Figma Design & Prototyping",
+    desc: "We use Figma to create wireframes, high-fidelity designs, and interactive prototypes that help teams visualize and refine a product before development.",
+    tags: ["Figma", "Wireframing", "Prototyping"],
+    icon: Layers
+  },
+  {
+    title: "UX Audit & Improvement",
+    desc: "Already have a website or product? We review its user experience to identify confusing navigation, usability issues, and opportunities for improvement.",
+    tags: ["UX Audit", "Usability", "Experience Optimization"],
+    icon: SearchCheck
+  }
+];
+
+const FAQS = [
+  {
+    question: "What is UI/UX design?",
+    answer: "UI/UX design focuses on how a digital product looks and how easily people can use it. UI deals with visual elements, while UX focuses on navigation, interactions, and the overall user journey."
+  },
+  {
+    question: "What UI/UX design services does RizeWorld offer?",
+    answer: "RizeWorld offers website UI/UX design, mobile app interfaces, wireframing, prototyping, user flows, design systems, and UX audits based on the needs of each project."
+  },
+  {
+    question: "Why is UI/UX design important for a website?",
+    answer: "Good UI/UX design makes information easier to understand and navigation more intuitive. A well-planned experience can also help visitors find what they need and complete important actions more easily."
+  },
+  {
+    question: "Do you design both websites and mobile applications?",
+    answer: "Yes. UI/UX designs can be created for websites, web applications, and mobile apps, with layouts and interactions adapted to each platform."
+  },
+  {
+    question: "What is the difference between UI and UX design?",
+    answer: "UI focuses mainly on the visual presentation of a digital product, including layouts, typography, colors, and components. UX focuses on usability, information structure, navigation, and how users move through the product."
+  },
+  {
+    question: "What is a UX audit?",
+    answer: "A UX audit is a review of a digital product's usability and user journey. It can identify issues such as confusing navigation, unclear calls to action, inconsistent layouts, and unnecessary steps."
   }
 ];
 
@@ -63,7 +98,7 @@ const STEPS = [
   {
     num: "2",
     title: "UI Design & Prototyping",
-    desc: "Our creative Figma specialists code layouts, pair themes, configure templates, and assemble interactive mockups.",
+    desc: "Our creative Figma specialists design layouts, pair themes, configure templates, and assemble interactive mockups.",
     details: ["Figma Mockups", "Interactive Prototypes", "Theme Settings"]
   },
   {
@@ -109,16 +144,21 @@ const TESTIMONIALS = [
 
 export default function UiUxDesign() {
   const navigate = useNavigate();
+  const repeatedLogos = [...LOGOS, ...LOGOS, ...LOGOS];
+  const [activeStep, setActiveStep] = useState(0);
+  const [activeTestimonial, setActiveTestimonial] = useState(0);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
+
   const serviceSchema = {
     "@context": "https://schema.org",
     "@type": "Service",
-    "name": "UI/UX Design",
+    "name": "UI/UX Design Services",
     "provider": {
       "@type": "Organization",
       "name": "RizeWorld Digital",
       "url": "https://rizeworld.in/"
     },
-    "description": "User interface and user experience design services. Comprehensive wireframing, high-fidelity Figma prototypes, and consumer journey mapping."
+    "description": "RizeWorld creates intuitive UI/UX designs for websites and digital products, combining usability, responsive interfaces, and thoughtful user experiences."
   };
 
   const breadcrumbSchema = {
@@ -146,17 +186,27 @@ export default function UiUxDesign() {
     ]
   };
 
-  const [activeStep, setActiveStep] = useState(0);
-  const [activeTestimonial, setActiveTestimonial] = useState(0);
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": FAQS.map(faq => ({
+      "@type": "Question",
+      "name": faq.question,
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": faq.answer
+      }
+    }))
+  };
 
   return (
     <div className="min-h-screen bg-stone-50 pt-32 pb-24 overflow-hidden text-left font-sans selection:bg-orange-500 selection:text-white">
       
       <SEO 
-        title="UI UX Design Services & Figma Agency | RizeWorld"
-        description="Looking for a professional UI UX design company? Our UI UX design agency specializes in mobile app design, wireframing services, and Figma prototyping."
+        title="UI/UX Design Services | RizeWorld"
+        description="RizeWorld creates intuitive UI/UX designs for websites and digital products, combining usability, responsive interfaces, and thoughtful user experiences."
         canonicalUrl="https://rizeworld.in/services/ui-ux-design"
-        schema={[serviceSchema, breadcrumbSchema]}
+        schema={[serviceSchema, breadcrumbSchema, faqSchema]}
       />
       
       {/* 1. BREADCRUMBS & NAVIGATION */}
@@ -184,9 +234,9 @@ export default function UiUxDesign() {
               className="bg-orange-100/70 border border-orange-200/60 rounded-4xl p-8 flex flex-col justify-center h-auto min-h-[180px] shadow-xs relative overflow-hidden group"
             >
               <div className="absolute top-0 right-0 w-24 h-24 bg-orange-200/30 rounded-full blur-2xl -mr-8 -mt-8 group-hover:scale-110 transition-transform duration-500" />
-              <span className="text-[10px] font-black text-orange-600 uppercase tracking-widest block mb-3">Who We Are</span>
-              <p className="text-gray-800 text-sm leading-relaxed font-semibold">
-                RizeWorld – Creating Delightful User-Centric Interfaces
+              <span className="text-[10px] font-black text-orange-600 uppercase tracking-widest block mb-3">WHO WE ARE</span>
+              <p className="text-gray-800 text-sm leading-relaxed font-semibold text-justify">
+                RizeWorld – Creating Intuitive Digital Experiences
               </p>
             </motion.div>
 
@@ -214,47 +264,36 @@ export default function UiUxDesign() {
               className="bg-white border border-gray-200/80 rounded-[2.5rem] p-8 md:p-12 shadow-sm flex flex-col justify-center grow relative overflow-hidden"
             >
               <span className="text-orange-500 font-black uppercase tracking-widest text-xs mb-4 flex items-center gap-1.5">
-                <Sparkles size={14} className="animate-pulse" /> Elegant Creative Interfaces
+                <Sparkles size={14} className="animate-pulse" /> ELEGANT & USER-CENTRIC INTERFACES
               </span>
               <h1 className="text-4xl md:text-5xl lg:text-[3.5rem] font-black text-gray-950 leading-[1.05] uppercase tracking-tighter mb-6">
-                UI UX Design <br />
+                UI/UX Design <br />
                 Services <span className="relative inline-block px-4 py-1 mx-1 mt-1">
-                  Agency
+                  Studio
                   <svg className="absolute inset-0 w-full h-full text-orange-500" viewBox="0 0 100 100" preserveAspectRatio="none">
                     <path d="M 5, 50 C 5, 20 95, 20 95, 50 C 95, 80 5, 80 5, 50 Z" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="300" strokeDashoffset="0" className="animate-[dash_2s_ease-in-out_infinite]" />
                   </svg>
                 </span>
               </h1>
-              <p className="text-gray-800 text-sm md:text-base leading-relaxed max-w-xl">
-                As a premier <strong>UI UX design company</strong> and <strong>Figma design agency</strong>, we deliver custom <strong>UI UX design services</strong>, user journey wireframes, and <strong>professional UI UX design services</strong> to maximize user engagement.
+              <p className="text-gray-800 text-sm md:text-base leading-relaxed max-w-xl text-justify">
+                RizeWorld creates thoughtful UI/UX experiences that make websites and digital products easier to understand, navigate, and use. Our design process combines user research, intuitive layouts, responsive interfaces, and clear visual communication to create experiences that support both users and business goals.
               </p>
             </motion.div>
 
+            {/* Bottom Card */}
             <motion.div 
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
               className="bg-white border border-gray-200/80 rounded-4xl p-6 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-sm hover:shadow-md transition-shadow duration-300"
             >
-              <p className="text-gray-500 text-xs font-semibold max-w-sm text-center sm:text-left leading-relaxed">
-                Creative design assets that translate concepts into cohesive customer journeys.
+              <p className="text-gray-700 text-xs sm:text-sm font-semibold max-w-sm text-justify leading-relaxed">
+                Designing clear experiences that turn complex ideas into simple user journeys.
               </p>
-              <div className="flex items-center gap-3.5 shrink-0">
-                <div className="flex -space-x-3">
-                  {[
-                    "/video/harsh tiwari.jpeg",
-                    "/video/k sir.jpg",
-                    "/video/mansukhhh.jpg",
-                    "/video/Untitled-1.jpg",
-                    "/video/nk s.jpg"
-                  ].map((avatar, i) => (
-                    <img key={i} src={avatar} alt="user" className="w-9 h-9 rounded-full border-2 border-white object-cover shadow-xs" />
-                  ))}
-                </div>
-                <div>
-                  <span className="text-base font-black text-gray-950 block leading-none">16+</span>
-                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Design Deliveries</span>
-                </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-orange-600 bg-orange-50 border border-orange-200/80 px-4 py-2 rounded-full shadow-2xs">
+                  16+ DESIGN DELIVERIES • INTUITIVE FLOWS
+                </span>
               </div>
             </motion.div>
           </div>
@@ -268,10 +307,10 @@ export default function UiUxDesign() {
               className="bg-sky-50 border border-sky-100 rounded-4xl p-8 flex flex-col justify-center h-full min-h-[160px] shadow-xs hover:-translate-y-1 transition-transform duration-300"
             >
               <h4 className="text-sm font-black text-sky-950 uppercase tracking-wider mb-2 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-sky-500 rounded-full" /> Experts
+                <span className="w-1.5 h-1.5 bg-sky-500 rounded-full" /> EXPERTS
               </h4>
-              <p className="text-sky-900/85 text-2xl font-black mb-1">8+</p>
-              <p className="text-sky-900/70 text-xs font-semibold uppercase tracking-wider">
+              <p className="text-sky-900/85 text-3xl font-black mb-1">8+</p>
+              <p className="text-sky-900/80 text-xs font-semibold uppercase tracking-wider">
                 Creative UI/UX Designers
               </p>
             </motion.div>
@@ -283,11 +322,11 @@ export default function UiUxDesign() {
               className="bg-yellow-50/70 border border-yellow-100 rounded-4xl p-8 flex flex-col justify-center h-full min-h-[160px] shadow-xs hover:-translate-y-1 transition-transform duration-300"
             >
               <h4 className="text-sm font-black text-yellow-950 uppercase tracking-wider mb-2 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full" /> Projects
+                <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full" /> PROJECTS
               </h4>
-              <p className="text-yellow-900/85 text-2xl font-black mb-1">80+</p>
-              <p className="text-yellow-900/70 text-xs font-semibold uppercase tracking-wider">
-                Completed Layout Deliveries
+              <p className="text-yellow-900/85 text-3xl font-black mb-1">80+</p>
+              <p className="text-yellow-900/80 text-xs font-semibold uppercase tracking-wider">
+                Completed Design Deliverables
               </p>
             </motion.div>
           </div>
@@ -295,15 +334,49 @@ export default function UiUxDesign() {
         </div>
       </section>
 
-      {/* 3. CORE SERVICES */}
+      {/* 3. LOVED BY TEAMS LOGO MARQUEE */}
+      <section className="py-12 bg-white border-t border-b border-gray-200/80 overflow-hidden relative">
+        <style>
+          {`
+            @keyframes marquee-brands {
+              0% { transform: translate3d(0, 0, 0); }
+              100% { transform: translate3d(-50%, 0, 0); }
+            }
+            .animate-marquee-brands {
+              animation: marquee-brands 60s linear infinite;
+              will-change: transform;
+              backface-visibility: hidden;
+              -webkit-backface-visibility: hidden;
+            }
+          `}
+        </style>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-6 text-center">
+          <span className="text-xs font-bold uppercase tracking-widest text-gray-400">Loved by teams around the world</span>
+        </div>
+        <div className="flex-1 overflow-hidden mask-image-horizontal w-full">
+          <div className="flex w-max animate-marquee-brands items-center">
+            {repeatedLogos.map((item, idx) => (
+              <div key={idx} className={`w-56 h-24 mx-4 flex items-center justify-center shrink-0 p-2 rounded-4xl shadow-sm border border-gray-100 overflow-hidden ${item.bg}`}>
+                <img 
+                  src={item.src} 
+                  alt="Client Logo" 
+                  className={`${item.customClass || "max-h-[92%] max-w-[92%]"} object-contain`} 
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 4. CORE SERVICES */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
         <div className="max-w-3xl mb-16">
-          <span className="text-xs font-bold uppercase tracking-widest text-orange-500">Solution Provide</span>
+          <span className="text-xs font-bold uppercase tracking-widest text-orange-500">SOLUTION WE PROVIDE</span>
           <h2 className="text-3xl md:text-5xl font-black text-gray-950 uppercase tracking-tight mt-1 mb-6 leading-tight">
-            Delivering Exceptional User Experiences.
+            Designing Better Digital Experiences
           </h2>
-          <p className="text-gray-500 text-sm md:text-base leading-relaxed">
-            We structure wireframes and prototypes that optimize clicks and navigation paths.
+          <p className="text-gray-500 text-sm md:text-base leading-relaxed text-justify">
+            We structure wireframes, intuitive interfaces, and interactive prototypes that optimize customer engagement and conversion paths.
           </p>
         </div>
 
@@ -327,7 +400,7 @@ export default function UiUxDesign() {
                   <h3 className="text-xl font-black uppercase text-gray-950 mb-3 group-hover:text-orange-500 transition-colors">
                     {srv.title}
                   </h3>
-                  <p className="text-gray-500 text-sm leading-relaxed mb-6 h-12 overflow-hidden line-clamp-2">
+                  <p className="text-gray-600 text-sm leading-relaxed mb-6 text-justify">
                     {srv.desc}
                   </p>
 
@@ -345,20 +418,20 @@ export default function UiUxDesign() {
         </div>
       </section>
 
-      {/* 4. PROCESS TIMELINE */}
+      {/* 5. PROCESS TIMELINE */}
       <section className="bg-white border-t border-b border-gray-200 py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.8fr] gap-16 items-start mb-20">
             <div>
-              <span className="text-xs font-bold uppercase tracking-widest text-orange-500 block mb-3">Our Process</span>
+              <span className="text-xs font-bold uppercase tracking-widest text-orange-500 block mb-3">OUR DESIGN METHODOLOGY</span>
               <h2 className="text-4xl md:text-5xl font-black text-gray-950 uppercase tracking-tight">
                 3 STEPS TO EXCEPTIONAL <br />EXPERIENCES.
               </h2>
             </div>
             <div>
-              <p className="text-gray-500 text-sm md:text-base leading-relaxed">
-                We handle the end-to-end user research and wireframing setups.
+              <p className="text-gray-600 text-sm md:text-base leading-relaxed text-justify">
+                We handle the end-to-end user research, wireframing, high-fidelity Figma prototyping, and usability audits to ensure smooth product experiences.
               </p>
             </div>
           </div>
@@ -404,7 +477,7 @@ export default function UiUxDesign() {
                   <h3 className="text-2xl md:text-3xl font-black uppercase text-gray-950 mb-4 pr-24 leading-tight">
                     {STEPS[activeStep].title}
                   </h3>
-                  <p className="text-gray-600 text-sm md:text-base leading-relaxed mb-8 max-w-xl">
+                  <p className="text-gray-600 text-sm md:text-base leading-relaxed mb-8 max-w-xl text-justify">
                     {STEPS[activeStep].desc}
                   </p>
 
@@ -427,6 +500,55 @@ export default function UiUxDesign() {
         </div>
       </section>
 
+      {/* FAQS SECTION */}
+      <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <div className="text-center mb-16">
+          <span className="text-xs font-bold uppercase tracking-widest text-orange-500">FAQ</span>
+          <h2 className="text-3xl md:text-5xl font-black text-gray-950 uppercase tracking-tight mt-2">
+            UI/UX Design – FAQs
+          </h2>
+        </div>
+
+        <div className="space-y-4">
+          {FAQS.map((faq, idx) => {
+            const isOpen = openFaq === idx;
+            return (
+              <div 
+                key={idx}
+                className="bg-white border border-gray-200/85 rounded-3xl overflow-hidden transition-all duration-300"
+              >
+                <button
+                  onClick={() => setOpenFaq(isOpen ? null : idx)}
+                  className="w-full flex items-center justify-between p-6 text-left cursor-pointer hover:bg-stone-50/50"
+                >
+                  <span className="text-sm sm:text-base font-bold text-gray-950 uppercase tracking-tight pr-6">
+                    {faq.question}
+                  </span>
+                  <ChevronRight 
+                    size={18} 
+                    className={`text-orange-500 transition-transform duration-300 shrink-0 ${isOpen ? 'rotate-90' : ''}`} 
+                  />
+                </button>
+                <AnimatePresence initial={false}>
+                  {isOpen && (
+                    <motion.div
+                      initial={{ height: 0 }}
+                      animate={{ height: "auto" }}
+                      exit={{ height: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <div className="p-6 pt-0 border-t border-gray-100 text-gray-600 text-sm leading-relaxed text-justify">
+                        {faq.answer}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
       {/* Testimonials Section */}
       <section className="bg-stone-100 py-24 border-t border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -436,7 +558,7 @@ export default function UiUxDesign() {
               What Our Partners Say <br />About Us.
             </h2>
             <p className="text-gray-500 text-sm">
-              We help brands grow authority with consistent value and high-conversion copy.
+              We help brands grow authority with consistent value and high-conversion experiences.
             </p>
           </div>
 
@@ -451,7 +573,7 @@ export default function UiUxDesign() {
                   exit={{ opacity: 0, x: -15 }}
                   transition={{ duration: 0.3 }}
                 >
-                  <p className="text-gray-700 text-base md:text-lg leading-relaxed font-medium mb-8 pr-12 italic">
+                  <p className="text-gray-700 text-base md:text-lg leading-relaxed font-medium mb-8 pr-12 italic text-justify">
                     "{TESTIMONIALS[activeTestimonial].quote}"
                   </p>
                   
@@ -493,7 +615,7 @@ export default function UiUxDesign() {
       {/* Areas We Serve */}
       <AreasWeServe />
 
-      {/* 5. LET'S TALK PANEL */}
+      {/* 6. LET'S TALK PANEL */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
         <div className="bg-gray-950 text-white rounded-[2.5rem] p-8 md:p-16 flex flex-col lg:flex-row lg:items-stretch justify-between gap-12 relative overflow-hidden shadow-2xl border border-zinc-800">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(249,115,22,0.12),transparent_50%)] pointer-events-none" />
@@ -505,7 +627,7 @@ export default function UiUxDesign() {
                 Connect Us
               </h2>
               <p className="text-gray-400 text-sm md:text-base leading-relaxed mb-8">
-                Reach out today to discuss your project and discover how we can grow your brand online.
+                Reach out today to discuss your project and discover how we can elevate your product's user experience.
               </p>
             </div>
 
