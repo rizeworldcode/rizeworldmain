@@ -281,48 +281,89 @@ export default function Pricing() {
         </p>
 
         {/* 3 Categories Switcher */}
-        <div className="w-full max-w-xl mx-auto mt-8 sm:mt-10 px-3 sm:px-0">
-          <div className="p-1 sm:p-1.5 bg-stone-200/80 backdrop-blur-md rounded-full border border-stone-300/80 shadow-xs max-w-fit mx-auto">
-            <div className="grid grid-cols-3 sm:flex sm:items-center sm:justify-center gap-1 sm:gap-2">
+        <div className="mt-8 sm:mt-10 flex justify-center px-4">
+          {/* Desktop Switcher (sm and above): Natural fit-content, full text, exact original look */}
+          <div className="hidden sm:inline-flex items-center justify-center gap-2 sm:gap-3 p-1.5 bg-stone-200/80 backdrop-blur-md rounded-full border border-stone-300/80 shadow-xs">
+            <button
+              type="button"
+              onClick={() => handleCategoryChange('seo')}
+              className={`inline-flex items-center gap-2 px-6 py-3 rounded-full text-xs font-black uppercase tracking-wider transition-all duration-300 cursor-pointer ${
+                activeCategory === 'seo'
+                  ? 'bg-rize-primary text-white shadow-md shadow-rize-primary/30'
+                  : 'text-gray-700 hover:text-rize-primary hover:bg-white/60'
+              }`}
+            >
+              <Search size={15} />
+              <span>SEO</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleCategoryChange('smm')}
+              className={`inline-flex items-center gap-2 px-6 py-3 rounded-full text-xs font-black uppercase tracking-wider transition-all duration-300 cursor-pointer ${
+                activeCategory === 'smm'
+                  ? 'bg-rize-primary text-white shadow-md shadow-rize-primary/30'
+                  : 'text-gray-700 hover:text-rize-primary hover:bg-white/60'
+              }`}
+            >
+              <Share2 size={15} />
+              <span>Social Media Management</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleCategoryChange('website')}
+              className={`inline-flex items-center gap-2 px-6 py-3 rounded-full text-xs font-black uppercase tracking-wider transition-all duration-300 cursor-pointer ${
+                activeCategory === 'website'
+                  ? 'bg-rize-primary text-white shadow-md shadow-rize-primary/30'
+                  : 'text-gray-700 hover:text-rize-primary hover:bg-white/60'
+              }`}
+            >
+              <Globe size={15} />
+              <span>Custom Website Development</span>
+            </button>
+          </div>
+
+          {/* Mobile Switcher (< sm): Tailored 3-column pill for mobile screens */}
+          <div className="sm:hidden w-full max-w-sm p-1 bg-stone-200/80 backdrop-blur-md rounded-full border border-stone-300/80 shadow-xs">
+            <div className="grid grid-cols-3 gap-1">
               <button
                 type="button"
                 onClick={() => handleCategoryChange('seo')}
-                className={`w-full sm:w-auto inline-flex items-center justify-center gap-1 sm:gap-2 px-2.5 sm:px-6 py-2 sm:py-3 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all duration-300 cursor-pointer whitespace-nowrap text-center ${
+                className={`w-full inline-flex items-center justify-center gap-1 px-2 py-2.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                   activeCategory === 'seo'
                     ? 'bg-rize-primary text-white shadow-md shadow-rize-primary/30'
-                    : 'text-gray-700 hover:text-rize-primary hover:bg-white/60'
+                    : 'text-gray-700 hover:text-rize-primary'
                 }`}
               >
-                <Search size={13} className="shrink-0" />
+                <Search size={12} className="shrink-0" />
                 <span>SEO</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => handleCategoryChange('smm')}
-                className={`w-full sm:w-auto inline-flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-6 py-2 sm:py-3 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all duration-300 cursor-pointer whitespace-nowrap text-center ${
+                className={`w-full inline-flex items-center justify-center gap-1 px-1.5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                   activeCategory === 'smm'
                     ? 'bg-rize-primary text-white shadow-md shadow-rize-primary/30'
-                    : 'text-gray-700 hover:text-rize-primary hover:bg-white/60'
+                    : 'text-gray-700 hover:text-rize-primary'
                 }`}
               >
-                <Share2 size={13} className="shrink-0" />
-                <span className="hidden md:inline">Social Media Management</span>
-                <span className="md:hidden">Social Media</span>
+                <Share2 size={12} className="shrink-0" />
+                <span>Social</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => handleCategoryChange('website')}
-                className={`w-full sm:w-auto inline-flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-6 py-2 sm:py-3 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all duration-300 cursor-pointer whitespace-nowrap text-center ${
+                className={`w-full inline-flex items-center justify-center gap-1 px-1.5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                   activeCategory === 'website'
                     ? 'bg-rize-primary text-white shadow-md shadow-rize-primary/30'
-                    : 'text-gray-700 hover:text-rize-primary hover:bg-white/60'
+                    : 'text-gray-700 hover:text-rize-primary'
                 }`}
               >
-                <Globe size={13} className="shrink-0" />
-                <span className="hidden md:inline">Custom Website Development</span>
-                <span className="md:hidden">Website Dev</span>
+                <Globe size={12} className="shrink-0" />
+                <span>Web Dev</span>
               </button>
             </div>
           </div>
