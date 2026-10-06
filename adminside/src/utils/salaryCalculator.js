@@ -74,8 +74,58 @@ export const getSalaryForDate = (staffInfo, date) => {
   return { salary: activeSalary, jobType: activeJobType };
 };
 
+export const getStaffAdvanceSummary = (emp) => {
+  if (!emp || !emp.advances || emp.advances.length === 0) {
+    return {
+      totalGiven: 0,
+      totalSettled: 0,
+      pendingBalance: 0,
+      pendingCount: 0,
+      advances: []
+    };
+  }
+
+  let totalGiven = 0;
+  let totalSettled = 0;
+  let pendingBalance = 0;
+  let pendingCount = 0;
+
+  emp.advances.forEach(adv => {
+    const amt = Number(adv.amount) || 0;
+    const settled = Number(adv.settledAmount) || (adv.status === 'Settled' ? amt : 0);
+    totalGiven += amt;
+    totalSettled += settled;
+
+    if (adv.status !== 'Settled') {
+      const remaining = Math.max(0, amt - settled);
+      pendingBalance += remaining;
+      if (remaining > 0) pendingCount++;
+    }
+  });
+
+  return {
+    totalGiven,
+    totalSettled,
+    pendingBalance,
+    pendingCount,
+    advances: emp.advances
+  };
+};
+
 export const calculatePayoutForMonth = (emp, monthStr) => {
-  if (!emp) return { payout: 0, baseSalary: 0, isPaid: false, paidAmount: 0, daysWorked: 0 };
+  if (!emp) {
+    return {
+      payout: 0,
+      earnedSalary: 0,
+      baseSalary: 0,
+      advanceDeduction: 0,
+      advanceBalanceRemaining: 0,
+      totalPendingAdvance: 0,
+      isPaid: false,
+      paidAmount: 0,
+      daysWorked: 0
+    };
+  }
 
   const now = new Date();
   const defaultMonthStr = now.toLocaleString('default', { month: 'long', year: 'numeric' });
@@ -83,9 +133,22 @@ export const calculatePayoutForMonth = (emp, monthStr) => {
   const cleanMonth = targetMonth.replace(/\s*\(Current\)/i, '').trim();
 
   const baseSalary = emp.monthlySalary || 0;
+  const advanceSummary = getStaffAdvanceSummary(emp);
 
   const match = cleanMonth.match(/([A-Za-z]+)\s+(\d+)/);
-  if (!match) return { payout: baseSalary, baseSalary, isPaid: false, paidAmount: 0, daysWorked: 0 };
+  if (!match) {
+    return {
+      payout: baseSalary,
+      earnedSalary: baseSalary,
+      baseSalary,
+      advanceDeduction: 0,
+      advanceBalanceRemaining: advanceSummary.pendingBalance,
+      totalPendingAdvance: advanceSummary.pendingBalance,
+      isPaid: false,
+      paidAmount: 0,
+      daysWorked: 0
+    };
+  }
 
   const monthName = match[1];
   const year = parseInt(match[2], 10);
@@ -202,12 +265,23 @@ export const calculatePayoutForMonth = (emp, monthStr) => {
   });
 
   const calculated = Math.round(totalPayout);
-  // For the current month if under 5 days worked, default to base salary for projected monthly payable
-  const payout = paidHistory ? paidHistory.payoutSalary : (isCurrentMonth && validSequenceDates.length < 5 && calculated < baseSalary * 0.2 ? baseSalary : calculated);
+  // Gross earned salary before any advance deductions
+  const earnedSalary = paidHistory 
+    ? (paidHistory.earnedSalary ?? paidHistory.payoutSalary ?? calculated) 
+    : (isCurrentMonth && validSequenceDates.length < 5 && calculated < baseSalary * 0.2 ? baseSalary : calculated);
+
+  const advanceDeduction = paidHistory ? (paidHistory.advanceDeduction || 0) : 0;
+  const payout = paidHistory ? paidHistory.payoutSalary : Math.max(0, earnedSalary - advanceDeduction);
+  const advanceBalanceRemaining = paidHistory ? (paidHistory.advanceBalanceRemaining ?? advanceSummary.pendingBalance) : advanceSummary.pendingBalance;
 
   return {
     payout,
+    earnedSalary,
     baseSalary,
+    advanceDeduction,
+    advanceBalanceRemaining,
+    totalPendingAdvance: advanceSummary.pendingBalance,
+    totalAdvancesGiven: advanceSummary.totalGiven,
     isPaid: !!paidHistory,
     paidAmount: paidHistory ? (paidHistory.payoutSalary || payout) : 0,
     daysWorked: monthlyClockRecords.length

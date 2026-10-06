@@ -226,8 +226,23 @@ const calculatePayoutForMonth = (staffInfo, year, monthIndex, paidHistory = null
 
   const presents = monthlyClockRecords.length;
   const fullLeaves = Math.max(0, absentDaysList.length - (casualLeaveUsed && absentDaysList.length > 0 ? 1 : 0));
+  
+  const earnedSalary = paidHistory?.earnedSalary ?? calculatedPayout;
+  const advanceDeduction = paidHistory?.advanceDeduction || 0;
   const finalPayout = paidHistory ? paidHistory.payoutSalary : calculatedPayout;
-  const deduction = Math.max(0, baseSalary - finalPayout);
+  const deduction = Math.max(0, baseSalary - earnedSalary);
+
+  // Active advance calculation
+  const advances = staffInfo?.advances || [];
+  const totalAdvancesGiven = advances.reduce((s, a) => s + (Number(a.amount) || 0), 0);
+  const totalPendingAdvance = advances.reduce((s, a) => {
+    if (a.status === 'Pending') {
+      const remaining = (Number(a.amount) || 0) - (Number(a.settledAmount) || 0);
+      return s + Math.max(0, remaining);
+    }
+    return s;
+  }, 0);
+  const advanceBalanceRemaining = paidHistory?.advanceBalanceRemaining ?? totalPendingAdvance;
 
   const daysToCount = validSequenceDates.length;
   const expectedMinutes = daysToCount * STANDARD_HOURS_PER_DAY * 60;
@@ -248,6 +263,12 @@ const calculatePayoutForMonth = (staffInfo, year, monthIndex, paidHistory = null
     halfDays: halfDayRecords.length,
     casualLeaveUsed: !!casualLeaveUsed,
     deduction,
+    earnedSalary,
+    advanceDeduction,
+    advanceBalanceRemaining,
+    totalPendingAdvance,
+    totalAdvancesGiven,
+    isPaid: !!paidHistory,
     finalPayout,
     payout: finalPayout,
     attendancePercentage: Math.min(100, attendancePercentage),
@@ -609,6 +630,9 @@ const StaffProgressReport = ({ onBack }) => {
       }
 
       const baseSalary = monthMetrics?.baseSalary ?? staffInfo.monthlySalary ?? 0;
+      const earnedSalary = monthMetrics?.earnedSalary ?? monthMetrics?.finalPayout ?? 0;
+      const advanceDeduction = monthMetrics?.advanceDeduction ?? 0;
+      const advanceBalance = monthMetrics?.advanceBalanceRemaining ?? monthMetrics?.totalPendingAdvance ?? 0;
       const payout = monthMetrics?.finalPayout ?? 0;
       const deduction = monthMetrics?.deduction ?? 0;
       const presents = monthMetrics?.presents ?? 0;
@@ -667,6 +691,9 @@ const StaffProgressReport = ({ onBack }) => {
                   <div style="font-size: 20px; font-weight: 800; color: #10b981; margin-bottom: 6px;">₹${payout.toLocaleString('en-IN')}</div>
                   <table style="width: 100%; font-size: 11px; line-height: 1.6;">
                     <tr><td style="color:#64748b; width: 45%;">Base Salary:</td><td style="font-weight:bold;">₹${baseSalary.toLocaleString('en-IN')}</td></tr>
+                    <tr><td style="color:#64748b;">Gross Earned:</td><td style="font-weight:bold;">₹${earnedSalary.toLocaleString('en-IN')}</td></tr>
+                    ${advanceDeduction > 0 ? `<tr><td style="color:#ef4444;">Advance Deducted:</td><td style="font-weight:bold; color:#ef4444;">- ₹${advanceDeduction.toLocaleString('en-IN')}</td></tr>` : ''}
+                    ${advanceBalance > 0 ? `<tr><td style="color:#f59e0b;">Pending Advance:</td><td style="font-weight:bold; color:#f59e0b;">₹${advanceBalance.toLocaleString('en-IN')}</td></tr>` : ''}
                     <tr><td style="color:#64748b;">Hourly Rate:</td><td style="font-weight:bold;">₹${hourlyRate} / hr</td></tr>
                     <tr><td style="color:#64748b;">Hours Worked:</td><td style="font-weight:bold;">${totalHoursWorked} hrs</td></tr>
                     <tr><td style="color:#64748b;">Deductions:</td><td style="font-weight:bold; color:#ef4444;">- ₹${deduction.toLocaleString('en-IN')}</td></tr>
@@ -963,13 +990,33 @@ const StaffProgressReport = ({ onBack }) => {
               ₹{(monthMetrics?.finalPayout || 0).toLocaleString('en-IN')}
             </h3>
           </div>
-          <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between text-xs text-slate-600 font-bold">
-            <span>Base Salary:</span>
-            <span>₹{(monthMetrics?.baseSalary || staffInfo?.monthlySalary || 0).toLocaleString('en-IN')}</span>
-          </div>
-          <div className="flex items-center justify-between text-xs text-rose-500 font-bold">
-            <span>Deductions:</span>
-            <span>- ₹{(monthMetrics?.deduction || 0).toLocaleString('en-IN')}</span>
+          <div className="pt-2 border-t border-slate-200/60 space-y-1.5">
+            <div className="flex items-center justify-between text-xs text-slate-600 font-bold">
+              <span>Base Salary:</span>
+              <span>₹{(monthMetrics?.baseSalary || staffInfo?.monthlySalary || 0).toLocaleString('en-IN')}</span>
+            </div>
+            <div className="flex items-center justify-between text-xs text-indigo-600 font-bold">
+              <span>Gross Earned:</span>
+              <span>₹{(monthMetrics?.earnedSalary || monthMetrics?.finalPayout || 0).toLocaleString('en-IN')}</span>
+            </div>
+            {monthMetrics?.advanceDeduction > 0 && (
+              <div className="flex items-center justify-between text-xs text-rose-500 font-bold">
+                <span>Advance Deducted:</span>
+                <span>- ₹{monthMetrics.advanceDeduction.toLocaleString('en-IN')}</span>
+              </div>
+            )}
+            {monthMetrics?.totalPendingAdvance > 0 && (
+              <div className="flex items-center justify-between text-xs text-amber-600 font-bold">
+                <span>Active Adv. Balance:</span>
+                <span>₹{monthMetrics.totalPendingAdvance.toLocaleString('en-IN')}</span>
+              </div>
+            )}
+            {monthMetrics?.deduction > 0 && (
+              <div className="flex items-center justify-between text-xs text-rose-500 font-bold">
+                <span>Attendance Deductions:</span>
+                <span>- ₹{(monthMetrics?.deduction || 0).toLocaleString('en-IN')}</span>
+              </div>
+            )}
           </div>
         </motion.div>
 
@@ -1072,6 +1119,59 @@ const StaffProgressReport = ({ onBack }) => {
           </div>
         </motion.div>
       </div>
+
+      {/* Advance Payments History (If staff has received any advances) */}
+      {staffInfo?.advances && staffInfo.advances.length > 0 && (
+        <div className="clay-card p-6 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/80 pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-amber-500/10 text-amber-600 font-bold">
+                <IndianRupee size={20} />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-slate-900">Advance Pay History</h3>
+                <p className="text-xs text-slate-500 font-medium">Record of advance payments given by management and their monthly settlement status</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-black text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1 rounded-xl">
+                Pending Balance: ₹{(monthMetrics?.totalPendingAdvance || 0).toLocaleString('en-IN')}
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {staffInfo.advances.map((adv) => (
+              <div key={adv._id} className="p-4 rounded-2xl bg-white border border-slate-100 shadow-sm space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <span className="text-lg font-black text-slate-900">₹{(adv.amount || 0).toLocaleString('en-IN')}</span>
+                    <p className="text-xs text-slate-500 font-medium">{new Date(adv.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                  </div>
+                  <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-lg border ${
+                    adv.status === 'Settled'
+                      ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
+                      : adv.status === 'Deferred'
+                      ? 'bg-purple-50 text-purple-600 border-purple-200'
+                      : 'bg-amber-50 text-amber-600 border-amber-200'
+                  }`}>
+                    {adv.status === 'Settled' ? `Settled (${adv.settledInMonth || 'Paid'})` : adv.status === 'Deferred' ? 'Deferred Next Month' : 'Pending Deduction'}
+                  </span>
+                </div>
+                {adv.reason && (
+                  <p className="text-xs text-slate-700 font-medium bg-slate-50 p-2 rounded-xl border border-slate-100">
+                    <span className="font-bold text-slate-500">Reason: </span>{adv.reason}
+                  </p>
+                )}
+                <div className="flex items-center justify-between text-[11px] text-slate-400 font-semibold pt-1 border-t border-slate-50">
+                  <span>Mode: {adv.mode || 'Cash'}</span>
+                  {adv.utrNumber && <span>UTR: {adv.utrNumber}</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Daily Clock Cycles & Progress Explorer */}
       <div className="clay-card p-6 sm:p-8 space-y-6">
