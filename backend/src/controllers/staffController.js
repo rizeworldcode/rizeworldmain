@@ -263,7 +263,13 @@ exports.getSalarySheet = async (req, res) => {
 // Get removed staff
 exports.getRemovedStaff = async (req, res) => {
   try {
-    const staff = await Staff.find({ isRemoved: true }).sort({ removedAt: -1, createdAt: -1 }).lean();
+    const cacheKey = 'staff:removed';
+    const staff = await cache.fetchOrCompute(cacheKey, async () => {
+      return Staff.find({ isRemoved: true })
+        .select('-satisfactionHistory -commentHistory -documents')
+        .sort({ removedAt: -1, createdAt: -1 })
+        .lean();
+    }, 60);
 
     res.status(200).json({
       success: true,

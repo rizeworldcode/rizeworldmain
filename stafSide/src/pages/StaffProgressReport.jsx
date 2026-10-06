@@ -45,31 +45,20 @@ const parseTotalHours = (totalHoursStr) => {
 };
 
 const get30DaySequenceDates = (year, monthIndex, createdAt = null) => {
-  const dates = [];
-  const prevMonthLastDay = new Date(year, monthIndex, 0);
-  const prevMonthDays = prevMonthLastDay.getDate();
+  const monthOffset = (year - 2026) * 12 + (monthIndex - 6);
+  if (monthOffset < 0) return [];
 
-  if (prevMonthDays === 31) {
-    const prevYear = prevMonthLastDay.getFullYear();
-    const prevMonth = prevMonthLastDay.getMonth();
-    dates.push(new Date(prevYear, prevMonth, 31));
-    for (let d = 1; d <= 29; d++) {
-      dates.push(new Date(year, monthIndex, d));
-    }
-  } else {
-    const currentMonthLastDay = new Date(year, monthIndex + 1, 0).getDate();
-    const endDay = Math.min(30, currentMonthLastDay);
-    for (let d = 1; d <= endDay; d++) {
-      dates.push(new Date(year, monthIndex, d));
-    }
+  const cycleStart = new Date(CALCULATION_START_DATE);
+  cycleStart.setDate(cycleStart.getDate() + monthOffset * 30);
+
+  const dates = [];
+  for (let i = 0; i < 30; i++) {
+    const d = new Date(cycleStart);
+    d.setDate(d.getDate() + i);
+    dates.push(d);
   }
 
-  let filtered = dates.filter(d => {
-    const copy = new Date(d);
-    copy.setHours(0, 0, 0, 0);
-    return copy >= CALCULATION_START_DATE;
-  });
-
+  let filtered = dates;
   if (createdAt) {
     const created = new Date(createdAt);
     created.setHours(0, 0, 0, 0);
@@ -385,18 +374,18 @@ const StaffProgressReport = ({ onBack }) => {
     const monthName = match[1];
     const year = parseInt(match[2]);
     const monthIndex = new Date(Date.parse(monthName + " 1, 2012")).getMonth();
-    const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+    const createdAt = staffInfo.createdAt || staffInfo.joiningDate;
+    const sequenceDates = get30DaySequenceDates(year, monthIndex, createdAt);
 
     const logs = [];
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    today.setHours(23, 59, 59, 999);
 
-    for (let day = 1; day <= daysInMonth; day++) {
-      const d = new Date(year, monthIndex, day);
-      d.setHours(0, 0, 0, 0);
+    for (let i = 0; i < sequenceDates.length; i++) {
+      const d = sequenceDates[i];
 
       // Skip future dates if current month
-      if (d > today) break;
+      if (d > today) continue;
 
       const dateStr = d.toDateString();
       const yStr = d.getFullYear();
@@ -511,20 +500,22 @@ const StaffProgressReport = ({ onBack }) => {
       const monthName = match ? match[1] : '';
       const year = match ? parseInt(match[2]) : new Date().getFullYear();
       const monthIndex = new Date(Date.parse(monthName + " 1, 2012")).getMonth();
-      const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+      const createdAt = staffInfo.createdAt || staffInfo.joiningDate;
+      const sequenceDates = get30DaySequenceDates(year, monthIndex, createdAt);
 
       let dailyRowsHTML = '';
-      for (let day = 1; day <= daysInMonth; day++) {
-        const d = new Date(year, monthIndex, day);
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+
+      for (let i = 0; i < sequenceDates.length; i++) {
+        const d = sequenceDates[i];
+        if (d > today) continue;
+
         const dateStr = d.toDateString();
         const yStr = d.getFullYear();
         const mStr = String(d.getMonth() + 1).padStart(2, '0');
         const dStr = String(d.getDate()).padStart(2, '0');
         const dateYYYYMMDD = `${yStr}-${mStr}-${dStr}`;
-
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        if (d > today) break;
 
         const clockRecord = (staffInfo.clock || []).find(r => new Date(r.date).toDateString() === dateStr);
         const attRecord = (staffInfo.attendance || []).find(a => new Date(a.date).toDateString() === dateStr);
