@@ -132,6 +132,28 @@ export const updateStaffAccess = (id: string, accessData: { permissions?: string
     body: JSON.stringify(accessData),
   });
 };
+export const addStaffAdvance = (id: string, advanceData: any) => {
+  clearApiCache('staff');
+  clearApiCache('transactions');
+  return apiRequest(`/staff/${id}/advance`, {
+    method: 'POST',
+    body: JSON.stringify(advanceData),
+  });
+};
+export const deleteStaffAdvance = (id: string, advanceId: string) => {
+  clearApiCache('staff');
+  clearApiCache('transactions');
+  return apiRequest(`/staff/${id}/advance/${advanceId}`, {
+    method: 'DELETE',
+  });
+};
+export const updateStaffAdvance = (id: string, advanceId: string, data: any) => {
+  clearApiCache('staff');
+  return apiRequest(`/staff/${id}/advance/${advanceId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+};
 export const getRemovedStaff = (useCache: boolean = true) => apiRequest('/staff/removed', {}, useCache);
 export const rejoinStaff = (id: string, rejoinData: any) => {
   clearApiCache('staff');
@@ -406,4 +428,7 @@ export default {
   deleteSubAdmin,
   prefetchAdminData,
   clearApiCache,
+  addStaffAdvance,
+  deleteStaffAdvance,
+  updateStaffAdvance,
 };

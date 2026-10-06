@@ -52,7 +52,10 @@ const staffSchema = new mongoose.Schema({
   salaryHistory: [{
     month: String, // e.g., "June 2026"
     baseSalary: Number,
-    payoutSalary: Number,
+    earnedSalary: Number, // Gross salary earned based on hours and attendance
+    advanceDeduction: { type: Number, default: 0 }, // Amount deducted towards advance pay
+    payoutSalary: Number, // Net payout paid to employee after advance deduction
+    advanceBalanceRemaining: { type: Number, default: 0 }, // Advance balance left after this payout
     totalLeaves: Number,
     totalHalfDays: Number,
     casualLeavesUsed: { type: Number, default: 0 },
@@ -60,6 +63,20 @@ const staffSchema = new mongoose.Schema({
     mode: { type: String, enum: ['cash', 'online'], required: true },
     method: { type: String, enum: ['phonepe', 'paytm', 'google_pay', 'bank_transfer', 'cash'], required: true },
     utrNumber: { type: String }
+  }],
+  advances: [{
+    amount: { type: Number, required: true },
+    date: { type: Date, default: Date.now },
+    reason: { type: String, default: '' },
+    mode: { type: String, enum: ['cash', 'online'], default: 'online' },
+    method: { type: String, enum: ['phonepe', 'paytm', 'google_pay', 'bank_transfer', 'cash', 'other'], default: 'phonepe' },
+    utrNumber: { type: String, default: '' },
+    status: { type: String, enum: ['Pending', 'Settled', 'Deferred'], default: 'Pending' },
+    settledInMonth: { type: String, default: null }, // e.g. "July 2026"
+    settledAmount: { type: Number, default: 0 },
+    settledAt: { type: Date, default: null },
+    notes: { type: String, default: '' },
+    createdAt: { type: Date, default: Date.now }
   }],
   salaryRevisions: [{
     effectiveDate: { type: Date, required: true },

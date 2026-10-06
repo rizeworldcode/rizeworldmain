@@ -216,6 +216,10 @@ const SalarySheetView = ({ onLock }) => {
       return {
         ...emp,
         _payout: pInfo.payout,
+        _earnedSalary: pInfo.earnedSalary,
+        _advanceDeduction: pInfo.advanceDeduction || 0,
+        _totalPendingAdvance: pInfo.totalPendingAdvance || 0,
+        _advanceBalance: pInfo.advanceBalanceRemaining ?? pInfo.totalPendingAdvance,
         _isPaid: pInfo.isPaid,
         _daysWorked: pInfo.daysWorked
       };
@@ -227,6 +231,10 @@ const SalarySheetView = ({ onLock }) => {
         valA = Number(a._payout) || 0; valB = Number(b._payout) || 0;
       } else if (sortBy === 'monthlySalary') {
         valA = Number(valA) || 0; valB = Number(valB) || 0;
+      } else if (sortBy === '_advanceDeduction') {
+        valA = Number(a._advanceDeduction) || 0; valB = Number(b._advanceDeduction) || 0;
+      } else if (sortBy === '_totalPendingAdvance') {
+        valA = Number(a._totalPendingAdvance) || 0; valB = Number(b._totalPendingAdvance) || 0;
       } else {
         valA = String(valA || '').toLowerCase(); valB = String(valB || '').toLowerCase();
       }
@@ -239,6 +247,8 @@ const SalarySheetView = ({ onLock }) => {
 
   const filteredTotal = useMemo(() => filtered.reduce((sum, s) => sum + (s.monthlySalary || 0), 0), [filtered]);
   const filteredPayout = useMemo(() => filtered.reduce((sum, s) => sum + (s._payout || 0), 0), [filtered]);
+  const filteredAdvanceDeductions = useMemo(() => filtered.reduce((sum, s) => sum + (s._advanceDeduction || 0), 0), [filtered]);
+  const filteredPendingAdvance = useMemo(() => filtered.reduce((sum, s) => sum + (s._totalPendingAdvance || 0), 0), [filtered]);
 
   const handleSort = (col) => {
     if (sortBy === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -253,7 +263,7 @@ const SalarySheetView = ({ onLock }) => {
   const handleExportCSV = () => {
     const cleanMonth = selectedMonth.replace(/\s*\(Current\)/i, '').trim();
     const rows = [
-      ['Employee ID', 'Name', 'Department', 'Job Type', 'Salary Month', 'Base Salary (INR)', 'Payout Salary (INR)', 'Payment Status'],
+      ['Employee ID', 'Name', 'Department', 'Job Type', 'Salary Month', 'Base Salary (INR)', 'Earned Gross (INR)', 'Advance Deducted (INR)', 'Pending Advance Balance (INR)', 'Net Payout (INR)', 'Payment Status'],
       ...filtered.map(s => [
         s.employeeId || '',
         s.name || '',
@@ -261,6 +271,9 @@ const SalarySheetView = ({ onLock }) => {
         s.jobType || '',
         cleanMonth,
         s.monthlySalary || 0,
+        s._earnedSalary || 0,
+        s._advanceDeduction || 0,
+        s._totalPendingAdvance || 0,
         s._payout || 0,
         s._isPaid ? 'PAID' : 'PENDING'
       ])
@@ -327,12 +340,13 @@ const SalarySheetView = ({ onLock }) => {
       </div>
 
       {!loading && !error && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
           {[
             { icon: Users2, label: 'Total Employees', value: staff.length, color: 'from-blue-500 to-cyan-500' },
             { icon: IndianRupee, label: 'Base Payroll', value: formatCurrency(totalPayroll), color: 'from-purple-500 to-indigo-500' },
-            { icon: TrendingUp, label: `${selectedMonth.replace(/\s*\(Current\)/i, '').trim()} Payout Total`, value: formatCurrency(filteredPayout), color: 'from-emerald-500 to-teal-500' },
-            { icon: Briefcase, label: 'Avg. Payout', value: formatCurrency(filtered.length ? Math.round(filteredPayout / filtered.length) : 0), color: 'from-orange-500 to-amber-500' }
+            { icon: TrendingUp, label: `${selectedMonth.replace(/\s*\(Current\)/i, '').trim()} Net Payout`, value: formatCurrency(filteredPayout), color: 'from-emerald-500 to-teal-500' },
+            { icon: IndianRupee, label: 'Adv. Deducted', value: formatCurrency(filteredAdvanceDeductions), color: 'from-rose-500 to-red-500' },
+            { icon: Briefcase, label: 'Pending Advances', value: formatCurrency(filteredPendingAdvance), color: 'from-amber-500 to-orange-500' }
           ].map(({ icon: Icon, label, value, color }) => (
             <div key={label} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-white/10 p-4 shadow-sm">
               <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center mb-3 shadow-md`}>
@@ -393,8 +407,10 @@ const SalarySheetView = ({ onLock }) => {
                       { key: 'name', label: 'Employee Name' },
                       { key: 'department', label: 'Department' },
                       { key: 'jobType', label: 'Type' },
-                      { key: 'monthlySalary', label: 'Base Salary / Month' },
-                      { key: '_payout', label: `Payout (${selectedMonth.replace(/\s*\(Current\)/i, '').trim()})` },
+                      { key: 'monthlySalary', label: 'Base Salary' },
+                      { key: '_advanceDeduction', label: 'Adv. Deducted' },
+                      { key: '_totalPendingAdvance', label: 'Pending Adv.' },
+                      { key: '_payout', label: `Net Payout (${selectedMonth.replace(/\s*\(Current\)/i, '').trim()})` },
                       { key: '_isPaid', label: 'Status' }
                     ].map(({ key, label }) => (
                       <th key={key} className="px-5 py-3.5 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors select-none" onClick={() => handleSort(key)}>
@@ -405,7 +421,7 @@ const SalarySheetView = ({ onLock }) => {
                 </thead>
                 <tbody className="divide-y divide-gray-50 dark:divide-white/5">
                   {filtered.length === 0 ? (
-                    <tr><td colSpan={7} className="px-5 py-16 text-center text-sm text-gray-400 dark:text-gray-600">No employees match your filters.</td></tr>
+                    <tr><td colSpan={9} className="px-5 py-16 text-center text-sm text-gray-400 dark:text-gray-600">No employees match your filters.</td></tr>
                   ) : filtered.map((emp, idx) => (
                     <motion.tr key={emp._id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.02 }}
                       className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
@@ -425,6 +441,24 @@ const SalarySheetView = ({ onLock }) => {
                           <div className="w-1.5 h-1.5 rounded-full bg-gray-400 shrink-0" />
                           <span className="text-sm font-semibold text-gray-500 dark:text-gray-400">{formatCurrency(emp.monthlySalary)}</span>
                         </div>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        {emp._advanceDeduction > 0 ? (
+                          <span className="text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 px-2 py-0.5 rounded-md border border-rose-200/50">
+                            - {formatCurrency(emp._advanceDeduction)}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400">—</span>
+                        )}
+                      </td>
+                      <td className="px-5 py-3.5">
+                        {emp._totalPendingAdvance > 0 ? (
+                          <span className="text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-200/50">
+                            {formatCurrency(emp._totalPendingAdvance)}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400">—</span>
+                        )}
                       </td>
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-1.5">
@@ -464,9 +498,18 @@ const SalarySheetView = ({ onLock }) => {
                   <span className="text-xs text-gray-500 dark:text-gray-400">{filtered.length === staff.length ? 'Total Base Payroll:' : 'Filtered Base Payroll:'}</span>
                   <span className="text-base font-bold text-gray-500 dark:text-gray-400">{formatCurrency(filteredTotal)}</span>
                 </div>
+                {filteredAdvanceDeductions > 0 && (
+                  <>
+                    <div className="w-px h-4 bg-gray-200 dark:bg-white/10" />
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-rose-500 font-semibold">Total Adv Deducted:</span>
+                      <span className="text-base font-bold text-rose-600 dark:text-rose-400">- {formatCurrency(filteredAdvanceDeductions)}</span>
+                    </div>
+                  </>
+                )}
                 <div className="w-px h-4 bg-gray-200 dark:bg-white/10" />
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500 dark:text-gray-400">{selectedMonth.replace(/\s*\(Current\)/i, '').trim()} Payout Total:</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">{selectedMonth.replace(/\s*\(Current\)/i, '').trim()} Net Payout Total:</span>
                   <span className="text-lg font-extrabold text-emerald-600 dark:text-emerald-400">{formatCurrency(filteredPayout)}</span>
                 </div>
               </div>

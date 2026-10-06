@@ -74,6 +74,7 @@ exports.loginStaff = async (req, res) => {
         attendance: staff.attendance,
         salaryHistory: staff.salaryHistory,
         salaryRevisions: staff.salaryRevisions || [],
+        advances: staff.advances || [],
         jobType: staff.jobType || '',
         createdAt: staff.createdAt,
         leaves: staff.leaves,
@@ -243,7 +244,7 @@ exports.verifySalaryPassword = async (req, res) => {
 exports.getSalarySheet = async (req, res) => {
   try {
     const staff = await Staff.find({ isRemoved: { $ne: true } })
-      .select('name employeeId department jobType monthlySalary joiningDate clock attendance leaves createdAt salaryRevisions salaryHistory')
+      .select('name employeeId department jobType monthlySalary joiningDate clock attendance leaves createdAt salaryRevisions salaryHistory advances')
       .sort({ department: 1, name: 1 })
       .lean();
 
@@ -531,6 +532,7 @@ exports.getStaffById = async (req, res) => {
         salaryStatus: staff.salaryStatus,
         salaryHistory: staff.salaryHistory || [],
         salaryRevisions: staff.salaryRevisions || [],
+        advances: staff.advances || [],
         leaves: staff.leaves || [],
         totalCasualLeaves: staff.totalCasualLeaves,
         todayClock: todayClockRecord || null,
@@ -2096,12 +2098,161 @@ exports.updateAttendance = async (req, res) => {
   }
 };
 
-// Clear salary status and save to history
+// Add Advance Payment for staff
+exports.addAdvance = async (req, res) => {
+  try {
+    const staffId = req.params.id;
+    const { amount, date, reason, mode, method, utrNumber, notes } = req.body;
+
+    const numAmount = Number(amount);
+    if (!numAmount || numAmount <= 0) {
+      return res.status(400).json({ success: false, message: 'Please provide a valid advance amount greater than 0.' });
+    }
+
+    const staff = await Staff.findById(staffId);
+    if (!staff) {
+      return res.status(404).json({ success: false, message: 'Staff member not found.' });
+    }
+
+    const newAdvance = {
+      amount: numAmount,
+      date: date ? new Date(date) : new Date(),
+      reason: reason || 'Advance Salary / Payment',
+      mode: mode || 'online',
+      method: method || (mode === 'cash' ? 'cash' : 'phonepe'),
+      utrNumber: utrNumber || '',
+      status: 'Pending',
+      settledInMonth: null,
+      settledAmount: 0,
+      settledAt: null,
+      notes: notes || '',
+      createdAt: new Date()
+    };
+
+    if (!staff.advances) staff.advances = [];
+    staff.advances.push(newAdvance);
+    await staff.save();
+
+    // Create a transaction record for this advance payout
+    try {
+      await Transaction.create({
+        type: 'advance_payment',
+        name: staff.name,
+        amount: numAmount,
+        date: newAdvance.date,
+        mode: newAdvance.mode,
+        method: newAdvance.method === 'other' ? (newAdvance.mode === 'cash' ? 'cash' : 'bank_transfer') : newAdvance.method,
+        utrNumber: newAdvance.utrNumber,
+        referenceId: staff._id,
+        referenceModel: 'Staff',
+        description: `Advance payment to ${staff.name} (${staff.employeeId}) - ${reason || 'Advance pay'}`
+      });
+    } catch (txErr) {
+      console.error('Error recording transaction for staff advance:', txErr);
+    }
+
+    cache.flushByPrefix('staff:');
+    cache.flushByPrefix('transactions');
+    cache.flushByPrefix('dashboard:');
+
+    res.status(201).json({
+      success: true,
+      message: 'Advance payment recorded successfully',
+      data: staff
+    });
+  } catch (error) {
+    console.error('Error adding staff advance:', error);
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+// Delete an advance payment (if entered by mistake)
+exports.deleteAdvance = async (req, res) => {
+  try {
+    const { id: staffId, advanceId } = req.params;
+
+    const staff = await Staff.findById(staffId);
+    if (!staff) {
+      return res.status(404).json({ success: false, message: 'Staff not found' });
+    }
+
+    const advIndex = (staff.advances || []).findIndex(a => a._id.toString() === advanceId);
+    if (advIndex === -1) {
+      return res.status(404).json({ success: false, message: 'Advance record not found' });
+    }
+
+    const advanceToDelete = staff.advances[advIndex];
+    staff.advances.splice(advIndex, 1);
+    await staff.save();
+
+    // Delete associated advance transaction if found
+    try {
+      await Transaction.deleteMany({
+        referenceId: staff._id,
+        type: 'advance_payment',
+        amount: advanceToDelete.amount
+      });
+    } catch (txErr) {
+      console.warn('Could not remove advance transaction:', txErr);
+    }
+
+    cache.flushByPrefix('staff:');
+    cache.flushByPrefix('transactions');
+    cache.flushByPrefix('dashboard:');
+
+    res.status(200).json({
+      success: true,
+      message: 'Advance record deleted successfully',
+      data: staff
+    });
+  } catch (error) {
+    console.error('Error deleting advance:', error);
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+// Update advance details (e.g. status or notes)
+exports.updateAdvance = async (req, res) => {
+  try {
+    const { id: staffId, advanceId } = req.params;
+    const { status, notes, reason } = req.body;
+
+    const staff = await Staff.findById(staffId);
+    if (!staff) {
+      return res.status(404).json({ success: false, message: 'Staff not found' });
+    }
+
+    const advance = (staff.advances || []).find(a => a._id.toString() === advanceId);
+    if (!advance) {
+      return res.status(404).json({ success: false, message: 'Advance record not found' });
+    }
+
+    if (status) advance.status = status;
+    if (notes !== undefined) advance.notes = notes;
+    if (reason !== undefined) advance.reason = reason;
+
+    await staff.save();
+    cache.flushByPrefix('staff:');
+
+    res.status(200).json({
+      success: true,
+      message: 'Advance updated successfully',
+      data: staff
+    });
+  } catch (error) {
+    console.error('Error updating advance:', error);
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+// Clear salary status and save to history with advance deduction support
 exports.clearSalary = async (req, res) => {
   try {
     const {
       month,
       baseSalary,
+      earnedSalary,
+      advanceDeduction = 0,
       payoutSalary,
       totalLeaves,
       totalHalfDays,
@@ -2111,29 +2262,7 @@ exports.clearSalary = async (req, res) => {
       utrNumber
     } = req.body;
 
-    // Update staff
-    const staff = await Staff.findByIdAndUpdate(
-      req.params.id,
-      {
-        salaryStatus: 'Paid',
-        $push: {
-          salaryHistory: {
-            month,
-            baseSalary,
-            payoutSalary,
-            totalLeaves,
-            totalHalfDays,
-            casualLeavesUsed: typeof casualLeaveUsed === 'number' ? casualLeaveUsed : (casualLeaveUsed === 'Yes' || casualLeaveUsed === true ? 1 : 0),
-            paidAt: new Date(),
-            mode,
-            method,
-            utrNumber
-          }
-        }
-      },
-      { new: true }
-    );
-
+    const staff = await Staff.findById(req.params.id);
     if (!staff) {
       return res.status(404).json({
         success: false,
@@ -2141,19 +2270,89 @@ exports.clearSalary = async (req, res) => {
       });
     }
 
-    // Create transaction record
-    await Transaction.create({
-      type: 'salary',
-      name: staff.name,
-      amount: payoutSalary,
-      date: new Date(),
-      mode,
-      method,
-      utrNumber,
-      referenceId: staff._id,
-      referenceModel: 'Staff',
-      description: `Salary payment for ${month}`
+    const numAdvanceDeduction = Math.max(0, Number(advanceDeduction) || 0);
+    const grossEarned = Number(earnedSalary !== undefined ? earnedSalary : (payoutSalary ?? baseSalary)) || 0;
+    const finalPayout = Math.max(0, Number(payoutSalary !== undefined ? payoutSalary : (grossEarned - numAdvanceDeduction)) || 0);
+
+    // If advance deduction was applied, settle pending advances up to numAdvanceDeduction
+    let remainingToSettle = numAdvanceDeduction;
+    if (staff.advances && staff.advances.length > 0 && remainingToSettle > 0) {
+      for (const adv of staff.advances) {
+        if (remainingToSettle <= 0) break;
+        if (adv.status !== 'Settled') {
+          const unpaidOnThisAdv = (adv.amount || 0) - (adv.settledAmount || 0);
+          if (unpaidOnThisAdv > 0) {
+            const settleFromThis = Math.min(unpaidOnThisAdv, remainingToSettle);
+            adv.settledAmount = (adv.settledAmount || 0) + settleFromThis;
+            adv.settledInMonth = month;
+            adv.settledAt = new Date();
+            if (adv.settledAmount >= adv.amount) {
+              adv.status = 'Settled';
+            } else {
+              adv.status = 'Pending';
+            }
+            remainingToSettle -= settleFromThis;
+          }
+        }
+      }
+    }
+
+    // Calculate total remaining advance balance after this settlement
+    const activeAdvanceBalance = (staff.advances || []).reduce((sum, a) => {
+      if (a.status === 'Settled') return sum;
+      return sum + Math.max(0, (a.amount || 0) - (a.settledAmount || 0));
+    }, 0);
+
+    // Update staff salary history & status
+    staff.salaryStatus = 'Paid';
+    if (!staff.salaryHistory) staff.salaryHistory = [];
+
+    // Remove any existing entry for this month if re-clearing
+    const cleanMonth = (month || '').replace(/\s*\(Current\)/i, '').trim();
+    staff.salaryHistory = staff.salaryHistory.filter(h => {
+      const hClean = (h.month || '').replace(/\s*\(Current\)/i, '').trim();
+      return hClean !== cleanMonth;
     });
+
+    staff.salaryHistory.push({
+      month,
+      baseSalary: Number(baseSalary) || staff.monthlySalary,
+      earnedSalary: grossEarned,
+      advanceDeduction: numAdvanceDeduction,
+      payoutSalary: finalPayout,
+      advanceBalanceRemaining: activeAdvanceBalance,
+      totalLeaves,
+      totalHalfDays,
+      casualLeavesUsed: typeof casualLeaveUsed === 'number' ? casualLeaveUsed : (casualLeaveUsed === 'Yes' || casualLeaveUsed === true ? 1 : 0),
+      paidAt: new Date(),
+      mode,
+      method: method === 'cash' ? 'cash' : (method || 'phonepe'),
+      utrNumber
+    });
+
+    await staff.save();
+
+    // Create transaction record for salary payout
+    try {
+      await Transaction.create({
+        type: 'salary',
+        name: staff.name,
+        amount: finalPayout,
+        date: new Date(),
+        mode,
+        method: method === 'cash' ? 'cash' : (method || 'phonepe'),
+        utrNumber,
+        referenceId: staff._id,
+        referenceModel: 'Staff',
+        description: `Salary payment for ${month}${numAdvanceDeduction > 0 ? ` (after ₹${numAdvanceDeduction} advance deduction)` : ''}`
+      });
+    } catch (txErr) {
+      console.error('Error creating salary transaction:', txErr);
+    }
+
+    cache.flushByPrefix('staff:');
+    cache.flushByPrefix('transactions');
+    cache.flushByPrefix('dashboard:');
 
     res.status(200).json({
       success: true,
@@ -2181,15 +2380,24 @@ exports.revertSalary = async (req, res) => {
 
     const cleanTargetMonth = month ? month.replace(/\s*\(Current\)/i, '').trim() : '';
 
+    // If any advances were settled in this month, revert them to Pending
+    if (staff.advances && staff.advances.length > 0) {
+      staff.advances.forEach(adv => {
+        const advMonthClean = (adv.settledInMonth || '').replace(/\s*\(Current\)/i, '').trim();
+        if (advMonthClean === cleanTargetMonth) {
+          adv.status = 'Pending';
+          adv.settledAmount = 0;
+          adv.settledInMonth = null;
+          adv.settledAt = null;
+        }
+      });
+    }
+
     // Remove the salary history record matching target month
     const updatedSalaryHistory = (staff.salaryHistory || []).filter(h => {
       const hClean = h.month ? h.month.replace(/\s*\(Current\)/i, '').trim() : '';
       return hClean !== cleanTargetMonth;
     });
-
-    const now = new Date();
-    const currentMonthName = now.toLocaleString('default', { month: 'long', year: 'numeric' });
-    const isCurrentMonthReverted = cleanTargetMonth === currentMonthName;
 
     staff.salaryHistory = updatedSalaryHistory;
     staff.salaryStatus = 'Pending';
@@ -2206,6 +2414,10 @@ exports.revertSalary = async (req, res) => {
     } catch (txErr) {
       console.error('Error deleting transaction for reverted salary:', txErr);
     }
+
+    cache.flushByPrefix('staff:');
+    cache.flushByPrefix('transactions');
+    cache.flushByPrefix('dashboard:');
 
     res.status(200).json({
       success: true,

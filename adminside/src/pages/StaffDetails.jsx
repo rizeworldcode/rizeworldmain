@@ -30,10 +30,26 @@ import {
   Sparkles,
   Lock,
   Shield,
-  Check
+  Check,
+  HandCoins,
+  Wallet,
+  ArrowDownRight,
+  ArrowUpRight,
+  History,
+  Receipt
 } from 'lucide-react';
 import StaffPerformance from './StaffPerformance';
-import { getAllStaff, getStaffById, clockOutAllStaff, updateStaffAccess, BASE_URL } from '../api';
+import { 
+  getAllStaff, 
+  getStaffById, 
+  clockOutAllStaff, 
+  updateStaffAccess, 
+  addStaffAdvance, 
+  deleteStaffAdvance, 
+  updateStaffAdvance, 
+  BASE_URL 
+} from '../api';
+import { getStaffAdvanceSummary } from '../utils/salaryCalculator';
 
 const PREDEFINED_ROLES = ['HR', 'Client Support', 'Admin', 'Data Analyst', 'Sales Team'];
 
@@ -748,6 +764,450 @@ const ManageAccessModal = ({ isOpen, onClose, staffMember, onSaveSuccess }) => {
   );
 };
 
+// Advance Payment Management Modal
+const ManageAdvanceModal = ({ isOpen, onClose, staffMember, onAdvanceUpdated }) => {
+  const [amount, setAmount] = useState('');
+  const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [reason, setReason] = useState('Emergency');
+  const [customReason, setCustomReason] = useState('');
+  const [mode, setMode] = useState('online');
+  const [method, setMethod] = useState('phonepe');
+  const [utrNumber, setUtrNumber] = useState('');
+  const [notes, setNotes] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
+  const [deletingId, setDeletingId] = useState(null);
+
+  if (!isOpen || !staffMember) return null;
+
+  const advanceSummary = getStaffAdvanceSummary(staffMember);
+  const REASON_PRESETS = ['Emergency', 'Festival / Personal', 'Medical', 'Travel / Transport', 'Salary Advance', 'Other'];
+  const QUICK_AMOUNTS = [1000, 2000, 3000, 5000, 10000];
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const numAmount = Number(amount);
+    if (!numAmount || numAmount <= 0) {
+      setError('Please enter a valid advance amount greater than 0.');
+      return;
+    }
+
+    setSubmitting(true);
+    setError('');
+    setSuccessMsg('');
+
+    try {
+      const finalReason = reason === 'Other' ? (customReason.trim() || 'Advance Pay') : reason;
+      const payload = {
+        amount: numAmount,
+        date,
+        reason: finalReason,
+        mode,
+        method: mode === 'cash' ? 'cash' : method,
+        utrNumber: mode === 'online' ? utrNumber : '',
+        notes
+      };
+
+      const res = await addStaffAdvance(staffMember._id || staffMember.id, payload);
+      if (res && res.success) {
+        setSuccessMsg(`Advance payment of ₹${numAmount.toLocaleString('en-IN')} added successfully!`);
+        setAmount('');
+        setCustomReason('');
+        setUtrNumber('');
+        setNotes('');
+        onAdvanceUpdated(res.data);
+      } else {
+        setError(res?.message || 'Failed to record advance payment.');
+      }
+    } catch (err) {
+      console.error('Error adding advance:', err);
+      setError(err?.message || 'Server error while adding advance.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (advId) => {
+    if (!window.confirm('Are you sure you want to delete this advance payment record?')) return;
+    setDeletingId(advId);
+    try {
+      const res = await deleteStaffAdvance(staffMember._id || staffMember.id, advId);
+      if (res && res.success) {
+        onAdvanceUpdated(res.data);
+      } else {
+        alert(res?.message || 'Failed to delete advance payment');
+      }
+    } catch (err) {
+      console.error('Error deleting advance:', err);
+      alert('Network error while deleting advance');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const sortedAdvances = [...(staffMember.advances || [])].sort((a, b) => {
+    const timeA = new Date(a.date || a.createdAt).getTime();
+    const timeB = new Date(b.date || b.createdAt).getTime();
+    return timeB - timeA;
+  });
+
+  return (
+    <div className="fixed inset-0 z-[115] flex items-center justify-center p-4">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="absolute inset-0 bg-black/80 backdrop-blur-md"
+      />
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        className="relative w-full max-w-3xl bg-white dark:bg-[#0c0c0e] rounded-3xl border border-gray-200 dark:border-white/10 p-6 sm:p-8 shadow-2xl overflow-y-auto max-h-[92vh] space-y-6"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-gray-100 dark:border-white/10 pb-5">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white shadow-lg shadow-amber-500/25">
+              <HandCoins size={24} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-black text-gray-900 dark:text-white">Advance Payments</h2>
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                  {staffMember.employeeId || 'Staff'}
+                </span>
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                Manage advance pay and view settlement history for <strong className="text-gray-800 dark:text-gray-200">{staffMember.name}</strong>
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2.5 hover:bg-black/5 dark:hover:bg-white/10 rounded-2xl text-gray-400 hover:text-gray-600 dark:hover:text-white transition-colors"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Summary Metric Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">Active Advance Balance</span>
+              <Wallet size={16} className="text-amber-600" />
+            </div>
+            <p className="text-2xl font-black text-amber-600 dark:text-amber-400 mt-1">
+              ₹{advanceSummary.pendingBalance.toLocaleString('en-IN')}
+            </p>
+            <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
+              {advanceSummary.pendingCount} pending advance(s)
+            </p>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400">Total Given</span>
+              <ArrowDownRight size={16} className="text-blue-600" />
+            </div>
+            <p className="text-2xl font-black text-blue-600 dark:text-blue-400 mt-1">
+              ₹{advanceSummary.totalGiven.toLocaleString('en-IN')}
+            </p>
+            <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Lifetime advance amount</p>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Total Settled</span>
+              <CheckCircle2 size={16} className="text-emerald-600" />
+            </div>
+            <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
+              ₹{advanceSummary.totalSettled.toLocaleString('en-IN')}
+            </p>
+            <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Deducted from past payouts</p>
+          </div>
+        </div>
+
+        {/* Give Advance Form */}
+        <form onSubmit={handleSubmit} className="p-5 rounded-3xl bg-black/5 dark:bg-white/[0.03] border border-gray-200 dark:border-white/10 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-black uppercase tracking-wider text-gray-900 dark:text-white flex items-center gap-2">
+              <HandCoins size={16} className="text-amber-500" /> Give New Advance Pay
+            </h3>
+            <span className="text-[11px] font-semibold text-gray-400">Auto-links to salary deduction</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Amount */}
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block">Advance Amount (₹) *</label>
+              <div className="relative">
+                <IndianRupee className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                <input
+                  type="number"
+                  required
+                  min="1"
+                  placeholder="e.g. 5000"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  className="w-full bg-white dark:bg-black/40 border border-gray-200 dark:border-white/10 rounded-2xl pl-10 pr-4 py-2.5 text-sm font-bold text-gray-900 dark:text-white focus:border-amber-500 outline-none transition-all"
+                />
+              </div>
+              {/* Quick Amount Chips */}
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {QUICK_AMOUNTS.map(amt => (
+                  <button
+                    key={amt}
+                    type="button"
+                    onClick={() => setAmount(String(amt))}
+                    className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/20 transition-all"
+                  >
+                    +₹{amt.toLocaleString('en-IN')}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Date */}
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block">Date Given *</label>
+              <input
+                type="date"
+                required
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="w-full bg-white dark:bg-black/40 border border-gray-200 dark:border-white/10 rounded-2xl px-4 py-2.5 text-sm font-bold text-gray-900 dark:text-white focus:border-amber-500 outline-none transition-all"
+              />
+            </div>
+          </div>
+
+          {/* Reason */}
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block">Reason / Purpose</label>
+            <div className="flex flex-wrap gap-1.5">
+              {REASON_PRESETS.map(r => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setReason(r)}
+                  className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
+                    reason === r
+                      ? 'bg-amber-500 text-white shadow-md shadow-amber-500/25'
+                      : 'bg-white dark:bg-black/30 border border-gray-200 dark:border-white/10 text-gray-700 dark:text-gray-300 hover:bg-black/5'
+                  }`}
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+            {reason === 'Other' && (
+              <input
+                type="text"
+                placeholder="Specify reason..."
+                value={customReason}
+                onChange={(e) => setCustomReason(e.target.value)}
+                className="w-full bg-white dark:bg-black/40 border border-gray-200 dark:border-white/10 rounded-2xl px-4 py-2 text-sm text-gray-900 dark:text-white focus:border-amber-500 outline-none transition-all mt-2"
+              />
+            )}
+          </div>
+
+          {/* Payment Mode & Method */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block mb-1">Mode</label>
+              <div className="flex gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setMode('online')}
+                  className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
+                    mode === 'online' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-black/30 border border-gray-200 dark:border-white/10 text-gray-700 dark:text-gray-300'
+                  }`}
+                >
+                  Online
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setMode('cash'); setMethod('cash'); }}
+                  className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
+                    mode === 'cash' ? 'bg-emerald-600 text-white' : 'bg-white dark:bg-black/30 border border-gray-200 dark:border-white/10 text-gray-700 dark:text-gray-300'
+                  }`}
+                >
+                  Cash
+                </button>
+              </div>
+            </div>
+
+            {mode === 'online' && (
+              <div>
+                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block mb-1">Method</label>
+                <select
+                  value={method}
+                  onChange={(e) => setMethod(e.target.value)}
+                  className="w-full bg-white dark:bg-black/40 border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2 text-xs font-bold text-gray-900 dark:text-white focus:border-amber-500 outline-none cursor-pointer"
+                >
+                  <option value="phonepe">PhonePe</option>
+                  <option value="paytm">Paytm</option>
+                  <option value="google_pay">Google Pay</option>
+                  <option value="bank_transfer">Bank Transfer</option>
+                  <option value="other">Other UPI</option>
+                </select>
+              </div>
+            )}
+
+            {mode === 'online' && (
+              <div>
+                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block mb-1">UTR / Ref No. (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. UPI Ref / UTR"
+                  value={utrNumber}
+                  onChange={(e) => setUtrNumber(e.target.value)}
+                  className="w-full bg-white dark:bg-black/40 border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2 text-xs text-gray-900 dark:text-white focus:border-amber-500 outline-none"
+                />
+              </div>
+            )}
+          </div>
+
+          {error && (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500 text-xs font-bold">
+              <AlertTriangle size={15} /> {error}
+            </div>
+          )}
+
+          {successMsg && (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-xs font-bold">
+              <CheckCircle2 size={15} /> {successMsg}
+            </div>
+          )}
+
+          <div className="flex justify-end pt-1">
+            <button
+              type="submit"
+              disabled={submitting || !amount || Number(amount) <= 0}
+              className="px-6 py-2.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white text-xs font-black uppercase tracking-wider shadow-lg shadow-amber-500/25 transition-all disabled:opacity-50 flex items-center gap-2"
+            >
+              {submitting ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Recording...
+                </>
+              ) : (
+                <>
+                  <HandCoins size={14} /> Record Advance Payment
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+
+        {/* Advances History & Settlement Breakout */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-black uppercase tracking-wider text-gray-900 dark:text-white flex items-center gap-2">
+              <History size={16} className="text-indigo-500" /> Advance Records & Settlements
+            </h3>
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              {sortedAdvances.length} Total Record(s)
+            </span>
+          </div>
+
+          {sortedAdvances.length === 0 ? (
+            <div className="p-8 text-center rounded-2xl border border-dashed border-gray-200 dark:border-white/10 bg-black/5 dark:bg-white/[0.02]">
+              <HandCoins size={32} className="mx-auto text-gray-400 mb-2 opacity-60" />
+              <p className="text-sm font-bold text-gray-700 dark:text-gray-300">No advance payments recorded yet</p>
+              <p className="text-xs text-gray-400 mt-0.5">Use the form above to record an advance given to this employee.</p>
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+              {sortedAdvances.map((adv) => {
+                const isSettled = adv.status === 'Settled';
+                const advDateStr = adv.date ? new Date(adv.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
+                return (
+                  <div
+                    key={adv._id || adv.createdAt}
+                    className={`p-4 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                      isSettled
+                        ? 'bg-emerald-500/[0.03] border-emerald-500/20'
+                        : 'bg-amber-500/[0.04] border-amber-500/25'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className={`p-2.5 rounded-xl shrink-0 ${isSettled ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600'}`}>
+                        {isSettled ? <CheckCircle2 size={18} /> : <HandCoins size={18} />}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-base font-black text-gray-900 dark:text-white">
+                            ₹{(adv.amount || 0).toLocaleString('en-IN')}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
+                            isSettled
+                              ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                              : 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30'
+                          }`}>
+                            {isSettled ? `Settled in ${adv.settledInMonth || 'Salary'}` : 'Pending (Active)'}
+                          </span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                            • {adv.reason || 'Advance Pay'}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mt-1 flex-wrap">
+                          <span className="flex items-center gap-1">
+                            <Calendar size={12} /> {advDateStr}
+                          </span>
+                          <span className="capitalize">
+                            • Mode: <strong>{adv.mode || 'Online'}</strong> ({adv.method || 'PhonePe'})
+                          </span>
+                          {adv.utrNumber && (
+                            <span className="font-mono text-[11px] bg-black/5 dark:bg-white/5 px-1.5 py-0.5 rounded">
+                              UTR: {adv.utrNumber}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 self-end sm:self-center">
+                      {!isSettled && (
+                        <button
+                          onClick={() => handleDelete(adv._id)}
+                          disabled={deletingId === adv._id}
+                          className="p-2 rounded-xl text-rose-500 hover:bg-rose-500/10 transition-colors"
+                          title="Delete Advance Record"
+                        >
+                          {deletingId === adv._id ? (
+                            <div className="w-4 h-4 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <Trash2 size={16} />
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-end pt-3 border-t border-gray-100 dark:border-white/10">
+          <button
+            onClick={onClose}
+            className="px-6 py-2.5 rounded-2xl bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-gray-700 dark:text-gray-200 text-xs font-bold transition-all"
+          >
+            Close
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
 // Calculate payout salary based on actual hours worked from clock records
 const STANDARD_HOURS_PER_DAY = 8.5;
 const DAYS_IN_MONTH = 30;
@@ -1085,9 +1545,40 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
   const [isAccessModalOpen, setIsAccessModalOpen] = useState(false);
   const [selectedStaffForAccess, setSelectedStaffForAccess] = useState(null);
 
+  // Advance Payment modal state
+  const [isAdvanceModalOpen, setIsAdvanceModalOpen] = useState(false);
+  const [selectedStaffForAdvance, setSelectedStaffForAdvance] = useState(null);
+
   const openAccessModal = (member) => {
     setSelectedStaffForAccess(member);
     setIsAccessModalOpen(true);
+  };
+
+  const openAdvanceModal = async (member) => {
+    let fullMember = member;
+    try {
+      const res = await getStaffById(member._id);
+      if (res?.success && res.data) {
+        fullMember = res.data;
+      }
+    } catch (err) {
+      console.warn('Using member summary for advance modal:', err);
+    }
+    setSelectedStaffForAdvance(fullMember);
+    setIsAdvanceModalOpen(true);
+  };
+
+  const handleAdvanceUpdated = (updatedStaff) => {
+    if (!updatedStaff) return;
+    setStaff(prev => prev.map(m =>
+      (m._id === updatedStaff._id || m.id === updatedStaff._id) ? updatedStaff : m
+    ));
+    if (selectedStaffForAdvance && (selectedStaffForAdvance._id === updatedStaff._id || selectedStaffForAdvance.id === updatedStaff._id)) {
+      setSelectedStaffForAdvance(updatedStaff);
+    }
+    if (selectedStaffForSalary && (selectedStaffForSalary._id === updatedStaff._id || selectedStaffForSalary.id === updatedStaff._id)) {
+      setSelectedStaffForSalary(updatedStaff);
+    }
   };
 
   const handleAccessSaved = (id, newPermissions) => {
@@ -1100,6 +1591,8 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
   const [isSalaryModalOpen, setIsSalaryModalOpen] = useState(false);
   const [selectedStaffForSalary, setSelectedStaffForSalary] = useState(null);
   const [selectedSalaryMonth, setSelectedSalaryMonth] = useState('');
+  const [advanceSettlementChoice, setAdvanceSettlementChoice] = useState('settle'); // 'settle' | 'defer'
+  const [customAdvanceCut, setCustomAdvanceCut] = useState('');
   const [salaryPaymentDetails, setSalaryPaymentDetails] = useState({
     mode: 'online',
     method: 'phonepe',
@@ -1463,23 +1956,75 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
 
     const presents = monthlyClockRecords.length;
     const fullLeaves = Math.max(0, absentDaysList.length - (casualLeaveUsed && absentDaysList.length > 0 ? 1 : 0));
+    const advanceSummary = getStaffAdvanceSummary(staffInfo);
+    const activeAdvanceBalance = advanceSummary.pendingBalance || 0;
 
     const paidHistory = (staffInfo.salaryHistory || []).find(h => {
       const hClean = h.month ? h.month.replace(/\s*\(Current\)/i, '').trim() : '';
       return hClean === cleanMonth;
     });
 
-    const payout = paidHistory ? paidHistory.payoutSalary : calculatedPayout;
+    // If paid, use historical recorded numbers
+    if (paidHistory) {
+      const earnedSalary = paidHistory.earnedSalary ?? paidHistory.baseSalary ?? paidHistory.payoutSalary;
+      const advanceDeduction = paidHistory.advanceDeduction || 0;
+      const payout = paidHistory.payoutSalary;
+      const advanceBalanceRemaining = paidHistory.advanceBalanceRemaining ?? 0;
+
+      return {
+        payout,
+        earnedSalary,
+        baseSalary,
+        advanceDeduction,
+        advanceBalanceRemaining,
+        activeAdvanceBalance,
+        totalHoursWorked: Math.round(totalHoursWorked * 100) / 100,
+        daysWorked: presents,
+        hourlyRate: Math.round(hourlyRate * 100) / 100,
+        fullLeaves,
+        halfDays: halfDayRecords.length,
+        casualLeaveUsed: !!casualLeaveUsed,
+        isPaid: true
+      };
+    }
+
+    // If pending, calculate based on selected settlement choice
+    const earnedSalary = calculatedPayout;
+    let advanceDeduction = 0;
+    if (advanceSettlementChoice === 'defer' || advanceSettlementChoice === 'no_deduction') {
+      advanceDeduction = 0;
+    } else if (advanceSettlementChoice === 'partial') {
+      if (customAdvanceCut !== '' && !isNaN(Number(customAdvanceCut))) {
+        advanceDeduction = Math.min(activeAdvanceBalance, Math.max(0, Number(customAdvanceCut)));
+      } else {
+        advanceDeduction = Math.round(activeAdvanceBalance / 2);
+      }
+    } else {
+      // 'full' or 'settle' default
+      if (customAdvanceCut !== '' && !isNaN(Number(customAdvanceCut))) {
+        advanceDeduction = Math.min(activeAdvanceBalance, Math.max(0, Number(customAdvanceCut)));
+      } else {
+        advanceDeduction = activeAdvanceBalance;
+      }
+    }
+
+    const payout = Math.max(0, earnedSalary - advanceDeduction);
+    const advanceBalanceRemaining = Math.max(0, activeAdvanceBalance - advanceDeduction);
 
     return {
       payout,
+      earnedSalary,
+      baseSalary,
+      advanceDeduction,
+      advanceBalanceRemaining,
+      activeAdvanceBalance,
       totalHoursWorked: Math.round(totalHoursWorked * 100) / 100,
       daysWorked: presents,
       hourlyRate: Math.round(hourlyRate * 100) / 100,
       fullLeaves,
       halfDays: halfDayRecords.length,
       casualLeaveUsed: !!casualLeaveUsed,
-      isPaid: !!paidHistory
+      isPaid: false
     };
   };
 
@@ -1500,6 +2045,8 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
     }
 
     setSelectedStaffForSalary(fullMember);
+    setAdvanceSettlementChoice('settle');
+    setCustomAdvanceCut('');
     setSalaryPaymentDetails({
       mode: 'online',
       method: 'phonepe',
@@ -1559,7 +2106,7 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
     if (!selectedStaffForSalary || !selectedSalaryMonth) return;
 
     const payoutData = calculatePayoutForSelectedMonth(selectedStaffForSalary, selectedSalaryMonth);
-    const { payout, fullLeaves, halfDays, casualLeaveUsed } = payoutData;
+    const { payout, earnedSalary, advanceDeduction, fullLeaves, halfDays, casualLeaveUsed } = payoutData;
 
     try {
       const response = await fetch(`${BASE_URL}/staff/${selectedStaffForSalary._id}/clear-salary`, {
@@ -1568,12 +2115,15 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
         body: JSON.stringify({
           month: selectedSalaryMonth,
           baseSalary: selectedStaffForSalary.monthlySalary,
+          earnedSalary,
+          advanceDeduction,
           payoutSalary: payout,
           totalLeaves: fullLeaves,
           totalHalfDays: halfDays,
           casualLeaveUsed,
           mode: salaryPaymentDetails.mode,
-          method: salaryPaymentDetails.mode === 'cash' ? 'cash' : salaryPaymentDetails.method
+          method: salaryPaymentDetails.mode === 'cash' ? 'cash' : salaryPaymentDetails.method,
+          utrNumber: salaryPaymentDetails.utrNumber
         })
       });
       const result = await response.json();
@@ -1583,7 +2133,7 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
         ));
         setIsSalaryModalOpen(false);
         setSelectedStaffForSalary(null);
-        alert(`Salary for ${selectedSalaryMonth} cleared, record saved, and transaction recorded successfully`);
+        alert(`Salary for ${selectedSalaryMonth} cleared successfully! Net payout: ₹${payout.toLocaleString('en-IN')}${advanceDeduction > 0 ? ` (after ₹${advanceDeduction.toLocaleString('en-IN')} advance deduction)` : ''}`);
       }
     } catch (error) {
       console.error('Error clearing salary:', error);
@@ -1972,6 +2522,28 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
                           })()}
                         </div>
                         <div className="flex items-center gap-1.5">
+                          {(() => {
+                            const advSummary = getStaffAdvanceSummary(member);
+                            return (
+                              <button
+                                onClick={() => openAdvanceModal(member)}
+                                className={`group/adv flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-black uppercase tracking-widest transition-all shadow-sm ${
+                                  advSummary.pendingBalance > 0
+                                    ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500 hover:text-white shadow-amber-500/10'
+                                    : 'bg-black/5 dark:bg-white/5 border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:bg-amber-500/10 hover:text-amber-600 hover:border-amber-500/20'
+                                }`}
+                                title={`Advance Pay (Active: ₹${advSummary.pendingBalance.toLocaleString('en-IN')})`}
+                              >
+                                <HandCoins size={15} className="transition-transform group-hover/adv:scale-110" />
+                                <span>Advance</span>
+                                {advSummary.pendingBalance > 0 && (
+                                  <span className="px-1.5 py-0.2 rounded-md bg-amber-500 text-white text-[10px]">
+                                    ₹{advSummary.pendingBalance.toLocaleString('en-IN')}
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })()}
                           <button
                             onClick={() => openAccessModal(member)}
                             className="group/access flex items-center gap-1.5 rounded-xl border border-indigo-500/20 bg-indigo-500/10 px-3 py-2 text-indigo-600 dark:text-indigo-400 shadow-lg shadow-indigo-500/10 transition-all hover:bg-indigo-600 hover:text-white"
@@ -2030,7 +2602,19 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
         )}
       </AnimatePresence>
 
-      {/* Salary Payment Modal */}
+      {/* Advance Payment Modal */}
+      <AnimatePresence>
+        {isAdvanceModalOpen && selectedStaffForAdvance && (
+          <ManageAdvanceModal
+            isOpen={isAdvanceModalOpen}
+            onClose={() => setIsAdvanceModalOpen(false)}
+            staffMember={selectedStaffForAdvance}
+            onAdvanceUpdated={handleAdvanceUpdated}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Salary Payment Modal with Full Breakout & Advance Settlement Selection */}
       <AnimatePresence>
         {isSalaryModalOpen && selectedStaffForSalary && (
           <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
@@ -2045,12 +2629,20 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="relative w-full max-w-md bg-white dark:bg-[#030303] rounded-3xl border border-gray-200 dark:border-white/10 p-8 shadow-2xl overflow-y-auto max-h-[90vh]"
+              className="relative w-full max-w-lg bg-white dark:bg-[#0c0c0e] rounded-3xl border border-gray-200 dark:border-white/10 p-6 sm:p-8 shadow-2xl overflow-y-auto max-h-[92vh]"
             >
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                  Clear Salary
-                </h3>
+              <div className="flex items-center justify-between mb-5 border-b border-gray-100 dark:border-white/10 pb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white shadow-md shadow-emerald-500/20">
+                    <Receipt size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black text-gray-900 dark:text-white">
+                      Clear Monthly Salary
+                    </h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Complete salary & advance breakout</p>
+                  </div>
+                </div>
                 <button
                   onClick={() => setIsSalaryModalOpen(false)}
                   className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl text-gray-500"
@@ -2060,21 +2652,30 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
               </div>
 
               <div className="space-y-4">
-                {/* Employee Name */}
-                <div className="p-4 rounded-2xl bg-black/5 dark:bg-white/5">
-                  <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Employee</p>
-                  <p className="text-lg font-bold text-gray-900 dark:text-white">{selectedStaffForSalary.name}</p>
+                {/* Employee Info Header */}
+                <div className="p-3.5 rounded-2xl bg-black/5 dark:bg-white/[0.03] border border-gray-100 dark:border-white/5 flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Employee</p>
+                    <p className="text-base font-black text-gray-900 dark:text-white">{selectedStaffForSalary.name}</p>
+                    <p className="text-[11px] text-gray-500">{selectedStaffForSalary.employeeId} • {selectedStaffForSalary.department}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Base Salary</p>
+                    <p className="text-base font-black text-indigo-600 dark:text-indigo-400">
+                      ₹{(selectedStaffForSalary.monthlySalary || 0).toLocaleString('en-IN')}
+                    </p>
+                  </div>
                 </div>
 
                 {/* Select Month to Clear */}
                 <div>
                   <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block mb-1.5">
-                    Select Month to Clear Salary
+                    Select Month
                   </label>
                   <select
                     value={selectedSalaryMonth}
                     onChange={(e) => setSelectedSalaryMonth(e.target.value)}
-                    className="w-full bg-black/5 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm font-bold text-gray-900 dark:text-white focus:border-blue-500 outline-none transition-all cursor-pointer"
+                    className="w-full bg-white dark:bg-black/40 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-900 dark:text-white focus:border-blue-500 outline-none transition-all cursor-pointer shadow-sm"
                   >
                     {availableSalaryMonths.map(mStr => {
                       const isPaid = (selectedStaffForSalary.salaryHistory || []).some(h => {
@@ -2083,30 +2684,198 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
                       });
                       return (
                         <option key={mStr} value={mStr} className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">
-                          {mStr} {isPaid ? '(Already Paid)' : '(Pending)'}
+                          {mStr} {isPaid ? '(Already Paid)' : '(Pending Payment)'}
                         </option>
                       );
                     })}
                   </select>
                 </div>
 
-                {/* Calculated Payout for Selected Month */}
+                {/* Calculation Details */}
                 {(() => {
                   const calc = calculatePayoutForSelectedMonth(selectedStaffForSalary, selectedSalaryMonth);
                   return (
-                    <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Calculated Payout</span>
-                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded ${calc.isPaid ? 'bg-blue-500/20 text-blue-600' : 'bg-amber-500/20 text-amber-600'}`}>
-                          {calc.isPaid ? 'Paid' : 'Pending'}
-                        </span>
+                    <div className="space-y-3">
+                      {/* Advance Settlement Choice (If not paid and employee has active advance) */}
+                      {!calc.isPaid && calc.activeAdvanceBalance > 0 && (
+                        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <HandCoins size={16} className="text-amber-600 dark:text-amber-400" />
+                              <span className="text-xs font-black uppercase tracking-wider text-amber-700 dark:text-amber-400">
+                                Active Advance Balance
+                              </span>
+                            </div>
+                            <span className="text-sm font-black text-amber-600 dark:text-amber-400">
+                              ₹{calc.activeAdvanceBalance.toLocaleString('en-IN')}
+                            </span>
+                          </div>
+
+                          <div className="space-y-2 pt-1 border-t border-amber-500/20">
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300">
+                              Advance Settlement Options:
+                            </p>
+                            
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                              {/* Option 1: No Deduction / Full Salary */}
+                              <button
+                                type="button"
+                                onClick={() => { setAdvanceSettlementChoice('defer'); setCustomAdvanceCut('0'); }}
+                                className={`p-2.5 rounded-xl text-left border transition-all ${
+                                  advanceSettlementChoice === 'defer' || advanceSettlementChoice === 'no_deduction'
+                                    ? 'bg-emerald-600 text-white border-emerald-700 shadow-md shadow-emerald-600/20 ring-2 ring-emerald-500/40'
+                                    : 'bg-white dark:bg-black/30 border-gray-200 dark:border-white/10 text-gray-700 dark:text-gray-300 hover:bg-white/60'
+                                }`}
+                              >
+                                <p className="text-xs font-black flex items-center gap-1">💰 Full Salary</p>
+                                <p className={`text-[10px] mt-0.5 leading-tight ${advanceSettlementChoice === 'defer' || advanceSettlementChoice === 'no_deduction' ? 'text-emerald-100' : 'text-gray-400'}`}>
+                                  No advance cut (Settle next time)
+                                </p>
+                              </button>
+
+                              {/* Option 2: Full Advance Cut */}
+                              <button
+                                type="button"
+                                onClick={() => { setAdvanceSettlementChoice('full'); setCustomAdvanceCut(''); }}
+                                className={`p-2.5 rounded-xl text-left border transition-all ${
+                                  advanceSettlementChoice === 'full' || advanceSettlementChoice === 'settle'
+                                    ? 'bg-amber-500 text-white border-amber-600 shadow-md shadow-amber-500/20 ring-2 ring-amber-500/40'
+                                    : 'bg-white dark:bg-black/30 border-amber-500/20 text-gray-700 dark:text-gray-300 hover:bg-white/60'
+                                }`}
+                              >
+                                <p className="text-xs font-black flex items-center gap-1">✂️ Cut Full Adv.</p>
+                                <p className={`text-[10px] mt-0.5 leading-tight ${advanceSettlementChoice === 'full' || advanceSettlementChoice === 'settle' ? 'text-amber-100' : 'text-gray-400'}`}>
+                                  Deduct ₹{calc.activeAdvanceBalance.toLocaleString('en-IN')} now
+                                </p>
+                              </button>
+
+                              {/* Option 3: Partial / Custom Deduction */}
+                              <button
+                                type="button"
+                                onClick={() => { setAdvanceSettlementChoice('partial'); if (!customAdvanceCut) setCustomAdvanceCut(String(Math.round(calc.activeAdvanceBalance / 2))); }}
+                                className={`p-2.5 rounded-xl text-left border transition-all ${
+                                  advanceSettlementChoice === 'partial'
+                                    ? 'bg-purple-600 text-white border-purple-700 shadow-md shadow-purple-600/20 ring-2 ring-purple-500/40'
+                                    : 'bg-white dark:bg-black/30 border-gray-200 dark:border-white/10 text-gray-700 dark:text-gray-300 hover:bg-white/60'
+                                }`}
+                              >
+                                <p className="text-xs font-black flex items-center gap-1">🔢 Partial Cut</p>
+                                <p className={`text-[10px] mt-0.5 leading-tight ${advanceSettlementChoice === 'partial' ? 'text-purple-100' : 'text-gray-400'}`}>
+                                  Custom amount deduction
+                                </p>
+                              </button>
+                            </div>
+
+                            {/* Informational banner when Full Salary (No Cut) is chosen */}
+                            {(advanceSettlementChoice === 'defer' || advanceSettlementChoice === 'no_deduction') && (
+                              <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-800 dark:text-emerald-300">
+                                <strong>✅ No Advance Deduction:</strong> Employee will receive their full earned salary of <strong>₹{(calc.earnedSalary || 0).toLocaleString('en-IN')}</strong>. The active advance balance of <strong>₹{calc.activeAdvanceBalance.toLocaleString('en-IN')}</strong> will remain pending and carry forward to next month.
+                              </div>
+                            )}
+
+                            {/* Custom Deduction Input if Partial is selected */}
+                            {advanceSettlementChoice === 'partial' && (
+                              <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 space-y-2">
+                                <div className="flex items-center justify-between text-xs">
+                                  <label className="font-bold text-gray-700 dark:text-gray-300">
+                                    Enter Amount to Deduct this Month:
+                                  </label>
+                                  <span className="text-[11px] text-purple-600 dark:text-purple-400 font-bold">
+                                    Remaining Balance: ₹{Math.max(0, calc.activeAdvanceBalance - (Number(customAdvanceCut) || 0)).toLocaleString('en-IN')}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <div className="relative flex-1">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">₹</span>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      max={calc.activeAdvanceBalance}
+                                      placeholder="e.g. 2000"
+                                      value={customAdvanceCut}
+                                      onChange={(e) => setCustomAdvanceCut(e.target.value)}
+                                      className="w-full bg-white dark:bg-black/40 border border-purple-500/30 rounded-xl pl-7 pr-3 py-1.5 text-xs font-bold text-gray-900 dark:text-white focus:border-purple-500 outline-none"
+                                    />
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    {[
+                                      { label: '25%', amt: Math.round(calc.activeAdvanceBalance * 0.25) },
+                                      { label: '50%', amt: Math.round(calc.activeAdvanceBalance * 0.5) },
+                                      { label: '75%', amt: Math.round(calc.activeAdvanceBalance * 0.75) },
+                                      { label: 'Full', amt: calc.activeAdvanceBalance }
+                                    ].map((preset) => (
+                                      <button
+                                        key={preset.label}
+                                        type="button"
+                                        onClick={() => setCustomAdvanceCut(String(preset.amt))}
+                                        className="px-2 py-1 rounded-lg text-[10px] font-bold bg-purple-500/20 text-purple-700 dark:text-purple-300 hover:bg-purple-500/30 transition-all"
+                                      >
+                                        {preset.label}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Full Breakout Card */}
+                      <div className="p-4 rounded-2xl bg-emerald-500/[0.08] border border-emerald-500/20 space-y-2.5">
+                        <div className="flex items-center justify-between border-b border-emerald-500/20 pb-2">
+                          <span className="text-xs font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <Receipt size={14} /> Salary & Payout Breakout
+                          </span>
+                          <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded ${calc.isPaid ? 'bg-blue-500/20 text-blue-600 dark:text-blue-400' : 'bg-amber-500/20 text-amber-600 dark:text-amber-400'}`}>
+                            {calc.isPaid ? 'Already Paid' : 'Pending Payment'}
+                          </span>
+                        </div>
+
+                        {/* Breakdown lines */}
+                        <div className="space-y-1.5 text-xs text-gray-600 dark:text-gray-300">
+                          <div className="flex justify-between items-center">
+                            <span>⏱️ Gross Earned (Attendance & Hours):</span>
+                            <span className="font-bold text-gray-900 dark:text-white">
+                              ₹{(calc.earnedSalary || 0).toLocaleString('en-IN')}
+                            </span>
+                          </div>
+
+                          {calc.advanceDeduction > 0 && (
+                            <div className="flex justify-between items-center text-rose-600 dark:text-rose-400 font-semibold">
+                              <span>✂️ Advance Pay Deduction (Cut):</span>
+                              <span>- ₹{calc.advanceDeduction.toLocaleString('en-IN')}</span>
+                            </div>
+                          )}
+
+                          {calc.advanceDeduction === 0 && calc.activeAdvanceBalance > 0 && !calc.isPaid && (
+                            <div className="flex justify-between items-center text-purple-600 dark:text-purple-400 text-[11px] italic">
+                              <span>⏳ Advance Settled Next Time (Deferred):</span>
+                              <span>₹0 cut (₹{calc.activeAdvanceBalance.toLocaleString('en-IN')} carried over)</span>
+                            </div>
+                          )}
+
+                          <div className="flex justify-between items-center pt-2 border-t border-emerald-500/20">
+                            <span className="text-sm font-black text-gray-900 dark:text-white">
+                              💰 Final Net Payout:
+                            </span>
+                            <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
+                              ₹{calc.payout.toLocaleString('en-IN')}
+                            </span>
+                          </div>
+
+                          <div className="flex justify-between items-center text-[11px] text-gray-500 dark:text-gray-400 pt-1">
+                            <span>Remaining Advance Balance After Payment:</span>
+                            <span className="font-bold text-amber-600 dark:text-amber-400">
+                              ₹{calc.advanceBalanceRemaining.toLocaleString('en-IN')}
+                            </span>
+                          </div>
+                        </div>
+
+                        <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1 border-t border-emerald-500/10 pt-1.5">
+                          Calculated for <strong>{selectedSalaryMonth}</strong> ({calc.daysWorked} days present, {calc.fullLeaves} leaves, {calc.halfDays} half days)
+                        </p>
                       </div>
-                      <p className="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
-                        ₹{calc.payout.toLocaleString('en-IN')}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        for <strong>{selectedSalaryMonth}</strong> ({calc.daysWorked} days present, {calc.fullLeaves} leaves, {calc.halfDays} half days)
-                      </p>
                     </div>
                   );
                 })()}
@@ -2118,8 +2887,9 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
                   </label>
                   <div className="flex gap-2">
                     <button
+                      type="button"
                       onClick={() => setSalaryPaymentDetails({ ...salaryPaymentDetails, mode: 'cash', method: 'cash' })}
-                      className={`flex-1 px-4 py-3 rounded-xl text-sm font-bold transition-all ${salaryPaymentDetails.mode === 'cash'
+                      className={`flex-1 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${salaryPaymentDetails.mode === 'cash'
                           ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20'
                           : 'bg-black/5 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-700 dark:text-gray-300'
                         }`}
@@ -2127,8 +2897,9 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
                       Cash
                     </button>
                     <button
+                      type="button"
                       onClick={() => setSalaryPaymentDetails({ ...salaryPaymentDetails, mode: 'online' })}
-                      className={`flex-1 px-4 py-3 rounded-xl text-sm font-bold transition-all ${salaryPaymentDetails.mode === 'online'
+                      className={`flex-1 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${salaryPaymentDetails.mode === 'online'
                           ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
                           : 'bg-black/5 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-700 dark:text-gray-300'
                         }`}
@@ -2139,28 +2910,44 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
                 </div>
 
                 {salaryPaymentDetails.mode === 'online' && (
-                  <div>
-                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block mb-1.5">
-                      Payment Method
-                    </label>
-                    <select
-                      value={salaryPaymentDetails.method}
-                      onChange={(e) => setSalaryPaymentDetails({ ...salaryPaymentDetails, method: e.target.value })}
-                      className="w-full bg-black/5 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white focus:border-blue-500 outline-none transition-all"
-                    >
-                      <option value="phonepe">PhonePe</option>
-                      <option value="paytm">Paytm</option>
-                      <option value="google_pay">Google Pay</option>
-                      <option value="bank_transfer">Bank Transfer</option>
-                    </select>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block mb-1.5">
+                        Payment Method
+                      </label>
+                      <select
+                        value={salaryPaymentDetails.method}
+                        onChange={(e) => setSalaryPaymentDetails({ ...salaryPaymentDetails, method: e.target.value })}
+                        className="w-full bg-white dark:bg-black/40 border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2 text-xs font-bold text-gray-900 dark:text-white focus:border-blue-500 outline-none transition-all cursor-pointer"
+                      >
+                        <option value="phonepe">PhonePe</option>
+                        <option value="paytm">Paytm</option>
+                        <option value="google_pay">Google Pay</option>
+                        <option value="bank_transfer">Bank Transfer</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block mb-1.5">
+                        UTR / Ref No. (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. UTR / Ref ID"
+                        value={salaryPaymentDetails.utrNumber}
+                        onChange={(e) => setSalaryPaymentDetails({ ...salaryPaymentDetails, utrNumber: e.target.value })}
+                        className="w-full bg-white dark:bg-black/40 border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2 text-xs text-gray-900 dark:text-white focus:border-blue-500 outline-none transition-all"
+                      />
+                    </div>
                   </div>
                 )}
               </div>
 
-              <div className="flex gap-3 mt-8">
+              <div className="flex gap-3 mt-6 pt-4 border-t border-gray-100 dark:border-white/10">
                 <button
+                  type="button"
                   onClick={() => setIsSalaryModalOpen(false)}
-                  className="flex-1 px-6 py-3 rounded-xl border border-gray-200 dark:border-white/10 text-gray-700 dark:text-gray-300 font-bold hover:bg-black/5 dark:hover:bg-white/5 transition-all"
+                  className="flex-1 px-5 py-3 rounded-2xl border border-gray-200 dark:border-white/10 text-gray-700 dark:text-gray-300 text-xs font-bold hover:bg-black/5 dark:hover:bg-white/5 transition-all"
                 >
                   Cancel
                 </button>
@@ -2169,19 +2956,21 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
                   if (calc.isPaid) {
                     return (
                       <button
+                        type="button"
                         onClick={() => handleRevertSalary(selectedStaffForSalary, selectedSalaryMonth)}
-                        className="flex-1 px-6 py-3 rounded-xl bg-rose-600 text-white font-bold hover:bg-rose-700 transition-all shadow-lg shadow-rose-600/20 flex items-center justify-center gap-2"
+                        className="flex-1 px-5 py-3 rounded-2xl bg-rose-600 text-white text-xs font-bold hover:bg-rose-700 transition-all shadow-lg shadow-rose-600/20 flex items-center justify-center gap-2"
                       >
-                        <RotateCcw size={18} /> Revert Payment
+                        <RotateCcw size={16} /> Revert Payment
                       </button>
                     );
                   }
                   return (
                     <button
+                      type="button"
                       onClick={handleConfirmClearSalary}
-                      className="flex-1 px-6 py-3 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20"
+                      className="flex-1 px-5 py-3 rounded-2xl bg-emerald-600 text-white text-xs font-black uppercase tracking-wider hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2"
                     >
-                      Confirm Payment
+                      <CheckCircle2 size={16} /> Confirm Payment
                     </button>
                   );
                 })()}

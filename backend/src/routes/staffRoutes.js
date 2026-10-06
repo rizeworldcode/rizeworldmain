@@ -42,7 +42,10 @@ const {
   approveAllTasks,
   approveStaffTasks,
   clockOutAllStaff,
-  updateStaffAccess
+  updateStaffAccess,
+  addAdvance,
+  deleteAdvance,
+  updateAdvance
 } = require('../controllers/staffController');
 const { protect } = require('../middleware/authMiddleware');
 const { requireOfficeWifi } = require('../middleware/officeWifi');
@@ -98,6 +101,9 @@ router.post('/:id/add-extra-task', addExtraTask);
 router.post('/:id/submit-report', submitWorkReport);
 router.patch('/:id/clear-salary', clearSalary);
 router.patch('/:id/revert-salary', revertSalary);
+router.post('/:id/advance', addAdvance);
+router.delete('/:id/advance/:advanceId', deleteAdvance);
+router.patch('/:id/advance/:advanceId', updateAdvance);
 router.patch('/:id/satisfaction-level', updateSatisfactionLevel);
 router.patch('/:id/today-comment', updateTodayComment);
 router.post('/:id/attendance', updateAttendance);
