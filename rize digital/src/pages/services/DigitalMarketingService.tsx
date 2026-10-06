@@ -25,46 +25,80 @@ import AreasWeServe from '../../components/common/AreasWeServe';
 
 const SERVICES_LIST = [
   {
-    title: "Search Engine Optimization",
-    desc: "It is the process of improving a website’s visibility in the search engine results pages.",
-    tags: ["Rank", "Clicks", "Links", "Tags", "Words"],
-    icon: Search,
-    link: "/services/seo"
+    title: "Digital Marketing",
+    desc: "We create tailored strategies that bring together the channels most relevant to your business. Our focus is on reaching the right people, improving engagement, and turning digital activity into measurable progress.",
+    tags: ["Strategy", "Growth", "Analytics"],
+    icon: TrendingUp,
+    link: "/services/digital-marketing"
   },
   {
-    title: "Social Media Marketing",
-    desc: "It is the use of social media platforms (like Facebook, LinkedIn, Instagram, Twitter etc.) to market your business.",
-    tags: ["Post", "Like", "Tag", "Chat", "Ad"],
-    icon: Share2,
-    link: "/services/social-media-marketing"
-  },
-  {
-    title: "Web designing",
-    desc: "It is the process of creating the visual look and user experience of a website.",
-    tags: ["Page", "Font", "Form", "Menu", "Grid"],
+    title: "Web Development",
+    desc: "A good website should be easy to use, fast, and clear about what your business offers. We build responsive websites with a focus on user experience, performance, and the goals of your marketing strategy.",
+    tags: ["Design", "Development", "Performance"],
     icon: Palette,
     link: "/services/web-development"
   },
   {
+    title: "SEO Optimization",
+    desc: "We improve the technical and content foundations of your website to make it easier for search engines and visitors to understand. Our work can include technical improvements, on-page optimization, content planning, and internal linking.",
+    tags: ["Technical SEO", "On-Page", "Content"],
+    icon: Search,
+    link: "/services/seo"
+  },
+  {
     title: "Content Marketing",
-    desc: "It means using helpful or interesting content to attract customers instead of publishing ads.",
-    tags: ["Value", "Story", "Trust", "Lead", "Share"],
+    desc: "We create useful content that answers customer questions and communicates your expertise clearly. From blog articles and website copy to landing pages, every piece is created around your audience and its purpose.",
+    tags: ["Content", "Research", "Strategy"],
     icon: Edit3,
-    link: "/services/digital-marketing"
+    link: "/services/content-marketing"
   },
   {
-    title: "Graphic Designing",
-    desc: "It is the process of making things look good and communicate clearly - like logos, posters, social media posts, websites and more.",
-    tags: ["Creative", "Visual", "Skilled", "Artistic", "Precise"],
-    icon: Award,
-    link: "/services/wordpress-development"
-  },
-  {
-    title: "PPC Advertising",
-    desc: "PPC is an online advertisement where you only pay when someone clicks your ad.",
-    tags: ["Click", "Ad", "Bid", "Lead", "Cost"],
-    icon: TrendingUp,
+    title: "Digital Advertising",
+    desc: "Targeted advertising can help businesses reach potential customers at the right stage of their journey. We plan campaigns around your audience, objectives, budget, and performance data.",
+    tags: ["PPC", "Targeting", "Optimization"],
+    icon: Sparkles,
     link: "/services/paid-ads"
+  },
+  {
+    title: "Social Media Marketing",
+    desc: "We help businesses maintain a consistent social presence with relevant content and campaigns. The aim is to create genuine engagement while supporting your wider marketing objectives.",
+    tags: ["Social", "Content", "Engagement"],
+    icon: Share2,
+    link: "/services/social-media-marketing"
+  },
+  {
+    title: "Growth Marketing",
+    desc: "We use performance insights to understand what is working and where there is room for improvement. This allows us to refine campaigns and make marketing decisions based on real business data.",
+    tags: ["Data", "Testing", "Growth"],
+    icon: Award,
+    link: "/services/digital-marketing"
+  }
+];
+
+const FAQS = [
+  {
+    question: "What are digital marketing services?",
+    answer: "Digital marketing services help businesses promote their products or services through online channels. These can include SEO, content marketing, social media, paid advertising, email marketing, and website optimization."
+  },
+  {
+    question: "What digital marketing services does RizeWorld offer?",
+    answer: "RizeWorld offers services including SEO, content marketing, social media marketing, PPC and paid advertising, web development, and other digital strategies based on a business's goals and audience."
+  },
+  {
+    question: "How can digital marketing help my business?",
+    answer: "A well-planned digital strategy can help your business reach relevant audiences, improve online visibility, attract website visitors, generate enquiries, and build stronger relationships with customers."
+  },
+  {
+    question: "Do I need all digital marketing services for my business?",
+    answer: "Not necessarily. Every business has different goals and customers. We recommend focusing on the channels that are most relevant to your audience, industry, budget, and current stage of growth."
+  },
+  {
+    question: "How long does digital marketing take to show results?",
+    answer: "The timeline depends on the services being used. Paid campaigns can generate visibility relatively quickly, while SEO and content marketing generally require more time and consistent effort to build organic results."
+  },
+  {
+    question: "Can digital marketing help generate leads?",
+    answer: "Yes. Different channels can attract potential customers at different stages of their buying journey. SEO, content, paid advertising, social media, and a well-designed website can all contribute to lead generation when they are planned together."
   }
 ];
 
@@ -98,6 +132,7 @@ const STEPS = [
 export default function DigitalMarketingService() {
   const navigate = useNavigate();
   const [activeStep, setActiveStep] = useState(0);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
   const repeatedLogos = [...LOGOS, ...LOGOS, ...LOGOS];
 
   const serviceSchema = {
@@ -109,7 +144,7 @@ export default function DigitalMarketingService() {
       "name": "RizeWorld Digital",
       "url": "https://rizeworld.in/"
     },
-    "description": "Grow your brand with our custom digital marketing campaigns. We build strategic lead generation pipelines, run paid advertising, SMM, and rank on search results."
+    "description": "RizeWorld helps businesses build a stronger online presence through practical digital strategies. We combine creative thinking, SEO, technology, and performance data to help brands reach the right audience."
   };
 
   const breadcrumbSchema = {
@@ -137,13 +172,26 @@ export default function DigitalMarketingService() {
     ]
   };
 
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": FAQS.map(faq => ({
+      "@type": "Question",
+      "name": faq.question,
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": faq.answer
+      }
+    }))
+  };
+
   return (
     <div className="min-h-screen bg-stone-50 pt-32 pb-24 overflow-hidden text-left font-sans selection:bg-orange-500 selection:text-white">
       <SEO 
         title="Premium Digital Marketing Service & Agency | RizeWorld"
         description="Looking for an affordable digital marketing service? As a leading digital marketing company and agency, we offer result-driven online marketing services, SEO, and lead generation."
         canonicalUrl="https://rizeworld.in/services/digital-marketing"
-        schema={[serviceSchema, breadcrumbSchema]}
+        schema={[serviceSchema, breadcrumbSchema, faqSchema]}
       />
 
       {/* 1. BREADCRUMBS & NAVIGATION */}
@@ -164,7 +212,7 @@ export default function DigitalMarketingService() {
           
           {/* LEFT COLLAGE BLOCK */}
           <div className="flex flex-col gap-6">
-            {/* Strategy Banner Card */}
+            {/* Strategy Banner Card (Left Card) */}
             <motion.div 
               initial={{ opacity: 0, x: -40 }}
               animate={{ opacity: 1, x: 0 }}
@@ -172,9 +220,9 @@ export default function DigitalMarketingService() {
               className="bg-orange-100/70 border border-orange-200/60 rounded-4xl p-8 flex flex-col justify-center h-auto min-h-[180px] shadow-xs relative overflow-hidden group"
             >
               <div className="absolute top-0 right-0 w-24 h-24 bg-orange-200/30 rounded-full blur-2xl -mr-8 -mt-8 group-hover:scale-110 transition-transform duration-500" />
-              <span className="text-[10px] font-black text-orange-600 uppercase tracking-widest block mb-3">Planned Strategy</span>
-              <p className="text-gray-800 text-sm leading-relaxed font-semibold">
-                Developing specific strategy to optimize digital presence with strategic insight.
+              <span className="text-[10px] font-black text-orange-600 uppercase tracking-widest block mb-3">WHO WE ARE</span>
+              <p className="text-gray-800 text-sm leading-relaxed font-semibold text-justify">
+                RizeWorld – Strategic Content That Connects Brands With Their Audience
               </p>
             </motion.div>
 
@@ -215,44 +263,37 @@ export default function DigitalMarketingService() {
                   </svg>
                 </span>
               </h1>
-              <p className="text-gray-800 text-sm md:text-base leading-relaxed max-w-xl">
-                As a premium <strong>digital marketing company</strong>, we deliver custom <strong>online marketing services</strong> and <strong>internet marketing services</strong> to improve search visibility, traffic generation, and audience growth. We design tailored campaigns to establish your online dominance.
-              </p>
+              <div className="space-y-4 text-gray-800 text-sm md:text-base leading-relaxed max-w-xl text-justify">
+                <p>
+                  RizeWorld helps businesses build a stronger online presence through practical digital strategies. We combine creative thinking, SEO, technology, and performance data to help brands reach the right audience and create meaningful business opportunities.
+                </p>
+                <p>
+                  From improving search visibility to building a better website or running targeted campaigns, our services are planned according to your business goals rather than using the same approach for every client.
+                </p>
+              </div>
             </motion.div>
 
-            {/* Happy Clients Badge Card */}
+            {/* Bottom Card */}
             <motion.div 
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
               className="bg-white border border-gray-200/80 rounded-4xl p-6 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-sm hover:shadow-md transition-shadow duration-300"
             >
-              <p className="text-gray-500 text-xs font-semibold max-w-sm text-center sm:text-left leading-relaxed">
-                Customized teams to navigate each client's journey with precision and expertise.
+              <p className="text-gray-700 text-xs sm:text-sm font-semibold max-w-sm text-justify leading-relaxed">
+                Content created to support visibility, credibility, and conversions.
               </p>
-              <div className="flex items-center gap-3.5 shrink-0">
-                <div className="flex -space-x-3">
-                  {[
-                    "/video/harsh tiwari.jpeg",
-                    "/video/k sir.jpg",
-                    "/video/mansukhhh.jpg",
-                    "/video/Untitled-1.jpg",
-                    "/video/nk s.jpg"
-                  ].map((avatar, i) => (
-                    <img key={i} src={avatar} alt="user" className="w-9 h-9 rounded-full border-2 border-white object-cover shadow-xs" />
-                  ))}
-                </div>
-                <div>
-                  <span className="text-base font-black text-gray-950 block leading-none">1000+</span>
-                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Happy Client Stories</span>
-                </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-orange-600 bg-orange-50 border border-orange-200/80 px-4 py-2 rounded-full shadow-2xs">
+                  SEO + CONTENT + DIGITAL STRATEGY
+                </span>
               </div>
             </motion.div>
           </div>
 
           {/* RIGHT STATS COLUMN */}
           <div className="flex flex-col gap-6">
-            {/* Teamwork Card */}
+            {/* Right Card 1 (EXPERTISE) */}
             <motion.div 
               initial={{ opacity: 0, x: 40 }}
               animate={{ opacity: 1, x: 0 }}
@@ -260,14 +301,17 @@ export default function DigitalMarketingService() {
               className="bg-sky-50 border border-sky-100 rounded-4xl p-8 flex flex-col justify-center h-full min-h-[160px] shadow-xs hover:-translate-y-1 transition-transform duration-300"
             >
               <h4 className="text-sm font-black text-sky-950 uppercase tracking-wider mb-2 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-sky-500 rounded-full" /> Teamwork
+                <span className="w-1.5 h-1.5 bg-sky-500 rounded-full" /> EXPERTISE
               </h4>
+              <p className="text-sky-950 text-sm font-bold mb-1">
+                Content Strategy & SEO Writing
+              </p>
               <p className="text-sky-900/80 text-xs font-semibold leading-relaxed">
-                Driving success via work and shared accomplishments.
+                Strategy • Research • Writing • Optimization
               </p>
             </motion.div>
 
-            {/* Outcome Card */}
+            {/* Right Card 2 (CONTENT) */}
             <motion.div 
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
@@ -275,10 +319,13 @@ export default function DigitalMarketingService() {
               className="bg-yellow-50/70 border border-yellow-100 rounded-4xl p-8 flex flex-col justify-center h-full min-h-[160px] shadow-xs hover:-translate-y-1 transition-transform duration-300"
             >
               <h4 className="text-sm font-black text-yellow-950 uppercase tracking-wider mb-2 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full" /> Outcome
+                <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full" /> CONTENT
               </h4>
+              <p className="text-yellow-950 text-sm font-bold mb-1">
+                Original, Purpose-Driven Content
+              </p>
               <p className="text-yellow-900/80 text-xs font-semibold leading-relaxed">
-                Specific results that show our agency's ability and effort.
+                Blogs • Website Copy • Landing Pages • Guides
               </p>
             </motion.div>
           </div>
@@ -321,15 +368,15 @@ export default function DigitalMarketingService() {
         </div>
       </section>
 
-      {/* 4. SIX CORE SERVICES */}
+      {/* 4. SEVEN CORE SERVICES */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
         <div className="max-w-3xl mb-16">
-          <span className="text-xs font-bold uppercase tracking-widest text-orange-500">Affordable Digital Marketing Services</span>
+          <span className="text-xs font-bold uppercase tracking-widest text-orange-500">Tailored Digital Solutions</span>
           <h2 className="text-3xl md:text-5xl font-black text-gray-950 uppercase tracking-tight mt-1 mb-6 leading-tight">
-            Integrated SEO and SEM Solutions for Dynamic Lead Generation
+            Integrated Digital Services for Real Business Growth
           </h2>
-          <p className="text-gray-500 text-sm md:text-base leading-relaxed">
-            We deploy organic search marketing campaigns, PPC management, and target email marketing to maximize conversion rate optimization for your brand.
+          <p className="text-gray-600 text-sm md:text-base leading-relaxed text-justify">
+            We create tailored strategies that bring together the channels most relevant to your business. Our focus is on reaching the right people, improving engagement, and turning digital activity into measurable progress.
           </p>
         </div>
 
@@ -354,7 +401,7 @@ export default function DigitalMarketingService() {
                   <h3 className="text-xl font-black uppercase text-gray-950 mb-3 group-hover:text-orange-500 transition-colors">
                     {srv.title}
                   </h3>
-                  <p className="text-gray-500 text-sm leading-relaxed mb-6 h-12 overflow-hidden line-clamp-2">
+                  <p className="text-gray-600 text-sm leading-relaxed mb-6 text-justify">
                     {srv.desc}
                   </p>
 
@@ -373,20 +420,20 @@ export default function DigitalMarketingService() {
         </div>
       </section>
 
-      {/* 5. PROCESS TIMELINE WORKFLOW */}
+      {/* 5. PROCESS TIMELINE WORKFLOW / WHY RIZEWORLD */}
       <section className="bg-white border-t border-b border-gray-200 py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.8fr] gap-16 items-start mb-20">
             <div>
-              <span className="text-xs font-bold uppercase tracking-widest text-orange-500 block mb-3">TO PROVIDE SMART SOLUTION</span>
+              <span className="text-xs font-bold uppercase tracking-widest text-orange-500 block mb-3">WHY RIZEWORLD?</span>
               <h2 className="text-4xl md:text-5xl font-black text-gray-950 uppercase tracking-tight">
                 OUR SOLUTION <br />PROCESS
               </h2>
             </div>
             <div>
-              <p className="text-gray-500 text-sm md:text-base leading-relaxed">
-                Digital agencies can be different in size and specialization. Every digital marketing agency has a different focus. Such as some are for healthcare and some e-commerce marketing.
+              <p className="text-gray-600 text-sm md:text-base leading-relaxed text-justify">
+                Every business has different customers, challenges, and goals. Instead of applying a fixed formula, we build strategies around what your business actually needs. Our services can work individually or together as part of a wider online marketing strategy.
               </p>
             </div>
           </div>
@@ -436,7 +483,7 @@ export default function DigitalMarketingService() {
                   <h3 className="text-2xl md:text-3xl font-black uppercase text-gray-950 mb-4 pr-24 leading-tight">
                     {STEPS[activeStep].title}
                   </h3>
-                  <p className="text-gray-600 text-sm md:text-base leading-relaxed mb-8 max-w-xl">
+                  <p className="text-gray-600 text-sm md:text-base leading-relaxed mb-8 max-w-xl text-justify">
                     {STEPS[activeStep].desc}
                   </p>
 
@@ -460,7 +507,56 @@ export default function DigitalMarketingService() {
         </div>
       </section>
 
-      {/* 5. Areas We Serve */}
+      {/* 6. FAQS SECTION */}
+      <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <div className="text-center mb-16">
+          <span className="text-xs font-bold uppercase tracking-widest text-orange-500">FAQ</span>
+          <h2 className="text-3xl md:text-5xl font-black text-gray-950 uppercase tracking-tight mt-2">
+            Digital Marketing Services – FAQs
+          </h2>
+        </div>
+
+        <div className="space-y-4">
+          {FAQS.map((faq, idx) => {
+            const isOpen = openFaq === idx;
+            return (
+              <div 
+                key={idx}
+                className="bg-white border border-gray-200/85 rounded-3xl overflow-hidden transition-all duration-300"
+              >
+                <button
+                  onClick={() => setOpenFaq(isOpen ? null : idx)}
+                  className="w-full flex items-center justify-between p-6 text-left cursor-pointer hover:bg-stone-50/50"
+                >
+                  <span className="text-sm sm:text-base font-bold text-gray-950 uppercase tracking-tight pr-6">
+                    {faq.question}
+                  </span>
+                  <ChevronRight 
+                    size={18} 
+                    className={`text-orange-500 transition-transform duration-300 shrink-0 ${isOpen ? 'rotate-90' : ''}`} 
+                  />
+                </button>
+                <AnimatePresence initial={false}>
+                  {isOpen && (
+                    <motion.div
+                      initial={{ height: 0 }}
+                      animate={{ height: "auto" }}
+                      exit={{ height: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <div className="p-6 pt-0 border-t border-gray-100 text-gray-600 text-sm leading-relaxed text-justify">
+                        {faq.answer}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* 7. Areas We Serve */}
       <AreasWeServe />
 
       {/* 6. DYNAMIC LET'S TALK PANEL */}

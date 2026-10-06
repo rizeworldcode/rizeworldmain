@@ -22,34 +22,57 @@ import AreasWeServe from '../../components/common/AreasWeServe';
 
 const SERVICES_LIST = [
   {
-    title: "Brand Identity Design",
-    desc: "Developing complete corporate brand guidelines, logo configurations, brand books, and custom iconography systems.",
-    tags: ["Logo Design", "Style Guides", "Typography Systems", "Color Palette Setup"],
-    icon: Search
-  },
-  {
-    title: "Marketing & Advertising Design",
-    desc: "Creating high-impact brochures, banners, billboards, and flyers that capture brand values and grab attention.",
-    tags: ["Brochures", "Flyers", "Posters", "Print Ads"],
-    icon: Share2
-  },
-  {
-    title: "Social Media Graphics",
-    desc: "Designing custom feed posts, stories, banners, and carousel graphics tailored to maximize social network engagement.",
-    tags: ["Instagram Grids", "LinkedIn Posts", "Facebook Ads", "Banners"],
+    title: "Brand & Visual Identity",
+    desc: "We create visual elements that help your business develop a consistent look across different platforms. This can include brand assets, layouts, color direction, typography, and other visual elements.",
+    tags: ["Brand Assets", "Layouts", "Color Direction", "Typography"],
     icon: Palette
   },
   {
-    title: "Packaging & Product Design",
-    desc: "Structuring functional and visually stunning outer packaging and labeling systems that enhance product value.",
-    tags: ["Packaging Layouts", "Label Tuning", "3D Mockups", "Print Prep"],
-    icon: Edit3
+    title: "Social Media Designs",
+    desc: "From promotional posts to campaign creatives, we design social media graphics that fit the platform and communicate your message clearly.",
+    tags: ["Promotional Posts", "Campaign Creatives", "Social Graphics", "Engagement"],
+    icon: Share2
   },
   {
-    title: "UI & Website Asset Design",
-    desc: "Coordinating creative graphic visual elements, illustration libraries, custom icons, and vector frameworks for web platforms.",
-    tags: ["Web Mockups", "Vector Assets", "Icon Packs", "Infographics"],
+    title: "Marketing & Advertising Creatives",
+    desc: "We create visual assets for digital campaigns, promotions, and other marketing activities, with a focus on clear messaging and strong visual presentation.",
+    tags: ["Digital Campaigns", "Promotions", "Ad Creatives", "Visual Presentation"],
     icon: Award
+  },
+  {
+    title: "Website Graphics",
+    desc: "Your website visuals should support the content rather than distract from it. We create graphics and supporting visual elements that fit your website's layout and brand identity.",
+    tags: ["Website Banners", "Visual Sections", "Icons", "Brand Identity"],
+    icon: Search
+  },
+  {
+    title: "Business & Promotional Designs",
+    desc: "We can also create brochures, banners, presentations, promotional graphics, and other materials your business may need for communication and marketing.",
+    tags: ["Brochures", "Banners", "Presentations", "Promotional Materials"],
+    icon: Edit3
+  }
+];
+
+const FAQS = [
+  {
+    question: "What graphic design services does RizeWorld offer?",
+    answer: "RizeWorld provides graphic design for branding, social media, websites, advertising campaigns, presentations, promotional materials, and other digital marketing needs."
+  },
+  {
+    question: "Do you provide social media graphic design?",
+    answer: "Yes. We create social media posts, promotional creatives, campaign graphics, and other visual content based on your brand and the platform where it will be used."
+  },
+  {
+    question: "Can graphic design help with branding?",
+    answer: "Good design can make a brand easier to recognize and create consistency across different customer touchpoints. We create visual assets that support your existing identity or help establish a clearer visual direction."
+  },
+  {
+    question: "Do you design graphics for websites?",
+    answer: "Yes. We can create website banners, promotional graphics, visual sections, icons, and other supporting assets that fit the website's layout and overall design."
+  },
+  {
+    question: "How do you approach a graphic design project?",
+    answer: "We first understand your business, audience, brand style, and the purpose of the design. We then develop the visual direction and refine the design based on feedback."
   }
 ];
 
@@ -76,21 +99,43 @@ const STEPS = [
 
 const TESTIMONIALS = [
   {
-    quote: "RizeWorld transformed our online presence completely. Their SEO strategies helped Shiivaura rank on the first page within just a few months. Highly recommended!",
+    quote: "RizeWorld transformed our online presence completely. Their creative designs helped Shiivaura stand out with a distinct visual identity. Highly recommended!",
     author: "Harsh Tiwari",
     role: "Founder, Shiivaura",
     avatar: "/video/harsh tiwari.jpeg"
   },
   {
-    quote: "Working with RizeWorld was a game changer for 7One. Their digital marketing expertise and dedication to results truly sets them apart from the rest.",
+    quote: "Working with RizeWorld was a game changer for 7One. Their visual design and branding expertise truly set them apart from the rest.",
     author: "Mr. Ajit Singh",
     role: "Founder, 7One",
     avatar: "/video/k sir.jpg"
+  },
+  {
+    quote: "The design team at RizeWorld created beautiful social media creatives for Mansukh Restaurant that noticeably improved customer engagement.",
+    author: "Mr. Sajan Chandel",
+    role: "Owner, Mansukh Restaurant",
+    avatar: "/video/mansukhhh.jpg"
+  },
+  {
+    quote: "RizeWorld's approach is professional and result-driven. They understood our brand identity at Old Rao and built visuals that genuinely delivered growth.",
+    author: "Mr. Rahul Bhugra",
+    role: "Owner, Old Rao",
+    avatar: "/video/Untitled-1.jpg"
+  },
+  {
+    quote: "I'm very satisfied with RizeWorld's services. They helped Sushanti Dhyanyoga build a strong digital identity that resonates with our community.",
+    author: "Mr. Neeraj Lamba",
+    role: "Founder, Sushanti Dhyanyoga",
+    avatar: "/video/nk s.jpg"
   }
 ];
 
 export default function GraphicDesign() {
   const navigate = useNavigate();
+  const [activeStep, setActiveStep] = useState(0);
+  const [activeTestimonial, setActiveTestimonial] = useState(0);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
+
   const serviceSchema = {
     "@context": "https://schema.org",
     "@type": "Service",
@@ -100,7 +145,7 @@ export default function GraphicDesign() {
       "name": "RizeWorld Digital",
       "url": "https://rizeworld.in/"
     },
-    "description": "Professional graphic design services. We craft logos, comprehensive visual brand identity guidelines, social media assets, and vector illustrations."
+    "description": "Professional graphic design services. We craft logos, comprehensive visual brand identity guidelines, social media assets, and marketing creatives."
   };
 
   const breadcrumbSchema = {
@@ -128,17 +173,27 @@ export default function GraphicDesign() {
     ]
   };
 
-  const [activeStep, setActiveStep] = useState(0);
-  const [activeTestimonial, setActiveTestimonial] = useState(0);
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": FAQS.map(faq => ({
+      "@type": "Question",
+      "name": faq.question,
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": faq.answer
+      }
+    }))
+  };
 
   return (
     <div className="min-h-screen bg-stone-50 pt-32 pb-24 overflow-hidden text-left font-sans selection:bg-orange-500 selection:text-white">
       
       <SEO 
         title="Graphic Design Services & Branding Agency | RizeWorld"
-        description="Looking to hire a graphic designer? Our graphic design company offers custom logo design, brochure design, and professional brand identity design."
+        description="Looking for graphic design services? RizeWorld creates brand visuals, social media graphics, website assets, and marketing creatives."
         canonicalUrl="https://rizeworld.in/services/graphic-design"
-        schema={[serviceSchema, breadcrumbSchema]}
+        schema={[serviceSchema, breadcrumbSchema, faqSchema]}
       />
       
       {/* 1. BREADCRUMBS & NAVIGATION */}
@@ -159,6 +214,7 @@ export default function GraphicDesign() {
           
           {/* LEFT COLLAGE BLOCK */}
           <div className="flex flex-col gap-6">
+            {/* Left Card (WHO WE ARE) */}
             <motion.div 
               initial={{ opacity: 0, x: -40 }}
               animate={{ opacity: 1, x: 0 }}
@@ -166,12 +222,13 @@ export default function GraphicDesign() {
               className="bg-orange-100/70 border border-orange-200/60 rounded-4xl p-8 flex flex-col justify-center h-auto min-h-[180px] shadow-xs relative overflow-hidden group"
             >
               <div className="absolute top-0 right-0 w-24 h-24 bg-orange-200/30 rounded-full blur-2xl -mr-8 -mt-8 group-hover:scale-110 transition-transform duration-500" />
-              <span className="text-[10px] font-black text-orange-600 uppercase tracking-widest block mb-3">Who We Are</span>
-              <p className="text-gray-800 text-sm leading-relaxed font-semibold">
-                RizeWorld – Bringing Creative Ideas to Stunning Visual Life
+              <span className="text-[10px] font-black text-orange-600 uppercase tracking-widest block mb-3">WHO WE ARE</span>
+              <p className="text-gray-800 text-sm leading-relaxed font-semibold text-justify">
+                RizeWorld – Creating Visuals That Make Brands Stand Out
               </p>
             </motion.div>
 
+            {/* Visual Team Card */}
             <motion.div 
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
@@ -181,7 +238,7 @@ export default function GraphicDesign() {
               <div className="absolute inset-0 bg-orange-950/10 group-hover:bg-transparent z-10 transition-colors duration-300" />
               <img 
                 src="/services/graphic design.jpg.jpeg" 
-                alt="Graphic Design Strategy" 
+                alt="Graphic Design Services" 
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
               />
             </motion.div>
@@ -189,6 +246,7 @@ export default function GraphicDesign() {
 
           {/* CENTER MAIN CONTENT BLOCK */}
           <div className="flex flex-col gap-6 justify-between">
+            {/* Title Solution Card */}
             <motion.div 
               initial={{ opacity: 0, y: -30 }}
               animate={{ opacity: 1, y: 0 }}
@@ -196,7 +254,7 @@ export default function GraphicDesign() {
               className="bg-white border border-gray-200/80 rounded-[2.5rem] p-8 md:p-12 shadow-sm flex flex-col justify-center grow relative overflow-hidden"
             >
               <span className="text-orange-500 font-black uppercase tracking-widest text-xs mb-4 flex items-center gap-1.5">
-                <Sparkles size={14} className="animate-pulse" /> Exceptional Creative Assets
+                <Sparkles size={14} className="animate-pulse" /> Visual Communication & Brand Identity
               </span>
               <h1 className="text-4xl md:text-5xl lg:text-[3.5rem] font-black text-gray-950 leading-[1.05] uppercase tracking-tighter mb-6">
                 Graphic Design <br />
@@ -207,42 +265,40 @@ export default function GraphicDesign() {
                   </svg>
                 </span>
               </h1>
-              <p className="text-gray-800 text-sm md:text-base leading-relaxed max-w-xl">
-                As a leading <strong>graphic design company</strong> and <strong>branding agency</strong>, we provide custom <strong>graphic design services</strong>, visual guidelines, packaging design, and high-converting marketing collaterals for global brands.
-              </p>
+              <div className="space-y-4 text-gray-800 text-sm md:text-base leading-relaxed max-w-xl text-justify">
+                <p className="font-semibold text-gray-900">
+                  Design That Makes Your Brand Easier to Recognize
+                </p>
+                <p>
+                  Good design is not only about making something look attractive. It should communicate your message clearly, fit your brand, and make it easier for people to understand what you offer.
+                </p>
+                <p>
+                  At RizeWorld, we create visual content for businesses that want a consistent and professional presence across their website, social media, advertising, and other marketing channels. We combine clean design with your brand's style, audience, and communication goals.
+                </p>
+              </div>
             </motion.div>
 
+            {/* Bottom Card */}
             <motion.div 
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
               className="bg-white border border-gray-200/80 rounded-4xl p-6 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-sm hover:shadow-md transition-shadow duration-300"
             >
-              <p className="text-gray-500 text-xs font-semibold max-w-sm text-center sm:text-left leading-relaxed">
-                Creative design assets that translate concepts into cohesive customer journeys.
+              <p className="text-gray-700 text-xs sm:text-sm font-semibold max-w-sm text-justify leading-relaxed">
+                Visual assets designed to keep your brand clear, consistent, and recognizable.
               </p>
-              <div className="flex items-center gap-3.5 shrink-0">
-                <div className="flex -space-x-3">
-                  {[
-                    "/video/harsh tiwari.jpeg",
-                    "/video/k sir.jpg",
-                    "/video/mansukhhh.jpg",
-                    "/video/Untitled-1.jpg",
-                    "/video/nk s.jpg"
-                  ].map((avatar, i) => (
-                    <img key={i} src={avatar} alt="user" className="w-9 h-9 rounded-full border-2 border-white object-cover shadow-xs" />
-                  ))}
-                </div>
-                <div>
-                  <span className="text-base font-black text-gray-950 block leading-none">18+</span>
-                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Happy Brand Partners</span>
-                </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-orange-600 bg-orange-50 border border-orange-200/80 px-4 py-2 rounded-full shadow-2xs">
+                  BRANDING • DESIGN • MARKETING
+                </span>
               </div>
             </motion.div>
           </div>
 
           {/* RIGHT STATS COLUMN */}
           <div className="flex flex-col gap-6">
+            {/* Right Card 1 (EXPERTISE) */}
             <motion.div 
               initial={{ opacity: 0, x: 40 }}
               animate={{ opacity: 1, x: 0 }}
@@ -250,14 +306,17 @@ export default function GraphicDesign() {
               className="bg-sky-50 border border-sky-100 rounded-4xl p-8 flex flex-col justify-center h-full min-h-[160px] shadow-xs hover:-translate-y-1 transition-transform duration-300"
             >
               <h4 className="text-sm font-black text-sky-950 uppercase tracking-wider mb-2 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-sky-500 rounded-full" /> Experts
+                <span className="w-1.5 h-1.5 bg-sky-500 rounded-full" /> EXPERTISE
               </h4>
-              <p className="text-sky-900/85 text-2xl font-black mb-1">10+</p>
-              <p className="text-sky-900/70 text-xs font-semibold uppercase tracking-wider">
-                Creative Art Directors & Designers
+              <p className="text-sky-950 text-sm font-bold mb-1">
+                Creative Design & Visual Communication
+              </p>
+              <p className="text-sky-900/80 text-xs font-semibold leading-relaxed">
+                Branding • Social • Marketing
               </p>
             </motion.div>
 
+            {/* Right Card 2 (CONTENT) */}
             <motion.div 
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
@@ -265,11 +324,13 @@ export default function GraphicDesign() {
               className="bg-yellow-50/70 border border-yellow-100 rounded-4xl p-8 flex flex-col justify-center h-full min-h-[160px] shadow-xs hover:-translate-y-1 transition-transform duration-300"
             >
               <h4 className="text-sm font-black text-yellow-950 uppercase tracking-wider mb-2 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full" /> Projects
+                <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full" /> CONTENT
               </h4>
-              <p className="text-yellow-900/85 text-2xl font-black mb-1">150+</p>
-              <p className="text-yellow-900/70 text-xs font-semibold uppercase tracking-wider">
-                Unique Graphic Deliverables
+              <p className="text-yellow-950 text-sm font-bold mb-1">
+                Original, Purpose-Driven Content
+              </p>
+              <p className="text-yellow-900/80 text-xs font-semibold leading-relaxed">
+                Brand Visuals • Social • Web Assets • Collaterals
               </p>
             </motion.div>
           </div>
@@ -280,12 +341,12 @@ export default function GraphicDesign() {
       {/* 3. CORE SERVICES */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
         <div className="max-w-3xl mb-16">
-          <span className="text-xs font-bold uppercase tracking-widest text-orange-500">Solution Provide</span>
+          <span className="text-xs font-bold uppercase tracking-widest text-orange-500">OUR SERVICES</span>
           <h2 className="text-3xl md:text-5xl font-black text-gray-950 uppercase tracking-tight mt-1 mb-6 leading-tight">
-            Delivering Outstanding Creative Brand Visuals.
+            Our Graphic Design Services
           </h2>
-          <p className="text-gray-500 text-sm md:text-base leading-relaxed">
-            We provide targeted graphic design services that showcase your brand message cleanly and professionally.
+          <p className="text-gray-600 text-sm md:text-base leading-relaxed text-justify">
+            Thoughtful design for brands that want to communicate clearly and look consistent across digital channels. RizeWorld creates brand visuals, social media graphics, website assets, and marketing creatives based on your business, audience, and communication goals.
           </p>
         </div>
 
@@ -309,7 +370,7 @@ export default function GraphicDesign() {
                   <h3 className="text-xl font-black uppercase text-gray-950 mb-3 group-hover:text-orange-500 transition-colors">
                     {srv.title}
                   </h3>
-                  <p className="text-gray-500 text-sm leading-relaxed mb-6 h-12 overflow-hidden line-clamp-2">
+                  <p className="text-gray-600 text-sm leading-relaxed mb-6 text-justify">
                     {srv.desc}
                   </p>
 
@@ -327,20 +388,23 @@ export default function GraphicDesign() {
         </div>
       </section>
 
-      {/* 4. PROCESS TIMELINE */}
+      {/* 4. PROCESS / APPROACH WORKFLOW */}
       <section className="bg-white border-t border-b border-gray-200 py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.8fr] gap-16 items-start mb-20">
             <div>
-              <span className="text-xs font-bold uppercase tracking-widest text-orange-500 block mb-3">Our Process</span>
+              <span className="text-xs font-bold uppercase tracking-widest text-orange-500 block mb-3">WHY RIZEWORLD?</span>
               <h2 className="text-4xl md:text-5xl font-black text-gray-950 uppercase tracking-tight">
-                3 STEPS TO STUNNING <br />VISUALS.
+                OUR DESIGN APPROACH & <br />PHILOSOPHY.
               </h2>
             </div>
             <div>
-              <p className="text-gray-500 text-sm md:text-base leading-relaxed">
-                Empower your website's graphic brand message with our clean and methodical visual workflow.
+              <p className="text-gray-600 text-sm md:text-base leading-relaxed text-justify mb-4">
+                We start by understanding your brand, audience, and the purpose of the design. From there, we develop concepts that fit your existing identity or help establish a more consistent visual direction. The goal is simple: create designs that look good, communicate clearly, and make sense for your business.
+              </p>
+              <p className="text-gray-600 text-sm md:text-base leading-relaxed text-justify">
+                We don't treat every design project the same. A social media creative has a different purpose from a website graphic or a brand identity. We consider where the design will be used, who will see it, and what you want that audience to do next. Our graphic design work can also support your digital marketing, social media marketing, content marketing, branding, and advertising efforts.
               </p>
             </div>
           </div>
@@ -386,7 +450,7 @@ export default function GraphicDesign() {
                   <h3 className="text-2xl md:text-3xl font-black uppercase text-gray-950 mb-4 pr-24 leading-tight">
                     {STEPS[activeStep].title}
                   </h3>
-                  <p className="text-gray-600 text-sm md:text-base leading-relaxed mb-8 max-w-xl">
+                  <p className="text-gray-600 text-sm md:text-base leading-relaxed mb-8 max-w-xl text-justify">
                     {STEPS[activeStep].desc}
                   </p>
 
@@ -406,6 +470,55 @@ export default function GraphicDesign() {
             </div>
           </div>
 
+        </div>
+      </section>
+
+      {/* FAQS SECTION */}
+      <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <div className="text-center mb-16">
+          <span className="text-xs font-bold uppercase tracking-widest text-orange-500">FAQ</span>
+          <h2 className="text-3xl md:text-5xl font-black text-gray-950 uppercase tracking-tight mt-2">
+            Graphic Design Services – FAQs
+          </h2>
+        </div>
+
+        <div className="space-y-4">
+          {FAQS.map((faq, idx) => {
+            const isOpen = openFaq === idx;
+            return (
+              <div 
+                key={idx}
+                className="bg-white border border-gray-200/85 rounded-3xl overflow-hidden transition-all duration-300"
+              >
+                <button
+                  onClick={() => setOpenFaq(isOpen ? null : idx)}
+                  className="w-full flex items-center justify-between p-6 text-left cursor-pointer hover:bg-stone-50/50"
+                >
+                  <span className="text-sm sm:text-base font-bold text-gray-950 uppercase tracking-tight pr-6">
+                    {faq.question}
+                  </span>
+                  <ChevronRight 
+                    size={18} 
+                    className={`text-orange-500 transition-transform duration-300 shrink-0 ${isOpen ? 'rotate-90' : ''}`} 
+                  />
+                </button>
+                <AnimatePresence initial={false}>
+                  {isOpen && (
+                    <motion.div
+                      initial={{ height: 0 }}
+                      animate={{ height: "auto" }}
+                      exit={{ height: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <div className="p-6 pt-0 border-t border-gray-100 text-gray-600 text-sm leading-relaxed text-justify">
+                        {faq.answer}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            );
+          })}
         </div>
       </section>
 

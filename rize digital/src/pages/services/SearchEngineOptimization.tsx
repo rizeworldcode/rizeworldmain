@@ -25,34 +25,57 @@ import AreasWeServe from '../../components/common/AreasWeServe';
 
 const SERVICES_LIST = [
   {
-    title: "On-Page SEO",
-    desc: "Optimize your website's content, HTML tags, and structural layout to rank higher and earn more relevant traffic.",
-    tags: ["Keyword Optimization", "Meta Titles & Descriptions", "Header Tags Optimization", "URL Structure", "Internal Linking", "Image Optimization"],
-    icon: Search
-  },
-  {
-    title: "Off-Page SEO",
-    desc: "Build authority and high-quality link networks to improve search page credibility.",
-    tags: ["Backlinks", "Guest Posts", "PR Outreach", "Brand Mentions"],
-    icon: Share2
-  },
-  {
     title: "Technical SEO",
-    desc: "Optimize site crawlability, rendering, indexation, and Core Web Vitals performance.",
-    tags: ["Site Speed", "XML Sitemaps", "Schema Markup", "Crawl Budget"],
+    desc: "A technically healthy website gives search engines a better foundation for crawling and understanding your pages. We review areas such as site structure, indexing, page performance, mobile usability, and redirects.",
+    tags: ["Site Structure", "Crawling & Indexing", "Performance", "Core Web Vitals"],
     icon: Palette
   },
   {
-    title: "Local SEO",
-    desc: "Dominate local searches and maps to drive immediate nearby foot and online traffic.",
-    tags: ["Local Keywords", "Directory Listings", "Geo-targeting"],
+    title: "On-Page SEO",
+    desc: "We improve important on-page elements such as page titles, headings, content structure, internal links, and search intent. The goal is to make each page clear and useful rather than simply adding keywords.",
+    tags: ["Page Titles", "Headings & Structure", "Internal Links", "Search Intent"],
+    icon: Search
+  },
+  {
+    title: "Content Optimization",
+    desc: "Good SEO needs useful content. We review existing pages and identify opportunities to improve relevance, clarity, depth, and topical coverage. We help plan topics genuinely useful to your audience.",
+    tags: ["Content Relevance", "Clarity & Depth", "Topical Authority", "Updates"],
     icon: Edit3
   },
   {
-    title: "GMB SEO",
-    desc: "Optimize Google My Business setups to increase local visibility and calls.",
-    tags: ["GMB Profile", "Reviews Strategy", "Local Pack Rank"],
+    title: "Keyword Research",
+    desc: "We research the terms and questions your potential customers use when looking for products, services, or information. These insights guide content optimization without forcing exact keywords.",
+    tags: ["Search Queries", "Customer Intent", "Topical Research", "Keyword Mapping"],
+    icon: Share2
+  },
+  {
+    title: "Website & SEO Analysis",
+    desc: "Before making changes, we look at how your website is currently performing. This includes technical issues, existing rankings, content quality, internal linking, and competitor advantages.",
+    tags: ["SEO Audits", "Competitor Insights", "Ranking Trends", "Quality Analysis"],
     icon: Award
+  }
+];
+
+const FAQS = [
+  {
+    question: "What is SEO and why does it matter for a business?",
+    answer: "SEO helps improve a website's visibility in organic search results. A well-optimized website can make it easier for potential customers to find relevant products, services, or information when they search online."
+  },
+  {
+    question: "What SEO services does RizeWorld provide?",
+    answer: "RizeWorld works on areas such as technical SEO, on-page optimization, keyword research, content optimization, internal linking, and website analysis. The exact work depends on the website and its current needs."
+  },
+  {
+    question: "How does SEO improve website visibility?",
+    answer: "SEO improves different parts of a website so search engines can better understand its pages and their relevance to users. This includes technical improvements, useful content, clear page structure, and relevant internal links."
+  },
+  {
+    question: "Can SEO help generate leads?",
+    answer: "SEO can bring relevant visitors to your website when your pages appear for searches related to your business. Clear content, strong service pages, and a good user experience can then help turn relevant traffic into enquiries or customers."
+  },
+  {
+    question: "Is SEO part of digital marketing?",
+    answer: "Yes. SEO is an important part of digital marketing, but it works alongside other activities such as content marketing, social media, paid advertising, and web development."
   }
 ];
 
@@ -113,6 +136,9 @@ const TESTIMONIALS = [
 export default function SearchEngineOptimization() {
   const navigate = useNavigate();
   const repeatedLogos = [...LOGOS, ...LOGOS, ...LOGOS];
+  const [activeStep, setActiveStep] = useState(0);
+  const [activeTestimonial, setActiveTestimonial] = useState(0);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
   
   const serviceSchema = {
     "@context": "https://schema.org",
@@ -151,17 +177,27 @@ export default function SearchEngineOptimization() {
     ]
   };
 
-  const [activeStep, setActiveStep] = useState(0);
-  const [activeTestimonial, setActiveTestimonial] = useState(0);
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": FAQS.map(faq => ({
+      "@type": "Question",
+      "name": faq.question,
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": faq.answer
+      }
+    }))
+  };
 
   return (
     <div className="min-h-screen bg-stone-50 pt-32 pb-24 overflow-hidden text-left font-sans selection:bg-orange-500 selection:text-white">
       
       <SEO 
         title="SEO Services India & Search Engine Optimization | RizeWorld"
-        description="Looking for the best SEO agency or SEO specialist? RizeWorld provides top-tier SEO services, local SEO services, and custom SEO marketing campaigns."
+        description="Looking for the best SEO services? Improve your search visibility with practical SEO, technical auditing, and content optimization."
         canonicalUrl="https://rizeworld.in/services/seo"
-        schema={[serviceSchema, breadcrumbSchema]}
+        schema={[serviceSchema, breadcrumbSchema, faqSchema]}
       />
       
       {/* 1. BREADCRUMBS & NAVIGATION */}
@@ -182,7 +218,7 @@ export default function SearchEngineOptimization() {
           
           {/* LEFT COLLAGE BLOCK */}
           <div className="flex flex-col gap-6">
-            {/* Strategy Banner Card */}
+            {/* Left Card (WHO WE ARE) */}
             <motion.div 
               initial={{ opacity: 0, x: -40 }}
               animate={{ opacity: 1, x: 0 }}
@@ -190,9 +226,9 @@ export default function SearchEngineOptimization() {
               className="bg-orange-100/70 border border-orange-200/60 rounded-4xl p-8 flex flex-col justify-center h-auto min-h-[180px] shadow-xs relative overflow-hidden group"
             >
               <div className="absolute top-0 right-0 w-24 h-24 bg-orange-200/30 rounded-full blur-2xl -mr-8 -mt-8 group-hover:scale-110 transition-transform duration-500" />
-              <span className="text-[10px] font-black text-orange-600 uppercase tracking-widest block mb-3">Who We Are</span>
-              <p className="text-gray-800 text-sm leading-relaxed font-semibold">
-                RizeWorld – Empowering Brands Through SEO Excellence
+              <span className="text-[10px] font-black text-orange-600 uppercase tracking-widest block mb-3">WHO WE ARE</span>
+              <p className="text-gray-800 text-sm leading-relaxed font-semibold text-justify">
+                RizeWorld – Practical SEO Focused on Sustainable Growth
               </p>
             </motion.div>
 
@@ -222,7 +258,7 @@ export default function SearchEngineOptimization() {
               className="bg-white border border-gray-200/80 rounded-[2.5rem] p-8 md:p-12 shadow-sm flex flex-col justify-center grow relative overflow-hidden"
             >
               <span className="text-orange-500 font-black uppercase tracking-widest text-xs mb-4 flex items-center gap-1.5">
-                <Sparkles size={14} className="animate-pulse" /> Offer a wide range of services
+                <Sparkles size={14} className="animate-pulse" /> Organic Growth & Search Intent
               </span>
               <h1 className="text-4xl md:text-5xl lg:text-[3.5rem] font-black text-gray-950 leading-[1.05] uppercase tracking-tighter mb-6">
                 SEO Services <br />
@@ -233,44 +269,40 @@ export default function SearchEngineOptimization() {
                   </svg>
                 </span>
               </h1>
-              <p className="text-gray-800 text-sm md:text-base leading-relaxed max-w-xl">
-                As a leading <strong>SEO optimization service</strong> provider, we help businesses improve search rankings, drive high-intent organic traffic, and maximize online visibility using advanced <strong>search engine optimization</strong> strategies.
-              </p>
+              <div className="space-y-4 text-gray-800 text-sm md:text-base leading-relaxed max-w-xl text-justify">
+                <p className="font-semibold text-gray-900">
+                  Improve Your Visibility With Practical SEO
+                </p>
+                <p>
+                  Getting found in search results is important, but good SEO is not just about adding keywords to a website. It starts with understanding what people are searching for and making sure your website provides a clear and useful answer.
+                </p>
+                <p>
+                  At RizeWorld, we help businesses improve their organic search presence through practical SEO work. We look at the technical side of your website, the content you publish, and how your pages are connected so that both visitors and search engines can understand your site better.
+                </p>
+              </div>
             </motion.div>
 
-            {/* Happy Clients Badge Card */}
+            {/* Bottom Card */}
             <motion.div 
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
               className="bg-white border border-gray-200/80 rounded-4xl p-6 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-sm hover:shadow-md transition-shadow duration-300"
             >
-              <p className="text-gray-500 text-xs font-semibold max-w-sm text-center sm:text-left leading-relaxed">
-                Customized SEO teams to navigate search updates with precision and strategic depth.
+              <p className="text-gray-700 text-xs sm:text-sm font-semibold max-w-sm text-justify leading-relaxed">
+                SEO strategies built around your website, audience, and business goals.
               </p>
-              <div className="flex items-center gap-3.5 shrink-0">
-                <div className="flex -space-x-3">
-                  {[
-                    "/video/harsh tiwari.jpeg",
-                    "/video/k sir.jpg",
-                    "/video/mansukhhh.jpg",
-                    "/video/Untitled-1.jpg",
-                    "/video/nk s.jpg"
-                  ].map((avatar, i) => (
-                    <img key={i} src={avatar} alt="user" className="w-9 h-9 rounded-full border-2 border-white object-cover shadow-xs" />
-                  ))}
-                </div>
-                <div>
-                  <span className="text-base font-black text-gray-950 block leading-none">16+</span>
-                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">World-wide Clients</span>
-                </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-orange-600 bg-orange-50 border border-orange-200/80 px-4 py-2 rounded-full shadow-2xs">
+                  SEO + CONTENT + DIGITAL STRATEGY
+                </span>
               </div>
             </motion.div>
           </div>
 
           {/* RIGHT STATS COLUMN */}
           <div className="flex flex-col gap-6">
-            {/* Experts Card */}
+            {/* Right Card 1 (EXPERTISE) */}
             <motion.div 
               initial={{ opacity: 0, x: 40 }}
               animate={{ opacity: 1, x: 0 }}
@@ -278,15 +310,17 @@ export default function SearchEngineOptimization() {
               className="bg-sky-50 border border-sky-100 rounded-4xl p-8 flex flex-col justify-center h-full min-h-[160px] shadow-xs hover:-translate-y-1 transition-transform duration-300"
             >
               <h4 className="text-sm font-black text-sky-950 uppercase tracking-wider mb-2 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-sky-500 rounded-full" /> Experts
+                <span className="w-1.5 h-1.5 bg-sky-500 rounded-full" /> EXPERTISE
               </h4>
-              <p className="text-sky-900/85 text-2xl font-black mb-1">70+</p>
-              <p className="text-sky-900/70 text-xs font-semibold uppercase tracking-wider">
-                Professional Experts
+              <p className="text-sky-950 text-sm font-bold mb-1">
+                Technical SEO & Organic Search
+              </p>
+              <p className="text-sky-900/80 text-xs font-semibold leading-relaxed">
+                Technical • On-Page • Content
               </p>
             </motion.div>
 
-            {/* Projects Card */}
+            {/* Right Card 2 (CONTENT) */}
             <motion.div 
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
@@ -294,11 +328,13 @@ export default function SearchEngineOptimization() {
               className="bg-yellow-50/70 border border-yellow-100 rounded-4xl p-8 flex flex-col justify-center h-full min-h-[160px] shadow-xs hover:-translate-y-1 transition-transform duration-300"
             >
               <h4 className="text-sm font-black text-yellow-950 uppercase tracking-wider mb-2 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full" /> Projects
+                <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full" /> CONTENT
               </h4>
-              <p className="text-yellow-900/85 text-2xl font-black mb-1">20+</p>
-              <p className="text-yellow-900/70 text-xs font-semibold uppercase tracking-wider">
-                Projects Complete
+              <p className="text-yellow-950 text-sm font-bold mb-1">
+                Original, Purpose-Driven Content
+              </p>
+              <p className="text-yellow-900/80 text-xs font-semibold leading-relaxed">
+                Blogs • Website Copy • Landing Pages • Guides
               </p>
             </motion.div>
           </div>
@@ -341,15 +377,15 @@ export default function SearchEngineOptimization() {
         </div>
       </section>
 
-      {/* 4. SIX CORE SERVICES */}
+      {/* 4. FIVE CORE SERVICES */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
         <div className="max-w-3xl mb-16">
-          <span className="text-xs font-bold uppercase tracking-widest text-orange-500">SEO Experts</span>
+          <span className="text-xs font-bold uppercase tracking-widest text-orange-500">SEO Services</span>
           <h2 className="text-3xl md:text-5xl font-black text-gray-950 uppercase tracking-tight mt-1 mb-6 leading-tight">
-            SEO Services India for Global Visibility
+            Practical SEO Focused on Sustainable Growth
           </h2>
-          <p className="text-gray-500 text-sm md:text-base leading-relaxed">
-            Our SEO specialist team conducts detailed website audits, keyword research, on-page SEO, technical SEO fixes, and WordPress SEO services to boost search rankings.
+          <p className="text-gray-600 text-sm md:text-base leading-relaxed text-justify">
+            We look at the technical side of your website, the content you publish, and how your pages are connected so that both visitors and search engines can understand your site better.
           </p>
         </div>
 
@@ -373,7 +409,7 @@ export default function SearchEngineOptimization() {
                   <h3 className="text-xl font-black uppercase text-gray-950 mb-3 group-hover:text-orange-500 transition-colors">
                     {srv.title}
                   </h3>
-                  <p className="text-gray-500 text-sm leading-relaxed mb-6 h-12 overflow-hidden line-clamp-2">
+                  <p className="text-gray-600 text-sm leading-relaxed mb-6 text-justify">
                     {srv.desc}
                   </p>
 
@@ -392,20 +428,23 @@ export default function SearchEngineOptimization() {
         </div>
       </section>
 
-      {/* 5. PROCESS TIMELINE WORKFLOW */}
+      {/* 5. PROCESS TIMELINE WORKFLOW / WHY CHOOSING RIZEWORLD */}
       <section className="bg-white border-t border-b border-gray-200 py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.8fr] gap-16 items-start mb-20">
             <div>
-              <span className="text-xs font-bold uppercase tracking-widest text-orange-500 block mb-3">Our Solution Process</span>
+              <span className="text-xs font-bold uppercase tracking-widest text-orange-500 block mb-3">WHY CHOOSE RIZEWORLD?</span>
               <h2 className="text-4xl md:text-5xl font-black text-gray-950 uppercase tracking-tight">
-                3 STEPS WE HAVE <br />FOLLOWING.
+                SEO THAT SUPPORTS <br />LONG-TERM GROWTH.
               </h2>
             </div>
             <div>
-              <p className="text-gray-500 text-sm md:text-base leading-relaxed">
-                Delivering effective SEO strategies to boost your website’s visibility, drive organic traffic, and improve search rankings.
+              <p className="text-gray-600 text-sm md:text-base leading-relaxed text-justify mb-4">
+                SEO takes time and needs consistent improvement. Search behavior changes, competitors publish new content, and websites evolve. Our approach focuses on building a stronger foundation and making improvements based on real data rather than chasing short-term ranking tricks.
+              </p>
+              <p className="text-gray-600 text-sm md:text-base leading-relaxed text-justify">
+                We treat SEO as part of your overall digital strategy. Along with search optimization, our team can work with content marketing, web development, social media, and digital advertising to create a more complete online presence. Our focus is simple: make your website more useful to people and easier for search engines to understand.
               </p>
             </div>
           </div>
@@ -455,7 +494,7 @@ export default function SearchEngineOptimization() {
                   <h3 className="text-2xl md:text-3xl font-black uppercase text-gray-950 mb-4 pr-24 leading-tight">
                     {STEPS[activeStep].title}
                   </h3>
-                  <p className="text-gray-600 text-sm md:text-base leading-relaxed mb-8 max-w-xl">
+                  <p className="text-gray-600 text-sm md:text-base leading-relaxed mb-8 max-w-xl text-justify">
                     {STEPS[activeStep].desc}
                   </p>
 
@@ -476,6 +515,55 @@ export default function SearchEngineOptimization() {
 
           </div>
 
+        </div>
+      </section>
+
+      {/* FAQS SECTION */}
+      <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <div className="text-center mb-16">
+          <span className="text-xs font-bold uppercase tracking-widest text-orange-500">FAQ</span>
+          <h2 className="text-3xl md:text-5xl font-black text-gray-950 uppercase tracking-tight mt-2">
+            Search Engine Optimization – FAQs
+          </h2>
+        </div>
+
+        <div className="space-y-4">
+          {FAQS.map((faq, idx) => {
+            const isOpen = openFaq === idx;
+            return (
+              <div 
+                key={idx}
+                className="bg-white border border-gray-200/85 rounded-3xl overflow-hidden transition-all duration-300"
+              >
+                <button
+                  onClick={() => setOpenFaq(isOpen ? null : idx)}
+                  className="w-full flex items-center justify-between p-6 text-left cursor-pointer hover:bg-stone-50/50"
+                >
+                  <span className="text-sm sm:text-base font-bold text-gray-950 uppercase tracking-tight pr-6">
+                    {faq.question}
+                  </span>
+                  <ChevronRight 
+                    size={18} 
+                    className={`text-orange-500 transition-transform duration-300 shrink-0 ${isOpen ? 'rotate-90' : ''}`} 
+                  />
+                </button>
+                <AnimatePresence initial={false}>
+                  {isOpen && (
+                    <motion.div
+                      initial={{ height: 0 }}
+                      animate={{ height: "auto" }}
+                      exit={{ height: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <div className="p-6 pt-0 border-t border-gray-100 text-gray-600 text-sm leading-relaxed text-justify">
+                        {faq.answer}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            );
+          })}
         </div>
       </section>
 

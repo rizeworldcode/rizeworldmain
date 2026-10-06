@@ -25,34 +25,61 @@ import AreasWeServe from '../../components/common/AreasWeServe';
 
 const SERVICES_LIST = [
   {
-    title: "Strategy Planning",
-    desc: "Developing a targeted PPC strategy that aligns with your business goals, identifies the right audience, and maximizes return on investment.",
-    tags: ["Campaign Goals", "Target Audience", "Select Platforms", "Keyword Research", "Bid Strategy"],
+    title: "Google Ads Management",
+    desc: "We create and manage Google Ads campaigns based on your products, services, audience, and objectives. From keyword selection and ad copy to campaign structure and ongoing optimization, we focus on attracting relevant search traffic.",
+    tags: ["Search Ads", "Keyword Selection", "Campaign Structure", "Search Traffic"],
     icon: Search
   },
   {
-    title: "Ad Creation",
-    desc: "Craft highly engaging search, display, and social media ad creatives that stand out and capture intent.",
-    tags: ["Ad Copywriting", "Visual Mockups", "A/B Testing Copy", "Landing Pages"],
-    icon: Share2
-  },
-  {
-    title: "Bid Management",
-    desc: "Continuously optimize programmatic bid settings and manual bids to maximize budget efficiency and lead volume.",
-    tags: ["Auto-Bidding Rules", "CPC Cap Tuning", "Conversion Value bidding"],
+    title: "Campaign Strategy",
+    desc: "Every campaign starts with a clear objective. We help define the audience, targeting, budget, messaging, and conversion goals before launching your ads.",
+    tags: ["Campaign Objectives", "Audience Targeting", "Budget Allocation", "Messaging"],
     icon: Palette
   },
   {
-    title: "Campaign Monitoring",
-    desc: "Perform real-time checks on budget pacing, key quality scores, impression shares, and technical setup integrity.",
-    tags: ["Pacing Audits", "Negative Keywords", "Quality Score Checks"],
+    title: "Ad Copy & Creative",
+    desc: "The right message can make a significant difference to campaign performance. We create clear ad copy and supporting creatives that communicate your offer and encourage the right audience to take action.",
+    tags: ["Ad Copywriting", "Creative Assets", "High-Converting Offers", "Call-to-Action"],
     icon: Edit3
   },
   {
-    title: "Analytics & Reporting",
-    desc: "Deliver transparent and comprehensive weekly and monthly insights detailing conversion growth and cost improvements.",
-    tags: ["ROI Dashboarding", "GA4 Event Tracking", "Attribution Auditing"],
+    title: "Conversion Tracking",
+    desc: "Clicks alone don't tell you whether an advertising campaign is working. We focus on tracking meaningful actions such as enquiries, calls, form submissions, purchases, or other conversions relevant to your business.",
+    tags: ["Lead Tracking", "Calls & Enquiries", "Form Submissions", "Conversion Metrics"],
+    icon: Share2
+  },
+  {
+    title: "Campaign Optimization",
+    desc: "PPC requires regular attention. We review campaign performance, search terms, audience behavior, budgets, and conversion data to identify areas that can be improved over time.",
+    tags: ["Performance Audits", "Search Term Tuning", "Budget Optimization", "A/B Testing"],
     icon: Award
+  }
+];
+
+const FAQS = [
+  {
+    question: "What is PPC advertising?",
+    answer: "PPC, or pay-per-click advertising, is a form of online advertising where businesses typically pay when someone clicks on their ad. It can help businesses reach potential customers who are actively searching for relevant products or services."
+  },
+  {
+    question: "What PPC services does RizeWorld provide?",
+    answer: "We provide campaign planning, keyword research, ad copy, audience targeting, campaign management, conversion tracking, performance analysis, and ongoing optimization."
+  },
+  {
+    question: "Do you manage Google Ads campaigns?",
+    answer: "Yes. We can manage Google Ads campaigns based on your business objectives, target audience, budget, and conversion goals."
+  },
+  {
+    question: "How quickly can PPC campaigns generate results?",
+    answer: "PPC can start generating traffic soon after campaigns go live, but meaningful performance usually requires monitoring and optimization. Results vary depending on the market, offer, competition, targeting, and campaign setup."
+  },
+  {
+    question: "How do you measure PPC campaign performance?",
+    answer: "We look beyond clicks and impressions. Depending on the campaign, we can track conversions such as leads, calls, enquiries, purchases, or other actions that matter to your business."
+  },
+  {
+    question: "Can PPC and SEO work together?",
+    answer: "Yes. PPC and SEO can complement each other. Paid campaigns can provide immediate visibility while SEO works toward longer-term organic search visibility."
   }
 ];
 
@@ -113,6 +140,10 @@ const TESTIMONIALS = [
 export default function PaidAds() {
   const navigate = useNavigate();
   const repeatedLogos = [...LOGOS, ...LOGOS, ...LOGOS];
+  const [activeStep, setActiveStep] = useState(0);
+  const [activeTestimonial, setActiveTestimonial] = useState(0);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
+
   const serviceSchema = {
     "@context": "https://schema.org",
     "@type": "Service",
@@ -122,7 +153,7 @@ export default function PaidAds() {
       "name": "RizeWorld Digital",
       "url": "https://rizeworld.in/"
     },
-    "description": "Maximize your return on ad spend with PPC and Paid Ads management. Highly optimized Google Ads, Meta Ads campaigns, and target audience retargeting."
+    "description": "Targeted paid campaigns focused on reaching the right audience and turning advertising spend into meaningful results with Google Ads and PPC management."
   };
 
   const breadcrumbSchema = {
@@ -150,17 +181,27 @@ export default function PaidAds() {
     ]
   };
 
-  const [activeStep, setActiveStep] = useState(0);
-  const [activeTestimonial, setActiveTestimonial] = useState(0);
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": FAQS.map(faq => ({
+      "@type": "Question",
+      "name": faq.question,
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": faq.answer
+      }
+    }))
+  };
 
   return (
     <div className="min-h-screen bg-stone-50 pt-32 pb-24 overflow-hidden text-left font-sans selection:bg-orange-500 selection:text-white">
       
       <SEO 
         title="PPC Management Services & Google Ads Agency | RizeWorld"
-        description="Looking for result-driven PPC management services? As an expert Google ads agency and PPC agency, we specialize in high-ROI pay per click services."
+        description="Targeted paid campaigns focused on reaching the right audience and turning advertising spend into meaningful results. Professional PPC management by RizeWorld."
         canonicalUrl="https://rizeworld.in/services/paid-ads"
-        schema={[serviceSchema, breadcrumbSchema]}
+        schema={[serviceSchema, breadcrumbSchema, faqSchema]}
       />
       
       {/* 1. BREADCRUMBS & NAVIGATION */}
@@ -181,7 +222,7 @@ export default function PaidAds() {
           
           {/* LEFT COLLAGE BLOCK */}
           <div className="flex flex-col gap-6">
-            {/* Strategy Banner Card */}
+            {/* Left Card (WHO WE ARE) */}
             <motion.div 
               initial={{ opacity: 0, x: -40 }}
               animate={{ opacity: 1, x: 0 }}
@@ -189,9 +230,9 @@ export default function PaidAds() {
               className="bg-orange-100/70 border border-orange-200/60 rounded-4xl p-8 flex flex-col justify-center h-auto min-h-[180px] shadow-xs relative overflow-hidden group"
             >
               <div className="absolute top-0 right-0 w-24 h-24 bg-orange-200/30 rounded-full blur-2xl -mr-8 -mt-8 group-hover:scale-110 transition-transform duration-500" />
-              <span className="text-[10px] font-black text-orange-600 uppercase tracking-widest block mb-3">Who We Are</span>
-              <p className="text-gray-800 text-sm leading-relaxed font-semibold">
-                RizeWorld – Empowering Brands Through PPC Excellence
+              <span className="text-[10px] font-black text-orange-600 uppercase tracking-widest block mb-3">WHO WE ARE</span>
+              <p className="text-gray-800 text-sm leading-relaxed font-semibold text-justify">
+                RizeWorld – Helping Businesses Make Better Use of Paid Advertising
               </p>
             </motion.div>
 
@@ -221,7 +262,7 @@ export default function PaidAds() {
               className="bg-white border border-gray-200/80 rounded-[2.5rem] p-8 md:p-12 shadow-sm flex flex-col justify-center grow relative overflow-hidden"
             >
               <span className="text-orange-500 font-black uppercase tracking-widest text-xs mb-4 flex items-center gap-1.5">
-                <Sparkles size={14} className="animate-pulse" /> Offer a wide range of services
+                <Sparkles size={14} className="animate-pulse" /> Targeted Paid Campaigns & ROI
               </span>
               <h1 className="text-4xl md:text-5xl lg:text-[3.5rem] font-black text-gray-950 leading-[1.05] uppercase tracking-tighter mb-6">
                 PPC Management <br />
@@ -232,44 +273,40 @@ export default function PaidAds() {
                   </svg>
                 </span>
               </h1>
-              <p className="text-gray-800 text-sm md:text-base leading-relaxed max-w-xl">
-                As a leading <strong>PPC company</strong>, we deliver custom <strong>PPC campaign management services</strong> and <strong>Google ads management services</strong> that scale leads, increase conversions, and optimize ad budget.
-              </p>
+              <div className="space-y-4 text-gray-800 text-sm md:text-base leading-relaxed max-w-xl text-justify">
+                <p className="font-semibold text-gray-900">
+                  Targeted paid campaigns focused on reaching the right audience and turning advertising spend into meaningful results.
+                </p>
+                <p>
+                  RizeWorld manages PPC campaigns with careful planning, relevant targeting, clear messaging, conversion tracking, and ongoing optimization.
+                </p>
+                <p>
+                  At RizeWorld, we manage PPC campaigns with a focus on reaching relevant customers and making better use of your advertising budget. We use campaign data to understand what is working and where improvements can be made.
+                </p>
+              </div>
             </motion.div>
 
-            {/* Happy Clients Badge Card */}
+            {/* Bottom Card */}
             <motion.div 
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
               className="bg-white border border-gray-200/80 rounded-4xl p-6 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-sm hover:shadow-md transition-shadow duration-300"
             >
-              <p className="text-gray-500 text-xs font-semibold max-w-sm text-center sm:text-left leading-relaxed">
-                Customized media spend programs to drive immediate keyword intent loops.
+              <p className="text-gray-700 text-xs sm:text-sm font-semibold max-w-sm text-justify leading-relaxed">
+                Paid campaigns planned around your audience, budget, and business objectives.
               </p>
-              <div className="flex items-center gap-3.5 shrink-0">
-                <div className="flex -space-x-3">
-                  {[
-                    "/video/harsh tiwari.jpeg",
-                    "/video/k sir.jpg",
-                    "/video/mansukhhh.jpg",
-                    "/video/Untitled-1.jpg",
-                    "/video/nk s.jpg"
-                  ].map((avatar, i) => (
-                    <img key={i} src={avatar} alt="user" className="w-9 h-9 rounded-full border-2 border-white object-cover shadow-xs" />
-                  ))}
-                </div>
-                <div>
-                  <span className="text-base font-black text-gray-950 block leading-none">16+</span>
-                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">World-wide Clients</span>
-                </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-orange-600 bg-orange-50 border border-orange-200/80 px-4 py-2 rounded-full shadow-2xs">
+                  PPC • PAID ADS • GROWTH
+                </span>
               </div>
             </motion.div>
           </div>
 
           {/* RIGHT STATS COLUMN */}
           <div className="flex flex-col gap-6">
-            {/* Experts Card */}
+            {/* Right Card 1 (EXPERTISE) */}
             <motion.div 
               initial={{ opacity: 0, x: 40 }}
               animate={{ opacity: 1, x: 0 }}
@@ -277,15 +314,17 @@ export default function PaidAds() {
               className="bg-sky-50 border border-sky-100 rounded-4xl p-8 flex flex-col justify-center h-full min-h-[160px] shadow-xs hover:-translate-y-1 transition-transform duration-300"
             >
               <h4 className="text-sm font-black text-sky-950 uppercase tracking-wider mb-2 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-sky-500 rounded-full" /> Experts
+                <span className="w-1.5 h-1.5 bg-sky-500 rounded-full" /> EXPERTISE
               </h4>
-              <p className="text-sky-900/85 text-2xl font-black mb-1">70+</p>
-              <p className="text-sky-900/70 text-xs font-semibold uppercase tracking-wider">
-                Professional Experts
+              <p className="text-sky-950 text-sm font-bold mb-1">
+                PPC Strategy & Campaign Management
+              </p>
+              <p className="text-sky-900/80 text-xs font-semibold leading-relaxed">
+                Google Ads • Targeting • Analytics
               </p>
             </motion.div>
 
-            {/* Projects Card */}
+            {/* Right Card 2 (CONTENT) */}
             <motion.div 
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
@@ -293,11 +332,13 @@ export default function PaidAds() {
               className="bg-yellow-50/70 border border-yellow-100 rounded-4xl p-8 flex flex-col justify-center h-full min-h-[160px] shadow-xs hover:-translate-y-1 transition-transform duration-300"
             >
               <h4 className="text-sm font-black text-yellow-950 uppercase tracking-wider mb-2 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full" /> Projects
+                <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full" /> CONTENT
               </h4>
-              <p className="text-yellow-900/85 text-2xl font-black mb-1">20+</p>
-              <p className="text-yellow-900/70 text-xs font-semibold uppercase tracking-wider">
-                Projects Complete
+              <p className="text-yellow-950 text-sm font-bold mb-1">
+                Targeted, High-Converting Ads
+              </p>
+              <p className="text-yellow-900/80 text-xs font-semibold leading-relaxed">
+                Search Ads • Display • Retargeting • Social Ads
               </p>
             </motion.div>
           </div>
@@ -340,15 +381,15 @@ export default function PaidAds() {
         </div>
       </section>
 
-      {/* 4. SIX CORE SERVICES */}
+      {/* 4. FIVE CORE SERVICES */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
         <div className="max-w-3xl mb-16">
-          <span className="text-xs font-bold uppercase tracking-widest text-orange-500">Solution Provide</span>
+          <span className="text-xs font-bold uppercase tracking-widest text-orange-500">OUR SERVICES</span>
           <h2 className="text-3xl md:text-5xl font-black text-gray-950 uppercase tracking-tight mt-1 mb-6 leading-tight">
-            Delivering Innovative PPC Growth.
+            Paid Campaigns Built Around Your Business Goals
           </h2>
-          <p className="text-gray-500 text-sm md:text-base leading-relaxed">
-            We design high-performing PPC campaigns to drive targeted traffic, generate leads, and maximize ROI.
+          <p className="text-gray-600 text-sm md:text-base leading-relaxed text-justify">
+            Paid advertising can bring your business in front of potential customers quickly, but getting clicks is only one part of the process. A good campaign needs the right audience, clear messaging, sensible budget allocation, and regular optimization.
           </p>
         </div>
 
@@ -372,7 +413,7 @@ export default function PaidAds() {
                   <h3 className="text-xl font-black uppercase text-gray-950 mb-3 group-hover:text-orange-500 transition-colors">
                     {srv.title}
                   </h3>
-                  <p className="text-gray-500 text-sm leading-relaxed mb-6 h-12 overflow-hidden line-clamp-2">
+                  <p className="text-gray-600 text-sm leading-relaxed mb-6 text-justify">
                     {srv.desc}
                   </p>
 
@@ -391,20 +432,23 @@ export default function PaidAds() {
         </div>
       </section>
 
-      {/* 5. PROCESS TIMELINE WORKFLOW */}
+      {/* 5. PROCESS / WHY RIZEWORLD WORKFLOW */}
       <section className="bg-white border-t border-b border-gray-200 py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.8fr] gap-16 items-start mb-20">
             <div>
-              <span className="text-xs font-bold uppercase tracking-widest text-orange-500 block mb-3">Our Solution Process</span>
+              <span className="text-xs font-bold uppercase tracking-widest text-orange-500 block mb-3">WHY RIZEWORLD?</span>
               <h2 className="text-4xl md:text-5xl font-black text-gray-950 uppercase tracking-tight">
-                3 STEPS WE HAVE <br />FOLLOWING.
+                PAID CAMPAIGNS BUILT <br />AROUND SUSTAINABLE ROI.
               </h2>
             </div>
             <div>
-              <p className="text-gray-500 text-sm md:text-base leading-relaxed">
-                Delivering targeted PPC campaigns to drive traffic, boost conversions, and maximize your ROI.
+              <p className="text-gray-600 text-sm md:text-base leading-relaxed text-justify mb-4">
+                We don't treat paid advertising as simply spending more to get more traffic. Our approach is based on understanding your business, measuring the results that matter, and making informed changes as the campaign develops.
+              </p>
+              <p className="text-gray-600 text-sm md:text-base leading-relaxed text-justify">
+                PPC can also work alongside SEO, content marketing, social media, and other digital marketing activities to support your wider online strategy.
               </p>
             </div>
           </div>
@@ -475,6 +519,55 @@ export default function PaidAds() {
 
           </div>
 
+        </div>
+      </section>
+
+      {/* FAQS SECTION */}
+      <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <div className="text-center mb-16">
+          <span className="text-xs font-bold uppercase tracking-widest text-orange-500">FAQ</span>
+          <h2 className="text-3xl md:text-5xl font-black text-gray-950 uppercase tracking-tight mt-2">
+            PPC Management Services – FAQs
+          </h2>
+        </div>
+
+        <div className="space-y-4">
+          {FAQS.map((faq, idx) => {
+            const isOpen = openFaq === idx;
+            return (
+              <div 
+                key={idx}
+                className="bg-white border border-gray-200/85 rounded-3xl overflow-hidden transition-all duration-300"
+              >
+                <button
+                  onClick={() => setOpenFaq(isOpen ? null : idx)}
+                  className="w-full flex items-center justify-between p-6 text-left cursor-pointer hover:bg-stone-50/50"
+                >
+                  <span className="text-sm sm:text-base font-bold text-gray-950 uppercase tracking-tight pr-6">
+                    {faq.question}
+                  </span>
+                  <ChevronRight 
+                    size={18} 
+                    className={`text-orange-500 transition-transform duration-300 shrink-0 ${isOpen ? 'rotate-90' : ''}`} 
+                  />
+                </button>
+                <AnimatePresence initial={false}>
+                  {isOpen && (
+                    <motion.div
+                      initial={{ height: 0 }}
+                      animate={{ height: "auto" }}
+                      exit={{ height: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <div className="p-6 pt-0 border-t border-gray-100 text-gray-600 text-sm leading-relaxed text-justify">
+                        {faq.answer}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            );
+          })}
         </div>
       </section>
 

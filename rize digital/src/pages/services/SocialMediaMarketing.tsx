@@ -6,7 +6,6 @@ import {
   Search, 
   Share2, 
   Palette, 
-  Edit3, 
   Award, 
   Mail, 
   MessageSquare, 
@@ -25,34 +24,61 @@ import AreasWeServe from '../../components/common/AreasWeServe';
 
 const SERVICES_LIST = [
   {
-    title: "Strategy Planning",
-    desc: "Creating engaging social media content and campaigns that boost brand visibility and audience interaction.",
-    tags: ["Audience Targeting", "Content Scheduling", "Trend & Hashtag Research", "Engagement Strategy", "Performance Tracking"],
+    title: "Social Media Management",
+    desc: "We plan and manage regular social media content based on your brand, audience, and goals. From everyday posts to promotional campaigns, the focus is on keeping your communication useful and consistent.",
+    tags: ["Planning", "Management", "Consistency", "Scheduling"],
     icon: Search
   },
   {
     title: "Content Creation",
-    desc: "Produce high-impact graphic design, motion visuals, and copies customized for your core audience.",
-    tags: ["Visual Design", "Creative Copy", "Video Snippets", "Grid Curation"],
-    icon: Share2
-  },
-  {
-    title: "Profile Optimization",
-    desc: "Set up and align your brand's profiles across platforms for maximum conversions and professional aesthetics.",
-    tags: ["Bio Tuning", "Link Trees", "Story Highlights", "Unified Branding"],
+    desc: "We create social content that explains your services, shares useful information, and gives your audience a reason to interact. Content is written in your brand's tone rather than following a fixed template.",
+    tags: ["Creative Copy", "Visual Content", "Brand Voice", "Interaction"],
     icon: Palette
   },
   {
-    title: "Engagement & Interaction",
-    desc: "Actively monitor comments, direct messages, and brand mentions to build active, loyal communities.",
-    tags: ["DM Workflows", "Community Build", "Instant Replies"],
-    icon: Edit3
+    title: "Social Media Advertising",
+    desc: "When organic reach is not enough, paid campaigns can help put your message in front of a more specific audience. We plan campaigns around your objectives, budget, audience, and results.",
+    tags: ["Paid Social", "Targeting", "Audience Reach", "Optimization"],
+    icon: Sparkles
   },
   {
-    title: "Analytics & Reporting",
-    desc: "Track key engagement parameters and generate periodic performance insights for your growth.",
-    tags: ["KPI Audits", "ROI Metrics", "Weekly Insights"],
+    title: "Brand Promotion",
+    desc: "Your social profiles should make it clear who you are and what you offer. We help present your brand consistently through content that reflects your services, personality, and expertise.",
+    tags: ["Profile Setup", "Brand Awareness", "Positioning", "Identity"],
+    icon: Share2
+  },
+  {
+    title: "Performance Tracking",
+    desc: "We keep an eye on engagement, reach, clicks, and campaign performance. These insights help us understand what your audience responds to and where the strategy can be improved.",
+    tags: ["Engagement Insights", "Reach & Clicks", "Analytics", "Audits"],
     icon: Award
+  }
+];
+
+const FAQS = [
+  {
+    question: "What is social media marketing?",
+    answer: "Social media marketing involves using platforms such as Instagram, Facebook, LinkedIn, and other relevant channels to communicate with your audience, promote your brand, and support your business goals."
+  },
+  {
+    question: "What social media services does RizeWorld offer?",
+    answer: "RizeWorld provides social media strategy, content creation, account management, campaign planning, paid social advertising, and performance tracking based on the needs of your business."
+  },
+  {
+    question: "How can social media help my business?",
+    answer: "A consistent social presence can help people discover your brand, understand your services, stay connected with your business, and build familiarity over time. It can also support traffic, engagement, and lead-generation efforts."
+  },
+  {
+    question: "Can social media marketing generate leads?",
+    answer: "It can. Organic content and paid campaigns can bring your business in front of relevant audiences. The results depend on factors such as the offer, audience, platform, creative quality, and overall campaign strategy."
+  },
+  {
+    question: "Do you provide paid social media advertising?",
+    answer: "Yes. We can plan and manage paid campaigns based on your objectives, target audience, budget, and performance data."
+  },
+  {
+    question: "Can social media work with my other digital marketing efforts?",
+    answer: "Yes. Social media can complement SEO, content marketing, paid advertising, and website marketing. Combining these channels can help maintain a more consistent brand presence across your digital activities."
   }
 ];
 
@@ -113,6 +139,9 @@ const TESTIMONIALS = [
 export default function SocialMediaMarketing() {
   const navigate = useNavigate();
   const repeatedLogos = [...LOGOS, ...LOGOS, ...LOGOS];
+  const [activeStep, setActiveStep] = useState(0);
+  const [activeTestimonial, setActiveTestimonial] = useState(0);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
   
   const serviceSchema = {
     "@context": "https://schema.org",
@@ -151,17 +180,27 @@ export default function SocialMediaMarketing() {
     ]
   };
 
-  const [activeStep, setActiveStep] = useState(0);
-  const [activeTestimonial, setActiveTestimonial] = useState(0);
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": FAQS.map(faq => ({
+      "@type": "Question",
+      "name": faq.question,
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": faq.answer
+      }
+    }))
+  };
 
   return (
     <div className="min-h-screen bg-stone-50 pt-32 pb-24 overflow-hidden text-left font-sans selection:bg-orange-500 selection:text-white">
       
       <SEO 
         title="Social Media Marketing Services & SMM Agency | RizeWorld"
-        description="Looking for SMM services? As a premier social media management company, we offer organic social media services and paid social advertising to grow your brand."
+        description="Looking for SMM services? Build a social presence that feels like your brand with strategic content, management, and campaigns."
         canonicalUrl="https://rizeworld.in/services/social-media-marketing"
-        schema={[serviceSchema, breadcrumbSchema]}
+        schema={[serviceSchema, breadcrumbSchema, faqSchema]}
       />
       
       {/* 1. BREADCRUMBS & NAVIGATION */}
@@ -182,7 +221,7 @@ export default function SocialMediaMarketing() {
           
           {/* LEFT COLLAGE BLOCK */}
           <div className="flex flex-col gap-6">
-            {/* Strategy Banner Card */}
+            {/* Left Card (WHO WE ARE) */}
             <motion.div 
               initial={{ opacity: 0, x: -40 }}
               animate={{ opacity: 1, x: 0 }}
@@ -190,9 +229,9 @@ export default function SocialMediaMarketing() {
               className="bg-orange-100/70 border border-orange-200/60 rounded-4xl p-8 flex flex-col justify-center h-auto min-h-[180px] shadow-xs relative overflow-hidden group"
             >
               <div className="absolute top-0 right-0 w-24 h-24 bg-orange-200/30 rounded-full blur-2xl -mr-8 -mt-8 group-hover:scale-110 transition-transform duration-500" />
-              <span className="text-[10px] font-black text-orange-600 uppercase tracking-widest block mb-3">Who We Are</span>
-              <p className="text-gray-800 text-sm leading-relaxed font-semibold">
-                RizeWorld – Empowering Brands Through Social Excellence
+              <span className="text-[10px] font-black text-orange-600 uppercase tracking-widest block mb-3">WHO WE ARE</span>
+              <p className="text-gray-800 text-sm leading-relaxed font-semibold text-justify">
+                RizeWorld – Strategic Content That Connects Brands With Their Audience
               </p>
             </motion.div>
 
@@ -222,7 +261,7 @@ export default function SocialMediaMarketing() {
               className="bg-white border border-gray-200/80 rounded-[2.5rem] p-8 md:p-12 shadow-sm flex flex-col justify-center grow relative overflow-hidden"
             >
               <span className="text-orange-500 font-black uppercase tracking-widest text-xs mb-4 flex items-center gap-1.5">
-                <Sparkles size={14} className="animate-pulse" /> Offer a wide range of services
+                <Sparkles size={14} className="animate-pulse" /> Active Community Growth
               </span>
               <h1 className="text-4xl md:text-5xl lg:text-[3.5rem] font-black text-gray-950 leading-[1.05] uppercase tracking-tighter mb-6">
                 Social Media <br />
@@ -233,44 +272,40 @@ export default function SocialMediaMarketing() {
                   </svg>
                 </span>
               </h1>
-              <p className="text-gray-800 text-sm md:text-base leading-relaxed max-w-xl">
-                As a leading <strong>social media management company</strong> and <strong>SMM agency</strong>, we deliver data-driven <strong>social media services</strong>, customized brand promotion, and high-impact <strong>instagram marketing</strong> campaigns to build loyal communities.
-              </p>
+              <div className="space-y-4 text-gray-800 text-sm md:text-base leading-relaxed max-w-xl text-justify">
+                <p className="font-semibold text-gray-900">
+                  Build a Social Presence That Feels Like Your Brand
+                </p>
+                <p>
+                  Social media gives businesses a direct way to stay connected with their customers. But simply posting every day is not enough. The content needs to be relevant, consistent, and suited to the people you want to reach.
+                </p>
+                <p>
+                  At RizeWorld, we help businesses manage their social media with a clear plan. We work on content, campaigns, audience engagement, and performance to keep your brand active and easy to recognize across the platforms that matter to your business.
+                </p>
+              </div>
             </motion.div>
 
-            {/* Happy Clients Badge Card */}
+            {/* Bottom Card */}
             <motion.div 
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
               className="bg-white border border-gray-200/80 rounded-4xl p-6 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-sm hover:shadow-md transition-shadow duration-300"
             >
-              <p className="text-gray-500 text-xs font-semibold max-w-sm text-center sm:text-left leading-relaxed">
-                Customized social campaigns to drive direct conversions and organic community loops.
+              <p className="text-gray-700 text-xs sm:text-sm font-semibold max-w-sm text-justify leading-relaxed">
+                Content created to support visibility, credibility, and conversions.
               </p>
-              <div className="flex items-center gap-3.5 shrink-0">
-                <div className="flex -space-x-3">
-                  {[
-                    "/video/harsh tiwari.jpeg",
-                    "/video/k sir.jpg",
-                    "/video/mansukhhh.jpg",
-                    "/video/Untitled-1.jpg",
-                    "/video/nk s.jpg"
-                  ].map((avatar, i) => (
-                    <img key={i} src={avatar} alt="user" className="w-9 h-9 rounded-full border-2 border-white object-cover shadow-xs" />
-                  ))}
-                </div>
-                <div>
-                  <span className="text-base font-black text-gray-950 block leading-none">16+</span>
-                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">World-wide Clients</span>
-                </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-orange-600 bg-orange-50 border border-orange-200/80 px-4 py-2 rounded-full shadow-2xs">
+                  SEO + CONTENT + DIGITAL STRATEGY
+                </span>
               </div>
             </motion.div>
           </div>
 
           {/* RIGHT STATS COLUMN */}
           <div className="flex flex-col gap-6">
-            {/* Experts Card */}
+            {/* Right Card 1 (EXPERTISE) */}
             <motion.div 
               initial={{ opacity: 0, x: 40 }}
               animate={{ opacity: 1, x: 0 }}
@@ -278,15 +313,17 @@ export default function SocialMediaMarketing() {
               className="bg-sky-50 border border-sky-100 rounded-4xl p-8 flex flex-col justify-center h-full min-h-[160px] shadow-xs hover:-translate-y-1 transition-transform duration-300"
             >
               <h4 className="text-sm font-black text-sky-950 uppercase tracking-wider mb-2 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-sky-500 rounded-full" /> Experts
+                <span className="w-1.5 h-1.5 bg-sky-500 rounded-full" /> EXPERTISE
               </h4>
-              <p className="text-sky-900/85 text-2xl font-black mb-1">70+</p>
-              <p className="text-sky-900/70 text-xs font-semibold uppercase tracking-wider">
-                Professional Experts
+              <p className="text-sky-950 text-sm font-bold mb-1">
+                Content Strategy & SEO Writing
+              </p>
+              <p className="text-sky-900/80 text-xs font-semibold leading-relaxed">
+                Strategy • Research • Writing • Optimization
               </p>
             </motion.div>
 
-            {/* Projects Card */}
+            {/* Right Card 2 (CONTENT) */}
             <motion.div 
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
@@ -294,11 +331,13 @@ export default function SocialMediaMarketing() {
               className="bg-yellow-50/70 border border-yellow-100 rounded-4xl p-8 flex flex-col justify-center h-full min-h-[160px] shadow-xs hover:-translate-y-1 transition-transform duration-300"
             >
               <h4 className="text-sm font-black text-yellow-950 uppercase tracking-wider mb-2 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full" /> Projects
+                <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full" /> CONTENT
               </h4>
-              <p className="text-yellow-900/85 text-2xl font-black mb-1">20+</p>
-              <p className="text-yellow-900/70 text-xs font-semibold uppercase tracking-wider">
-                Projects Complete
+              <p className="text-yellow-950 text-sm font-bold mb-1">
+                Original, Purpose-Driven Content
+              </p>
+              <p className="text-yellow-900/80 text-xs font-semibold leading-relaxed">
+                Blogs • Website Copy • Landing Pages • Guides
               </p>
             </motion.div>
           </div>
@@ -341,15 +380,15 @@ export default function SocialMediaMarketing() {
         </div>
       </section>
 
-      {/* 4. SIX CORE SERVICES */}
+      {/* 4. FIVE CORE SERVICES */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
         <div className="max-w-3xl mb-16">
-          <span className="text-xs font-bold uppercase tracking-widest text-orange-500">Hire Social Media Marketing Expert</span>
+          <span className="text-xs font-bold uppercase tracking-widest text-orange-500">Social Media Services</span>
           <h2 className="text-3xl md:text-5xl font-black text-gray-950 uppercase tracking-tight mt-1 mb-6 leading-tight">
-            Targeted Social Media Promotion Services
+            Targeted Social Media Management & Marketing
           </h2>
-          <p className="text-gray-500 text-sm md:text-base leading-relaxed">
-            Our social media marketing consultant team designs strategic Facebook marketing services, YouTube marketing videos, and influencer marketing loops to scale ecommerce SMM services.
+          <p className="text-gray-600 text-sm md:text-base leading-relaxed text-justify">
+            We help businesses manage their social media with a clear plan. We work on content, campaigns, audience engagement, and performance to keep your brand active and easy to recognize across the platforms that matter to your business.
           </p>
         </div>
 
@@ -373,7 +412,7 @@ export default function SocialMediaMarketing() {
                   <h3 className="text-xl font-black uppercase text-gray-950 mb-3 group-hover:text-orange-500 transition-colors">
                     {srv.title}
                   </h3>
-                  <p className="text-gray-500 text-sm leading-relaxed mb-6 h-12 overflow-hidden line-clamp-2">
+                  <p className="text-gray-600 text-sm leading-relaxed mb-6 text-justify">
                     {srv.desc}
                   </p>
 
@@ -392,20 +431,23 @@ export default function SocialMediaMarketing() {
         </div>
       </section>
 
-      {/* 5. PROCESS TIMELINE WORKFLOW */}
+      {/* 5. PROCESS TIMELINE WORKFLOW / WHY RIZEWORLD */}
       <section className="bg-white border-t border-b border-gray-200 py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.8fr] gap-16 items-start mb-20">
             <div>
-              <span className="text-xs font-bold uppercase tracking-widest text-orange-500 block mb-3">Our Solution Process</span>
+              <span className="text-xs font-bold uppercase tracking-widest text-orange-500 block mb-3">WHY RIZEWORLD?</span>
               <h2 className="text-4xl md:text-5xl font-black text-gray-950 uppercase tracking-tight">
-                3 STEPS WE HAVE <br />FOLLOWING.
+                OUR SOLUTION <br />PROCESS
               </h2>
             </div>
             <div>
-              <p className="text-gray-500 text-sm md:text-base leading-relaxed">
-                Grow your audience and boost engagement with expert Social Media Optimization.
+              <p className="text-gray-600 text-sm md:text-base leading-relaxed text-justify mb-4">
+                We don't believe every business needs the same social media strategy. We first understand your audience and goals, then choose the platforms, content, and campaigns that make sense for your business.
+              </p>
+              <p className="text-gray-600 text-sm md:text-base leading-relaxed text-justify">
+                Our social media work can also support your wider digital marketing, content marketing, SEO, and online advertising efforts.
               </p>
             </div>
           </div>
@@ -455,7 +497,7 @@ export default function SocialMediaMarketing() {
                   <h3 className="text-2xl md:text-3xl font-black uppercase text-gray-950 mb-4 pr-24 leading-tight">
                     {STEPS[activeStep].title}
                   </h3>
-                  <p className="text-gray-600 text-sm md:text-base leading-relaxed mb-8 max-w-xl">
+                  <p className="text-gray-600 text-sm md:text-base leading-relaxed mb-8 max-w-xl text-justify">
                     {STEPS[activeStep].desc}
                   </p>
 
@@ -476,6 +518,55 @@ export default function SocialMediaMarketing() {
 
           </div>
 
+        </div>
+      </section>
+
+      {/* FAQS SECTION */}
+      <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <div className="text-center mb-16">
+          <span className="text-xs font-bold uppercase tracking-widest text-orange-500">FAQ</span>
+          <h2 className="text-3xl md:text-5xl font-black text-gray-950 uppercase tracking-tight mt-2">
+            Social Media Marketing – FAQs
+          </h2>
+        </div>
+
+        <div className="space-y-4">
+          {FAQS.map((faq, idx) => {
+            const isOpen = openFaq === idx;
+            return (
+              <div 
+                key={idx}
+                className="bg-white border border-gray-200/85 rounded-3xl overflow-hidden transition-all duration-300"
+              >
+                <button
+                  onClick={() => setOpenFaq(isOpen ? null : idx)}
+                  className="w-full flex items-center justify-between p-6 text-left cursor-pointer hover:bg-stone-50/50"
+                >
+                  <span className="text-sm sm:text-base font-bold text-gray-950 uppercase tracking-tight pr-6">
+                    {faq.question}
+                  </span>
+                  <ChevronRight 
+                    size={18} 
+                    className={`text-orange-500 transition-transform duration-300 shrink-0 ${isOpen ? 'rotate-90' : ''}`} 
+                  />
+                </button>
+                <AnimatePresence initial={false}>
+                  {isOpen && (
+                    <motion.div
+                      initial={{ height: 0 }}
+                      animate={{ height: "auto" }}
+                      exit={{ height: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <div className="p-6 pt-0 border-t border-gray-100 text-gray-600 text-sm leading-relaxed text-justify">
+                        {faq.answer}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            );
+          })}
         </div>
       </section>
 

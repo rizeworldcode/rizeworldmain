@@ -22,34 +22,67 @@ import AreasWeServe from '../../components/common/AreasWeServe';
 
 const SERVICES_LIST = [
   {
-    title: "Blog Writing & Strategy",
-    desc: "Crafting informative, research-backed blogs and articles that establish domain authority and engage readers.",
-    tags: ["SEO Optimization", "Topic Research", "Editorial Calendars", "Long-form Content"],
+    title: "SEO Content Writing",
+    desc: "Developing web content optimized for search intent to climb search engine rankings and capture valuable organic traffic.",
+    tags: ["SEO Copy", "Search Intent", "Keyword Mapping", "Rankings"],
     icon: Search
   },
   {
-    title: "SEO Content Creation",
-    desc: "Developing web content optimized for search intent to climb rankings and capture valuable organic traffic.",
-    tags: ["Keywords", "On-Page SEO", "Meta Optimization", "Readability Tuning"],
-    icon: Share2
-  },
-  {
-    title: "Copywriting & Landing Pages",
-    desc: "Writing high-converting landing page copies, sales pages, and marketing collaterals that drive actions.",
-    tags: ["CTAs", "A/B Copy Tests", "Landing Pages", "Brand Voice"],
-    icon: Palette
-  },
-  {
-    title: "Email Marketing Copy",
-    desc: "Designing personalized email drip campaigns and newsletters that nurture leads and improve retention.",
-    tags: ["Subject Lines", "Drip Sequence", "Newsletters", "Audience Segmentation"],
+    title: "Blog & Article Writing",
+    desc: "Crafting informative, research-backed blogs and articles that establish domain authority and engage prospective readers.",
+    tags: ["Blog Posts", "Topic Research", "Editorial Calendars", "Long-form"],
     icon: Edit3
   },
   {
-    title: "Content Audits & Assets",
-    desc: "Reviewing existing content pipelines, structuring whitepapers, case studies, and brand guides.",
-    tags: ["Case Studies", "Content Audits", "Whitepapers", "Brand Guidelines"],
+    title: "Website Content",
+    desc: "Clear, engaging website copy that explains your offerings and builds customer trust from their first visit.",
+    tags: ["Website Copy", "Brand Voice", "Service Pages", "Clarity"],
+    icon: Share2
+  },
+  {
+    title: "Landing Page Copy",
+    desc: "Writing high-converting landing page copies and marketing collaterals that turn prospective visitors into inquiries.",
+    tags: ["Landing Pages", "High Conversion", "CTAs", "Lead Gen"],
+    icon: Palette
+  },
+  {
+    title: "Content Strategy",
+    desc: "Structured content planning tailored to your audience questions, business goals, and competitive landscape.",
+    tags: ["Strategy", "Audience Research", "Editorial Blueprint", "Growth"],
+    icon: Sparkles
+  },
+  {
+    title: "Content Optimization & Updates",
+    desc: "Refreshing, updating, and fine-tuning existing content to maintain relevance, rankings, and factual accuracy.",
+    tags: ["Content Audits", "SEO Updates", "Performance Tuning", "Re-optimization"],
     icon: Award
+  }
+];
+
+const FAQS = [
+  {
+    question: "What is content marketing?",
+    answer: "Content marketing is the process of creating useful and relevant content to attract, inform, and engage a specific audience. This can include blog posts, website content, guides, landing pages, and other resources that support a business's marketing goals."
+  },
+  {
+    question: "How can content marketing help my business?",
+    answer: "Well-planned content can help your business improve online visibility, answer customer questions, build credibility, and attract relevant visitors. It can also support SEO and create more opportunities for leads and conversions."
+  },
+  {
+    question: "What content marketing services does RizeWorld offer?",
+    answer: "RizeWorld provides SEO content writing, blog writing, website content, landing page copy, content strategy, and content optimization. The services are planned according to the business, audience, and marketing objectives."
+  },
+  {
+    question: "How does content marketing support SEO?",
+    answer: "Useful content helps search engines understand what your website is about while giving visitors valuable information. We focus on search intent, relevant topics, clear structure, and natural language rather than excessive keyword usage."
+  },
+  {
+    question: "Can content marketing help generate leads?",
+    answer: "Yes. Content can attract people who are researching a problem or looking for a solution. Helpful information, clear messaging, and relevant calls to action can guide interested visitors toward contacting your business or exploring your services."
+  },
+  {
+    question: "How do you create content for different businesses?",
+    answer: "We first understand the business, target audience, industry, services, and objectives. Content is then planned around the questions and needs of potential customers while maintaining the brand's tone and messaging."
   }
 ];
 
@@ -111,6 +144,7 @@ export default function ContentMarketing() {
   const navigate = useNavigate();
   const [activeStep, setActiveStep] = useState(0);
   const [activeTestimonial, setActiveTestimonial] = useState(0);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   const serviceSchema = {
     "@context": "https://schema.org",
@@ -121,7 +155,7 @@ export default function ContentMarketing() {
       "name": "RizeWorld Digital",
       "url": "https://rizeworld.in/"
     },
-    "description": "High-conversion copywriting and content marketing solutions. We write authoritative blogs, landing pages, and email drip copy to nurture leads organic."
+    "description": "Strategic content for brands that want to be found, understood, and remembered. High-conversion copywriting and content marketing solutions."
   };
 
   const breadcrumbSchema = {
@@ -149,13 +183,26 @@ export default function ContentMarketing() {
     ]
   };
 
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": FAQS.map(faq => ({
+      "@type": "Question",
+      "name": faq.question,
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": faq.answer
+      }
+    }))
+  };
+
   return (
     <div className="min-h-screen bg-stone-50 pt-32 pb-24 overflow-hidden text-left font-sans selection:bg-orange-500 selection:text-white">
       <SEO 
         title="Content Marketing Services & Content Writing Agency | RizeWorld"
-        description="Looking for the best content writing services? As a leading content creation agency, we provide website content writing and custom blog writing services."
+        description="Looking for the best content writing services? Strategic content for brands that want to be found, understood, and remembered."
         canonicalUrl="https://rizeworld.in/services/content-marketing"
-        schema={[serviceSchema, breadcrumbSchema]}
+        schema={[serviceSchema, breadcrumbSchema, faqSchema]}
       />
       
       {/* 1. BREADCRUMBS & NAVIGATION */}
@@ -176,6 +223,7 @@ export default function ContentMarketing() {
           
           {/* LEFT COLLAGE BLOCK */}
           <div className="flex flex-col gap-6">
+            {/* Left Card (WHO WE ARE) */}
             <motion.div 
               initial={{ opacity: 0, x: -40 }}
               animate={{ opacity: 1, x: 0 }}
@@ -183,12 +231,13 @@ export default function ContentMarketing() {
               className="bg-orange-100/70 border border-orange-200/60 rounded-4xl p-8 flex flex-col justify-center h-auto min-h-[180px] shadow-xs relative overflow-hidden group"
             >
               <div className="absolute top-0 right-0 w-24 h-24 bg-orange-200/30 rounded-full blur-2xl -mr-8 -mt-8 group-hover:scale-110 transition-transform duration-500" />
-              <span className="text-[10px] font-black text-orange-600 uppercase tracking-widest block mb-3">Who We Are</span>
-              <p className="text-gray-800 text-sm leading-relaxed font-semibold">
-                RizeWorld – Creating Compelling Content That Converses and Converts
+              <span className="text-[10px] font-black text-orange-600 uppercase tracking-widest block mb-3">WHO WE ARE</span>
+              <p className="text-gray-800 text-sm leading-relaxed font-semibold text-justify">
+                RizeWorld – Strategic Content That Connects Brands With Their Audience
               </p>
             </motion.div>
 
+            {/* Visual Team Card */}
             <motion.div 
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
@@ -215,51 +264,49 @@ export default function ContentMarketing() {
               <span className="text-orange-500 font-black uppercase tracking-widest text-xs mb-4 flex items-center gap-1.5">
                 <Sparkles size={14} className="animate-pulse" /> Engaging Brand Stories
               </span>
-              <h1 className="text-4xl md:text-5xl lg:text-[3.5rem] font-black text-gray-950 leading-[1.05] uppercase tracking-tighter mb-6">
-                Content <br />
-                Marketing <span className="relative inline-block px-4 py-1 mx-1 mt-1">
-                  Services
+              <h1 className="text-4xl md:text-5xl lg:text-[3.2rem] font-black text-gray-950 leading-[1.05] uppercase tracking-tighter mb-6">
+                Content Marketing <br />
+                Services <span className="relative inline-block px-4 py-1 mx-1 mt-1">
+                  Agency
                   <svg className="absolute inset-0 w-full h-full text-orange-500" viewBox="0 0 100 100" preserveAspectRatio="none">
                     <path d="M 5, 50 C 5, 20 95, 20 95, 50 C 95, 80 5, 80 5, 50 Z" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="300" strokeDashoffset="0" className="animate-[dash_2s_ease-in-out_infinite]" />
                   </svg>
                 </span>
               </h1>
-              <p className="text-gray-800 text-sm md:text-base leading-relaxed max-w-xl">
-                Our premium <strong>content marketing services</strong> are backed by strategic <strong>content writing services</strong>. As a results-driven <strong>content creation agency</strong>, we write <strong>seo content writing</strong> pieces, blog writing services, and landing page content that drives organic results.
-              </p>
+              <div className="space-y-4 text-gray-800 text-sm md:text-base leading-relaxed max-w-xl text-justify">
+                <p className="font-semibold text-gray-900">
+                  Strategic content for brands that want to be found, understood, and remembered.
+                </p>
+                <p>
+                  Good content should do more than fill a website. It should answer questions, explain your services clearly, and give people a reason to trust your brand. At RizeWorld, we create practical and engaging content that is aligned with your audience, business goals, and search intent.
+                </p>
+                <p>
+                  Our content marketing services cover everything from SEO-focused blog writing and website content to landing pages and content optimization. We focus on clear messaging, useful information, and a natural writing style so your content works for both your audience and your overall digital marketing strategy.
+                </p>
+              </div>
             </motion.div>
 
+            {/* Bottom Card */}
             <motion.div 
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
               className="bg-white border border-gray-200/80 rounded-4xl p-6 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-sm hover:shadow-md transition-shadow duration-300"
             >
-              <p className="text-gray-500 text-xs font-semibold max-w-sm text-center sm:text-left leading-relaxed">
-                Strategic copywriting and editing designed to scale organic traffic loops.
+              <p className="text-gray-700 text-xs sm:text-sm font-semibold max-w-sm text-justify leading-relaxed">
+                Content created to support visibility, credibility, and conversions.
               </p>
-              <div className="flex items-center gap-3.5 shrink-0">
-                <div className="flex -space-x-3">
-                  {[
-                    "/video/harsh tiwari.jpeg",
-                    "/video/k sir.jpg",
-                    "/video/mansukhhh.jpg",
-                    "/video/Untitled-1.jpg",
-                    "/video/nk s.jpg"
-                  ].map((avatar, i) => (
-                    <img key={i} src={avatar} alt="user" className="w-9 h-9 rounded-full border-2 border-white object-cover shadow-xs" />
-                  ))}
-                </div>
-                <div>
-                  <span className="text-base font-black text-gray-950 block leading-none">12+</span>
-                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Active Brand Partners</span>
-                </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-orange-600 bg-orange-50 border border-orange-200/80 px-4 py-2 rounded-full shadow-2xs">
+                  SEO + CONTENT + DIGITAL STRATEGY
+                </span>
               </div>
             </motion.div>
           </div>
 
           {/* RIGHT STATS COLUMN */}
           <div className="flex flex-col gap-6">
+            {/* Right Card 1 (EXPERTISE) */}
             <motion.div 
               initial={{ opacity: 0, x: 40 }}
               animate={{ opacity: 1, x: 0 }}
@@ -267,14 +314,17 @@ export default function ContentMarketing() {
               className="bg-sky-50 border border-sky-100 rounded-4xl p-8 flex flex-col justify-center h-full min-h-[160px] shadow-xs hover:-translate-y-1 transition-transform duration-300"
             >
               <h4 className="text-sm font-black text-sky-950 uppercase tracking-wider mb-2 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-sky-500 rounded-full" /> Experts
+                <span className="w-1.5 h-1.5 bg-sky-500 rounded-full" /> EXPERTISE
               </h4>
-              <p className="text-sky-900/85 text-2xl font-black mb-1">15+</p>
-              <p className="text-sky-900/70 text-xs font-semibold uppercase tracking-wider">
-                Creative Writers & Strategists
+              <p className="text-sky-950 text-sm font-bold mb-1">
+                Content Strategy & SEO Writing
+              </p>
+              <p className="text-sky-900/80 text-xs font-semibold leading-relaxed">
+                Strategy • Research • Writing • Optimization
               </p>
             </motion.div>
 
+            {/* Right Card 2 (CONTENT) */}
             <motion.div 
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
@@ -282,11 +332,13 @@ export default function ContentMarketing() {
               className="bg-yellow-50/70 border border-yellow-100 rounded-4xl p-8 flex flex-col justify-center h-full min-h-[160px] shadow-xs hover:-translate-y-1 transition-transform duration-300"
             >
               <h4 className="text-sm font-black text-yellow-950 uppercase tracking-wider mb-2 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full" /> Assets
+                <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full" /> CONTENT
               </h4>
-              <p className="text-yellow-900/85 text-2xl font-black mb-1">500+</p>
-              <p className="text-yellow-900/70 text-xs font-semibold uppercase tracking-wider">
-                Published Blog Articles & Guides
+              <p className="text-yellow-950 text-sm font-bold mb-1">
+                Original, Purpose-Driven Content
+              </p>
+              <p className="text-yellow-900/80 text-xs font-semibold leading-relaxed">
+                Blogs • Website Copy • Landing Pages • Guides
               </p>
             </motion.div>
           </div>
@@ -297,12 +349,15 @@ export default function ContentMarketing() {
       {/* 3. CORE SERVICES */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
         <div className="max-w-3xl mb-16">
-          <span className="text-xs font-bold uppercase tracking-widest text-orange-500">Solution Provide</span>
+          <span className="text-xs font-bold uppercase tracking-widest text-orange-500">Our Services</span>
           <h2 className="text-3xl md:text-5xl font-black text-gray-950 uppercase tracking-tight mt-1 mb-6 leading-tight">
-            Delivering Thought Leadership & SEO Authority.
+            Our Content Marketing Approach
           </h2>
-          <p className="text-gray-500 text-sm md:text-base leading-relaxed">
-            We provide targeted content marketing solutions that appeal directly to user search intent, educate buyers, and nurture interest.
+          <p className="text-gray-600 text-sm md:text-base leading-relaxed text-justify mb-4">
+            We start by understanding your business, customers, industry, and the topics that matter to your audience. From there, we plan and create original content that fits your brand and supports your marketing objectives.
+          </p>
+          <p className="text-gray-600 text-sm md:text-base leading-relaxed text-justify">
+            Every piece of content has a purpose. Whether you want to improve organic visibility, educate potential customers, build brand authority, or generate more enquiries, we create content around the outcome you want to achieve.
           </p>
         </div>
 
@@ -326,7 +381,7 @@ export default function ContentMarketing() {
                   <h3 className="text-xl font-black uppercase text-gray-950 mb-3 group-hover:text-orange-500 transition-colors">
                     {srv.title}
                   </h3>
-                  <p className="text-gray-500 text-sm leading-relaxed mb-6 h-12 overflow-hidden line-clamp-2">
+                  <p className="text-gray-600 text-sm leading-relaxed mb-6 text-justify">
                     {srv.desc}
                   </p>
 
@@ -350,14 +405,17 @@ export default function ContentMarketing() {
           
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.8fr] gap-16 items-start mb-20">
             <div>
-              <span className="text-xs font-bold uppercase tracking-widest text-orange-500 block mb-3">Our Process</span>
+              <span className="text-xs font-bold uppercase tracking-widest text-orange-500 block mb-3">SEO Integration</span>
               <h2 className="text-4xl md:text-5xl font-black text-gray-950 uppercase tracking-tight">
-                3 STEPS TO CONTENT <br />DOMINANCE.
+                CONTENT THAT SUPPORTS <br />YOUR SEO STRATEGY.
               </h2>
             </div>
             <div>
-              <p className="text-gray-500 text-sm md:text-base leading-relaxed">
-                Empower your website's organic visibility with our clean and methodical content marketing process.
+              <p className="text-gray-600 text-sm md:text-base leading-relaxed text-justify mb-4">
+                Content and SEO work best when they are planned together. We use relevant topics and search intent to create content that is easy to understand and genuinely useful to visitors. Instead of repeating keywords, we focus on covering a subject naturally and providing the information people are actually looking for.
+              </p>
+              <p className="text-gray-600 text-sm md:text-base leading-relaxed text-justify">
+                As a digital marketing agency, RizeWorld can also align your content with SEO, website development, social media, and other digital marketing activities, giving your brand a more consistent online presence.
               </p>
             </div>
           </div>
@@ -403,7 +461,7 @@ export default function ContentMarketing() {
                   <h3 className="text-2xl md:text-3xl font-black uppercase text-gray-950 mb-4 pr-24 leading-tight">
                     {STEPS[activeStep].title}
                   </h3>
-                  <p className="text-gray-600 text-sm md:text-base leading-relaxed mb-8 max-w-xl">
+                  <p className="text-gray-600 text-sm md:text-base leading-relaxed mb-8 max-w-xl text-justify">
                     {STEPS[activeStep].desc}
                   </p>
 
@@ -423,6 +481,55 @@ export default function ContentMarketing() {
             </div>
           </div>
 
+        </div>
+      </section>
+
+      {/* FAQS SECTION */}
+      <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <div className="text-center mb-16">
+          <span className="text-xs font-bold uppercase tracking-widest text-orange-500">FAQ</span>
+          <h2 className="text-3xl md:text-5xl font-black text-gray-950 uppercase tracking-tight mt-2">
+            Frequently Asked Questions
+          </h2>
+        </div>
+
+        <div className="space-y-4">
+          {FAQS.map((faq, idx) => {
+            const isOpen = openFaq === idx;
+            return (
+              <div 
+                key={idx}
+                className="bg-white border border-gray-200/85 rounded-3xl overflow-hidden transition-all duration-300"
+              >
+                <button
+                  onClick={() => setOpenFaq(isOpen ? null : idx)}
+                  className="w-full flex items-center justify-between p-6 text-left cursor-pointer hover:bg-stone-50/50"
+                >
+                  <span className="text-sm sm:text-base font-bold text-gray-950 uppercase tracking-tight pr-6">
+                    {faq.question}
+                  </span>
+                  <ChevronRight 
+                    size={18} 
+                    className={`text-orange-500 transition-transform duration-300 shrink-0 ${isOpen ? 'rotate-90' : ''}`} 
+                  />
+                </button>
+                <AnimatePresence initial={false}>
+                  {isOpen && (
+                    <motion.div
+                      initial={{ height: 0 }}
+                      animate={{ height: "auto" }}
+                      exit={{ height: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <div className="p-6 pt-0 border-t border-gray-100 text-gray-600 text-sm leading-relaxed text-justify">
+                        {faq.answer}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            );
+          })}
         </div>
       </section>
 
@@ -501,10 +608,10 @@ export default function ContentMarketing() {
             <div>
               <span className="text-xs font-black uppercase tracking-widest text-orange-500 block mb-4">LET’S TALK</span>
               <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tight leading-none mb-6">
-                Connect Us
+                Let's Create Better Content for Your Business
               </h2>
-              <p className="text-gray-400 text-sm md:text-base leading-relaxed mb-8">
-                Reach out today to discuss your project and discover how we can grow your brand online.
+              <p className="text-gray-400 text-sm md:text-base leading-relaxed mb-8 text-justify">
+                If your website needs clearer messaging, useful blog content, or a more structured content strategy, RizeWorld can help. We create content that feels natural to your audience while supporting your long-term online growth.
               </p>
             </div>
 

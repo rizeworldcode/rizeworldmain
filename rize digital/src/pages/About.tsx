@@ -218,7 +218,7 @@ export default function About() {
           >
             <div className="rounded-3xl overflow-hidden bg-gray-200 h-full min-h-[400px] md:min-h-0 border border-gray-150">
               <img 
-                src="/images/about/about 3.png" 
+                src="/images/about/About 1.png" 
                 alt="Design process" 
                 className="w-full h-full object-cover" 
               />
