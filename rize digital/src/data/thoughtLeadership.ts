@@ -18,7 +18,7 @@ export const thoughtLeadershipData: ThoughtLeadershipCard[] = [
     {
       id: "tl-3",
       image: "/images/pr/RIZE LINKK.jpg.jpeg",
-      title: "Unicorn Status: The Agency Behind the $50M Series A",
+      title: "Unicorn Status: The Agency Behind the ₹50M Series A",
       source: "TechCrunch",
       aspectRatio: "landscape"
     },

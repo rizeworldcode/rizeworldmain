@@ -50,7 +50,9 @@ const PROJECT_LOGOS: Record<string, string> = {
   "easy-eyes": "/logos/Easyeyes_logo_-Recovered-__1_-1-1.jpg-removebg-preview (1).png",
   "ambhuti": "/logos/aa.jpg-removebg-preview.png",
   "bhavik-dairy": "/logos/logo1/bhavikdairy_14050326_165157844.jpg.jpeg_nobg.png",
-  "travelia": "/logos/TT logo.png"
+  "travelia": "/logos/TT logo.png",
+  "Santsukhdav Shah Charitable Hospital": "/logos/sant.png",
+  "Chappan Bhog": "/logos/chappan.png"
 };
 
 const PROJECT_THEMES: Record<string, { bg: string; text: string; isDark: boolean }> = {
@@ -160,9 +162,9 @@ export default function ProjectDetails() {
             <Tag size={12} /> {project.category}
           </span>
           <h1 className="mb-8">
-            {PROJECT_LOGOS[project.id] ? (
+            {(PROJECT_LOGOS[project.id] || project.logo) ? (
               <img 
-                src={PROJECT_LOGOS[project.id]} 
+                src={PROJECT_LOGOS[project.id] || project.logo} 
                 alt={project.title} 
                 className={`${project.id === 'medi-compares' ? 'h-20 md:h-24' : 'h-24 md:h-32'} object-contain object-left`} 
               />

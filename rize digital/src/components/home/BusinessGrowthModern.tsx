@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import { TrendingUp } from 'lucide-react';
 
 export default function BusinessGrowthModern() {
   const [activeImage, setActiveImage] = useState<string | null>(null);
@@ -51,7 +52,7 @@ export default function BusinessGrowthModern() {
             
             <div className="mb-4">
               <span className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-white/30 text-white group-hover:bg-white group-hover:text-rize-royal transition-colors">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                <TrendingUp className="w-5 h-5" />
               </span>
             </div>
             <h3 className="text-5xl font-black text-white mb-2 tracking-tighter">2X</h3>
