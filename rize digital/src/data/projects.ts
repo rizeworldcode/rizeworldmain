@@ -420,12 +420,12 @@ export const PROJECTS: Project[] = [
     title: "Hospital",
     category: "Hospital",
     logo: "/logos/sant.png",
-    image: "/1920X1000/sant sukhdav/sant shukh dev web.png",
+    image: "/1920X1000/sant sukhdav/sant sukh dev.png",
     images: [
       "/1920X1000/sant sukhdav/sant sukh dev 2.png",
       "/1920X1000/sant sukhdav/DR. YOGESH.png",
       "/1920X1000/sant sukhdav/sant sukh dev 12121.png",
-      "/1920X1000/sant sukhdav/sant sukh dev.png"
+      "/1920X1000/sant sukhdav/sant shukh dev dr.png"
     ],
     fallback: "https://images.unsplash.com/photo-1586773860418-d37222d8fce3?auto=format&fit=crop&q=80&w=800",
     desc: "Dedicated to compassionate care and healing — Comprehensive healthcare branding, digital presence, and visual communication strategy for Sant Sukhdev Shah Charitable Hospital."

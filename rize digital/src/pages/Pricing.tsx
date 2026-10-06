@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { 
   Sparkles, 
   Shield, 
@@ -18,8 +18,7 @@ import Breadcrumbs from '../components/common/Breadcrumbs';
 import { 
   SEO_PACKAGES, 
   SMM_PACKAGES, 
-  WEBSITE_PACKAGES, 
-  type PricingPackage 
+  WEBSITE_PACKAGES 
 } from '../data/pricingData';
 
 type CategoryType = 'seo' | 'smm' | 'website';
@@ -119,71 +118,79 @@ export default function Pricing() {
     ]
   };
 
-  const FRAMER_BOX_SHADOW = "-30px 21px 122px 0px rgba(0, 0, 0, 0.25), inset 5px 5px 0px 0px rgba(255, 255, 255, 0.25), inset -5px -5px 0px 0px rgba(255, 255, 255, 0.15)";
+  const FRAMER_BOX_SHADOW = "0 30px 60px -12px rgba(0, 0, 0, 0.4), 0 18px 36px -18px rgba(0, 0, 0, 0.35), inset 0 1px 1px 0 rgba(255, 255, 255, 0.45), inset 0 -2px 6px 0 rgba(0, 0, 0, 0.25)";
 
   const DECK_PALETTES = [
     {
-      bg: "rgb(17, 202, 236)", // Cyan
-      isDarkText: true,
-      pill: "bg-black/15 text-gray-950 border-black/15",
-      btn: "bg-gray-950 hover:bg-white text-white hover:text-gray-950",
-      check: "text-gray-950",
-      accent: "text-gray-900"
-    },
-    {
-      bg: "rgb(249, 86, 176)", // Magenta / Pink
-      isDarkText: true,
-      pill: "bg-black/15 text-gray-950 border-black/15",
-      btn: "bg-gray-950 hover:bg-white text-white hover:text-gray-950",
-      check: "text-gray-950",
-      accent: "text-gray-900"
-    },
-    {
-      bg: "rgb(255, 219, 75)", // Yellow / Gold
-      isDarkText: true,
-      pill: "bg-black/15 text-gray-950 border-black/15",
-      btn: "bg-gray-950 hover:bg-white text-white hover:text-gray-950",
-      check: "text-gray-950",
-      accent: "text-gray-900"
-    },
-    {
-      bg: "rgb(183, 33, 29)", // Crimson Red
+      // 1. Electric Ocean Cyan & Deep Royal Blue
+      bg: "radial-gradient(ellipse at 20% 0%, rgba(255, 255, 255, 0.35) 0%, transparent 60%), linear-gradient(145deg, #0284c7 0%, #1d4ed8 50%, #0f172a 100%)",
       isDarkText: false,
-      pill: "bg-white/20 text-white border-white/30",
-      btn: "bg-white hover:bg-gray-950 text-gray-950 hover:text-white",
+      pill: "bg-white/20 text-white border-white/40 backdrop-blur-md",
+      btn: "bg-white hover:bg-gray-950 text-blue-950 hover:text-white",
+      check: "text-white",
+      accent: "text-sky-100"
+    },
+    {
+      // 2. Sunset Berry / Vivid Ruby & Velvet Crimson
+      bg: "radial-gradient(ellipse at 20% 0%, rgba(255, 255, 255, 0.35) 0%, transparent 60%), linear-gradient(145deg, #f43f5e 0%, #be123c 50%, #4c0519 100%)",
+      isDarkText: false,
+      pill: "bg-white/20 text-white border-white/40 backdrop-blur-md",
+      btn: "bg-white hover:bg-gray-950 text-rose-950 hover:text-white",
       check: "text-white",
       accent: "text-rose-100"
     },
     {
-      bg: "rgb(13, 75, 84)", // Deep Forest Teal
+      // 3. Royal Golden Amber / Warm Solar Sunset
+      bg: "radial-gradient(ellipse at 20% 0%, rgba(255, 255, 255, 0.35) 0%, transparent 60%), linear-gradient(145deg, #f59e0b 0%, #d97706 50%, #451a03 100%)",
       isDarkText: false,
-      pill: "bg-white/20 text-white border-white/30",
-      btn: "bg-white hover:bg-gray-950 text-gray-950 hover:text-white",
+      pill: "bg-white/25 text-white border-white/45 backdrop-blur-md",
+      btn: "bg-white hover:bg-gray-950 text-amber-950 hover:text-white",
+      check: "text-white",
+      accent: "text-amber-100"
+    },
+    {
+      // 4. Electric Violet Nebula / Deep Cosmic Indigo
+      bg: "radial-gradient(ellipse at 20% 0%, rgba(255, 255, 255, 0.35) 0%, transparent 60%), linear-gradient(145deg, #9333ea 0%, #6366f1 50%, #1e1b4b 100%)",
+      isDarkText: false,
+      pill: "bg-white/20 text-white border-white/40 backdrop-blur-md",
+      btn: "bg-white hover:bg-gray-950 text-purple-950 hover:text-white",
+      check: "text-white",
+      accent: "text-purple-100"
+    },
+    {
+      // 5. Deep Aurora Teal / Ocean Emerald
+      bg: "radial-gradient(ellipse at 20% 0%, rgba(255, 255, 255, 0.35) 0%, transparent 60%), linear-gradient(145deg, #0d9488 0%, #0284c7 50%, #042f2e 100%)",
+      isDarkText: false,
+      pill: "bg-white/20 text-white border-white/40 backdrop-blur-md",
+      btn: "bg-white hover:bg-gray-950 text-teal-950 hover:text-white",
       check: "text-white",
       accent: "text-teal-100"
     },
     {
-      bg: "rgb(255, 96, 22)", // Sunset Orange
+      // 6. Radiant Tangerine Flame / Scarlet Ember
+      bg: "radial-gradient(ellipse at 20% 0%, rgba(255, 255, 255, 0.35) 0%, transparent 60%), linear-gradient(145deg, #ea580c 0%, #dc2626 50%, #431407 100%)",
       isDarkText: false,
-      pill: "bg-white/20 text-white border-white/30",
-      btn: "bg-white hover:bg-gray-950 text-gray-950 hover:text-white",
+      pill: "bg-white/20 text-white border-white/40 backdrop-blur-md",
+      btn: "bg-white hover:bg-gray-950 text-orange-950 hover:text-white",
       check: "text-white",
       accent: "text-orange-100"
     },
     {
-      bg: "rgb(39, 89, 182)", // Royal Electric Blue
+      // 7. Ultramarine Indigo / Midnight Velvet
+      bg: "radial-gradient(ellipse at 20% 0%, rgba(255, 255, 255, 0.35) 0%, transparent 60%), linear-gradient(145deg, #4f46e5 0%, #3730a3 50%, #0f172a 100%)",
       isDarkText: false,
-      pill: "bg-white/20 text-white border-white/30",
-      btn: "bg-white hover:bg-gray-950 text-gray-950 hover:text-white",
+      pill: "bg-white/20 text-white border-white/40 backdrop-blur-md",
+      btn: "bg-white hover:bg-gray-950 text-indigo-950 hover:text-white",
       check: "text-white",
-      accent: "text-blue-100"
+      accent: "text-indigo-100"
     }
   ];
 
   const CUSTOM_PALETTE = {
-    bg: "rgb(16, 185, 129)", // Vibrant Emerald
+    // 8. Luxury Forest Jade / WhatsApp Malachite Glow
+    bg: "radial-gradient(ellipse at 20% 0%, rgba(255, 255, 255, 0.35) 0%, transparent 60%), linear-gradient(145deg, #059669 0%, #047857 50%, #022c22 100%)",
     isDarkText: false,
-    pill: "bg-white/20 text-white border-white/30",
+    pill: "bg-white/20 text-white border-white/40 backdrop-blur-md",
     btn: "bg-white hover:bg-gray-950 text-emerald-950 hover:text-white",
     check: "text-white",
     accent: "text-emerald-100"
@@ -274,42 +281,51 @@ export default function Pricing() {
         </p>
 
         {/* 3 Categories Switcher */}
-        <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mt-10 p-1.5 bg-stone-200/80 backdrop-blur-md rounded-full max-w-fit mx-auto border border-stone-300/80 shadow-xs">
-          <button
-            onClick={() => handleCategoryChange('seo')}
-            className={`inline-flex items-center gap-2 px-6 py-3 rounded-full text-xs font-black uppercase tracking-wider transition-all duration-300 cursor-pointer ${
-              activeCategory === 'seo'
-                ? 'bg-rize-primary text-white shadow-md shadow-rize-primary/30 scale-102'
-                : 'text-gray-700 hover:text-rize-primary hover:bg-white/60'
-            }`}
-          >
-            <Search size={15} />
-            SEO
-          </button>
+        <div className="w-full max-w-xl mx-auto mt-8 sm:mt-10 px-3 sm:px-0">
+          <div className="p-1 sm:p-1.5 bg-stone-200/80 backdrop-blur-md rounded-full border border-stone-300/80 shadow-xs max-w-fit mx-auto">
+            <div className="grid grid-cols-3 sm:flex sm:items-center sm:justify-center gap-1 sm:gap-2">
+              <button
+                type="button"
+                onClick={() => handleCategoryChange('seo')}
+                className={`w-full sm:w-auto inline-flex items-center justify-center gap-1 sm:gap-2 px-2.5 sm:px-6 py-2 sm:py-3 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all duration-300 cursor-pointer whitespace-nowrap text-center ${
+                  activeCategory === 'seo'
+                    ? 'bg-rize-primary text-white shadow-md shadow-rize-primary/30'
+                    : 'text-gray-700 hover:text-rize-primary hover:bg-white/60'
+                }`}
+              >
+                <Search size={13} className="shrink-0" />
+                <span>SEO</span>
+              </button>
 
-          <button
-            onClick={() => handleCategoryChange('smm')}
-            className={`inline-flex items-center gap-2 px-6 py-3 rounded-full text-xs font-black uppercase tracking-wider transition-all duration-300 cursor-pointer ${
-              activeCategory === 'smm'
-                ? 'bg-rize-primary text-white shadow-md shadow-rize-primary/30 scale-102'
-                : 'text-gray-700 hover:text-rize-primary hover:bg-white/60'
-            }`}
-          >
-            <Share2 size={15} />
-            Social Media Management
-          </button>
+              <button
+                type="button"
+                onClick={() => handleCategoryChange('smm')}
+                className={`w-full sm:w-auto inline-flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-6 py-2 sm:py-3 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all duration-300 cursor-pointer whitespace-nowrap text-center ${
+                  activeCategory === 'smm'
+                    ? 'bg-rize-primary text-white shadow-md shadow-rize-primary/30'
+                    : 'text-gray-700 hover:text-rize-primary hover:bg-white/60'
+                }`}
+              >
+                <Share2 size={13} className="shrink-0" />
+                <span className="hidden md:inline">Social Media Management</span>
+                <span className="md:hidden">Social Media</span>
+              </button>
 
-          <button
-            onClick={() => handleCategoryChange('website')}
-            className={`inline-flex items-center gap-2 px-6 py-3 rounded-full text-xs font-black uppercase tracking-wider transition-all duration-300 cursor-pointer ${
-              activeCategory === 'website'
-                ? 'bg-rize-primary text-white shadow-md shadow-rize-primary/30 scale-102'
-                : 'text-gray-700 hover:text-rize-primary hover:bg-white/60'
-            }`}
-          >
-            <Globe size={15} />
-            Custom Website Development
-          </button>
+              <button
+                type="button"
+                onClick={() => handleCategoryChange('website')}
+                className={`w-full sm:w-auto inline-flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-6 py-2 sm:py-3 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all duration-300 cursor-pointer whitespace-nowrap text-center ${
+                  activeCategory === 'website'
+                    ? 'bg-rize-primary text-white shadow-md shadow-rize-primary/30'
+                    : 'text-gray-700 hover:text-rize-primary hover:bg-white/60'
+                }`}
+              >
+                <Globe size={13} className="shrink-0" />
+                <span className="hidden md:inline">Custom Website Development</span>
+                <span className="md:hidden">Website Dev</span>
+              </button>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -382,7 +398,7 @@ export default function Pricing() {
                     }}
                     transition={{ type: "spring", bounce: 0.22, duration: 0.4 }}
                     style={{
-                      backgroundColor: palette.bg,
+                      background: palette.bg,
                       boxShadow: FRAMER_BOX_SHADOW,
                       borderRadius: 24,
                     }}
@@ -397,36 +413,30 @@ export default function Pricing() {
                           {pkg.badge || `Tier ${i + 1}`}
                         </span>
                         {pkg.popular && (
-                          <span className="bg-gray-950 text-white text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full shadow-xs">
+                          <span className="bg-white/20 backdrop-blur-md text-white border border-white/35 text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full shadow-xs">
                             Popular
                           </span>
                         )}
                       </div>
 
-                      <h3 className="text-xl font-black uppercase tracking-tight leading-tight mb-2">
+                      <h3 className="text-xl font-black uppercase tracking-tight leading-tight mb-2 text-white">
                         {pkg.name}
                       </h3>
 
-                      <p className={`text-xs font-bold uppercase tracking-wider mb-3 leading-snug ${
-                        palette.isDarkText ? 'text-gray-800' : 'text-white/80'
-                      }`}>
+                      <p className="text-xs font-bold uppercase tracking-wider mb-3 leading-snug text-white/90">
                         {pkg.tagline}
                       </p>
 
-                      <p className={`text-xs leading-relaxed mb-4 line-clamp-2 ${
-                        palette.isDarkText ? 'text-gray-700' : 'text-white/70'
-                      }`}>
+                      <p className="text-xs leading-relaxed mb-4 line-clamp-2 text-white/75">
                         {pkg.summary}
                       </p>
 
                       {/* Feature Highlights */}
-                      <div className="space-y-2 pt-3 border-t border-black/10 dark:border-white/10">
+                      <div className="space-y-2 pt-3 border-t border-white/20">
                         {pkg.keyHighlights.slice(0, 3).map((hl, hIdx) => (
                           <div key={hIdx} className="flex items-start gap-2">
                             <CheckCircle2 className={`w-4 h-4 shrink-0 mt-0.5 ${palette.check}`} />
-                            <span className={`text-xs font-semibold leading-tight ${
-                              palette.isDarkText ? 'text-gray-900' : 'text-white/90'
-                            }`}>
+                            <span className="text-xs font-semibold leading-tight text-white/95">
                               {hl}
                             </span>
                           </div>
@@ -435,14 +445,14 @@ export default function Pricing() {
                     </div>
 
                     {/* CTA Button */}
-                    <div className="pt-4 border-t border-black/10 dark:border-white/10">
+                    <div className="pt-4 border-t border-white/20">
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           navigate(`/pricing/${pkg.id}`);
                         }}
-                        className={`w-full py-3 px-4 rounded-full text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer shadow-sm ${palette.btn}`}
+                        className={`w-full py-3 px-4 rounded-full text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer shadow-md ${palette.btn}`}
                       >
                         <FileText size={14} />
                         <span>Open Proposal</span>
@@ -463,7 +473,7 @@ export default function Pricing() {
                 }}
                 transition={{ type: "spring", bounce: 0.22, duration: 0.4 }}
                 style={{
-                  backgroundColor: CUSTOM_PALETTE.bg,
+                  background: CUSTOM_PALETTE.bg,
                   boxShadow: FRAMER_BOX_SHADOW,
                   borderRadius: 24,
                 }}
@@ -471,8 +481,7 @@ export default function Pricing() {
               >
                 <div>
                   <div className="flex items-center justify-between gap-2 mb-4">
-                    <span className={`text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full border ${CUSTOM_PALETTE.pill} flex items-center gap-1`}>
-                      <Sparkles size={11} />
+                    <span className={`text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full border ${CUSTOM_PALETTE.pill}`}>
                       Custom Tier
                     </span>
                     <span className="bg-white text-emerald-950 text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full shadow-xs flex items-center gap-1">
@@ -505,20 +514,29 @@ export default function Pricing() {
                   </div>
 
                   {/* Quick Input Fields */}
-                  <div className="space-y-2 pt-3 mt-3 border-t border-white/15">
-                    <input
-                      type="text"
-                      value={customName}
-                      onChange={(e) => setCustomName(e.target.value)}
-                      placeholder="Your Name"
-                      className="w-full text-xs px-3 py-2 rounded-xl bg-white/20 border border-white/30 placeholder:text-emerald-100/70 text-white focus:bg-white focus:text-gray-900 focus:outline-hidden transition-all"
-                    />
-                    <input
-                      type="tel"
-                      value={customPhone}
-                      onChange={(e) => setCustomPhone(e.target.value)}
-                      placeholder="WhatsApp Number"
-                      className="w-full text-xs px-3 py-2 rounded-xl bg-white/20 border border-white/30 placeholder:text-emerald-100/70 text-white focus:bg-white focus:text-gray-900 focus:outline-hidden transition-all"
+                  <div className="space-y-2 pt-2.5 mt-2.5 border-t border-white/15">
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        value={customName}
+                        onChange={(e) => setCustomName(e.target.value)}
+                        placeholder="Your Name"
+                        className="w-full text-xs px-2.5 py-2 rounded-xl bg-white/20 border border-white/30 placeholder:text-emerald-100/70 text-white focus:bg-white focus:text-gray-900 focus:outline-hidden transition-all"
+                      />
+                      <input
+                        type="tel"
+                        value={customPhone}
+                        onChange={(e) => setCustomPhone(e.target.value)}
+                        placeholder="WhatsApp No."
+                        className="w-full text-xs px-2.5 py-2 rounded-xl bg-white/20 border border-white/30 placeholder:text-emerald-100/70 text-white focus:bg-white focus:text-gray-900 focus:outline-hidden transition-all"
+                      />
+                    </div>
+                    <textarea
+                      rows={2}
+                      value={customQuery}
+                      onChange={(e) => setCustomQuery(e.target.value)}
+                      placeholder={currentCategory.customPlaceholder}
+                      className="w-full text-xs px-3 py-2 rounded-xl bg-white/20 border border-white/30 placeholder:text-emerald-100/70 text-white focus:bg-white focus:text-gray-900 focus:outline-hidden transition-all resize-none leading-relaxed"
                     />
                   </div>
                 </div>
@@ -546,7 +564,7 @@ export default function Pricing() {
                       key={pkg.id}
                       onClick={() => navigate(`/pricing/${pkg.id}`)}
                       style={{
-                        backgroundColor: palette.bg,
+                        background: palette.bg,
                         boxShadow: FRAMER_BOX_SHADOW,
                         borderRadius: 24,
                       }}
@@ -560,35 +578,29 @@ export default function Pricing() {
                             {pkg.badge || `Tier ${i + 1}`}
                           </span>
                           {pkg.popular && (
-                            <span className="bg-gray-950 text-white text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full shadow-xs">
+                            <span className="bg-white/20 backdrop-blur-md text-white border border-white/35 text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full shadow-xs">
                               Popular
                             </span>
                           )}
                         </div>
 
-                        <h3 className="text-xl font-black uppercase tracking-tight leading-tight mb-2">
+                        <h3 className="text-xl font-black uppercase tracking-tight leading-tight mb-2 text-white">
                           {pkg.name}
                         </h3>
 
-                        <p className={`text-xs font-bold uppercase tracking-wider mb-3 leading-snug ${
-                          palette.isDarkText ? 'text-gray-800' : 'text-white/80'
-                        }`}>
+                        <p className="text-xs font-bold uppercase tracking-wider mb-3 leading-snug text-white/90">
                           {pkg.tagline}
                         </p>
 
-                        <p className={`text-xs leading-relaxed mb-4 line-clamp-2 ${
-                          palette.isDarkText ? 'text-gray-700' : 'text-white/70'
-                        }`}>
+                        <p className="text-xs leading-relaxed mb-4 line-clamp-2 text-white/75">
                           {pkg.summary}
                         </p>
 
-                        <div className="space-y-2 pt-3 border-t border-black/10 dark:border-white/10">
+                        <div className="space-y-2 pt-3 border-t border-white/20">
                           {pkg.keyHighlights.slice(0, 3).map((hl, hIdx) => (
                             <div key={hIdx} className="flex items-start gap-2">
                               <CheckCircle2 className={`w-4 h-4 shrink-0 mt-0.5 ${palette.check}`} />
-                              <span className={`text-xs font-semibold leading-tight ${
-                                palette.isDarkText ? 'text-gray-900' : 'text-white/90'
-                              }`}>
+                              <span className="text-xs font-semibold leading-tight text-white/95">
                                 {hl}
                               </span>
                             </div>
@@ -596,14 +608,14 @@ export default function Pricing() {
                         </div>
                       </div>
 
-                      <div className="pt-4 border-t border-black/10 dark:border-white/10">
+                      <div className="pt-4 border-t border-white/20">
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             navigate(`/pricing/${pkg.id}`);
                           }}
-                          className={`w-full py-3 px-4 rounded-full text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer shadow-sm ${palette.btn}`}
+                          className={`w-full py-3 px-4 rounded-full text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer shadow-md ${palette.btn}`}
                         >
                           <FileText size={14} />
                           <span>Open Proposal</span>
@@ -617,7 +629,7 @@ export default function Pricing() {
                 {/* Mobile Custom Card */}
                 <div
                   style={{
-                    backgroundColor: CUSTOM_PALETTE.bg,
+                    background: CUSTOM_PALETTE.bg,
                     boxShadow: FRAMER_BOX_SHADOW,
                     borderRadius: 24,
                   }}
@@ -625,8 +637,7 @@ export default function Pricing() {
                 >
                   <div>
                     <div className="flex items-center justify-between gap-2 mb-4">
-                      <span className={`text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full border ${CUSTOM_PALETTE.pill} flex items-center gap-1`}>
-                        <Sparkles size={11} />
+                      <span className={`text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full border ${CUSTOM_PALETTE.pill}`}>
                         Custom Tier
                       </span>
                       <span className="bg-white text-emerald-950 text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full shadow-xs">
@@ -653,20 +664,29 @@ export default function Pricing() {
                       </div>
                     </div>
 
-                    <div className="space-y-2 pt-3 mt-3 border-t border-white/15">
-                      <input
-                        type="text"
-                        value={customName}
-                        onChange={(e) => setCustomName(e.target.value)}
-                        placeholder="Your Name"
-                        className="w-full text-xs px-3 py-2 rounded-xl bg-white/20 border border-white/30 placeholder:text-emerald-100/70 text-white focus:bg-white focus:text-gray-900 focus:outline-hidden transition-all"
-                      />
-                      <input
-                        type="tel"
-                        value={customPhone}
-                        onChange={(e) => setCustomPhone(e.target.value)}
-                        placeholder="WhatsApp Number"
-                        className="w-full text-xs px-3 py-2 rounded-xl bg-white/20 border border-white/30 placeholder:text-emerald-100/70 text-white focus:bg-white focus:text-gray-900 focus:outline-hidden transition-all"
+                    <div className="space-y-2 pt-2.5 mt-2.5 border-t border-white/15">
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          value={customName}
+                          onChange={(e) => setCustomName(e.target.value)}
+                          placeholder="Your Name"
+                          className="w-full text-xs px-2.5 py-2 rounded-xl bg-white/20 border border-white/30 placeholder:text-emerald-100/70 text-white focus:bg-white focus:text-gray-900 focus:outline-hidden transition-all"
+                        />
+                        <input
+                          type="tel"
+                          value={customPhone}
+                          onChange={(e) => setCustomPhone(e.target.value)}
+                          placeholder="WhatsApp No."
+                          className="w-full text-xs px-2.5 py-2 rounded-xl bg-white/20 border border-white/30 placeholder:text-emerald-100/70 text-white focus:bg-white focus:text-gray-900 focus:outline-hidden transition-all"
+                        />
+                      </div>
+                      <textarea
+                        rows={2}
+                        value={customQuery}
+                        onChange={(e) => setCustomQuery(e.target.value)}
+                        placeholder={currentCategory.customPlaceholder}
+                        className="w-full text-xs px-3 py-2 rounded-xl bg-white/20 border border-white/30 placeholder:text-emerald-100/70 text-white focus:bg-white focus:text-gray-900 focus:outline-hidden transition-all resize-none leading-relaxed"
                       />
                     </div>
                   </div>
@@ -703,7 +723,7 @@ export default function Pricing() {
                   transition={{ type: "spring", bounce: 0.2, duration: 0.3 }}
                   onClick={() => navigate(`/pricing/${pkg.id}`)}
                   style={{
-                    backgroundColor: palette.bg,
+                    background: palette.bg,
                     boxShadow: FRAMER_BOX_SHADOW,
                     borderRadius: 24,
                   }}
@@ -717,35 +737,29 @@ export default function Pricing() {
                         {pkg.badge || `Tier ${i + 1}`}
                       </span>
                       {pkg.popular && (
-                        <span className="bg-gray-950 text-white text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full shadow-xs">
+                        <span className="bg-white/20 backdrop-blur-md text-white border border-white/35 text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full shadow-xs">
                           Popular
                         </span>
                       )}
                     </div>
 
-                    <h3 className="text-xl font-black uppercase tracking-tight leading-tight mb-2">
+                    <h3 className="text-xl font-black uppercase tracking-tight leading-tight mb-2 text-white">
                       {pkg.name}
                     </h3>
 
-                    <p className={`text-xs font-bold uppercase tracking-wider mb-3 leading-snug ${
-                      palette.isDarkText ? 'text-gray-800' : 'text-white/80'
-                    }`}>
+                    <p className="text-xs font-bold uppercase tracking-wider mb-3 leading-snug text-white/90">
                       {pkg.tagline}
                     </p>
 
-                    <p className={`text-xs leading-relaxed mb-4 line-clamp-2 ${
-                      palette.isDarkText ? 'text-gray-700' : 'text-white/70'
-                    }`}>
+                    <p className="text-xs leading-relaxed mb-4 line-clamp-2 text-white/75">
                       {pkg.summary}
                     </p>
 
-                    <div className="space-y-2 pt-3 border-t border-black/10 dark:border-white/10">
+                    <div className="space-y-2 pt-3 border-t border-white/20">
                       {pkg.keyHighlights.slice(0, 3).map((hl, hIdx) => (
                         <div key={hIdx} className="flex items-start gap-2">
                           <CheckCircle2 className={`w-4 h-4 shrink-0 mt-0.5 ${palette.check}`} />
-                          <span className={`text-xs font-semibold leading-tight ${
-                            palette.isDarkText ? 'text-gray-900' : 'text-white/90'
-                          }`}>
+                          <span className="text-xs font-semibold leading-tight text-white/95">
                             {hl}
                           </span>
                         </div>
@@ -753,14 +767,14 @@ export default function Pricing() {
                     </div>
                   </div>
 
-                  <div className="pt-4 border-t border-black/10 dark:border-white/10">
+                  <div className="pt-4 border-t border-white/20">
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         navigate(`/pricing/${pkg.id}`);
                       }}
-                      className={`w-full py-3 px-4 rounded-full text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer shadow-sm ${palette.btn}`}
+                      className={`w-full py-3 px-4 rounded-full text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer shadow-md ${palette.btn}`}
                     >
                       <FileText size={14} />
                       <span>Open Proposal</span>
@@ -776,7 +790,7 @@ export default function Pricing() {
               whileHover={{ y: -8, scale: 1.02 }}
               transition={{ type: "spring", bounce: 0.2, duration: 0.3 }}
               style={{
-                backgroundColor: CUSTOM_PALETTE.bg,
+                background: CUSTOM_PALETTE.bg,
                 boxShadow: FRAMER_BOX_SHADOW,
                 borderRadius: 24,
               }}
@@ -784,8 +798,7 @@ export default function Pricing() {
             >
               <div>
                 <div className="flex items-center justify-between gap-2 mb-4">
-                  <span className={`text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full border ${CUSTOM_PALETTE.pill} flex items-center gap-1`}>
-                    <Sparkles size={11} />
+                  <span className={`text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full border ${CUSTOM_PALETTE.pill}`}>
                     Custom Tier
                   </span>
                   <span className="bg-white text-emerald-950 text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full shadow-xs">
@@ -812,20 +825,29 @@ export default function Pricing() {
                   </div>
                 </div>
 
-                <div className="space-y-2 pt-3 mt-3 border-t border-white/15">
-                  <input
-                    type="text"
-                    value={customName}
-                    onChange={(e) => setCustomName(e.target.value)}
-                    placeholder="Your Name"
-                    className="w-full text-xs px-3 py-2 rounded-xl bg-white/20 border border-white/30 placeholder:text-emerald-100/70 text-white focus:bg-white focus:text-gray-900 focus:outline-hidden transition-all"
-                  />
-                  <input
-                    type="tel"
-                    value={customPhone}
-                    onChange={(e) => setCustomPhone(e.target.value)}
-                    placeholder="WhatsApp Number"
-                    className="w-full text-xs px-3 py-2 rounded-xl bg-white/20 border border-white/30 placeholder:text-emerald-100/70 text-white focus:bg-white focus:text-gray-900 focus:outline-hidden transition-all"
+                <div className="space-y-2 pt-2.5 mt-2.5 border-t border-white/15">
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      value={customName}
+                      onChange={(e) => setCustomName(e.target.value)}
+                      placeholder="Your Name"
+                      className="w-full text-xs px-2.5 py-2 rounded-xl bg-white/20 border border-white/30 placeholder:text-emerald-100/70 text-white focus:bg-white focus:text-gray-900 focus:outline-hidden transition-all"
+                    />
+                    <input
+                      type="tel"
+                      value={customPhone}
+                      onChange={(e) => setCustomPhone(e.target.value)}
+                      placeholder="WhatsApp No."
+                      className="w-full text-xs px-2.5 py-2 rounded-xl bg-white/20 border border-white/30 placeholder:text-emerald-100/70 text-white focus:bg-white focus:text-gray-900 focus:outline-hidden transition-all"
+                    />
+                  </div>
+                  <textarea
+                    rows={2}
+                    value={customQuery}
+                    onChange={(e) => setCustomQuery(e.target.value)}
+                    placeholder={currentCategory.customPlaceholder}
+                    className="w-full text-xs px-3 py-2 rounded-xl bg-white/20 border border-white/30 placeholder:text-emerald-100/70 text-white focus:bg-white focus:text-gray-900 focus:outline-hidden transition-all resize-none leading-relaxed"
                   />
                 </div>
               </div>

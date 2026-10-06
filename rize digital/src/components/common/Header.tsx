@@ -5,9 +5,21 @@ import { Link, useLocation } from 'react-router-dom';
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false);
   const [isServicesOpen, setIsServicesOpen] = useState(false);
+  const [isCompanyOpen, setIsCompanyOpen] = useState(false);
+  const [isResourcesOpen, setIsResourcesOpen] = useState(false);
   const location = useLocation();
   const isActive = (path: string) => location.pathname === path;
   const isServicesActive = () => location.pathname.startsWith('/services');
+  const isCompanyActive = () => 
+    location.pathname.startsWith('/about') || 
+    location.pathname.startsWith('/team') || 
+    location.pathname.startsWith('/careers');
+  const isResourcesActive = () => 
+    location.pathname.startsWith('/blogs') || 
+    location.pathname.startsWith('/faq') || 
+    location.pathname.startsWith('/case-studies') || 
+    location.pathname.startsWith('/pricing') ||
+    location.pathname.startsWith('/locations');
 
   const handleLogoClick = () => {
     if (location.pathname === '/') {
@@ -181,20 +193,16 @@ export default function Header() {
       {/* Mobile Menu Dropdown */}
       {isOpen && (
         <div className="w-full max-w-7xl mt-2 bg-white rounded-3xl p-4 shadow-lg border border-gray-100 flex flex-col gap-1 xl:hidden max-h-[70vh] overflow-y-auto">
+          {/* Home */}
           <Link
             to="/"
             onClick={() => setIsOpen(false)}
             className={`${isActive('/') ? 'bg-rize-primary text-white' : 'text-gray-700 hover:bg-gray-50'} text-xs font-bold tracking-wide px-5 py-3 rounded-2xl transition-colors uppercase block`}
           >
-            Company
+            Home
           </Link>
-          <Link
-            to="/about"
-            onClick={() => setIsOpen(false)}
-            className={`${isActive('/about') ? 'bg-rize-primary text-white' : 'text-gray-700 hover:bg-gray-50'} text-xs font-bold tracking-wide px-5 py-3 rounded-2xl transition-colors uppercase block`}
-          >
-            About Us
-          </Link>
+
+          {/* Our Services Accordion */}
           <div className="flex flex-col">
             <button
               onClick={() => setIsServicesOpen(!isServicesOpen)}
@@ -301,13 +309,8 @@ export default function Header() {
               </div>
             )}
           </div>
-          <Link
-            to="/team"
-            onClick={() => setIsOpen(false)}
-            className={`${isActive('/team') ? 'bg-rize-primary text-white' : 'text-gray-700 hover:bg-gray-50'} text-xs font-bold tracking-wide px-5 py-3 rounded-2xl transition-colors uppercase block`}
-          >
-            Our Team
-          </Link>
+
+          {/* Portfolio */}
           <Link
             to="/portfolio"
             onClick={() => setIsOpen(false)}
@@ -315,27 +318,96 @@ export default function Header() {
           >
             Our Portfolio
           </Link>
-          <Link
-            to="/locations"
-            onClick={() => setIsOpen(false)}
-            className={`${isActive('/locations') ? 'bg-rize-primary text-white' : 'text-gray-700 hover:bg-gray-50'} text-xs font-bold tracking-wide px-5 py-3 rounded-2xl transition-colors uppercase block`}
-          >
-            Our Locations
-          </Link>
-          <Link
-            to="/careers"
-            onClick={() => setIsOpen(false)}
-            className={`${isActive('/careers') ? 'bg-rize-primary text-white' : 'text-gray-700 hover:bg-gray-50'} text-xs font-bold tracking-wide px-5 py-3 rounded-2xl transition-colors uppercase block`}
-          >
-            Careers
-          </Link>
-          <Link
-            to="/blogs"
-            onClick={() => setIsOpen(false)}
-            className={`${isActive('/blogs') ? 'bg-rize-primary text-white' : 'text-gray-700 hover:bg-gray-50'} text-xs font-bold tracking-wide px-5 py-3 rounded-2xl transition-colors uppercase block`}
-          >
-            Blogs
-          </Link>
+
+          {/* Company Accordion */}
+          <div className="flex flex-col">
+            <button
+              onClick={() => setIsCompanyOpen(!isCompanyOpen)}
+              className={`${isCompanyOpen || isCompanyActive() ? 'bg-rize-primary text-white' : 'text-gray-700 hover:bg-gray-50'} text-xs font-bold tracking-wide px-5 py-3 rounded-2xl transition-colors uppercase flex justify-between items-center w-full cursor-pointer`}
+            >
+              <span>Company</span>
+              <span className={`text-[8px] transition-transform duration-300 ${isCompanyOpen ? 'rotate-90' : ''}`}>▶</span>
+            </button>
+
+            {isCompanyOpen && (
+              <div className="pl-6 flex flex-col gap-1 mt-1 border-l-2 border-blue-500/20 ml-5">
+                <Link
+                  to="/about"
+                  onClick={() => setIsOpen(false)}
+                  className={`${isActive('/about') ? 'text-rize-primary font-bold bg-blue-50/60' : 'text-gray-600 hover:bg-gray-50'} text-xs font-bold tracking-wide px-4 py-2.5 rounded-xl transition-colors uppercase block text-left`}
+                >
+                  About Us
+                </Link>
+                <Link
+                  to="/team"
+                  onClick={() => setIsOpen(false)}
+                  className={`${isActive('/team') ? 'text-rize-primary font-bold bg-blue-50/60' : 'text-gray-600 hover:bg-gray-50'} text-xs font-bold tracking-wide px-4 py-2.5 rounded-xl transition-colors uppercase block text-left`}
+                >
+                  Our Team
+                </Link>
+                <Link
+                  to="/careers"
+                  onClick={() => setIsOpen(false)}
+                  className={`${isActive('/careers') ? 'text-rize-primary font-bold bg-blue-50/60' : 'text-gray-600 hover:bg-gray-50'} text-xs font-bold tracking-wide px-4 py-2.5 rounded-xl transition-colors uppercase block text-left`}
+                >
+                  Careers
+                </Link>
+              </div>
+            )}
+          </div>
+
+          {/* Resources Accordion */}
+          <div className="flex flex-col">
+            <button
+              onClick={() => setIsResourcesOpen(!isResourcesOpen)}
+              className={`${isResourcesOpen || isResourcesActive() ? 'bg-rize-primary text-white' : 'text-gray-700 hover:bg-gray-50'} text-xs font-bold tracking-wide px-5 py-3 rounded-2xl transition-colors uppercase flex justify-between items-center w-full cursor-pointer`}
+            >
+              <span>Resources</span>
+              <span className={`text-[8px] transition-transform duration-300 ${isResourcesOpen ? 'rotate-90' : ''}`}>▶</span>
+            </button>
+
+            {isResourcesOpen && (
+              <div className="pl-6 flex flex-col gap-1 mt-1 border-l-2 border-blue-500/20 ml-5">
+                <Link
+                  to="/pricing"
+                  onClick={() => setIsOpen(false)}
+                  className={`${isActive('/pricing') ? 'text-rize-primary font-bold bg-blue-50/60' : 'text-gray-600 hover:bg-gray-50'} text-xs font-bold tracking-wide px-4 py-2.5 rounded-xl transition-colors uppercase block text-left`}
+                >
+                  Pricing
+                </Link>
+                <Link
+                  to="/case-studies"
+                  onClick={() => setIsOpen(false)}
+                  className={`${isActive('/case-studies') ? 'text-rize-primary font-bold bg-blue-50/60' : 'text-gray-600 hover:bg-gray-50'} text-xs font-bold tracking-wide px-4 py-2.5 rounded-xl transition-colors uppercase block text-left`}
+                >
+                  Case Studies
+                </Link>
+                <Link
+                  to="/blogs"
+                  onClick={() => setIsOpen(false)}
+                  className={`${isActive('/blogs') ? 'text-rize-primary font-bold bg-blue-50/60' : 'text-gray-600 hover:bg-gray-50'} text-xs font-bold tracking-wide px-4 py-2.5 rounded-xl transition-colors uppercase block text-left`}
+                >
+                  Blogs
+                </Link>
+                <Link
+                  to="/faq"
+                  onClick={() => setIsOpen(false)}
+                  className={`${isActive('/faq') ? 'text-rize-primary font-bold bg-blue-50/60' : 'text-gray-600 hover:bg-gray-50'} text-xs font-bold tracking-wide px-4 py-2.5 rounded-xl transition-colors uppercase block text-left`}
+                >
+                  FAQ
+                </Link>
+                <Link
+                  to="/locations"
+                  onClick={() => setIsOpen(false)}
+                  className={`${isActive('/locations') || location.pathname.startsWith('/locations/') ? 'text-rize-primary font-bold bg-blue-50/60' : 'text-gray-600 hover:bg-gray-50'} text-xs font-bold tracking-wide px-4 py-2.5 rounded-xl transition-colors uppercase block text-left`}
+                >
+                  Locations
+                </Link>
+              </div>
+            )}
+          </div>
+
+          {/* Contact */}
           <Link
             to="/contact"
             onClick={() => setIsOpen(false)}
@@ -343,6 +415,8 @@ export default function Header() {
           >
             Contact Us
           </Link>
+
+          {/* Let's Talk CTA */}
           <a
             href="https://wa.me/919024615510"
             target="_blank"
