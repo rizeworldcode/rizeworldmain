@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, Sparkles, Building2, ArrowUpRight } from 'lucide-react';
+import { MapPin, Sparkles, Building2, ArrowUpRight, ChevronDown, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import SEO from '../components/common/SEO';
 import Breadcrumbs from '../components/common/Breadcrumbs';
@@ -69,9 +69,78 @@ const STATE_IMAGES: Record<string, string> = {
   "assam": "https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&q=80&w=400"
 };
 
+const LOCATION_SERVICES = [
+  {
+    title: "Search Engine Optimization",
+    desc: "Improve your website's visibility on search engines with a practical SEO strategy covering keyword research, on-page optimization, technical SEO, content, and link building.",
+    link: "/services/seo"
+  },
+  {
+    title: "Local SEO",
+    desc: "Get discovered by customers searching for businesses near them. We work on local search optimization, business listings, location-focused content, and other important local SEO factors.",
+    link: "/services/seo"
+  },
+  {
+    title: "Social Media Marketing",
+    desc: "Build an active social presence with content that reflects your brand and connects with your target audience. Our social media strategies focus on consistency, engagement, and business objectives.",
+    link: "/services/social-media-marketing"
+  },
+  {
+    title: "Google & Paid Advertising",
+    desc: "Reach potential customers faster with targeted paid campaigns. We help businesses plan, launch, and optimize Google Ads and other performance campaigns based on their goals and budget.",
+    link: "/services/paid-ads"
+  },
+  {
+    title: "Website Development",
+    desc: "Your website should do more than look good. We create responsive, user-friendly websites designed to communicate your offering clearly and make it easier for visitors to take action.",
+    link: "/services/web-development"
+  },
+  {
+    title: "Content Marketing",
+    desc: "Useful content can bring the right audience to your website and support your SEO efforts. We create content around real customer questions, search intent, and your business expertise.",
+    link: "/services/content-marketing"
+  }
+];
+
+const LOCATION_FAQS = [
+  {
+    question: "Which locations does RizeWorld serve?",
+    answer: "RizeWorld works with businesses across major Indian cities and regional markets, including Delhi, Mumbai, Bangalore, Hyderabad, Pune, Jaipur, Gurgaon, Noida, Chennai, Ahmedabad, and many more."
+  },
+  {
+    question: "Do I need to be located in one of the listed cities?",
+    answer: "No. Our listed locations represent some of the markets we serve. Businesses from other cities can also work with our team remotely."
+  },
+  {
+    question: "Can RizeWorld help my business attract local customers?",
+    answer: "Yes. We can use local SEO, content, paid advertising, social media, and website optimization to help businesses become more visible to customers in their target areas."
+  },
+  {
+    question: "Do you create different strategies for different cities?",
+    answer: "Yes. Every market has different competition, customer behaviour, and search patterns. We adapt our approach according to the business and the market it wants to reach."
+  },
+  {
+    question: "Can you manage marketing across multiple locations?",
+    answer: "Yes. We can help businesses build a broader digital marketing strategy while tailoring targeting and campaigns for individual cities or markets."
+  },
+  {
+    question: "What services are useful for local business growth?",
+    answer: "Depending on your goals, services such as local SEO, SEO, Google Ads, social media marketing, content marketing, website development, and UI/UX design can work together to improve your online presence."
+  },
+  {
+    question: "Can RizeWorld help us expand into a new market?",
+    answer: "Yes. We can help you identify digital opportunities, understand your target audience, improve search visibility, and build campaigns designed for the new market."
+  }
+];
+
 export default function Locations() {
   const [hoveredCity, setHoveredCity] = useState<string | null>(null);
   const [hoveredState, setHoveredState] = useState<string | null>(null);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
+
+  const toggleFaq = (index: number) => {
+    setOpenFaq(openFaq === index ? null : index);
+  };
 
   const schemaMarkup = {
     "@context": "https://schema.org",
@@ -83,6 +152,19 @@ export default function Locations() {
       "position": i + 1,
       "url": `https://rizeworld.in/service/digital-marketing-agency-in-${c.slug}`,
       "name": `Digital Marketing Agency in ${c.name}`
+    }))
+  };
+
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": LOCATION_FAQS.map(faq => ({
+      "@type": "Question",
+      "name": faq.question,
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": faq.answer
+      }
     }))
   };
 
@@ -109,25 +191,41 @@ export default function Locations() {
     <div className="min-h-screen bg-stone-50 pt-32 pb-24 text-left font-sans selection:bg-orange-500 selection:text-white">
       <SEO 
         title="Our Serviced Cities & Regional Office Mappings | RizeWorld"
-        description="Explore the directory of local cities and regional hubs served by RizeWorld Digital. Connect with localized SEO and marketing support near you."
+        description="From fast-moving metros to emerging business hubs, RizeWorld helps brands turn local opportunities into meaningful digital growth across India."
         canonicalUrl="https://rizeworld.in/locations"
-        schema={[schemaMarkup, breadcrumbSchema]}
+        schema={[schemaMarkup, faqSchema, breadcrumbSchema]}
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-12">
         <Breadcrumbs items={[{ name: "Locations" }]} />
       </div>
 
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-24">
-        <div className="text-center mb-16">
+      {/* Hero Header Section */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-20">
+        <div className="text-center max-w-4xl mx-auto">
           <span className="text-xs font-black uppercase tracking-widest text-orange-500 flex items-center justify-center gap-2 mb-4">
-            <Sparkles className="w-4 h-4" /> Global Footprint
+            <Sparkles className="w-4 h-4" /> WHERE IDEAS MEET OPPORTUNITY
           </span>
-          <h1 className="text-4xl md:text-6xl font-black text-gray-950 uppercase tracking-tighter mb-6">
-            Cities We Serve.
+          <h1 className="text-4xl md:text-6xl font-black text-gray-950 uppercase tracking-tighter mb-6 leading-tight">
+            BUILT FOR BUSINESSES, WHEREVER THEY GROW.
           </h1>
-          <p className="text-gray-500 text-sm md:text-base max-w-xl mx-auto">
-            RizeWorld delivers premium marketing capabilities, search rank growth, and enterprise software engineering locally across 38 regional markets.
+          <p className="text-gray-600 text-sm md:text-base max-w-3xl mx-auto leading-relaxed">
+            From fast-moving metros to emerging business hubs, RizeWorld helps brands turn local opportunities into meaningful digital growth. Our team brings SEO, paid media, social, web, and creative expertise together for businesses across India.
+          </p>
+        </div>
+      </section>
+
+      {/* Digital Reach & Cities Grid Section */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-24">
+        <div className="text-center mb-16 max-w-3xl mx-auto">
+          <span className="text-xs font-black uppercase tracking-widest text-orange-500 flex items-center justify-center gap-2 mb-4">
+            <Building2 className="w-4 h-4" /> OUR DIGITAL REACH
+          </span>
+          <h2 className="text-3xl md:text-5xl font-black text-gray-950 uppercase tracking-tighter mb-6 leading-tight">
+            YOUR MARKET IS LOCAL. YOUR POTENTIAL DOESN'T HAVE TO BE.
+          </h2>
+          <p className="text-gray-600 text-sm md:text-base leading-relaxed">
+            Different cities bring different audiences, competitors, and buying habits. That's why we don't believe in copying the same marketing strategy from one market to another. We shape our approach around where your customers are, what they are searching for, and how your business wants to grow.
           </p>
         </div>
 
@@ -239,6 +337,106 @@ export default function Locations() {
                   <ArrowUpRight size={14} className="text-gray-300 group-hover:text-orange-500 transition-colors shrink-0 relative z-10" />
                 </Link>
               </motion.div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Digital Marketing Services We Offer Section */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-24">
+        <div className="text-center mb-16 max-w-3xl mx-auto">
+          <span className="text-xs font-black uppercase tracking-widest text-orange-500 flex items-center justify-center gap-2 mb-4">
+            <Sparkles className="w-4 h-4" /> Full Spectrum Solutions
+          </span>
+          <h2 className="text-3xl md:text-5xl font-black text-gray-950 uppercase tracking-tighter mb-6">
+            Digital Marketing Services We Offer
+          </h2>
+          <p className="text-gray-600 text-sm md:text-base leading-relaxed">
+            Comprehensive digital marketing solutions tailored to help your brand dominate local search queries, scale client engagement, and maximize return on ad spend.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {LOCATION_SERVICES.map((srv, idx) => (
+            <Link
+              key={idx}
+              to={srv.link}
+              className="bg-white border border-gray-200/85 hover:border-orange-500 p-8 rounded-3xl flex flex-col justify-between transition-all duration-300 shadow-2xs hover:shadow-md group"
+            >
+              <div>
+                <div className="w-12 h-12 rounded-2xl bg-orange-50 text-orange-500 flex items-center justify-center mb-6 group-hover:bg-orange-500 group-hover:text-white transition-colors">
+                  <CheckCircle2 size={24} />
+                </div>
+                <h3 className="text-xl font-black uppercase tracking-tight text-gray-950 group-hover:text-orange-500 transition-colors mb-3">
+                  {srv.title}
+                </h3>
+                <p className="text-gray-600 text-xs md:text-sm leading-relaxed">
+                  {srv.desc}
+                </p>
+              </div>
+              <div className="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between text-xs font-bold uppercase tracking-wider text-orange-500 group-hover:translate-x-1 transition-transform">
+                <span>Learn More</span>
+                <ArrowUpRight size={16} />
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {/* FAQs Section */}
+      <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mb-16">
+        <div className="text-center mb-12">
+          <span className="text-xs font-black uppercase tracking-widest text-orange-500 flex items-center justify-center gap-2 mb-4">
+            <Sparkles className="w-4 h-4" /> Clarifications & Answers
+          </span>
+          <h2 className="text-3xl md:text-5xl font-black text-gray-950 uppercase tracking-tighter mb-4">
+            Frequently Asked Questions
+          </h2>
+          <p className="text-gray-600 text-sm max-w-xl mx-auto">
+            Everything you need to know about our location coverage and localized digital marketing capabilities.
+          </p>
+        </div>
+
+        <div className="space-y-4">
+          {LOCATION_FAQS.map((faq, index) => {
+            const isOpen = openFaq === index;
+            return (
+              <div
+                key={index}
+                className="bg-white border border-gray-200/85 rounded-2xl overflow-hidden shadow-2xs transition-all duration-300"
+              >
+                <button
+                  type="button"
+                  onClick={() => toggleFaq(index)}
+                  className="w-full p-6 text-left flex items-center justify-between gap-4 cursor-pointer hover:bg-stone-50/80 transition-colors"
+                >
+                  <span className="font-black text-gray-950 text-sm md:text-base uppercase tracking-tight">
+                    {faq.question}
+                  </span>
+                  <div
+                    className={`w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center shrink-0 text-gray-600 transition-transform duration-300 ${
+                      isOpen ? "rotate-180 bg-orange-100 text-orange-600" : ""
+                    }`}
+                  >
+                    <ChevronDown size={18} />
+                  </div>
+                </button>
+
+                <AnimatePresence initial={false}>
+                  {isOpen && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.3, ease: "easeInOut" }}
+                    >
+                      <div className="px-6 pb-6 pt-2 text-gray-600 text-xs md:text-sm leading-relaxed border-t border-gray-100">
+                        {faq.answer}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             );
           })}
         </div>

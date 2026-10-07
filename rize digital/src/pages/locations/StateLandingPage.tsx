@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useParams, Navigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, ArrowUpRight, Building2, Briefcase } from 'lucide-react';
+import { MapPin, ArrowUpRight, Building2, Briefcase, ChevronDown, CheckCircle2, Sparkles, Target, Users } from 'lucide-react';
 import SEO from '../../components/common/SEO';
 import Breadcrumbs from '../../components/common/Breadcrumbs';
 import InternalLinkSection from '../../components/common/InternalLinkSection';
 import STATES from '../../data/states';
 import citiesData from '../../data/cities.json';
+import { STATE_CUSTOM_CONTENT } from '../../data/stateContent';
 
 const CITY_NAME_MAP: Record<string, string> = {};
 citiesData.forEach((c) => { CITY_NAME_MAP[c.slug] = c.name; });
@@ -58,10 +59,13 @@ export default function StateLandingPage() {
   const { stateSlug } = useParams();
   const state = STATES.find(s => s.slug === stateSlug);
   const [hoveredCity, setHoveredCity] = useState<string | null>(null);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   if (!state) {
     return <Navigate to="/locations" replace />;
   }
+
+  const customContent = STATE_CUSTOM_CONTENT[state.slug];
 
   const stateCities = state.cities
     .map(slug => ({ slug, name: CITY_NAME_MAP[slug] || slug }))
@@ -90,6 +94,19 @@ export default function StateLandingPage() {
     ]
   };
 
+  const faqSchema = customContent?.faqs && customContent.faqs.length > 0 ? {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": customContent.faqs.slice(0, 6).map(f => ({
+      "@type": "Question",
+      "name": f.question,
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": f.answer
+      }
+    }))
+  } : null;
+
   const SERVICES = [
     { name: "Digital Marketing", path: "/services/digital-marketing" },
     { name: "SEO", path: "/services/seo" },
@@ -99,13 +116,21 @@ export default function StateLandingPage() {
     { name: "Content Marketing", path: "/services/content-marketing" },
   ];
 
+  const seoTitle = customContent?.heroHeadline 
+    ? `${customContent.heroHeadline} | RizeWorld`
+    : `Digital Marketing Agency in ${state.name} | RizeWorld`;
+
+  const seoDesc = customContent?.heroDescription
+    ? customContent.heroDescription
+    : `RizeWorld offers premium digital marketing, SEO, paid ads, social media, and web development services across ${state.name}. Serving ${stateCities.map(c => c.name).join(', ')}.`;
+
   return (
     <div className="min-h-screen bg-stone-50 pt-32 pb-24 text-left font-sans selection:bg-orange-500 selection:text-white">
       <SEO
-        title={`Digital Marketing Agency in ${state.name} | RizeWorld`}
-        description={`RizeWorld offers premium digital marketing, SEO, paid ads, social media, and web development services across ${state.name}. Serving ${stateCities.map(c => c.name).join(', ')}.`}
+        title={seoTitle}
+        description={seoDesc}
         canonicalUrl={`https://rizeworld.in/locations/${state.slug}`}
-        schema={[localBusinessSchema, breadcrumbSchema]}
+        schema={faqSchema ? [localBusinessSchema, breadcrumbSchema, faqSchema] : [localBusinessSchema, breadcrumbSchema]}
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-12">
@@ -116,32 +141,38 @@ export default function StateLandingPage() {
       </div>
 
       {/* Hero */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-24">
-        <div className="text-center mb-16">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-20">
+        <div className="text-center max-w-4xl mx-auto">
           <span className="text-xs font-black uppercase tracking-widest text-orange-500 flex items-center justify-center gap-2 mb-4">
-            <Building2 className="w-4 h-4" /> Regional Hub
+            <Building2 className="w-4 h-4" /> {customContent?.eyebrow || `${state.name} Regional Hub`}
           </span>
-          <h1 className="text-4xl md:text-6xl font-black text-gray-950 uppercase tracking-tighter mb-6">
-            Digital Marketing in {state.name}
+          <h1 className="text-4xl md:text-6xl font-black text-gray-950 uppercase tracking-tighter mb-6 leading-tight">
+            {customContent?.heroHeadline || `Digital Marketing in ${state.name}`}
           </h1>
-          <p className="text-gray-500 text-sm md:text-base max-w-2xl mx-auto">
-            RizeWorld delivers localized digital marketing campaigns, SEO optimization, and custom web solutions across {stateCities.length} cities in {state.name}.
+          <p className="text-gray-600 text-sm md:text-base max-w-3xl mx-auto leading-relaxed">
+            {customContent?.heroDescription || `RizeWorld delivers localized digital marketing campaigns, SEO optimization, and custom web solutions across ${stateCities.length} cities in ${state.name}.`}
           </p>
         </div>
       </section>
 
-      {/* Cities Grid */}
+      {/* Cities Grid Section */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-24">
         <div className="mb-12">
           <span className="text-xs font-bold uppercase tracking-widest text-orange-500 block mb-2">Our Presence</span>
-          <h2 className="text-3xl md:text-4xl font-black text-gray-950 uppercase tracking-tight">
+          <h2 className="text-3xl md:text-4xl font-black text-gray-950 uppercase tracking-tight mb-3">
             Cities We Serve in {state.name}
           </h2>
+          {customContent?.presenceSubtitle && (
+            <p className="text-gray-600 text-sm md:text-base max-w-2xl leading-relaxed">
+              {customContent.presenceSubtitle}
+            </p>
+          )}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {stateCities.map((city, idx) => {
             const isHovered = hoveredCity === city.slug;
+            const citySpecificDesc = customContent?.cityDescriptions?.[city.slug];
             return (
               <motion.div
                 key={city.slug}
@@ -154,7 +185,7 @@ export default function StateLandingPage() {
                   to={`/service/digital-marketing-agency-in-${city.slug}`}
                   onMouseEnter={() => setHoveredCity(city.slug)}
                   onMouseLeave={() => setHoveredCity(null)}
-                  className="bg-white border border-gray-200/80 rounded-3xl p-8 flex items-center gap-4 hover:border-orange-500/40 hover:shadow-lg transition-all duration-300 group cursor-pointer block relative overflow-hidden"
+                  className="bg-white border border-gray-200/80 rounded-3xl p-6 sm:p-8 flex flex-col justify-between hover:border-orange-500/60 hover:shadow-lg transition-all duration-300 group cursor-pointer block relative overflow-hidden h-full min-h-[160px]"
                 >
                   {/* Landmark background image on hover */}
                   <AnimatePresence>
@@ -171,29 +202,224 @@ export default function StateLandingPage() {
                           alt={city.name} 
                           className="w-full h-full object-cover"
                         />
-                        <div className="absolute inset-0 bg-gradient-to-r from-white/90 via-white/50 to-white/10" />
+                        <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/80 to-white/40" />
                       </motion.div>
                     )}
                   </AnimatePresence>
 
-                  <div className="w-12 h-12 rounded-2xl bg-orange-50 text-orange-500 flex items-center justify-center group-hover:bg-orange-500 group-hover:text-white transition-colors duration-300 shrink-0 relative z-10">
-                    <MapPin size={20} />
-                  </div>
-                  <div className="flex-1 relative z-10">
-                    <h3 className="text-sm font-black uppercase tracking-wider text-gray-950 group-hover:text-orange-500 transition-colors">
+                  <div>
+                    <div className="flex items-center justify-between mb-4 relative z-10">
+                      <div className="w-12 h-12 rounded-2xl bg-orange-50 text-orange-500 flex items-center justify-center group-hover:bg-orange-500 group-hover:text-white transition-colors duration-300 shrink-0">
+                        <MapPin size={20} />
+                      </div>
+                      <ArrowUpRight size={18} className="text-gray-300 group-hover:text-orange-500 transition-colors" />
+                    </div>
+
+                    <h3 className="text-base font-black uppercase tracking-wider text-gray-950 group-hover:text-orange-500 transition-colors mb-2 relative z-10">
                       {city.name}
                     </h3>
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest group-hover:text-orange-500/80 transition-colors">
-                      View Agency →
-                    </span>
+
+                    {citySpecificDesc ? (
+                      <p className="text-gray-600 text-xs leading-relaxed relative z-10 mb-4">
+                        {citySpecificDesc}
+                      </p>
+                    ) : (
+                      <p className="text-gray-400 text-[11px] leading-relaxed relative z-10 mb-4">
+                        Comprehensive localized digital marketing & SEO services for businesses in {city.name}.
+                      </p>
+                    )}
                   </div>
-                  <ArrowUpRight size={16} className="text-gray-300 group-hover:text-orange-500 transition-colors shrink-0 relative z-10" />
+
+                  <span className="text-[10px] font-bold text-orange-500 uppercase tracking-widest group-hover:translate-x-1 transition-transform relative z-10 flex items-center gap-1">
+                    View Agency Page →
+                  </span>
                 </Link>
               </motion.div>
             );
           })}
         </div>
       </section>
+
+      {/* Market Fit Section */}
+      {customContent?.marketFit && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-24">
+          <div className="bg-white border border-gray-200/85 rounded-[2.5rem] p-8 md:p-14 shadow-2xs">
+            <span className="text-xs font-black uppercase tracking-widest text-orange-500 flex items-center gap-2 mb-4">
+              <Target className="w-4 h-4" /> Market Alignment
+            </span>
+            <h2 className="text-2xl md:text-4xl font-black text-gray-950 uppercase tracking-tight mb-8 max-w-2xl">
+              {customContent.marketFit.headline}
+            </h2>
+            <div className="space-y-4 max-w-4xl text-gray-600 text-sm md:text-base leading-relaxed">
+              {customContent.marketFit.paragraphs.map((p, i) => (
+                <p key={i}>{p}</p>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Why Choose Section */}
+      {customContent?.whyChoose && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-24">
+          <div className="text-center mb-14 max-w-3xl mx-auto">
+            <span className="text-xs font-black uppercase tracking-widest text-orange-500 flex items-center justify-center gap-2 mb-3">
+              <Sparkles className="w-4 h-4" /> Strategic Advantage
+            </span>
+            <h2 className="text-3xl md:text-5xl font-black text-gray-950 uppercase tracking-tight mb-4">
+              {customContent.whyChoose.headline}
+            </h2>
+            {customContent.whyChoose.description && (
+              <p className="text-gray-600 text-sm md:text-base leading-relaxed max-w-2xl mx-auto">
+                {customContent.whyChoose.description}
+              </p>
+            )}
+          </div>
+
+          {customContent.whyChoose.points && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {customContent.whyChoose.points.map((pt, i) => (
+                <div
+                  key={i}
+                  className="bg-white border border-gray-200/85 rounded-3xl p-8 hover:border-orange-500/50 hover:shadow-md transition-all duration-300"
+                >
+                  <div className="w-12 h-12 rounded-2xl bg-orange-50 text-orange-500 flex items-center justify-center mb-6 font-black text-sm">
+                    0{i + 1}
+                  </div>
+                  <h3 className="text-lg font-black uppercase tracking-tight text-gray-950 mb-3">
+                    {pt.title}
+                  </h3>
+                  <p className="text-gray-600 text-xs md:text-sm leading-relaxed">
+                    {pt.desc}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {customContent.whyChoose.bullets && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-5xl mx-auto">
+              {customContent.whyChoose.bullets.map((b, i) => (
+                <div
+                  key={i}
+                  className="bg-white border border-gray-200/85 rounded-2xl p-6 flex items-start gap-4 hover:border-orange-500/50 hover:shadow-sm transition-all duration-300"
+                >
+                  <div className="w-8 h-8 rounded-xl bg-orange-50 text-orange-500 flex items-center justify-center shrink-0 mt-0.5">
+                    <CheckCircle2 size={18} />
+                  </div>
+                  <span className="text-sm font-black text-gray-950 uppercase tracking-tight leading-snug">
+                    {b}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {customContent.whyChoose.closingText && (
+            <p className="text-gray-600 text-sm md:text-base leading-relaxed max-w-3xl mx-auto text-center mt-8 font-medium">
+              {customContent.whyChoose.closingText}
+            </p>
+          )}
+        </section>
+      )}
+
+      {/* Expansion Section */}
+      {customContent?.expansionSection && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-24">
+          <div className="bg-white border border-gray-200/85 rounded-[2.5rem] p-8 md:p-14 shadow-2xs">
+            <span className="text-xs font-black uppercase tracking-widest text-orange-500 flex items-center gap-2 mb-4">
+              <Sparkles className="w-4 h-4" /> Scalable Reach
+            </span>
+            <h2 className="text-2xl md:text-4xl font-black text-gray-950 uppercase tracking-tight mb-6 max-w-2xl">
+              {customContent.expansionSection.headline}
+            </h2>
+            <div className="space-y-4 max-w-4xl text-gray-600 text-sm md:text-base leading-relaxed mb-8">
+              {customContent.expansionSection.paragraphs.map((p, i) => (
+                <p key={i}>{p}</p>
+              ))}
+            </div>
+            {customContent.expansionSection.ctaText && (
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4 pt-6 border-t border-gray-100">
+                <span className="text-sm md:text-base font-black uppercase tracking-tight text-gray-950">
+                  {customContent.expansionSection.ctaText}
+                </span>
+                <Link
+                  to={customContent.expansionSection.ctaLink || "/contact"}
+                  className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-black text-xs uppercase tracking-widest px-6 py-3 rounded-full transition-colors shadow-sm w-fit cursor-pointer"
+                >
+                  <span>{customContent.expansionSection.ctaButton || "Let's Talk →"}</span>
+                </Link>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* Our Approach Section */}
+      {customContent?.approach && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-24">
+          <div className="text-center mb-14 max-w-2xl mx-auto">
+            <span className="text-xs font-black uppercase tracking-widest text-orange-500 flex items-center justify-center gap-2 mb-3">
+              <Sparkles className="w-4 h-4" /> Methodology
+            </span>
+            <h2 className="text-3xl md:text-5xl font-black text-gray-950 uppercase tracking-tight">
+              {customContent.approach.headline}
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {customContent.approach.steps.map((st, i) => (
+              <div
+                key={i}
+                className="bg-white border border-gray-200/85 rounded-3xl p-6 sm:p-8 flex flex-col justify-between hover:border-orange-500/50 hover:shadow-md transition-all duration-300"
+              >
+                <div>
+                  <span className="text-2xl font-black text-orange-500 block mb-4">
+                    {st.number}.
+                  </span>
+                  <h3 className="text-base font-black uppercase tracking-tight text-gray-950 mb-3">
+                    {st.title}
+                  </h3>
+                  <p className="text-gray-600 text-xs leading-relaxed">
+                    {st.desc}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Who We Work With Section */}
+      {customContent?.whoWeWorkWith && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-24">
+          <div className="bg-stone-100/70 border border-gray-200/80 rounded-[2.5rem] p-8 md:p-14">
+            <div className="text-center mb-10 max-w-2xl mx-auto">
+              <span className="text-xs font-black uppercase tracking-widest text-orange-500 flex items-center justify-center gap-2 mb-3">
+                <Users className="w-4 h-4" /> Client Diversity
+              </span>
+              <h2 className="text-2xl md:text-4xl font-black text-gray-950 uppercase tracking-tight">
+                {customContent.whoWeWorkWith.headline}
+              </h2>
+              <p className="text-gray-500 text-xs md:text-sm mt-2">
+                Our digital marketing solutions can be adapted for:
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-center gap-3 max-w-4xl mx-auto">
+              {customContent.whoWeWorkWith.items.map((item, i) => (
+                <div
+                  key={i}
+                  className="bg-white border border-gray-200/85 px-5 py-3 rounded-full text-xs font-black uppercase tracking-wider text-gray-800 shadow-2xs hover:border-orange-500 hover:text-orange-500 transition-colors flex items-center gap-2"
+                >
+                  <CheckCircle2 size={14} className="text-orange-500" />
+                  <span>{item}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Services Available */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-24">
@@ -225,6 +451,88 @@ export default function StateLandingPage() {
           </div>
         </div>
       </section>
+
+      {/* FAQs Section (Top 6 FAQs) */}
+      {customContent?.faqs && customContent.faqs.length > 0 && (
+        <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mb-24">
+          <div className="text-center mb-12">
+            <span className="text-xs font-black uppercase tracking-widest text-orange-500 flex items-center justify-center gap-2 mb-3">
+              <Sparkles className="w-4 h-4" /> FAQs
+            </span>
+            <h2 className="text-3xl md:text-5xl font-black text-gray-950 uppercase tracking-tight mb-4">
+              FAQs About Digital Marketing in {state.name}
+            </h2>
+            <p className="text-gray-500 text-xs md:text-sm max-w-xl mx-auto">
+              Common questions answered about our coverage, timelines, and specialized strategies.
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            {customContent.faqs.slice(0, 6).map((faq, index) => {
+              const isOpen = openFaq === index;
+              return (
+                <div
+                  key={index}
+                  className="bg-white border border-gray-200/85 rounded-2xl overflow-hidden shadow-2xs transition-all duration-300"
+                >
+                  <button
+                    type="button"
+                    onClick={() => setOpenFaq(isOpen ? null : index)}
+                    className="w-full p-6 text-left flex items-center justify-between gap-4 cursor-pointer hover:bg-stone-50/80 transition-colors"
+                  >
+                    <span className="font-black text-gray-950 text-sm md:text-base uppercase tracking-tight">
+                      {faq.question}
+                    </span>
+                    <div
+                      className={`w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center shrink-0 text-gray-600 transition-transform duration-300 ${
+                        isOpen ? "rotate-180 bg-orange-100 text-orange-600" : ""
+                      }`}
+                    >
+                      <ChevronDown size={18} />
+                    </div>
+                  </button>
+
+                  <AnimatePresence initial={false}>
+                    {isOpen && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.3, ease: "easeInOut" }}
+                      >
+                        <div className="px-6 pb-6 pt-2 text-gray-600 text-xs md:text-sm leading-relaxed border-t border-gray-100">
+                          {faq.answer}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* CTA Section */}
+      {customContent?.cta && (
+        <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 mb-24">
+          <div className="bg-orange-500 text-white rounded-[2.5rem] p-8 md:p-14 text-center shadow-lg shadow-orange-500/20 relative overflow-hidden">
+            <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tight mb-6">
+              {customContent.cta.headline}
+            </h2>
+            <p className="text-orange-100 text-sm md:text-base max-w-2xl mx-auto mb-8 leading-relaxed">
+              {customContent.cta.text}
+            </p>
+            <Link
+              to="/contact"
+              className="inline-flex items-center gap-2 bg-white text-gray-950 hover:bg-gray-950 hover:text-white font-black text-xs uppercase tracking-widest px-8 py-4 rounded-full transition-all duration-300 shadow-md cursor-pointer"
+            >
+              <span>{customContent.cta.buttonText}</span>
+              <ArrowUpRight size={16} />
+            </Link>
+          </div>
+        </section>
+      )}
 
       {/* Internal Link Section */}
       <InternalLinkSection />
