@@ -198,7 +198,7 @@ export default function About() {
             </h2>
             <div className="rounded-3xl overflow-hidden bg-gray-200 mb-6 aspect-4/3 border border-gray-150">
               <img 
-                src="/images/about/about 2.png" 
+                src="/images/about/rww.png" 
                 alt="Team collaborating" 
                 className="w-full h-full object-cover" 
               />

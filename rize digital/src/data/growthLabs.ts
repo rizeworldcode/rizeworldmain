@@ -14,7 +14,7 @@ export const growthLabs: GrowthLab[] = [
     title: "Mr. Neeraj Lamba",
     subtitle: "Founder",
     image: "/video/nk s.jpg",
-    video: "/video/1104.mp4",
+    video: "/video/yoga.mp4",
     description: "Mr. Neeraj Lamba is the visionary founder of Sushanti Dhyanyoga, a wellness brand dedicated to promoting holistic health through yoga, meditation, and mindfulness practices. With a deep commitment to mental and physical well-being, Mr. Neeraj has helped individuals embrace a balanced lifestyle rooted in ancient wisdom and modern techniques."
   },
   {
