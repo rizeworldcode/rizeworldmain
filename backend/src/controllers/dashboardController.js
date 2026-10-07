@@ -144,7 +144,7 @@ exports.getRevenueAnalytics = async (req, res) => {
 
           const dayRevenue = allTransactions
             .filter(t => {
-              const tDate = new Date(t.date);
+              const tDate = new Date(t.projectDate || t.cycleDate || t.date);
               return !isNaN(tDate) &&
                 (t.type === 'client_payment' || t.type === 'income' || t.source === 'client_payment') &&
                 isSameDay(tDate, date);
@@ -169,7 +169,7 @@ exports.getRevenueAnalytics = async (req, res) => {
 
           const weekRevenue = allTransactions
             .filter(t => {
-              const tDate = new Date(t.date);
+              const tDate = new Date(t.projectDate || t.cycleDate || t.date);
               return !isNaN(tDate) &&
                 (t.type === 'client_payment' || t.type === 'income' || t.source === 'client_payment') &&
                 tDate >= weekStart && tDate <= weekEnd;
@@ -189,7 +189,7 @@ exports.getRevenueAnalytics = async (req, res) => {
 
           const monthRevenue = allTransactions
             .filter(t => {
-              const tDate = new Date(t.date);
+              const tDate = new Date(t.projectDate || t.cycleDate || t.date);
               return !isNaN(tDate) &&
                 (t.type === 'client_payment' || t.type === 'income' || t.source === 'client_payment') &&
                 tDate.getMonth() === monthIndex &&

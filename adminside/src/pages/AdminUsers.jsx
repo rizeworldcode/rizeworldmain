@@ -29,6 +29,7 @@ const AVAILABLE_PERMISSIONS = [
   { id: 'staffDetail', label: 'Employee Detail', description: 'View and manage employee profiles and status' },
   { id: 'addStaff', label: 'Add Employee', description: 'Onboard new staff and team members' },
   { id: 'removedEmployees', label: 'Removed Employees', description: 'View archived or deleted employee records' },
+  { id: 'hiring', label: 'Hiring Posts', description: 'Create and manage job openings and recruitment posts' },
   { id: 'clients', label: 'Clients & Projects', description: 'Access clients list, project milestones, and billing' },
   { id: 'wallet', label: 'Wallet & Transactions', description: 'View financial transactions and wallet balances' },
   { id: 'salesTracking', label: 'Sales Tracking', description: 'Track sales personnel live location and visits' },

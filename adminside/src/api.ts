@@ -385,6 +385,32 @@ export const changeAdminPassword = (data: { currentPassword?: string; newPasswor
 // Pre-fetch helper disabled per user request (only fetch data for the active page)
 export const prefetchAdminData = () => {};
 
+// Hiring / Job Openings APIs
+export const getHearings = () => apiRequest('/getHearing');
+export const addHearing = (data: any) =>
+  apiRequest('/addHearing', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+export const updateHearing = (id: string, data: any) =>
+  apiRequest(`/updateHearing/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+export const deleteHearing = (id: string) =>
+  apiRequest(`/deleteHearing/${id}`, {
+    method: 'DELETE',
+  });
+export const updateApplicationStatus = (hearingId: string, appId: string, status: string) =>
+  apiRequest(`/hearing/${hearingId}/applications/${appId}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  });
+export const deleteApplication = (hearingId: string, appId: string) =>
+  apiRequest(`/hearing/${hearingId}/applications/${appId}`, {
+    method: 'DELETE',
+  });
+
 export default {
   BASE_URL,
   getDashboardStats,
@@ -431,4 +457,8 @@ export default {
   addStaffAdvance,
   deleteStaffAdvance,
   updateStaffAdvance,
+  getHearings,
+  addHearing,
+  updateHearing,
+  deleteHearing,
 };

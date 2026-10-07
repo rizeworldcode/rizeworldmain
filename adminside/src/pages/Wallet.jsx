@@ -157,6 +157,25 @@ const WalletView = ({ onLock }) => {
     return transactions;
   }, [transactions, filterType]);
 
+  const getTransactionProjectMonth = (t) => {
+    if (t.projectMonth && !t.projectMonth.match(/^\d{4}-\d{2}$/)) {
+      return t.projectMonth;
+    }
+    if (t.projectDate || t.cycleDate) {
+      const pd = new Date(t.projectDate || t.cycleDate);
+      if (!isNaN(pd.getTime())) {
+        return pd.toLocaleString('default', { month: 'long', year: 'numeric' });
+      }
+    }
+    if (t.date) {
+      const d = new Date(t.date);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleString('default', { month: 'long', year: 'numeric' });
+      }
+    }
+    return '';
+  };
+
   const totalIncome = useMemo(() => {
     return (transactions || [])
       .filter(t => t.type === 'client_payment' || t.type === 'income' || t.source === 'client_payment')
@@ -167,12 +186,12 @@ const WalletView = ({ onLock }) => {
     const months = new Set();
     months.add(currentMonthName);
     (transactions || []).forEach(t => {
-      if (t.type === 'client_payment' || t.type === 'income' || t.source === 'client_payment') {
-        if (t.date) {
-          const d = new Date(t.date);
-          if (!isNaN(d.getTime())) {
-            months.add(d.toLocaleString('default', { month: 'long', year: 'numeric' }));
-          }
+      const m = getTransactionProjectMonth(t);
+      if (m) months.add(m);
+      if (t.date) {
+        const d = new Date(t.date);
+        if (!isNaN(d.getTime())) {
+          months.add(d.toLocaleString('default', { month: 'long', year: 'numeric' }));
         }
       }
     });
@@ -191,16 +210,15 @@ const WalletView = ({ onLock }) => {
     return (transactions || [])
       .filter(t => {
         if (t.type !== 'client_payment' && t.type !== 'income' && t.source !== 'client_payment') return false;
-        if (!t.date) return false;
-        const d = new Date(t.date);
-        return !isNaN(d.getTime()) && d.toLocaleString('default', { month: 'long', year: 'numeric' }) === selectedIncomeMonth;
+        const m = getTransactionProjectMonth(t);
+        return m === selectedIncomeMonth;
       })
       .reduce((sum, t) => sum + (t.amount || 0), 0);
   }, [transactions, selectedIncomeMonth]);
 
   const totalOnlineIncome = useMemo(() => {
     return (transactions || [])
-      .filter(t => (t.type === 'client_payment' || t.type === 'income' || t.source === 'client_payment') && t.mode === 'online')
+      .filter(t => (t.type === 'client_payment' || t.type === 'income' || t.source === 'client_payment') && (t.mode || '').toLowerCase() === 'online')
       .reduce((sum, t) => sum + (t.amount || 0), 0);
   }, [transactions]);
 
@@ -208,17 +226,16 @@ const WalletView = ({ onLock }) => {
     return (transactions || [])
       .filter(t => {
         if (t.type !== 'client_payment' && t.type !== 'income' && t.source !== 'client_payment') return false;
-        if (t.mode !== 'online') return false;
-        if (!t.date) return false;
-        const d = new Date(t.date);
-        return !isNaN(d.getTime()) && d.toLocaleString('default', { month: 'long', year: 'numeric' }) === selectedIncomeMonth;
+        if ((t.mode || '').toLowerCase() !== 'online') return false;
+        const m = getTransactionProjectMonth(t);
+        return m === selectedIncomeMonth;
       })
       .reduce((sum, t) => sum + (t.amount || 0), 0);
   }, [transactions, selectedIncomeMonth]);
 
   const totalCashIncome = useMemo(() => {
     return (transactions || [])
-      .filter(t => (t.type === 'client_payment' || t.type === 'income' || t.source === 'client_payment') && t.mode === 'cash')
+      .filter(t => (t.type === 'client_payment' || t.type === 'income' || t.source === 'client_payment') && (t.mode || '').toLowerCase() === 'cash')
       .reduce((sum, t) => sum + (t.amount || 0), 0);
   }, [transactions]);
 
@@ -226,10 +243,9 @@ const WalletView = ({ onLock }) => {
     return (transactions || [])
       .filter(t => {
         if (t.type !== 'client_payment' && t.type !== 'income' && t.source !== 'client_payment') return false;
-        if (t.mode !== 'cash') return false;
-        if (!t.date) return false;
-        const d = new Date(t.date);
-        return !isNaN(d.getTime()) && d.toLocaleString('default', { month: 'long', year: 'numeric' }) === selectedIncomeMonth;
+        if ((t.mode || '').toLowerCase() !== 'cash') return false;
+        const m = getTransactionProjectMonth(t);
+        return m === selectedIncomeMonth;
       })
       .reduce((sum, t) => sum + (t.amount || 0), 0);
   }, [transactions, selectedIncomeMonth]);
@@ -276,16 +292,47 @@ const WalletView = ({ onLock }) => {
     });
   }, [transactions, currentMonthName]);
 
+  const getTransactionSalaryMonth = (t) => {
+    if (t.description) {
+      const match = t.description.match(/Salary payment for ([A-Za-z]+ \d{4})/i);
+      if (match && match[1]) {
+        return match[1];
+      }
+    }
+    if (t.date) {
+      const d = new Date(t.date);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleString('default', { month: 'long', year: 'numeric' });
+      }
+    }
+    return '';
+  };
+
   const monthlySalaryExpense = useMemo(() => {
     return (transactions || [])
       .filter(t => {
         if (t.type !== 'salary' && t.source !== 'salary') return false;
-        if (!t.date) return false;
-        const d = new Date(t.date);
-        return !isNaN(d.getTime()) && d.toLocaleString('default', { month: 'long', year: 'numeric' }) === selectedExpenseMonth;
+        const sMonth = getTransactionSalaryMonth(t);
+        return sMonth.toLowerCase() === selectedExpenseMonth.toLowerCase();
       })
       .reduce((sum, t) => sum + (t.amount || 0), 0);
   }, [transactions, selectedExpenseMonth]);
+
+  // Salary expense corresponding to the selected income month (for accurate revenue generation & salary deduction)
+  const salaryForIncomeMonth = useMemo(() => {
+    return (transactions || [])
+      .filter(t => {
+        if (t.type !== 'salary' && t.source !== 'salary') return false;
+        const sMonth = getTransactionSalaryMonth(t);
+        return sMonth.toLowerCase() === selectedIncomeMonth.toLowerCase();
+      })
+      .reduce((sum, t) => sum + (t.amount || 0), 0);
+  }, [transactions, selectedIncomeMonth]);
+
+  // Net Monthly Revenue Generated (Monthly Income - Monthly Salary Paid)
+  const monthlyNetRevenue = useMemo(() => {
+    return monthlyIncome - salaryForIncomeMonth;
+  }, [monthlyIncome, salaryForIncomeMonth]);
 
   const monthlyOtherExpense = useMemo(() => {
     return (transactions || [])
@@ -969,7 +1016,7 @@ const WalletView = ({ onLock }) => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* 1. Overall Total Income */}
-              <div className="text-left p-5 rounded-2xl glass border border-emerald-500 ring-2 ring-emerald-500/30 bg-emerald-500/5 flex flex-col justify-between">
+              <div className="text-left p-5 rounded-2xl glass border border-emerald-500/60 ring-2 ring-emerald-500/20 bg-emerald-500/5 flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
@@ -989,7 +1036,7 @@ const WalletView = ({ onLock }) => {
               </div>
 
               {/* 2. Monthly Income with Month Selector */}
-              <div className="text-left p-5 rounded-2xl glass border border-teal-500 ring-2 ring-teal-500/30 bg-teal-500/5 flex flex-col justify-between">
+              <div className="text-left p-5 rounded-2xl glass border border-teal-500/60 ring-2 ring-teal-500/20 bg-teal-500/5 flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between mb-3 gap-2">
                     <span className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
@@ -1020,45 +1067,90 @@ const WalletView = ({ onLock }) => {
                 </div>
               </div>
 
-              {/* 3. Online Payments */}
-              <div className="text-left p-5 rounded-2xl glass border border-gray-200/70 dark:border-white/10 flex flex-col justify-between">
+              {/* 3. Monthly Salary Paid (To Deduct) */}
+              <div className="text-left p-5 rounded-2xl glass border border-rose-500/40 bg-rose-500/5 flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                      Online Payments
+                      Salary Paid ({selectedIncomeMonth.split(' ')[0]})
                     </span>
-                    <div className="p-2 rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
-                      <CreditCard size={18} />
+                    <div className="p-2 rounded-xl bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400">
+                      <Users size={18} />
                     </div>
                   </div>
-                  <div className="text-2xl font-extrabold text-blue-600 dark:text-blue-400 mb-1">
-                    ₹{(totalOnlineIncome || 0).toLocaleString('en-IN')}
+                  <div className="text-2xl font-extrabold text-rose-600 dark:text-rose-400 mb-1">
+                    ₹{(salaryForIncomeMonth || 0).toLocaleString('en-IN')}
                   </div>
                 </div>
                 <div className="flex items-center justify-between text-xs pt-2 border-t border-gray-100 dark:border-white/5 text-gray-500 mt-2">
-                  <span>Monthly ({selectedIncomeMonth.split(' ')[0]}):</span>
-                  <span className="font-bold text-blue-600 dark:text-blue-400">₹{(monthlyOnlineIncome || 0).toLocaleString('en-IN')}</span>
+                  <span>Deduction:</span>
+                  <span className="font-bold text-rose-500">Paid Staff Salary</span>
                 </div>
               </div>
 
-              {/* 4. Cash Payments */}
-              <div className="text-left p-5 rounded-2xl glass border border-gray-200/70 dark:border-white/10 flex flex-col justify-between">
+              {/* 4. Net Monthly Revenue Generated */}
+              <div className={`text-left p-5 rounded-2xl glass border flex flex-col justify-between ${
+                monthlyNetRevenue >= 0
+                  ? 'border-blue-500/70 ring-2 ring-blue-500/20 bg-blue-500/5'
+                  : 'border-amber-500/70 ring-2 ring-amber-500/20 bg-amber-500/5'
+              }`}>
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                      Cash Payments
+                      Net Monthly Revenue
                     </span>
-                    <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
-                      <Wallet size={18} />
+                    <div className={`p-2 rounded-xl ${
+                      monthlyNetRevenue >= 0 ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400'
+                    }`}>
+                      <Receipt size={18} />
                     </div>
                   </div>
-                  <div className="text-2xl font-extrabold text-emerald-700 dark:text-emerald-300 mb-1">
-                    ₹{(totalCashIncome || 0).toLocaleString('en-IN')}
+                  <div className={`text-2xl font-black mb-1 ${
+                    monthlyNetRevenue >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-amber-600 dark:text-amber-400'
+                  }`}>
+                    ₹{(monthlyNetRevenue || 0).toLocaleString('en-IN')}
                   </div>
                 </div>
                 <div className="flex items-center justify-between text-xs pt-2 border-t border-gray-100 dark:border-white/5 text-gray-500 mt-2">
-                  <span>Monthly ({selectedIncomeMonth.split(' ')[0]}):</span>
-                  <span className="font-bold text-emerald-700 dark:text-emerald-300">₹{(monthlyCashIncome || 0).toLocaleString('en-IN')}</span>
+                  <span>Formula:</span>
+                  <span className="font-bold text-gray-700 dark:text-gray-300">Income - Salary</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Online & Cash Payment Modes Breakdown */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+              {/* Online Payments */}
+              <div className="text-left p-4 rounded-2xl glass border border-gray-200/70 dark:border-white/10 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+                    <CreditCard size={20} />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block">Online Payments (Total)</span>
+                    <span className="text-lg font-bold text-blue-600 dark:text-blue-400">₹{(totalOnlineIncome || 0).toLocaleString('en-IN')}</span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase block">Monthly ({selectedIncomeMonth.split(' ')[0]})</span>
+                  <span className="text-sm font-extrabold text-blue-600 dark:text-blue-400">₹{(monthlyOnlineIncome || 0).toLocaleString('en-IN')}</span>
+                </div>
+              </div>
+
+              {/* Cash Payments */}
+              <div className="text-left p-4 rounded-2xl glass border border-gray-200/70 dark:border-white/10 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
+                    <Wallet size={20} />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block">Cash Payments (Total)</span>
+                    <span className="text-lg font-bold text-emerald-700 dark:text-emerald-300">₹{(totalCashIncome || 0).toLocaleString('en-IN')}</span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase block">Monthly ({selectedIncomeMonth.split(' ')[0]})</span>
+                  <span className="text-sm font-extrabold text-emerald-700 dark:text-emerald-300">₹{(monthlyCashIncome || 0).toLocaleString('en-IN')}</span>
                 </div>
               </div>
             </div>
