@@ -200,8 +200,10 @@ async function runPrerender() {
               return actualCanonical === canonical && actualOg === canonical;
             } else {
               const isGenericTitle = title === 'RizeWorld Digital' || 
+                                     title === 'Digital Marketing Agency for Indian Startups' ||
                                      title === 'Full-Service Digital Marketing Agency & SEO Company | RizeWorld';
               const isGenericDesc = descTag.content === 'RizeWorld Digital Solutions' || 
+                                    descTag.content.includes('RizeWorld provides SEO, social media marketing') ||
                                     descTag.content.includes('Looking for the best digital marketing services');
               const is404 = title.includes('404');
               
@@ -268,13 +270,13 @@ async function runPrerender() {
         if (metadata.ogUrl !== metadata.canonical) throw new Error(`og:url mismatch. Expected ${metadata.canonical}, got ${metadata.ogUrl}`);
         
         if (!isHomepage) {
-          if (metadata.title === 'RizeWorld Digital' || metadata.title === 'Full-Service Digital Marketing Agency & SEO Company | RizeWorld') {
+          if (metadata.title === 'RizeWorld Digital' || metadata.title === 'Digital Marketing Agency for Indian Startups' || metadata.title === 'Full-Service Digital Marketing Agency & SEO Company | RizeWorld') {
             throw new Error("Inner page has generic homepage title");
           }
           if (metadata.title.includes('404')) {
             throw new Error("Page rendered as 404 Not Found (e.g. data missing)");
           }
-          if (metadata.description === 'RizeWorld Digital Solutions' || metadata.description.includes('Looking for the best digital marketing services')) {
+          if (metadata.description === 'RizeWorld Digital Solutions' || metadata.description.includes('RizeWorld provides SEO, social media marketing') || metadata.description.includes('Looking for the best digital marketing services')) {
             throw new Error("Inner page has generic homepage description");
           }
         }
