@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Mail, Calendar, IndianRupee, Users, Award, GraduationCap, MapPin, Check, Briefcase, X } from 'lucide-react';
-import { JOBS } from '../data/careers';
 import type { Job } from '../data/careers';
 import SEO from '../components/common/SEO';
 import Breadcrumbs from '../components/common/Breadcrumbs';
@@ -54,23 +53,42 @@ export default function JobDetails() {
   const navigate = useNavigate();
   const [showApplyModal, setShowApplyModal] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-
-  const [job, setJob] = useState<Job | undefined>(() => {
-    const found = JOBS.find(j => j.id === jobId);
-    return found ? { ...found, salary: found.salary.replace(/\$/g, '₹') } : undefined;
-  });
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [job, setJob] = useState<Job | undefined>(undefined);
   const [loading, setLoading] = useState(true);
+
+  // Form State
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    linkedin: '',
+    resume: '',
+    experience: '',
+    notes: ''
+  });
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    if (errorMessage) setErrorMessage('');
+  };
 
   useEffect(() => {
     const fetchJob = async () => {
       try {
         const response = await fetch(`${API_BASE_URL}/getHearing`);
         const result = await response.json();
-        if (result.success && result.data) {
-          const backendJobs = result.data.map(mapBackendJobToFrontend);
-          const found = backendJobs.find((j: Job) => j.id === jobId);
+        if (result.success && Array.isArray(result.data)) {
+          // Only show active positions
+          const activeJobs = result.data
+            .filter((bj: any) => bj.status === 'active')
+            .map(mapBackendJobToFrontend);
+          const found = activeJobs.find((j: Job) => j.id === jobId);
           if (found) {
             setJob(found);
+          } else {
+            setJob(undefined);
           }
         }
       } catch (error) {
@@ -82,11 +100,12 @@ export default function JobDetails() {
     fetchJob();
   }, [jobId]);
 
-  if (loading && !job) {
+  if (loading) {
     return (
       <div className="min-h-screen pt-36 pb-20 px-4 text-center bg-stone-50 flex flex-col items-center justify-center">
-        <h2 className="text-3xl font-bold text-gray-950 mb-4 uppercase">Loading Position...</h2>
-        <p className="text-gray-500 mb-8">Please wait while we fetch the job details.</p>
+        <div className="w-10 h-10 border-3 border-orange-500 border-t-transparent rounded-full animate-spin mb-4" />
+        <h2 className="text-xl font-bold text-gray-950 uppercase tracking-wider mb-2">Loading Position...</h2>
+        <p className="text-gray-500 text-sm">Please wait while we fetch the latest job details.</p>
       </div>
     );
   }
@@ -94,22 +113,69 @@ export default function JobDetails() {
   if (!job) {
     return (
       <div className="min-h-screen pt-36 pb-20 px-4 text-center bg-stone-50 flex flex-col items-center justify-center">
-        <h2 className="text-3xl font-bold text-gray-950 mb-4 uppercase">Position Not Found</h2>
-        <p className="text-gray-500 mb-8">The career position you are looking for does not exist.</p>
-        <Link to="/careers" className="bg-orange-500 text-white font-bold px-6 py-3 rounded-full hover:bg-orange-600 transition-colors uppercase text-xs tracking-wider">
-          Back to Careers
-        </Link>
+        <div className="w-16 h-16 rounded-3xl bg-orange-100 text-orange-600 flex items-center justify-center mx-auto mb-6 shadow-sm">
+          <Briefcase size={32} />
+        </div>
+        <h2 className="text-3xl font-black text-gray-950 mb-3 uppercase tracking-tight">Position No Longer Available</h2>
+        <p className="text-gray-500 text-base max-w-md mb-8 leading-relaxed">
+          This hearing or opening has been closed or is currently not accepting applications. Please explore other available positions.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <Link to="/careers" className="bg-orange-500 text-white font-bold px-8 py-3.5 rounded-full hover:bg-orange-600 transition-colors uppercase text-xs tracking-wider shadow-md">
+            View Active Openings
+          </Link>
+          <a href="mailto:hr@rizeworld.in" className="border border-gray-300 text-gray-700 font-bold px-8 py-3.5 rounded-full hover:bg-gray-100 transition-colors uppercase text-xs tracking-wider">
+            Email Your Resume
+          </a>
+        </div>
       </div>
     );
   }
 
-  const handleApply = (e: React.FormEvent) => {
+  const handleApply = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
-    setTimeout(() => {
-      setSubmitted(false);
-      setShowApplyModal(false);
-    }, 2000);
+    if (!formData.name.trim() || !formData.email.trim()) {
+      setErrorMessage('Please fill in your full name and email address.');
+      return;
+    }
+
+    setSubmitting(true);
+    setErrorMessage('');
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/hearing/${job.id}/apply`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        setSubmitted(true);
+        setFormData({
+          name: '',
+          email: '',
+          phone: '',
+          linkedin: '',
+          resume: '',
+          experience: '',
+          notes: ''
+        });
+        setTimeout(() => {
+          setSubmitted(false);
+          setShowApplyModal(false);
+        }, 2500);
+      } else {
+        setErrorMessage(result.message || 'Failed to submit application. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error submitting application:', error);
+      setErrorMessage('Could not connect to the application server. Please try again later.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const jobUrl = `${window.location.origin}/careers/${job.id}`;
@@ -395,7 +461,7 @@ export default function JobDetails() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               transition={{ type: "spring", damping: 25, stiffness: 350 }}
-              className="relative w-full max-w-md bg-white rounded-4xl p-6 md:p-8 overflow-hidden shadow-2xl z-10 border border-gray-100 flex flex-col text-left"
+              className="relative w-full max-w-lg bg-white rounded-4xl p-6 md:p-8 overflow-hidden shadow-2xl z-10 border border-gray-100 flex flex-col text-left max-h-[90vh] overflow-y-auto"
             >
 
               <button
@@ -405,41 +471,144 @@ export default function JobDetails() {
                 <X size={20} />
               </button>
 
-              <h2 className="text-2xl font-bold uppercase text-gray-950 mb-1 leading-none mt-4">
-                Apply Position
+              <h2 className="text-2xl font-black uppercase text-gray-950 mb-1 leading-none mt-2">
+                Apply for Position
               </h2>
-              <p className="text-xs font-bold text-orange-500 uppercase tracking-wider mb-6">
+              <p className="text-xs font-bold text-orange-500 uppercase tracking-wider mb-5">
                 {job.title}
               </p>
 
+              {errorMessage && (
+                <div className="mb-4 p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 text-xs font-semibold">
+                  {errorMessage}
+                </div>
+              )}
+
               {submitted ? (
                 <div className="py-12 text-center flex flex-col items-center justify-center">
-                  <div className="w-12 h-12 rounded-full bg-green-500/10 text-green-500 flex items-center justify-center mb-4 animate-bounce">
+                  <div className="w-14 h-14 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center mb-4 text-2xl font-bold animate-bounce">
                     ✓
                   </div>
-                  <h4 className="text-lg font-bold text-gray-950 uppercase mb-2">Application Sent</h4>
-                  <p className="text-sm text-gray-500">Thank you! We will get in touch with you shortly.</p>
+                  <h4 className="text-xl font-bold text-gray-950 uppercase mb-2">Application Submitted!</h4>
+                  <p className="text-sm text-gray-500 max-w-xs">
+                    Thank you, <span className="font-semibold text-gray-800">{formData.name || 'Candidate'}</span>. Your application has been sent to our recruitment team.
+                  </p>
                 </div>
               ) : (
-                <form onSubmit={handleApply} className="space-y-4">
-                  <div>
-                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Full Name</label>
-                    <input type="text" required placeholder="John Doe" className="w-full bg-stone-50 border border-gray-200 rounded-2xl py-3 px-4 text-xs font-medium text-gray-950 focus:outline-none focus:border-orange-500" />
+                <form onSubmit={handleApply} className="space-y-3.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                        Full Name <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={formData.name}
+                        onChange={(e) => handleInputChange('name', e.target.value)}
+                        placeholder="e.g. John Doe"
+                        className="w-full bg-stone-50 border border-gray-200 rounded-2xl py-2.5 px-3.5 text-xs font-medium text-gray-950 focus:outline-none focus:border-orange-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                        Email Address <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        value={formData.email}
+                        onChange={(e) => handleInputChange('email', e.target.value)}
+                        placeholder="john@example.com"
+                        className="w-full bg-stone-50 border border-gray-200 rounded-2xl py-2.5 px-3.5 text-xs font-medium text-gray-950 focus:outline-none focus:border-orange-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                        Phone Number
+                      </label>
+                      <input
+                        type="tel"
+                        value={formData.phone}
+                        onChange={(e) => handleInputChange('phone', e.target.value)}
+                        placeholder="+91 98765 43210"
+                        className="w-full bg-stone-50 border border-gray-200 rounded-2xl py-2.5 px-3.5 text-xs font-medium text-gray-950 focus:outline-none focus:border-orange-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                        Experience (Years/Fresh)
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.experience}
+                        onChange={(e) => handleInputChange('experience', e.target.value)}
+                        placeholder="e.g. 2 Years / Fresher"
+                        className="w-full bg-stone-50 border border-gray-200 rounded-2xl py-2.5 px-3.5 text-xs font-medium text-gray-950 focus:outline-none focus:border-orange-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                        LinkedIn / Portfolio
+                      </label>
+                      <input
+                        type="url"
+                        value={formData.linkedin}
+                        onChange={(e) => handleInputChange('linkedin', e.target.value)}
+                        placeholder="https://linkedin.com/in/..."
+                        className="w-full bg-stone-50 border border-gray-200 rounded-2xl py-2.5 px-3.5 text-xs font-medium text-gray-950 focus:outline-none focus:border-orange-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                        Resume Link (Drive / Dropbox)
+                      </label>
+                      <input
+                        type="url"
+                        value={formData.resume}
+                        onChange={(e) => handleInputChange('resume', e.target.value)}
+                        placeholder="https://drive.google.com/..."
+                        className="w-full bg-stone-50 border border-gray-200 rounded-2xl py-2.5 px-3.5 text-xs font-medium text-gray-950 focus:outline-none focus:border-orange-500"
+                      />
+                    </div>
                   </div>
 
                   <div>
-                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Email Address</label>
-                    <input type="email" required placeholder="john@example.com" className="w-full bg-stone-50 border border-gray-200 rounded-2xl py-3 px-4 text-xs font-medium text-gray-950 focus:outline-none focus:border-orange-500" />
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                      Cover Note / Why are you a good fit?
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={formData.notes}
+                      onChange={(e) => handleInputChange('notes', e.target.value)}
+                      placeholder="Briefly tell us about your skills, background, or availability..."
+                      className="w-full bg-stone-50 border border-gray-200 rounded-2xl py-2 px-3.5 text-xs font-medium text-gray-950 focus:outline-none focus:border-orange-500 resize-none"
+                    />
                   </div>
 
-                  <div>
-                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">LinkedIn Profile</label>
-                    <input type="url" placeholder="https://linkedin.com/in/username" className="w-full bg-stone-50 border border-gray-200 rounded-2xl py-3 px-4 text-xs font-medium text-gray-950 focus:outline-none focus:border-orange-500" />
-                  </div>
-
-                  <div className="pt-4">
-                    <button type="submit" className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold uppercase tracking-wider text-xs py-4 px-6 rounded-full transition-colors cursor-pointer">
-                      Submit Application
+                  <div className="pt-2">
+                    <button
+                      type="submit"
+                      disabled={submitting}
+                      className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-bold uppercase tracking-wider text-xs py-3.5 px-6 rounded-full transition-all cursor-pointer shadow-lg shadow-orange-500/20 flex items-center justify-center gap-2"
+                    >
+                      {submitting ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          Submitting Application...
+                        </>
+                      ) : (
+                        'Submit Application'
+                      )}
                     </button>
                   </div>
                 </form>

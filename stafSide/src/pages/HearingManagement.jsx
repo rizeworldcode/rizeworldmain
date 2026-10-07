@@ -106,9 +106,13 @@ const HearingManagement = () => {
         method = 'PUT';
       }
 
+      const token = localStorage.getItem('staffToken') || localStorage.getItem('adminToken');
       const response = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
         body: JSON.stringify(requestBody)
       });
 
@@ -135,8 +139,12 @@ const HearingManagement = () => {
     setSuccess('');
 
     try {
+      const token = localStorage.getItem('staffToken') || localStorage.getItem('adminToken');
       const response = await fetch(`${API_BASE_URL}/deleteHearing/${id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        }
       });
       const result = await response.json();
       if (result.success) {
@@ -159,9 +167,13 @@ const HearingManagement = () => {
     const newStatus = hearing.status === 'active' ? 'inactive' : 'active';
 
     try {
+      const token = localStorage.getItem('staffToken') || localStorage.getItem('adminToken');
       const response = await fetch(`${API_BASE_URL}/updateHearing/${hearing._id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({ status: newStatus })
       });
       const result = await response.json();

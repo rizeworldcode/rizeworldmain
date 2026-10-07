@@ -14,7 +14,8 @@ import {
   Camera,
   CreditCard,
   ShieldCheck,
-  KeyRound
+  KeyRound,
+  Briefcase
 } from 'lucide-react';
 
 const allNavItems = [
@@ -23,6 +24,7 @@ const allNavItems = [
   { icon: Users2, label: 'Employee Detail', id: 'staffDetail' },
   { icon: UserPlus, label: 'Add Employee', id: 'addStaff' },
   { icon: Trash2, label: 'Removed Employees', id: 'removedEmployees' },
+  { icon: Briefcase, label: 'Hiring Posts', id: 'hiring' },
   { icon: Users, label: 'Clients', id: 'clients' },
   { icon: Wallet, label: 'Wallet', id: 'wallet' },
   { icon: MapPin, label: 'Sales Tracking', id: 'salesTracking' },

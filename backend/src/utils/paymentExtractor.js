@@ -30,12 +30,20 @@ function extractClientPayments(clientList, modelName, startDate, endDate) {
       }
       seenUniqueIds.add(uniqueId);
 
+      const projectDate = p.periodFrom || client.startDate || client.createdAt || p.date || pDate;
+      const projectMonth = (projectDate ? new Date(projectDate) : new Date()).toLocaleString('default', { month: 'long', year: 'numeric' });
+
       paymentsList.push({
         _id: uniqueId,
         type: 'client_payment',
         name: client.name,
         amount: amount,
         date: p.date || pDate,
+        projectDate: projectDate,
+        projectMonth: projectMonth,
+        cycleDate: projectDate,
+        cycleMonth: projectMonth,
+        month: projectMonth,
         mode: p.mode || 'Online',
         method: (p.mode || '').toLowerCase() === 'online' ? 'bank_transfer' : 'cash',
         utrNumber: p.utr || null,
@@ -66,12 +74,20 @@ function extractClientPayments(clientList, modelName, startDate, endDate) {
         }
         seenUniqueIds.add(uniqueId);
 
+        const projectDate = p.periodFrom || hist.startDate || hist.completedAt || client.startDate || client.createdAt || p.date || pDate;
+        const projectMonth = (projectDate ? new Date(projectDate) : new Date()).toLocaleString('default', { month: 'long', year: 'numeric' });
+
         paymentsList.push({
           _id: uniqueId,
           type: 'client_payment',
           name: client.name,
           amount: amount,
           date: p.date || pDate,
+          projectDate: projectDate,
+          projectMonth: projectMonth,
+          cycleDate: projectDate,
+          cycleMonth: projectMonth,
+          month: projectMonth,
           mode: p.mode || 'Online',
           method: (p.mode || '').toLowerCase() === 'online' ? 'bank_transfer' : 'cash',
           utrNumber: p.utr || null,

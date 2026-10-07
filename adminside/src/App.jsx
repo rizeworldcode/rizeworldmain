@@ -20,6 +20,7 @@ const SalesPhotos = lazy(() => import('./pages/SalesPhotos'));
 const VisitingCards = lazy(() => import('./pages/VisitingCards'));
 const SalarySheet = lazy(() => import('./pages/SalarySheet'));
 const AdminUsers = lazy(() => import('./pages/AdminUsers'));
+const HearingManagement = lazy(() => import('./pages/HearingManagement'));
 
 const PageLoader = () => (
   <div className="flex items-center justify-center min-h-[50vh]">
@@ -78,6 +79,7 @@ function App() {
     if (pathname === '/staff/add') return 'addStaff';
     if (pathname === '/staff/removed') return 'removedEmployees';
     if (pathname.startsWith('/staff')) return 'staffDetail';
+    if (pathname.startsWith('/hiring')) return 'hiring';
     if (pathname.startsWith('/clients')) return 'clients';
     if (pathname.startsWith('/wallet')) return 'wallet';
     if (pathname.startsWith('/tracking/photos')) return 'salesPhotos';
@@ -111,6 +113,7 @@ function App() {
       if (perms.includes('all') || perms.includes('dashboard')) return '/';
       if (perms.includes('todayWork')) return '/today-work';
       if (perms.includes('staffDetail')) return '/staff';
+      if (perms.includes('hiring')) return '/hiring';
       if (perms.includes('clients')) return '/clients';
       if (perms.includes('wallet')) return '/wallet';
       if (perms.includes('salesTracking')) return '/tracking';
@@ -153,6 +156,7 @@ function App() {
     else if (tab === 'staffDetail') navigate('/staff');
     else if (tab === 'addStaff') navigate('/staff/add');
     else if (tab === 'removedEmployees') navigate('/staff/removed');
+    else if (tab === 'hiring') navigate('/hiring');
     else if (tab === 'studentAdmissions') navigate('/staff/admissions');
     else if (tab === 'clients') navigate('/clients');
     else if (tab === 'wallet') navigate('/wallet');
@@ -265,6 +269,14 @@ function App() {
                       <Route path="/staff/removed" element={
                         hasAccess('removedEmployees') ? (
                           <RemovedEmployees />
+                        ) : (
+                          <AccessDenied onGoToAllowed={() => navigate(firstAllowedRoute)} />
+                        )
+                      } />
+
+                      <Route path="/hiring" element={
+                        hasAccess('hiring') ? (
+                          <HearingManagement />
                         ) : (
                           <AccessDenied onGoToAllowed={() => navigate(firstAllowedRoute)} />
                         )
