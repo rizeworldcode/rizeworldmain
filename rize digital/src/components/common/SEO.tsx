@@ -34,7 +34,10 @@ export default function SEO({ title, description, canonicalUrl, ogType = 'websit
       currentUrl = `https://rizeworld.in${path}`;
     } else {
       currentUrl = currentUrl.split('?')[0].split('#')[0];
-      currentUrl = currentUrl.replace(/^(https?:\/\/)?(www\.)?/, 'https://');
+      currentUrl = currentUrl.replace(/^https?:\/\/[^\/]+/, 'https://rizeworld.in');
+      if (!currentUrl.startsWith('https://rizeworld.in')) {
+        currentUrl = `https://rizeworld.in${currentUrl.startsWith('/') ? '' : '/'}${currentUrl}`;
+      }
     }
     if (currentUrl.endsWith('/') && currentUrl !== 'https://rizeworld.in/') {
       currentUrl = currentUrl.slice(0, -1);

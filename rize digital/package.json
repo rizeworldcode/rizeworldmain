@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build && node prerender-seo.js",
+    "build": "tsc -b && vite build && node prerender-seo.js && node scripts/zip.mjs",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -30,6 +30,7 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
+    "archiver": "^8.0.0",
     "autoprefixer": "^10.5.0",
     "eslint": "^10.3.0",
     "eslint-plugin-react-hooks": "^7.1.1",

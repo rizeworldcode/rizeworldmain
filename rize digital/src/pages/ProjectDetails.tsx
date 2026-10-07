@@ -88,7 +88,7 @@ export default function ProjectDetails() {
     );
   }
 
-  const projectUrl = `${window.location.origin}/portfolio/${project.id}`;
+  const projectUrl = `https://rizeworld.in/portfolio/${project.id}`;
   const theme = PROJECT_THEMES[project.id] || { bg: "bg-rize-bg", text: "text-gray-900", isDark: false };
   const isDark = theme.isDark;
 

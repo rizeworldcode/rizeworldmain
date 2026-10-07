@@ -131,7 +131,7 @@ export default function BlogDetails() {
   const nextBlog = allBlogs[currentIndex === allBlogs.length - 1 ? 0 : currentIndex + 1];
   const moreBlogs = allBlogs.filter(b => b.slug !== slug).slice(0, 3);
 
-  const blogUrl = `${window.location.origin}/blogs/${slug}`;
+  const blogUrl = `https://rizeworld.in/blogs/${slug}`;
 
   // Helper to parse dates like "JUN 25, 2024" to "2024-06-25"
   const parseDate = (dStr: string) => {

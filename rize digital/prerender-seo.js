@@ -128,25 +128,49 @@ async function runPrerender() {
       args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
 
-    console.log('Generating SEO prerendered HTML files...');
+    console.log(`Generating SEO prerendered HTML files across ${routes.length} routes...`);
 
-    for (const route of routes) {
+    const CONCURRENCY = 4;
+    let cursor = 0;
+
+    async function processRoute(route, index) {
       const url = `http://localhost:4173${route}`;
-      console.log(`Prerendering ${route}...`);
+      console.log(`[${index + 1}/${routes.length}] Prerendering ${route}...`);
       
       const page = await browser.newPage();
       
       await page.setRequestInterception(true);
-      page.on('request', (req) => {
-        const reqUrl = req.url();
-        if (['image', 'stylesheet', 'font', 'media'].includes(req.resourceType())) {
-          req.abort();
-        } else if (reqUrl.includes('/api/blogs') || reqUrl.includes('/blogs')) {
+      page.on('request', async (req) => {
+        try {
+          const reqUrl = req.url();
+          const rType = req.resourceType();
+          if (['image', 'font', 'media'].includes(rType)) {
+            return req.abort();
+          }
+          if (rType === 'stylesheet') {
+            return req.abort();
+          }
+          if (reqUrl.includes(':45000') || reqUrl.includes('localhost:45000')) {
+            const remoteUrl = reqUrl.replace(/https?:\/\/localhost:45000/, 'https://rizeworldmain.onrender.com');
+            try {
+              const resp = await fetch(remoteUrl);
+              const body = await resp.text();
+              const headers = {
+                'content-type': resp.headers.get('content-type') || 'application/json',
+                'access-control-allow-origin': '*'
+              };
+              return req.respond({
+                status: resp.status,
+                headers,
+                body
+              });
+            } catch (err) {
+              return req.abort();
+            }
+          }
           req.continue();
-        } else if (reqUrl.includes(':45000') || reqUrl.includes('/api/')) {
-          req.abort();
-        } else {
-          req.continue();
+        } catch (e) {
+          // Ignored if request was already responded to or aborted
         }
       });
 
@@ -323,10 +347,20 @@ async function runPrerender() {
         fs.writeFileSync(outputPath, html, 'utf-8');
         successCount++;
       } catch (e) {
+        try { await page.close(); } catch (_) {}
         console.error(`Error prerendering ${route}:`, e.message);
         failedRoutes.push({ route, error: e.message });
       }
     }
+
+    async function worker() {
+      while (cursor < routes.length) {
+        const idx = cursor++;
+        await processRoute(routes[idx], idx);
+      }
+    }
+
+    await Promise.all(Array.from({ length: CONCURRENCY }, () => worker()));
 
     await browser.close();
   } catch (err) {
