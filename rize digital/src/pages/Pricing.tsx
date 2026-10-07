@@ -8,7 +8,9 @@ import {
   Globe, 
   ArrowRight, 
   CheckCircle2, 
-  FileText 
+  FileText,
+  Layers,
+  Grid
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import SEO from '../components/common/SEO';
@@ -16,8 +18,7 @@ import Breadcrumbs from '../components/common/Breadcrumbs';
 import { 
   SEO_PACKAGES, 
   SMM_PACKAGES, 
-  WEBSITE_PACKAGES, 
-  type PricingPackage 
+  WEBSITE_PACKAGES 
 } from '../data/pricingData';
 
 type CategoryType = 'seo' | 'smm' | 'website';
@@ -43,6 +44,8 @@ export default function Pricing() {
       : 'seo';
 
   const [activeCategory, setActiveCategory] = useState<CategoryType>(initialCategory);
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [viewMode, setViewMode] = useState<'deck' | 'grid'>('deck');
 
   // Custom Card Query States
   const [customName, setCustomName] = useState('');
@@ -115,44 +118,82 @@ export default function Pricing() {
     ]
   };
 
-  const getTierColors = (tier: PricingPackage['tier']) => {
-    switch (tier) {
-      case 'bronze':
-      case 'starter':
-        return {
-          pill: 'bg-amber-100 text-amber-800 border-amber-300',
-          gradient: 'from-amber-500/10 via-amber-500/5 to-transparent',
-          borderHover: 'hover:border-amber-500/60',
-          btn: 'bg-amber-600 hover:bg-amber-700 text-white',
-          glow: 'group-hover:shadow-[0_20px_40px_rgba(217,119,6,0.12)]'
-        };
-      case 'silver':
-        return {
-          pill: 'bg-slate-100 text-slate-800 border-slate-300',
-          gradient: 'from-slate-500/10 via-slate-500/5 to-transparent',
-          borderHover: 'hover:border-slate-500/60',
-          btn: 'bg-slate-700 hover:bg-slate-800 text-white',
-          glow: 'group-hover:shadow-[0_20px_40px_rgba(100,116,139,0.12)]'
-        };
-      case 'gold':
-      case 'growth':
-        return {
-          pill: 'bg-yellow-100 text-yellow-900 border-yellow-400',
-          gradient: 'from-amber-400/20 via-yellow-500/10 to-transparent',
-          borderHover: 'hover:border-yellow-500 border-yellow-400/80 shadow-md shadow-yellow-500/10',
-          btn: 'bg-rize-primary hover:bg-blue-700 text-white',
-          glow: 'group-hover:shadow-[0_20px_40px_rgba(234,179,8,0.16)]'
-        };
-      case 'platinum':
-      case 'elite':
-        return {
-          pill: 'bg-indigo-100 text-indigo-950 border-indigo-300',
-          gradient: 'from-indigo-600/15 via-blue-500/10 to-transparent',
-          borderHover: 'hover:border-indigo-500/70',
-          btn: 'bg-gray-950 hover:bg-rize-primary text-white',
-          glow: 'group-hover:shadow-[0_20px_40px_rgba(79,70,229,0.14)]'
-        };
+  const FRAMER_BOX_SHADOW = "0 30px 60px -12px rgba(0, 0, 0, 0.4), 0 18px 36px -18px rgba(0, 0, 0, 0.35), inset 0 1px 1px 0 rgba(255, 255, 255, 0.45), inset 0 -2px 6px 0 rgba(0, 0, 0, 0.25)";
+
+  const DECK_PALETTES = [
+    {
+      // 1. Electric Ocean Cyan & Deep Royal Blue
+      bg: "radial-gradient(ellipse at 20% 0%, rgba(255, 255, 255, 0.35) 0%, transparent 60%), linear-gradient(145deg, #0284c7 0%, #1d4ed8 50%, #0f172a 100%)",
+      isDarkText: false,
+      pill: "bg-white/20 text-white border-white/40 backdrop-blur-md",
+      btn: "bg-white hover:bg-gray-950 text-blue-950 hover:text-white",
+      check: "text-white",
+      accent: "text-sky-100"
+    },
+    {
+      // 2. Sunset Berry / Vivid Ruby & Velvet Crimson
+      bg: "radial-gradient(ellipse at 20% 0%, rgba(255, 255, 255, 0.35) 0%, transparent 60%), linear-gradient(145deg, #f43f5e 0%, #be123c 50%, #4c0519 100%)",
+      isDarkText: false,
+      pill: "bg-white/20 text-white border-white/40 backdrop-blur-md",
+      btn: "bg-white hover:bg-gray-950 text-rose-950 hover:text-white",
+      check: "text-white",
+      accent: "text-rose-100"
+    },
+    {
+      // 3. Royal Golden Amber / Warm Solar Sunset
+      bg: "radial-gradient(ellipse at 20% 0%, rgba(255, 255, 255, 0.35) 0%, transparent 60%), linear-gradient(145deg, #f59e0b 0%, #d97706 50%, #451a03 100%)",
+      isDarkText: false,
+      pill: "bg-white/25 text-white border-white/45 backdrop-blur-md",
+      btn: "bg-white hover:bg-gray-950 text-amber-950 hover:text-white",
+      check: "text-white",
+      accent: "text-amber-100"
+    },
+    {
+      // 4. Electric Violet Nebula / Deep Cosmic Indigo
+      bg: "radial-gradient(ellipse at 20% 0%, rgba(255, 255, 255, 0.35) 0%, transparent 60%), linear-gradient(145deg, #9333ea 0%, #6366f1 50%, #1e1b4b 100%)",
+      isDarkText: false,
+      pill: "bg-white/20 text-white border-white/40 backdrop-blur-md",
+      btn: "bg-white hover:bg-gray-950 text-purple-950 hover:text-white",
+      check: "text-white",
+      accent: "text-purple-100"
+    },
+    {
+      // 5. Deep Aurora Teal / Ocean Emerald
+      bg: "radial-gradient(ellipse at 20% 0%, rgba(255, 255, 255, 0.35) 0%, transparent 60%), linear-gradient(145deg, #0d9488 0%, #0284c7 50%, #042f2e 100%)",
+      isDarkText: false,
+      pill: "bg-white/20 text-white border-white/40 backdrop-blur-md",
+      btn: "bg-white hover:bg-gray-950 text-teal-950 hover:text-white",
+      check: "text-white",
+      accent: "text-teal-100"
+    },
+    {
+      // 6. Radiant Tangerine Flame / Scarlet Ember
+      bg: "radial-gradient(ellipse at 20% 0%, rgba(255, 255, 255, 0.35) 0%, transparent 60%), linear-gradient(145deg, #ea580c 0%, #dc2626 50%, #431407 100%)",
+      isDarkText: false,
+      pill: "bg-white/20 text-white border-white/40 backdrop-blur-md",
+      btn: "bg-white hover:bg-gray-950 text-orange-950 hover:text-white",
+      check: "text-white",
+      accent: "text-orange-100"
+    },
+    {
+      // 7. Ultramarine Indigo / Midnight Velvet
+      bg: "radial-gradient(ellipse at 20% 0%, rgba(255, 255, 255, 0.35) 0%, transparent 60%), linear-gradient(145deg, #4f46e5 0%, #3730a3 50%, #0f172a 100%)",
+      isDarkText: false,
+      pill: "bg-white/20 text-white border-white/40 backdrop-blur-md",
+      btn: "bg-white hover:bg-gray-950 text-indigo-950 hover:text-white",
+      check: "text-white",
+      accent: "text-indigo-100"
     }
+  ];
+
+  const CUSTOM_PALETTE = {
+    // 8. Luxury Forest Jade / WhatsApp Malachite Glow
+    bg: "radial-gradient(ellipse at 20% 0%, rgba(255, 255, 255, 0.35) 0%, transparent 60%), linear-gradient(145deg, #059669 0%, #047857 50%, #022c22 100%)",
+    isDarkText: false,
+    pill: "bg-white/20 text-white border-white/40 backdrop-blur-md",
+    btn: "bg-white hover:bg-gray-950 text-emerald-950 hover:text-white",
+    check: "text-white",
+    accent: "text-emerald-100"
   };
 
   const getActiveCategoryData = () => {
@@ -240,48 +281,98 @@ export default function Pricing() {
         </p>
 
         {/* 3 Categories Switcher */}
-        <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mt-10 p-1.5 bg-stone-200/80 backdrop-blur-md rounded-full max-w-fit mx-auto border border-stone-300/80 shadow-xs">
-          <button
-            onClick={() => handleCategoryChange('seo')}
-            className={`inline-flex items-center gap-2 px-6 py-3 rounded-full text-xs font-black uppercase tracking-wider transition-all duration-300 cursor-pointer ${
-              activeCategory === 'seo'
-                ? 'bg-rize-primary text-white shadow-md shadow-rize-primary/30 scale-102'
-                : 'text-gray-700 hover:text-rize-primary hover:bg-white/60'
-            }`}
-          >
-            <Search size={15} />
-            SEO
-          </button>
+        <div className="mt-8 sm:mt-10 flex justify-center px-4">
+          {/* Desktop Switcher (sm and above): Natural fit-content, full text, exact original look */}
+          <div className="hidden sm:inline-flex items-center justify-center gap-2 sm:gap-3 p-1.5 bg-stone-200/80 backdrop-blur-md rounded-full border border-stone-300/80 shadow-xs">
+            <button
+              type="button"
+              onClick={() => handleCategoryChange('seo')}
+              className={`inline-flex items-center gap-2 px-6 py-3 rounded-full text-xs font-black uppercase tracking-wider transition-all duration-300 cursor-pointer ${
+                activeCategory === 'seo'
+                  ? 'bg-rize-primary text-white shadow-md shadow-rize-primary/30'
+                  : 'text-gray-700 hover:text-rize-primary hover:bg-white/60'
+              }`}
+            >
+              <Search size={15} />
+              <span>SEO</span>
+            </button>
 
-          <button
-            onClick={() => handleCategoryChange('smm')}
-            className={`inline-flex items-center gap-2 px-6 py-3 rounded-full text-xs font-black uppercase tracking-wider transition-all duration-300 cursor-pointer ${
-              activeCategory === 'smm'
-                ? 'bg-rize-primary text-white shadow-md shadow-rize-primary/30 scale-102'
-                : 'text-gray-700 hover:text-rize-primary hover:bg-white/60'
-            }`}
-          >
-            <Share2 size={15} />
-            Social Media Management
-          </button>
+            <button
+              type="button"
+              onClick={() => handleCategoryChange('smm')}
+              className={`inline-flex items-center gap-2 px-6 py-3 rounded-full text-xs font-black uppercase tracking-wider transition-all duration-300 cursor-pointer ${
+                activeCategory === 'smm'
+                  ? 'bg-rize-primary text-white shadow-md shadow-rize-primary/30'
+                  : 'text-gray-700 hover:text-rize-primary hover:bg-white/60'
+              }`}
+            >
+              <Share2 size={15} />
+              <span>Social Media Management</span>
+            </button>
 
-          <button
-            onClick={() => handleCategoryChange('website')}
-            className={`inline-flex items-center gap-2 px-6 py-3 rounded-full text-xs font-black uppercase tracking-wider transition-all duration-300 cursor-pointer ${
-              activeCategory === 'website'
-                ? 'bg-rize-primary text-white shadow-md shadow-rize-primary/30 scale-102'
-                : 'text-gray-700 hover:text-rize-primary hover:bg-white/60'
-            }`}
-          >
-            <Globe size={15} />
-            Custom Website Development
-          </button>
+            <button
+              type="button"
+              onClick={() => handleCategoryChange('website')}
+              className={`inline-flex items-center gap-2 px-6 py-3 rounded-full text-xs font-black uppercase tracking-wider transition-all duration-300 cursor-pointer ${
+                activeCategory === 'website'
+                  ? 'bg-rize-primary text-white shadow-md shadow-rize-primary/30'
+                  : 'text-gray-700 hover:text-rize-primary hover:bg-white/60'
+              }`}
+            >
+              <Globe size={15} />
+              <span>Custom Website Development</span>
+            </button>
+          </div>
+
+          {/* Mobile Switcher (< sm): Tailored 3-column pill for mobile screens */}
+          <div className="sm:hidden w-full max-w-sm p-1 bg-stone-200/80 backdrop-blur-md rounded-full border border-stone-300/80 shadow-xs">
+            <div className="grid grid-cols-3 gap-1">
+              <button
+                type="button"
+                onClick={() => handleCategoryChange('seo')}
+                className={`w-full inline-flex items-center justify-center gap-1 px-2 py-2.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all duration-300 cursor-pointer ${
+                  activeCategory === 'seo'
+                    ? 'bg-rize-primary text-white shadow-md shadow-rize-primary/30'
+                    : 'text-gray-700 hover:text-rize-primary'
+                }`}
+              >
+                <Search size={12} className="shrink-0" />
+                <span>SEO</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleCategoryChange('smm')}
+                className={`w-full inline-flex items-center justify-center gap-1 px-1.5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all duration-300 cursor-pointer ${
+                  activeCategory === 'smm'
+                    ? 'bg-rize-primary text-white shadow-md shadow-rize-primary/30'
+                    : 'text-gray-700 hover:text-rize-primary'
+                }`}
+              >
+                <Share2 size={12} className="shrink-0" />
+                <span>Social</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleCategoryChange('website')}
+                className={`w-full inline-flex items-center justify-center gap-1 px-1.5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all duration-300 cursor-pointer ${
+                  activeCategory === 'website'
+                    ? 'bg-rize-primary text-white shadow-md shadow-rize-primary/30'
+                    : 'text-gray-700 hover:text-rize-primary'
+                }`}
+              >
+                <Globe size={12} className="shrink-0" />
+                <span>Web Dev</span>
+              </button>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* Main Content Area: Dynamic Cards for Active Category */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-24">
-        <div className="flex items-center justify-between mb-8 pb-4 border-b border-gray-200">
+      {/* Main Content Area: Framer Card Deck Component */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-24 overflow-visible">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-gray-200">
           <div>
             <span className="text-xs font-bold uppercase tracking-widest text-rize-primary">
               {currentCategory.sub}
@@ -290,171 +381,531 @@ export default function Pricing() {
               {currentCategory.title}
             </h2>
           </div>
-          <p className="text-xs text-gray-500 hidden sm:block">Click any package for its formal proposal, or send a custom query</p>
+
+          {/* View Mode Switcher & Hint */}
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-gray-400 hidden md:block">
+              {viewMode === 'deck' ? 'Hover a card to elevate from the deck' : 'Click any tier for executive proposal'}
+            </span>
+            <div className="inline-flex items-center gap-1 bg-stone-200/90 p-1 rounded-full border border-stone-300 shadow-2xs">
+              <button
+                type="button"
+                onClick={() => setViewMode('deck')}
+                className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                  viewMode === 'deck'
+                    ? 'bg-gray-950 text-white shadow-xs'
+                    : 'text-gray-600 hover:text-gray-950'
+                }`}
+              >
+                <Layers size={13} />
+                <span>Deck</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('grid')}
+                className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                  viewMode === 'grid'
+                    ? 'bg-gray-950 text-white shadow-xs'
+                    : 'text-gray-600 hover:text-gray-950'
+                }`}
+              >
+                <Grid size={13} />
+                <span>Grid</span>
+              </button>
+            </div>
+          </div>
         </div>
 
-        <div className={`grid gap-5 items-stretch ${
-          activeCategory === 'seo'
-            ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4 max-w-7xl mx-auto'
-            : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5'
-        }`}>
-          {/* Pre-configured Packages */}
-          {currentCategory.packages.map((pkg) => {
-            const colors = getTierColors(pkg.tier);
-            return (
+        {/* 1. DECK VIEW (Framer Card_Deck Interactive Overlap Container) */}
+        {viewMode === 'deck' && (
+          <div className="relative overflow-visible">
+            {/* Desktop Overlapping Card Deck */}
+            <div 
+              onMouseLeave={() => setHoveredIndex(null)}
+              className="hidden lg:flex items-center justify-center -space-x-12 xl:-space-x-16 pt-28 pb-16 px-4 overflow-visible relative min-h-[620px]"
+            >
+              {currentCategory.packages.map((pkg, i) => {
+                const palette = DECK_PALETTES[i % DECK_PALETTES.length];
+                const isHovered = hoveredIndex === i;
+                return (
+                  <motion.div
+                    key={pkg.id}
+                    onMouseEnter={() => setHoveredIndex(i)}
+                    onClick={() => navigate(`/pricing/${pkg.id}`)}
+                    animate={{
+                      y: isHovered ? -96 : 0,
+                      scale: isHovered ? 1.05 : 1,
+                      zIndex: isHovered ? 45 : 10 + i,
+                    }}
+                    transition={{ type: "spring", bounce: 0.22, duration: 0.4 }}
+                    style={{
+                      background: palette.bg,
+                      boxShadow: FRAMER_BOX_SHADOW,
+                      borderRadius: 24,
+                    }}
+                    className={`w-[275px] xl:w-[295px] h-[505px] p-6 flex flex-col justify-between shrink-0 cursor-pointer relative select-none border border-white/20 transition-colors ${
+                      palette.isDarkText ? 'text-gray-950' : 'text-white'
+                    }`}
+                  >
+                    {/* Top Content */}
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-4">
+                        <span className={`text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full border ${palette.pill}`}>
+                          {pkg.badge || `Tier ${i + 1}`}
+                        </span>
+                        {pkg.popular && (
+                          <span className="bg-white/20 backdrop-blur-md text-white border border-white/35 text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full shadow-xs">
+                            Popular
+                          </span>
+                        )}
+                      </div>
+
+                      <h3 className="text-xl font-black uppercase tracking-tight leading-tight mb-2 text-white">
+                        {pkg.name}
+                      </h3>
+
+                      <p className="text-xs font-bold uppercase tracking-wider mb-3 leading-snug text-white/90">
+                        {pkg.tagline}
+                      </p>
+
+                      <p className="text-xs leading-relaxed mb-4 line-clamp-2 text-white/75">
+                        {pkg.summary}
+                      </p>
+
+                      {/* Feature Highlights */}
+                      <div className="space-y-2 pt-3 border-t border-white/20">
+                        {pkg.keyHighlights.slice(0, 3).map((hl, hIdx) => (
+                          <div key={hIdx} className="flex items-start gap-2">
+                            <CheckCircle2 className={`w-4 h-4 shrink-0 mt-0.5 ${palette.check}`} />
+                            <span className="text-xs font-semibold leading-tight text-white/95">
+                              {hl}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* CTA Button */}
+                    <div className="pt-4 border-t border-white/20">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/pricing/${pkg.id}`);
+                        }}
+                        className={`w-full py-3 px-4 rounded-full text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer shadow-md ${palette.btn}`}
+                      >
+                        <FileText size={14} />
+                        <span>Open Proposal</span>
+                        <ArrowRight size={14} />
+                      </button>
+                    </div>
+                  </motion.div>
+                );
+              })}
+
+              {/* Custom WhatsApp Tier Deck Card */}
               <motion.div
-                key={pkg.id}
-                whileHover={{ y: -4 }}
-                transition={{ duration: 0.25 }}
-                onClick={() => navigate(`/pricing/${pkg.id}`)}
-                className={`group bg-white border border-gray-200/90 rounded-3xl p-5 sm:p-5.5 flex flex-col justify-between relative overflow-hidden transition-all duration-300 shadow-2xs cursor-pointer ${colors.borderHover} ${colors.glow}`}
+                onMouseEnter={() => setHoveredIndex(currentCategory.packages.length)}
+                animate={{
+                  y: hoveredIndex === currentCategory.packages.length ? -96 : 0,
+                  scale: hoveredIndex === currentCategory.packages.length ? 1.05 : 1,
+                  zIndex: hoveredIndex === currentCategory.packages.length ? 45 : 10 + currentCategory.packages.length,
+                }}
+                transition={{ type: "spring", bounce: 0.22, duration: 0.4 }}
+                style={{
+                  background: CUSTOM_PALETTE.bg,
+                  boxShadow: FRAMER_BOX_SHADOW,
+                  borderRadius: 24,
+                }}
+                className="w-[275px] xl:w-[295px] h-[505px] p-6 flex flex-col justify-between shrink-0 relative select-none border border-white/20 text-white"
               >
-                {/* Background subtle tint */}
-                <div className={`absolute inset-0 bg-gradient-to-b ${colors.gradient} pointer-events-none opacity-60`} />
-
-                {/* Popular / Tier Badge */}
-                {pkg.popular && (
-                  <span className="absolute top-3.5 right-3.5 bg-rize-primary text-white text-[8px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full shadow-xs">
-                    Popular
-                  </span>
-                )}
-
-                <div className="relative z-10">
-                  <div className="flex items-center gap-1.5 mb-2.5">
-                    <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full border ${colors.pill}`}>
-                      {pkg.badge}
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-4">
+                    <span className={`text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full border ${CUSTOM_PALETTE.pill}`}>
+                      Custom Tier
+                    </span>
+                    <span className="bg-white text-emerald-950 text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full shadow-xs flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
+                      WhatsApp
                     </span>
                   </div>
 
-                  <h3 className="text-lg sm:text-xl font-black text-gray-950 uppercase tracking-tight mb-1">
-                    {pkg.name}
+                  <h3 className="text-xl font-black uppercase tracking-tight leading-tight mb-2">
+                    {currentCategory.customTitle}
                   </h3>
 
-                  <p className="text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2 leading-tight">
-                    {pkg.tagline}
+                  <p className="text-xs font-bold uppercase tracking-wider mb-3 leading-snug text-emerald-100">
+                    {currentCategory.customTagline}
                   </p>
 
-                  <p className="text-[11px] text-gray-500 leading-relaxed mb-3 line-clamp-2">
-                    {pkg.summary}
-                  </p>
+                  <div className="space-y-2 pt-2 border-t border-white/15">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-emerald-50">
+                      <CheckCircle2 className="w-4 h-4 shrink-0 text-white" />
+                      <span>Custom Scope & Deliverables</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs font-semibold text-emerald-50">
+                      <CheckCircle2 className="w-4 h-4 shrink-0 text-white" />
+                      <span>Flexible Budget & Timeline</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs font-semibold text-emerald-50">
+                      <CheckCircle2 className="w-4 h-4 shrink-0 text-white" />
+                      <span>Direct Executive Proposal</span>
+                    </div>
+                  </div>
 
-                  {/* Feature Highlights List - Compact 3-4 points */}
-                  <div className="space-y-1.5 pt-3 border-t border-gray-100 mb-3">
-                    {pkg.keyHighlights.slice(0, 3).map((hl, i) => (
-                      <div key={i} className="flex items-start gap-2">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-rize-primary shrink-0 mt-0.5" />
-                        <span className="text-[11px] font-semibold text-gray-800 leading-tight">
-                          {hl}
-                        </span>
-                      </div>
-                    ))}
+                  {/* Quick Input Fields */}
+                  <div className="space-y-2 pt-2.5 mt-2.5 border-t border-white/15">
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        value={customName}
+                        onChange={(e) => setCustomName(e.target.value)}
+                        placeholder="Your Name"
+                        className="w-full text-xs px-2.5 py-2 rounded-xl bg-white/20 border border-white/30 placeholder:text-emerald-100/70 text-white focus:bg-white focus:text-gray-900 focus:outline-hidden transition-all"
+                      />
+                      <input
+                        type="tel"
+                        value={customPhone}
+                        onChange={(e) => setCustomPhone(e.target.value)}
+                        placeholder="WhatsApp No."
+                        className="w-full text-xs px-2.5 py-2 rounded-xl bg-white/20 border border-white/30 placeholder:text-emerald-100/70 text-white focus:bg-white focus:text-gray-900 focus:outline-hidden transition-all"
+                      />
+                    </div>
+                    <textarea
+                      rows={2}
+                      value={customQuery}
+                      onChange={(e) => setCustomQuery(e.target.value)}
+                      placeholder={currentCategory.customPlaceholder}
+                      className="w-full text-xs px-3 py-2 rounded-xl bg-white/20 border border-white/30 placeholder:text-emerald-100/70 text-white focus:bg-white focus:text-gray-900 focus:outline-hidden transition-all resize-none leading-relaxed"
+                    />
                   </div>
                 </div>
 
-                <div className="relative z-10 mt-3 pt-3 border-t border-gray-100">
+                <div className="pt-3 border-t border-white/15">
                   <button
                     type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(`/pricing/${pkg.id}`);
-                    }}
-                    className={`w-full py-2.5 px-3 rounded-full text-[11px] font-black uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer ${colors.btn} shadow-2xs group-hover:shadow-xs`}
+                    onClick={handleSendWhatsapp}
+                    className={`w-full py-3 px-4 rounded-full text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer shadow-sm ${CUSTOM_PALETTE.btn}`}
                   >
-                    <FileText size={13} />
-                    Open Proposal
-                    <ArrowRight size={13} className="group-hover:translate-x-1 transition-transform" />
+                    <WhatsAppIcon className="w-4 h-4 fill-current" />
+                    <span>Send on WhatsApp</span>
                   </button>
                 </div>
               </motion.div>
-            );
-          })}
+            </div>
 
-          {/* COMPACT CUSTOM QUERY CARD WITH WHATSAPP INTEGRATION */}
-          <motion.div
-            whileHover={{ y: -4 }}
-            transition={{ duration: 0.25 }}
-            className="group bg-white border-2 border-emerald-500/40 hover:border-emerald-500 rounded-3xl p-5 sm:p-5.5 flex flex-col justify-between relative overflow-hidden transition-all duration-300 shadow-2xs hover:shadow-[0_16px_32px_rgba(16,185,129,0.12)]"
-          >
-            {/* Background emerald tint */}
-            <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/10 via-emerald-500/5 to-transparent pointer-events-none opacity-80" />
+            {/* Mobile / Tablet Horizontal Swipe Deck */}
+            <div className="lg:hidden">
+              <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pt-4 pb-8 px-2 scrollbar-none">
+                {currentCategory.packages.map((pkg, i) => {
+                  const palette = DECK_PALETTES[i % DECK_PALETTES.length];
+                  return (
+                    <div
+                      key={pkg.id}
+                      onClick={() => navigate(`/pricing/${pkg.id}`)}
+                      style={{
+                        background: palette.bg,
+                        boxShadow: FRAMER_BOX_SHADOW,
+                        borderRadius: 24,
+                      }}
+                      className={`w-[275px] h-[490px] p-6 flex flex-col justify-between shrink-0 snap-center cursor-pointer border border-white/20 ${
+                        palette.isDarkText ? 'text-gray-950' : 'text-white'
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center justify-between gap-2 mb-4">
+                          <span className={`text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full border ${palette.pill}`}>
+                            {pkg.badge || `Tier ${i + 1}`}
+                          </span>
+                          {pkg.popular && (
+                            <span className="bg-white/20 backdrop-blur-md text-white border border-white/35 text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full shadow-xs">
+                              Popular
+                            </span>
+                          )}
+                        </div>
 
-            {/* WhatsApp Direct Badge */}
-            <span className="absolute top-3.5 right-3.5 bg-emerald-600 text-white text-[8px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full shadow-xs flex items-center gap-1 z-20">
-              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-              WhatsApp Direct
-            </span>
+                        <h3 className="text-xl font-black uppercase tracking-tight leading-tight mb-2 text-white">
+                          {pkg.name}
+                        </h3>
 
-            <div className="relative z-10 flex flex-col">
-              <div className="flex items-center gap-1.5 mb-2.5">
-                <span className="text-[9px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full border bg-emerald-100 text-emerald-900 border-emerald-300 flex items-center gap-1">
-                  <Sparkles size={10} className="text-emerald-600" />
-                  Custom Tier
-                </span>
+                        <p className="text-xs font-bold uppercase tracking-wider mb-3 leading-snug text-white/90">
+                          {pkg.tagline}
+                        </p>
+
+                        <p className="text-xs leading-relaxed mb-4 line-clamp-2 text-white/75">
+                          {pkg.summary}
+                        </p>
+
+                        <div className="space-y-2 pt-3 border-t border-white/20">
+                          {pkg.keyHighlights.slice(0, 3).map((hl, hIdx) => (
+                            <div key={hIdx} className="flex items-start gap-2">
+                              <CheckCircle2 className={`w-4 h-4 shrink-0 mt-0.5 ${palette.check}`} />
+                              <span className="text-xs font-semibold leading-tight text-white/95">
+                                {hl}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="pt-4 border-t border-white/20">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/pricing/${pkg.id}`);
+                          }}
+                          className={`w-full py-3 px-4 rounded-full text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer shadow-md ${palette.btn}`}
+                        >
+                          <FileText size={14} />
+                          <span>Open Proposal</span>
+                          <ArrowRight size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Mobile Custom Card */}
+                <div
+                  style={{
+                    background: CUSTOM_PALETTE.bg,
+                    boxShadow: FRAMER_BOX_SHADOW,
+                    borderRadius: 24,
+                  }}
+                  className="w-[275px] h-[490px] p-6 flex flex-col justify-between shrink-0 snap-center border border-white/20 text-white"
+                >
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-4">
+                      <span className={`text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full border ${CUSTOM_PALETTE.pill}`}>
+                        Custom Tier
+                      </span>
+                      <span className="bg-white text-emerald-950 text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full shadow-xs">
+                        WhatsApp
+                      </span>
+                    </div>
+
+                    <h3 className="text-xl font-black uppercase tracking-tight leading-tight mb-2">
+                      {currentCategory.customTitle}
+                    </h3>
+
+                    <p className="text-xs font-bold uppercase tracking-wider mb-3 leading-snug text-emerald-100">
+                      {currentCategory.customTagline}
+                    </p>
+
+                    <div className="space-y-2 pt-2 border-t border-white/15">
+                      <div className="flex items-center gap-2 text-xs font-semibold text-emerald-50">
+                        <CheckCircle2 className="w-4 h-4 shrink-0 text-white" />
+                        <span>Custom Deliverables</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs font-semibold text-emerald-50">
+                        <CheckCircle2 className="w-4 h-4 shrink-0 text-white" />
+                        <span>Flexible Budget</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 pt-2.5 mt-2.5 border-t border-white/15">
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          value={customName}
+                          onChange={(e) => setCustomName(e.target.value)}
+                          placeholder="Your Name"
+                          className="w-full text-xs px-2.5 py-2 rounded-xl bg-white/20 border border-white/30 placeholder:text-emerald-100/70 text-white focus:bg-white focus:text-gray-900 focus:outline-hidden transition-all"
+                        />
+                        <input
+                          type="tel"
+                          value={customPhone}
+                          onChange={(e) => setCustomPhone(e.target.value)}
+                          placeholder="WhatsApp No."
+                          className="w-full text-xs px-2.5 py-2 rounded-xl bg-white/20 border border-white/30 placeholder:text-emerald-100/70 text-white focus:bg-white focus:text-gray-900 focus:outline-hidden transition-all"
+                        />
+                      </div>
+                      <textarea
+                        rows={2}
+                        value={customQuery}
+                        onChange={(e) => setCustomQuery(e.target.value)}
+                        placeholder={currentCategory.customPlaceholder}
+                        className="w-full text-xs px-3 py-2 rounded-xl bg-white/20 border border-white/30 placeholder:text-emerald-100/70 text-white focus:bg-white focus:text-gray-900 focus:outline-hidden transition-all resize-none leading-relaxed"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t border-white/15">
+                    <button
+                      type="button"
+                      onClick={handleSendWhatsapp}
+                      className={`w-full py-3 px-4 rounded-full text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer shadow-sm ${CUSTOM_PALETTE.btn}`}
+                    >
+                      <WhatsAppIcon className="w-4 h-4 fill-current" />
+                      <span>Send on WhatsApp</span>
+                    </button>
+                  </div>
+                </div>
               </div>
 
-              <h3 className="text-lg sm:text-xl font-black text-gray-950 uppercase tracking-tight mb-1">
-                {currentCategory.customTitle}
-              </h3>
-
-              <p className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider mb-2 leading-tight">
-                {currentCategory.customTagline}
+              <p className="text-center text-xs text-gray-400 mt-2">
+                ← Swipe horizontally to explore all tiers →
               </p>
+            </div>
+          </div>
+        )}
 
-              {/* Compact Quick Feature Badges */}
-              <div className="flex flex-wrap gap-1.5 mb-3">
-                <span className="text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/60 px-2 py-0.5 rounded-md">
-                  ✓ Custom Scope
-                </span>
-                <span className="text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/60 px-2 py-0.5 rounded-md">
-                  ✓ Flexible Budget
-                </span>
-                <span className="text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/60 px-2 py-0.5 rounded-md">
-                  ✓ Quick Quote
-                </span>
-              </div>
+        {/* 2. GRID VIEW (All cards side-by-side) */}
+        {viewMode === 'grid' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6 pt-4 pb-8">
+            {currentCategory.packages.map((pkg, i) => {
+              const palette = DECK_PALETTES[i % DECK_PALETTES.length];
+              return (
+                <motion.div
+                  key={pkg.id}
+                  whileHover={{ y: -8, scale: 1.02 }}
+                  transition={{ type: "spring", bounce: 0.2, duration: 0.3 }}
+                  onClick={() => navigate(`/pricing/${pkg.id}`)}
+                  style={{
+                    background: palette.bg,
+                    boxShadow: FRAMER_BOX_SHADOW,
+                    borderRadius: 24,
+                  }}
+                  className={`p-6 flex flex-col justify-between cursor-pointer border border-white/20 min-h-[490px] ${
+                    palette.isDarkText ? 'text-gray-950' : 'text-white'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-4">
+                      <span className={`text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full border ${palette.pill}`}>
+                        {pkg.badge || `Tier ${i + 1}`}
+                      </span>
+                      {pkg.popular && (
+                        <span className="bg-white/20 backdrop-blur-md text-white border border-white/35 text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full shadow-xs">
+                          Popular
+                        </span>
+                      )}
+                    </div>
 
-              {/* Clean Form */}
-              <div className="space-y-2.5 pt-2.5 border-t border-emerald-100/80">
-                <div className="grid grid-cols-2 gap-2">
-                  <input
-                    type="text"
-                    value={customName}
-                    onChange={(e) => setCustomName(e.target.value)}
-                    placeholder="Your Name"
-                    className="w-full text-xs px-3 py-2.5 rounded-xl bg-stone-50/90 border border-gray-200/90 focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/15 focus:outline-hidden transition-all text-gray-900 placeholder:text-gray-400 font-medium"
-                  />
-                  <input
-                    type="tel"
-                    value={customPhone}
-                    onChange={(e) => setCustomPhone(e.target.value)}
-                    placeholder="WhatsApp No."
-                    className="w-full text-xs px-3 py-2.5 rounded-xl bg-stone-50/90 border border-gray-200/90 focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/15 focus:outline-hidden transition-all text-gray-900 placeholder:text-gray-400 font-medium"
-                  />
+                    <h3 className="text-xl font-black uppercase tracking-tight leading-tight mb-2 text-white">
+                      {pkg.name}
+                    </h3>
+
+                    <p className="text-xs font-bold uppercase tracking-wider mb-3 leading-snug text-white/90">
+                      {pkg.tagline}
+                    </p>
+
+                    <p className="text-xs leading-relaxed mb-4 line-clamp-2 text-white/75">
+                      {pkg.summary}
+                    </p>
+
+                    <div className="space-y-2 pt-3 border-t border-white/20">
+                      {pkg.keyHighlights.slice(0, 3).map((hl, hIdx) => (
+                        <div key={hIdx} className="flex items-start gap-2">
+                          <CheckCircle2 className={`w-4 h-4 shrink-0 mt-0.5 ${palette.check}`} />
+                          <span className="text-xs font-semibold leading-tight text-white/95">
+                            {hl}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-white/20">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/pricing/${pkg.id}`);
+                      }}
+                      className={`w-full py-3 px-4 rounded-full text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer shadow-md ${palette.btn}`}
+                    >
+                      <FileText size={14} />
+                      <span>Open Proposal</span>
+                      <ArrowRight size={14} />
+                    </button>
+                  </div>
+                </motion.div>
+              );
+            })}
+
+            {/* Custom Card in Grid */}
+            <motion.div
+              whileHover={{ y: -8, scale: 1.02 }}
+              transition={{ type: "spring", bounce: 0.2, duration: 0.3 }}
+              style={{
+                background: CUSTOM_PALETTE.bg,
+                boxShadow: FRAMER_BOX_SHADOW,
+                borderRadius: 24,
+              }}
+              className="p-6 flex flex-col justify-between border border-white/20 text-white min-h-[490px]"
+            >
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-4">
+                  <span className={`text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full border ${CUSTOM_PALETTE.pill}`}>
+                    Custom Tier
+                  </span>
+                  <span className="bg-white text-emerald-950 text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full shadow-xs">
+                    WhatsApp
+                  </span>
                 </div>
 
-                <textarea
-                  rows={3}
-                  value={customQuery}
-                  onChange={(e) => setCustomQuery(e.target.value)}
-                  placeholder={currentCategory.customPlaceholder}
-                  className="w-full text-xs px-3.5 py-2.5 rounded-xl bg-stone-50/90 border border-gray-200/90 focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/15 focus:outline-hidden transition-all text-gray-900 placeholder:text-gray-400 resize-none min-h-[78px] leading-relaxed overflow-hidden"
-                />
-              </div>
-            </div>
+                <h3 className="text-xl font-black uppercase tracking-tight leading-tight mb-2">
+                  {currentCategory.customTitle}
+                </h3>
 
-            {/* WhatsApp Action Button */}
-            <div className="relative z-10 mt-3 pt-3 border-t border-emerald-100">
-              <button
-                type="button"
-                onClick={handleSendWhatsapp}
-                className="w-full py-3 px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer bg-[#25D366] hover:bg-[#20ba59] text-white shadow-xs hover:shadow-md hover:shadow-emerald-600/20 hover:scale-[1.01] active:scale-[0.99]"
-              >
-                <WhatsAppIcon className="w-4 h-4 fill-white" />
-                <span>Send Query on WhatsApp</span>
-              </button>
-            </div>
-          </motion.div>
-        </div>
+                <p className="text-xs font-bold uppercase tracking-wider mb-3 leading-snug text-emerald-100">
+                  {currentCategory.customTagline}
+                </p>
+
+                <div className="space-y-2 pt-2 border-t border-white/15">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-emerald-50">
+                    <CheckCircle2 className="w-4 h-4 shrink-0 text-white" />
+                    <span>Custom Deliverables</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs font-semibold text-emerald-50">
+                    <CheckCircle2 className="w-4 h-4 shrink-0 text-white" />
+                    <span>Flexible Budget</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2 pt-2.5 mt-2.5 border-t border-white/15">
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      value={customName}
+                      onChange={(e) => setCustomName(e.target.value)}
+                      placeholder="Your Name"
+                      className="w-full text-xs px-2.5 py-2 rounded-xl bg-white/20 border border-white/30 placeholder:text-emerald-100/70 text-white focus:bg-white focus:text-gray-900 focus:outline-hidden transition-all"
+                    />
+                    <input
+                      type="tel"
+                      value={customPhone}
+                      onChange={(e) => setCustomPhone(e.target.value)}
+                      placeholder="WhatsApp No."
+                      className="w-full text-xs px-2.5 py-2 rounded-xl bg-white/20 border border-white/30 placeholder:text-emerald-100/70 text-white focus:bg-white focus:text-gray-900 focus:outline-hidden transition-all"
+                    />
+                  </div>
+                  <textarea
+                    rows={2}
+                    value={customQuery}
+                    onChange={(e) => setCustomQuery(e.target.value)}
+                    placeholder={currentCategory.customPlaceholder}
+                    className="w-full text-xs px-3 py-2 rounded-xl bg-white/20 border border-white/30 placeholder:text-emerald-100/70 text-white focus:bg-white focus:text-gray-900 focus:outline-hidden transition-all resize-none leading-relaxed"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-white/15">
+                <button
+                  type="button"
+                  onClick={handleSendWhatsapp}
+                  className={`w-full py-3 px-4 rounded-full text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer shadow-sm ${CUSTOM_PALETTE.btn}`}
+                >
+                  <WhatsAppIcon className="w-4 h-4 fill-current" />
+                  <span>Send on WhatsApp</span>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
       </section>
 
       {/* Trust Badge Section */}

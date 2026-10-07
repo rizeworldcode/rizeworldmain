@@ -6,6 +6,7 @@ export interface Project {
   images: string[];
   fallback: string;
   desc: string;
+  logo?: string;
 }
 
 export const PROJECTS: Project[] = [
@@ -413,5 +414,37 @@ export const PROJECTS: Project[] = [
     ],
     fallback: "https://images.unsplash.com/photo-1540910419892-4a36d2c3266c?auto=format&fit=crop&q=80&w=800",
     desc: "Complete political branding, digital campaign, and visual promotion strategy for Balwant Yadav — Ward No. 16, Nagar Palika Bahadurpur."
+  },
+  {
+    id: "Santsukhdav Shah Charitable Hospital",
+    title: "Hospital",
+    category: "Hospital",
+    logo: "/logos/sant.png",
+    image: "/1920X1000/sant sukhdav/sant sukh dev.png",
+    images: [
+      "/1920X1000/sant sukhdav/sant sukh dev 2.png",
+      "/1920X1000/sant sukhdav/DR. YOGESH.png",
+      "/1920X1000/sant sukhdav/sant sukh dev 12121.png",
+      "/1920X1000/sant sukhdav/sant shukh dev dr.png"
+    ],
+    fallback: "https://images.unsplash.com/photo-1586773860418-d37222d8fce3?auto=format&fit=crop&q=80&w=800",
+    desc: "Dedicated to compassionate care and healing — Comprehensive healthcare branding, digital presence, and visual communication strategy for Sant Sukhdev Shah Charitable Hospital."
+  },
+
+  {
+    id: "Chappan Bhog",
+    title: "Chappan Bhog",
+    category: "Multi-Cuisine Dining",
+    logo: "/logos/chappan.png",
+    image: "/1920X1000/chappan bhog/BHOG.png",
+    images: [
+      "/1920X1000/chappan bhog/sigdi 1.png",
+      "/1920X1000/chappan bhog/sigdi paneer.png",
+      "/1920X1000/chappan bhog/sigdi poster pneer.png",
+      "/1920X1000/chappan bhog/sigdi pulao.png"
+    ],
+    fallback: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&q=80&w=800",
+    desc: "A celebration of authentic flavours and culinary excellence — Creative social media branding, appetizing food promotion, and visual campaign for Chappan Bhog Multi-Cuisine Dining."
   }
+
 ];

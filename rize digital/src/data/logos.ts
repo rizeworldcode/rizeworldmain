@@ -32,5 +32,7 @@ export const LOGOS: LogoItem[] = [
   { src: "/logos/logo1/zonirazjewel_14050326_165120271.jpg-removebg-preview.png", bg: "bg-black" },
   { src: "/logos/shinelimo.webp", bg: "bg-black" },
   { src: "/logos/south-removebg-preview.png", bg: "bg-white" },
-  { src: "/logos/TT logo.png", bg: "bg-white" }
+  { src: "/logos/TT logo.png", bg: "bg-white" },
+  { src: "/logos/sant.png", bg: "bg-white" },
+  { src: "/logos/chappan.png", bg: "bg-white" }
 ];
