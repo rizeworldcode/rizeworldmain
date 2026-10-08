@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { TrendingUp } from 'lucide-react';
 
 export default function BusinessGrowthModern() {
   const [activeImage, setActiveImage] = useState<string | null>(null);
@@ -41,7 +40,7 @@ export default function BusinessGrowthModern() {
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="w-full sm:w-[80%] lg:w-1/5 h-[350px] lg:h-[450px] bg-linear-to-br from-rize-royal via-rize-indigo to-rize-cyan rounded-3xl lg:rounded-tl-[4rem] lg:rounded-br-[4rem] lg:rounded-tr-xl lg:rounded-bl-xl p-8 flex flex-col justify-end relative overflow-hidden group shadow-lg hover:shadow-xl transition-shadow border border-white/10"
+            className="w-full sm:w-[80%] lg:w-1/5 h-[350px] lg:h-[450px] bg-linear-to-br from-rize-royal via-rize-indigo to-rize-cyan rounded-3xl lg:rounded-tl-[4rem] lg:rounded-br-[4rem] lg:rounded-tr-xl lg:rounded-bl-xl p-8 flex flex-col justify-between relative overflow-hidden group shadow-lg hover:shadow-xl transition-shadow border border-white/10"
           >
             {/* Wavy background graphic placeholder */}
             <div className="absolute top-0 left-0 w-full h-[50%] opacity-20 pointer-events-none">
@@ -49,16 +48,22 @@ export default function BusinessGrowthModern() {
                 <path d="M0,0 C30,30 70,-10 100,20 L100,0 L0,0 Z" />
               </svg>
             </div>
-            
-            <div className="mb-4">
-              <span className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-white/30 text-white group-hover:bg-white group-hover:text-rize-royal transition-colors">
-                <TrendingUp className="w-5 h-5" />
-              </span>
+
+            {/* Growth Icon in front of background */}
+            <div className="relative z-10 w-full flex items-center justify-center pt-12 lg:pt-18">
+              <img 
+                src="/images/Growth Icon.png" 
+                alt="Business Growth Icon" 
+                className="w-48 h-48 lg:w-60 lg:h-60 object-contain drop-shadow-2xl group-hover:scale-105 transition-transform duration-500" 
+              />
             </div>
-            <h3 className="text-5xl font-black text-white mb-2 tracking-tighter">2X</h3>
-            <p className="text-white/90 font-medium text-sm lg:text-base leading-snug uppercase tracking-widest">
-              Business Growth
-            </p>
+            
+            <div className="relative z-10">
+              <h3 className="text-5xl font-black text-white mb-2 tracking-tighter">2X</h3>
+              <p className="text-white/90 font-medium text-sm lg:text-base leading-snug uppercase tracking-widest">
+                Business Growth
+              </p>
+            </div>
           </motion.div>
 
           {/* Card 2: Small White */}

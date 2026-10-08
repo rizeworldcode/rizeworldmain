@@ -4,15 +4,29 @@ import { useLocation } from 'react-router-dom';
 export default function ScrollToTop() {
   const { pathname, hash } = useLocation();
   const isFirstRender = useRef(true);
+  const prevPathname = useRef(pathname);
 
-  // Allow browser to natively restore scroll position on reload:
+  // Set manual scroll restoration so the browser does not clamp scroll prematurely on reload
   useEffect(() => {
     if ('scrollRestoration' in window.history) {
-      window.history.scrollRestoration = 'auto';
+      window.history.scrollRestoration = 'manual';
     }
   }, []);
 
-  // Handle route changes and hash navigation:
+  // Save scroll position for the current route as user scrolls
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 0) {
+        sessionStorage.setItem(`scroll_pos_${pathname}`, window.scrollY.toString());
+      }
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, [pathname]);
+
+  // Handle route changes, reloads, and hash navigation:
   useEffect(() => {
     if (hash) {
       const id = decodeURIComponent(hash.replace('#', ''));
@@ -31,14 +45,33 @@ export default function ScrollToTop() {
       return;
     }
 
-    // On initial page load or reload, preserve current scroll position and section
+    // On initial page load or reload:
     if (isFirstRender.current) {
       isFirstRender.current = false;
+      const saved = sessionStorage.getItem(`scroll_pos_${pathname}`);
+      if (saved) {
+        const targetY = parseFloat(saved);
+        if (targetY > 0) {
+          const restoreScroll = () => {
+            window.scrollTo({ top: targetY, left: 0, behavior: 'instant' });
+          };
+          restoreScroll();
+          requestAnimationFrame(restoreScroll);
+          setTimeout(restoreScroll, 50);
+          setTimeout(restoreScroll, 150);
+          setTimeout(restoreScroll, 300);
+          return;
+        }
+      }
       return;
     }
 
-    // On normal page-to-page link navigation, scroll to top
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    // On normal route-to-route page navigation:
+    if (prevPathname.current !== pathname) {
+      prevPathname.current = pathname;
+      sessionStorage.removeItem(`scroll_pos_${pathname}`);
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    }
   }, [pathname, hash]);
 
   return null;

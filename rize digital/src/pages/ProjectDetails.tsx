@@ -52,7 +52,11 @@ const PROJECT_LOGOS: Record<string, string> = {
   "bhavik-dairy": "/logos/logo1/bhavikdairy_14050326_165157844.jpg.jpeg_nobg.png",
   "travelia": "/logos/TT logo.png",
   "Santsukhdav Shah Charitable Hospital": "/logos/sant.png",
-  "Chappan Bhog": "/logos/chappan.png"
+  "santsukhdav": "/logos/sant.png",
+  "santsukhdav-shah-charitable-hospital": "/logos/sant.png",
+  "Chappan Bhog": "/logos/chappan.png",
+  "chappan-bhog": "/logos/chappan.png",
+  "chappan": "/logos/chappan.png"
 };
 
 const PROJECT_THEMES: Record<string, { bg: string; text: string; isDark: boolean }> = {
@@ -74,7 +78,14 @@ export default function ProjectDetails() {
   const navigate = useNavigate();
   const [selectedGalleryImage, setSelectedGalleryImage] = useState<string | null>(null);
 
-  const project = PROJECTS.find(p => p.id === projectId);
+  const decodedId = projectId ? decodeURIComponent(projectId) : '';
+  const project = PROJECTS.find(p => 
+    p.id === decodedId ||
+    p.id === projectId ||
+    p.id.toLowerCase() === decodedId.toLowerCase() ||
+    p.id.toLowerCase().replace(/\s+/g, '-') === decodedId.toLowerCase() ||
+    p.id.toLowerCase().replace(/[^a-z0-9]+/g, '-') === decodedId.toLowerCase()
+  );
 
   if (!project) {
     return (
