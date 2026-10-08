@@ -364,6 +364,7 @@ const AddPaymentModal = ({ client, isOpen, onClose, onAdd, maxAmount }) => {
             >
               <option value="Online" className="bg-white dark:bg-[#030303] text-black dark:text-white">Online</option>
               <option value="Cash" className="bg-white dark:bg-[#030303] text-black dark:text-white">Cash</option>
+              <option value="Cheque" className="bg-white dark:bg-[#030303] text-black dark:text-white">Cheque</option>
             </select>
           </div>
           {formData.mode === 'Online' && (
@@ -383,6 +384,18 @@ const AddPaymentModal = ({ client, isOpen, onClose, onAdd, maxAmount }) => {
                   UTR number must be between 12 and 16 characters. (Current length: {utrTrimmed.length})
                 </p>
               )}
+            </motion.div>
+          )}
+          {formData.mode === 'Cheque' && (
+            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}>
+              <label className="text-[10px] font-bold text-gray-700 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Cheque Number / Reference</label>
+              <input
+                type="text"
+                className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-black dark:text-white outline-none transition-all placeholder:text-gray-400 focus:border-blue-500"
+                placeholder="Enter Cheque number (e.g. 000123)"
+                value={formData.utr}
+                onChange={(e) => setFormData({ ...formData, utr: e.target.value })}
+              />
             </motion.div>
           )}
           <div>
@@ -1685,11 +1698,19 @@ const PaymentModal = ({ client, isOpen, onClose, theme }) => {
                           </div>
                         </div>
                         <div className="text-right">
-                          <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded uppercase">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
+                            (payment.mode || '').toLowerCase() === 'cash'
+                              ? 'text-amber-600 dark:text-amber-400 bg-amber-500/10'
+                              : (payment.mode || '').toLowerCase() === 'cheque' || (payment.mode || '').toLowerCase() === 'cheq'
+                              ? 'text-purple-600 dark:text-purple-400 bg-purple-500/10'
+                              : 'text-blue-600 dark:text-blue-400 bg-blue-500/10'
+                          }`}>
                             {payment.mode || 'Online'}
                           </span>
                           {payment.utr && (
-                            <p className="text-[10px] text-gray-600 dark:text-gray-600 mt-1 font-mono">#{payment.utr}</p>
+                            <p className="text-[10px] text-gray-600 dark:text-gray-400 mt-1 font-mono">
+                              {(payment.mode || '').toLowerCase() === 'cheque' || (payment.mode || '').toLowerCase() === 'cheq' ? `Cheque #${payment.utr}` : `#${payment.utr}`}
+                            </p>
                           )}
                         </div>
                       </div>
@@ -1870,7 +1891,7 @@ const handleAddPayment = async (data) => {
       body: JSON.stringify({
         payingAmount: parseFloat(data.amount),
         paymentMethod: data.mode,
-        ...(data.mode === 'Online' && { utr: data.utr }),
+        utr: data.utr || '',
         month: data.month,
         periodFrom: data.periodFrom,
         periodTo: data.periodTo,
@@ -2081,7 +2102,7 @@ const handleAddPayment = async (data) => {
       const paymentItem = {
         date: data.date ? new Date(data.date) : new Date(),
         amount: amount,
-        mode: data.mode === 'Cash' ? 'Cash' : 'Online',
+        mode: data.mode === 'Cash' ? 'Cash' : (data.mode === 'Cheque' ? 'Cheque' : 'Online'),
         utr: data.utr || '',
         month: data.month || '',
         periodFrom: data.periodFrom ? new Date(data.periodFrom) : undefined,

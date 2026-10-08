@@ -24,7 +24,11 @@ exports.updateClientPaidAmount = async (req, res) => {
       return res.status(400).json({ success: false, message: `Payment amount (₹${payingAmount}) cannot exceed the pending amount (₹${targetPending})` });
     }
 
-    const paymentMode = req.body.paymentMethod === 'Cash' ? 'Cash' : 'Online';
+    const rawMode = req.body.paymentMethod || req.body.mode || 'Online';
+    const paymentMode = (rawMode === 'Cash' || rawMode === 'Cheque' || rawMode === 'Cheq')
+      ? (rawMode === 'Cash' ? 'Cash' : 'Cheque')
+      : 'Online';
+
     if (paymentMode === 'Online') {
       const utrStr = (req.body.utr || '').trim();
       if (!utrStr || utrStr.length < 12 || utrStr.length > 16) {
@@ -35,7 +39,7 @@ exports.updateClientPaidAmount = async (req, res) => {
     const paymentEntry = {
       date: req.body.date ? new Date(req.body.date) : new Date(),
       amount: payingAmount,
-      mode: req.body.paymentMethod === 'Cash' ? 'Cash' : 'Online',
+      mode: paymentMode,
       utr: req.body.utr || '',
       month: req.body.month || '',
       periodFrom: req.body.periodFrom ? new Date(req.body.periodFrom) : undefined,
