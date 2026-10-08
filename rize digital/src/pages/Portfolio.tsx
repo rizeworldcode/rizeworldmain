@@ -317,7 +317,7 @@ export default function Portfolio() {
 
           {/* Right Statistics details */}
           <div className="flex flex-col text-left">
-            <h3 className="text-2xl md:text-3xl font-bold tracking-tight leading-snug mb-10 max-w-2xl border-l-2 border-rize-primary pl-6">
+            <h3 className="text-2xl md:text-3xl font-bold tracking-tight leading-snug mb-10 max-w-2xl border-l-2 border-amber-400 pl-6">
               We are passionate about empowering individuals and businesses to drive digital transformation through user-first experiences.
             </h3>
             
