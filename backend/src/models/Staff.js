@@ -40,6 +40,15 @@ const staffSchema = new mongoose.Schema({
     required: true,
     enum: ['Permanent', 'Intern', 'Part-time']
   },
+  salaryCalculationType: {
+    type: String,
+    enum: ['hourly', 'daily'],
+    default: 'hourly'
+  },
+  exemptClockInOut: {
+    type: Boolean,
+    default: false
+  },
   joiningDate: {
     type: Date,
     default: Date.now

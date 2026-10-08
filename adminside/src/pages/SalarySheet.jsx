@@ -40,8 +40,10 @@ const JOB_TYPE_COLORS = {
 
 import { 
   calculatePayoutForMonth, 
-  getAvailableSalaryMonths 
+  getAvailableSalaryMonths,
+  isDailyRatedStaff 
 } from '../utils/salaryCalculator';
+import ManageAttendanceModal from '../components/attendance/ManageAttendanceModal';
 
 
 const PasswordGate = ({ onUnlock }) => {
@@ -182,6 +184,24 @@ const SalarySheetView = ({ onLock }) => {
 
   useEffect(() => { fetchData(); }, []);
 
+  const [selectedStaffForAttendance, setSelectedStaffForAttendance] = useState(null);
+  const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
+
+  const handleOpenAttendance = (emp) => {
+    setSelectedStaffForAttendance(emp);
+    setIsAttendanceModalOpen(true);
+  };
+
+  const handleAttendanceUpdated = (updatedStaff) => {
+    if (!updatedStaff) return;
+    setStaff(prev => prev.map(s => 
+      (s._id === updatedStaff._id || s.id === updatedStaff._id) ? updatedStaff : s
+    ));
+    if (selectedStaffForAttendance && (selectedStaffForAttendance._id === updatedStaff._id || selectedStaffForAttendance.id === updatedStaff._id)) {
+      setSelectedStaffForAttendance(updatedStaff);
+    }
+  };
+
   // Compute available months dynamically using the shared helper
   const availableMonths = useMemo(() => {
     return getAvailableSalaryMonths(staff);
@@ -206,7 +226,8 @@ const SalarySheetView = ({ onLock }) => {
       result = result.filter(s =>
         (s.name || '').toLowerCase().includes(q) ||
         (s.employeeId || '').toLowerCase().includes(q) ||
-        (s.department || '').toLowerCase().includes(q)
+        (s.department || '').toLowerCase().includes(q) ||
+        (s.role || '').toLowerCase().includes(q)
       );
     }
     
@@ -221,7 +242,13 @@ const SalarySheetView = ({ onLock }) => {
         _totalPendingAdvance: pInfo.totalPendingAdvance || 0,
         _advanceBalance: pInfo.advanceBalanceRemaining ?? pInfo.totalPendingAdvance,
         _isPaid: pInfo.isPaid,
-        _daysWorked: pInfo.daysWorked
+        _daysWorked: pInfo.daysWorked,
+        _isDaily: pInfo.isDailyRated,
+        _dailyRate: pInfo.dailyRate,
+        _presentDays: pInfo.presentDays,
+        _absentDays: pInfo.absentDays,
+        _halfDays: pInfo.halfDays,
+        _totalCycleDays: pInfo.totalCycleDays
       };
     });
 
@@ -263,12 +290,15 @@ const SalarySheetView = ({ onLock }) => {
   const handleExportCSV = () => {
     const cleanMonth = selectedMonth.replace(/\s*\(Current\)/i, '').trim();
     const rows = [
-      ['Employee ID', 'Name', 'Department', 'Job Type', 'Salary Month', 'Base Salary (INR)', 'Earned Gross (INR)', 'Advance Deducted (INR)', 'Pending Advance Balance (INR)', 'Net Payout (INR)', 'Payment Status'],
+      ['Employee ID', 'Name', 'Role', 'Department', 'Calculation Type', 'Daily Rate (INR)', 'Days Present', 'Salary Month', 'Base Salary (INR)', 'Earned Gross (INR)', 'Advance Deducted (INR)', 'Pending Advance Balance (INR)', 'Net Payout (INR)', 'Payment Status'],
       ...filtered.map(s => [
         s.employeeId || '',
         s.name || '',
+        s.role || 'Staff',
         s.department || '',
-        s.jobType || '',
+        s._isDaily ? '30-Day Day-Wise (Auto-Present)' : 'Standard Hourly Clock-In',
+        s._isDaily ? (s._dailyRate || Math.round(s.monthlySalary / 30)) : Math.round(s.monthlySalary / 30),
+        `${s._daysWorked || 0}/${s._totalCycleDays || 30}`,
         cleanMonth,
         s.monthlySalary || 0,
         s._earnedSalary || 0,
@@ -404,9 +434,9 @@ const SalarySheetView = ({ onLock }) => {
                     <th className="px-5 py-3.5 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">#</th>
                     {[
                       { key: 'employeeId', label: 'Emp ID' },
-                      { key: 'name', label: 'Employee Name' },
+                      { key: 'name', label: 'Employee & Role' },
                       { key: 'department', label: 'Department' },
-                      { key: 'jobType', label: 'Type' },
+                      { key: '_isDaily', label: 'Mode & Days' },
                       { key: 'monthlySalary', label: 'Base Salary' },
                       { key: '_advanceDeduction', label: 'Adv. Deducted' },
                       { key: '_totalPendingAdvance', label: 'Pending Adv.' },
@@ -417,11 +447,12 @@ const SalarySheetView = ({ onLock }) => {
                         <div className="flex items-center gap-1">{label}<SortIcon col={key} /></div>
                       </th>
                     ))}
+                    <th className="px-5 py-3.5 text-right text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50 dark:divide-white/5">
                   {filtered.length === 0 ? (
-                    <tr><td colSpan={9} className="px-5 py-16 text-center text-sm text-gray-400 dark:text-gray-600">No employees match your filters.</td></tr>
+                    <tr><td colSpan={10} className="px-5 py-16 text-center text-sm text-gray-400 dark:text-gray-600">No employees match your filters.</td></tr>
                   ) : filtered.map((emp, idx) => (
                     <motion.tr key={emp._id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.02 }}
                       className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
@@ -430,16 +461,45 @@ const SalarySheetView = ({ onLock }) => {
                         <span className="font-mono text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 rounded-md">{emp.employeeId || '—'}</span>
                       </td>
                       <td className="px-5 py-3.5">
-                        <div className="font-semibold text-gray-900 dark:text-white">{emp.name}</div>
+                        <div className="font-semibold text-gray-900 dark:text-white flex items-center gap-1.5">
+                          {emp.name}
+                        </div>
+                        <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                          <span className="px-1.5 py-0.2 rounded bg-black/5 dark:bg-white/10 text-[10px] font-bold text-gray-600 dark:text-gray-300 uppercase">
+                            {emp.role || 'Staff'}
+                          </span>
+                        </div>
                       </td>
                       <td className="px-5 py-3.5 text-gray-600 dark:text-gray-400 text-xs">{emp.department || '—'}</td>
                       <td className="px-5 py-3.5">
-                        <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ${JOB_TYPE_COLORS[emp.jobType] || 'bg-gray-100 text-gray-600'}`}>{emp.jobType || '—'}</span>
+                        <div className="space-y-1">
+                          {emp._isDaily ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                              📅 30-Day Day-Wise
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                              🕒 Hourly Clock
+                            </span>
+                          )}
+                          <div className="text-[11px] font-bold text-gray-700 dark:text-gray-300">
+                            {emp._daysWorked || 0}/{emp._totalCycleDays || 30} Days Present
+                            {emp._absentDays > 0 && (
+                              <span className="ml-1 text-rose-500 text-[10px] font-black">
+                                (-{emp._absentDays}A)
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </td>
                       <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-1.5 h-1.5 rounded-full bg-gray-400 shrink-0" />
-                          <span className="text-sm font-semibold text-gray-500 dark:text-gray-400">{formatCurrency(emp.monthlySalary)}</span>
+                        <div className="space-y-0.5">
+                          <span className="text-sm font-semibold text-gray-600 dark:text-gray-300">{formatCurrency(emp.monthlySalary)}</span>
+                          {emp._isDaily && (
+                            <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                              ₹{emp._dailyRate || Math.round((emp.monthlySalary || 0) / 30)}/day
+                            </p>
+                          )}
                         </div>
                       </td>
                       <td className="px-5 py-3.5">
@@ -478,11 +538,36 @@ const SalarySheetView = ({ onLock }) => {
                           </span>
                         )}
                       </td>
+                      <td className="px-5 py-3.5 text-right">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenAttendance(emp)}
+                          className="px-2.5 py-1.5 rounded-xl bg-teal-500/10 hover:bg-teal-500/20 text-teal-600 dark:text-teal-400 border border-teal-500/20 text-xs font-bold transition-all inline-flex items-center gap-1 shadow-sm"
+                          title="View / Mark Attendance & Absences"
+                        >
+                          <Calendar size={13} />
+                          <span>Attendance</span>
+                        </button>
+                      </td>
                     </motion.tr>
                   ))}
                 </tbody>
               </table>
             </div>
+
+            {/* Attendance & Absences Modal */}
+            <AnimatePresence>
+              {isAttendanceModalOpen && selectedStaffForAttendance && (
+                <ManageAttendanceModal
+                  isOpen={isAttendanceModalOpen}
+                  onClose={() => setIsAttendanceModalOpen(false)}
+                  staffMember={selectedStaffForAttendance}
+                  monthStr={selectedMonth}
+                  onAttendanceUpdated={handleAttendanceUpdated}
+                />
+              )}
+            </AnimatePresence>
+
             <div className="px-5 py-4 border-t border-gray-100 dark:border-white/10 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-500/5 dark:to-purple-500/5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                 <Users2 className="w-4 h-4" />

@@ -8,6 +8,7 @@ import {
   Briefcase, 
   IndianRupee, 
   Calendar,
+  Clock,
   Mail,
   Phone,
   Building2,
@@ -21,7 +22,22 @@ import {
 import { BASE_URL } from '../api';
 import { AVAILABLE_FEATURES, getDefaultPermissionsForRole } from './StaffDetails';
 
-const PREDEFINED_ROLES = ['Counselor', 'HR', 'Client Support', 'Admin', 'Data Analyst', 'Sales Team'];
+const PREDEFINED_ROLES = [
+  'HR', 
+  'Client Support', 
+  'Admin', 
+  'Data Analyst', 
+  'Sales Team', 
+  'Counselor',
+  'Chef', 
+  'Driver', 
+  'Maid', 
+  'Security / Guard', 
+  'Housekeeping', 
+  'Pantry'
+];
+
+const DAILY_AUTO_ROLES = ['chef', 'driver', 'maid', 'security', 'guard', 'housekeeping', 'pantry', 'peon', 'cook', 'safe', 'deriver', 'made'];
 
 const AddStaff = ({ onBack }) => {
   const [formData, setFormData] = useState({
@@ -31,6 +47,8 @@ const AddStaff = ({ onBack }) => {
     monthlySalary: '',
     department: 'Development',
     jobType: 'Permanent',
+    salaryCalculationType: 'hourly',
+    exemptClockInOut: false,
     role: 'HR',
     reportingPerson: '',
     joiningDate: new Date().toISOString().split('T')[0],
@@ -253,28 +271,60 @@ const AddStaff = ({ onBack }) => {
                       value={isCustomRole ? 'Other' : formData.role}
                       onChange={(e) => {
                         const val = e.target.value;
+                        const roleLower = (val || '').toLowerCase();
+                        const isAutoDaily = DAILY_AUTO_ROLES.some(r => roleLower.includes(r));
                         if (val === 'Other') {
-                          setFormData({...formData, role: ''});
+                          setFormData(prev => ({
+                            ...prev, 
+                            role: '',
+                            salaryCalculationType: isAutoDaily ? 'daily' : prev.salaryCalculationType,
+                            exemptClockInOut: isAutoDaily ? true : prev.exemptClockInOut
+                          }));
                         } else {
-                          setFormData({...formData, role: val});
+                          setFormData(prev => ({
+                            ...prev, 
+                            role: val,
+                            salaryCalculationType: isAutoDaily ? 'daily' : (prev.salaryCalculationType === 'daily' ? 'daily' : 'hourly'),
+                            exemptClockInOut: isAutoDaily ? true : prev.exemptClockInOut
+                          }));
                         }
                       }}
                     >
-                      <option value="Counselor" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Counselor</option>
-                      <option value="HR" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">HR</option>
-                      <option value="Client Support" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Client Support</option>
-                      <option value="Admin" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Admin</option>
-                      <option value="Data Analyst" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Data Analyst</option>
-                      <option value="Sales Team" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Sales Team</option>
-                      <option value="Other" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Other (Type custom role)</option>
+                      <optgroup label="Office & Management Roles">
+                        <option value="Counselor" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Counselor</option>
+                        <option value="HR" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">HR</option>
+                        <option value="Client Support" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Client Support</option>
+                        <option value="Admin" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Admin</option>
+                        <option value="Data Analyst" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Data Analyst</option>
+                        <option value="Sales Team" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Sales Team</option>
+                      </optgroup>
+                      <optgroup label="Daily-Rated / Non-Clocking Roles (Chef, Driver, Maid, etc.)">
+                        <option value="Chef" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Chef (Safe/Cook)</option>
+                        <option value="Driver" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Driver</option>
+                        <option value="Maid" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Maid / Cleaning Staff</option>
+                        <option value="Security / Guard" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Security / Guard</option>
+                        <option value="Housekeeping" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Housekeeping</option>
+                        <option value="Pantry" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Pantry / Office Boy</option>
+                      </optgroup>
+                      <option value="Other" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Other (Custom Role)</option>
                     </select>
                     {(isCustomRole || formData.role === '' || !PREDEFINED_ROLES.includes(formData.role)) && (
                       <input 
                         type="text"
                         className="w-full bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl px-4 py-3 text-sm text-gray-900 dark:text-white focus:border-blue-500 outline-none transition-all"
-                        placeholder="Type custom role..."
+                        placeholder="Type custom role (e.g. Cook, Guard, Gardener)..."
                         value={formData.role}
-                        onChange={(e) => setFormData({...formData, role: e.target.value})}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          const roleLower = val.toLowerCase();
+                          const isAutoDaily = DAILY_AUTO_ROLES.some(r => roleLower.includes(r));
+                          setFormData(prev => ({
+                            ...prev, 
+                            role: val,
+                            salaryCalculationType: isAutoDaily ? 'daily' : prev.salaryCalculationType,
+                            exemptClockInOut: isAutoDaily ? true : prev.exemptClockInOut
+                          }));
+                        }}
                       />
                     )}
                   </div>
@@ -307,7 +357,14 @@ const AddStaff = ({ onBack }) => {
             </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block px-1">Monthly Salary (₹)</label>
+              <div className="flex items-center justify-between px-1">
+                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block">Monthly Salary (₹)</label>
+                {formData.monthlySalary > 0 && formData.salaryCalculationType === 'daily' && (
+                  <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md">
+                    1-Day Rate: ₹{Math.round(Number(formData.monthlySalary) / 30)}/day
+                  </span>
+                )}
+              </div>
               <div className="relative group">
                 <IndianRupee className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
                 <input 
@@ -318,6 +375,44 @@ const AddStaff = ({ onBack }) => {
                   value={formData.monthlySalary}
                   onChange={(e) => setFormData({...formData, monthlySalary: e.target.value})}
                 />
+              </div>
+            </div>
+
+            {/* Salary Calculation & Attendance Model */}
+            <div className="col-span-1 md:col-span-2 space-y-2 pt-2 pb-1">
+              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block px-1">Salary & Attendance Calculation Type</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div
+                  onClick={() => setFormData({ ...formData, salaryCalculationType: 'hourly', exemptClockInOut: false })}
+                  className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${
+                    formData.salaryCalculationType === 'hourly'
+                      ? 'bg-blue-500/10 border-blue-500/40 text-blue-600 dark:text-blue-400 shadow-sm'
+                      : 'bg-black/5 dark:bg-white/5 border-gray-200 dark:border-white/5 opacity-70 hover:opacity-100'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 font-bold text-xs mb-1">
+                    <Clock size={15} /> Standard Hourly Clock-In
+                  </div>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-snug">
+                    Requires daily clock in/out. Salary is calculated based on hours logged (255h target).
+                  </p>
+                </div>
+
+                <div
+                  onClick={() => setFormData({ ...formData, salaryCalculationType: 'daily', exemptClockInOut: true })}
+                  className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${
+                    formData.salaryCalculationType === 'daily'
+                      ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 shadow-sm'
+                      : 'bg-black/5 dark:bg-white/5 border-gray-200 dark:border-white/5 opacity-70 hover:opacity-100'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 font-bold text-xs mb-1">
+                    <Calendar size={15} /> 30-Day Day-Wise (Chef, Driver, Maid)
+                  </div>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-snug">
+                    No clock-in needed. Auto-present by default. Salary = (Monthly Salary / 30) × Present Days.
+                  </p>
+                </div>
               </div>
             </div>
 

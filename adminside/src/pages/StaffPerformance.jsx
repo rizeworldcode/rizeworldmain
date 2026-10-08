@@ -33,7 +33,7 @@ import {
   Wallet,
   Receipt
 } from 'lucide-react';
-import { getStaffAdvanceSummary } from '../utils/salaryCalculator';
+import { getStaffAdvanceSummary, isDailyRatedStaff } from '../utils/salaryCalculator';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -185,6 +185,8 @@ const calculatePayoutForMonth = (staffInfo, year, monthIndex, paidHistory = null
   const STANDARD_HOURS_PER_DAY = 8.5;
   const EXPECTED_MONTHLY_HOURS = STANDARD_HOURS_PER_DAY * 30; // 255 hrs
   const hourlyRate = baseSalary / EXPECTED_MONTHLY_HOURS;
+  const isDaily = isDailyRatedStaff(staffInfo);
+  const dailyRate = Math.round(baseSalary / 30);
 
   const today = new Date();
   const isCurrentMonth = today.getMonth() === monthIndex && today.getFullYear() === year;
@@ -208,6 +210,88 @@ const calculatePayoutForMonth = (staffInfo, year, monthIndex, paidHistory = null
     return (h ? parseInt(h[1], 10) : 0) + (m ? parseInt(m[1], 10) / 60 : 0);
   };
 
+  // -----------------------------------------------------------------
+  // Handle Daily-Rated Staff (Chef, Driver, Maid, etc. - Auto-Present)
+  // -----------------------------------------------------------------
+  if (isDaily) {
+    let absentCount = 0;
+    let halfDayCount = 0;
+    let totalPresentCredits = 0;
+    const dayCreditsMap = {};
+
+    validSequenceDates.forEach(d => {
+      const dStr = d.toDateString();
+      const attRecord = (staffInfo.attendance || []).find(a => new Date(a.date).toDateString() === dStr);
+
+      if (attRecord) {
+        if (attRecord.status === 'Absent') {
+          dayCreditsMap[dStr] = 0;
+          absentCount++;
+        } else if (attRecord.status === 'Half-Day') {
+          dayCreditsMap[dStr] = 0.5;
+          halfDayCount++;
+        } else {
+          dayCreditsMap[dStr] = 1;
+        }
+      } else {
+        // Auto-present default
+        dayCreditsMap[dStr] = 1;
+      }
+      totalPresentCredits += dayCreditsMap[dStr];
+    });
+
+    let calculatedPayout = 0;
+    validSequenceDates.forEach(d => {
+      const dStr = d.toDateString();
+      const credit = dayCreditsMap[dStr] !== undefined ? dayCreditsMap[dStr] : 1;
+      const { salary: dayMonthlySalary } = getSalaryForDate(staffInfo, d);
+      const dayRate = dayMonthlySalary / 30;
+      calculatedPayout += credit * dayRate;
+    });
+
+    calculatedPayout = Math.round(calculatedPayout);
+    const advanceDeduction = paidHistory ? (paidHistory.advanceDeduction || 0) : 0;
+    const earnedSalary = paidHistory ? (paidHistory.earnedSalary ?? paidHistory.baseSalary ?? calculatedPayout) : calculatedPayout;
+    const finalPayout = paidHistory ? paidHistory.payoutSalary : Math.max(0, earnedSalary - advanceDeduction);
+    const advanceBalanceRemaining = paidHistory ? (paidHistory.advanceBalanceRemaining ?? 0) : 0;
+    const deduction = Math.max(0, baseSalary - finalPayout);
+
+    const daysToCount = validSequenceDates.length;
+    const expectedMinutes = daysToCount * 8 * 60;
+    const actualMinutes = totalPresentCredits * 8 * 60;
+    const attendancePercentage = Math.round((totalPresentCredits / (daysToCount || 1)) * 100);
+
+    return {
+      expectedMinutes,
+      actualMinutes,
+      differenceMinutes: 0,
+      daysToCount,
+      isCurrentMonth,
+      presents: totalPresentCredits,
+      daysWorked: totalPresentCredits,
+      leaves: absentCount,
+      fullLeaves: absentCount,
+      halfDays: halfDayCount,
+      casualLeaveUsed: false,
+      deduction,
+      earnedSalary,
+      advanceDeduction,
+      advanceBalanceRemaining,
+      finalPayout,
+      payout: finalPayout,
+      attendancePercentage: Math.min(100, attendancePercentage),
+      totalHoursWorked: totalPresentCredits * 8,
+      hourlyRate: Math.round((baseSalary / 240) * 100) / 100,
+      dailyRate,
+      isDailyRated: true,
+      baseSalary,
+      sequenceDates
+    };
+  }
+
+  // -----------------------------------------------------------------
+  // Handle Hourly / Clock-In Based Staff
+  // -----------------------------------------------------------------
   const monthlyClockRecords = (staffInfo.clock || []).filter(r => {
     return seqDateStrings.has(new Date(r.date).toDateString());
   });
@@ -340,6 +424,8 @@ const calculatePayoutForMonth = (staffInfo, year, monthIndex, paidHistory = null
     attendancePercentage: Math.min(100, attendancePercentage),
     totalHoursWorked: Math.round(totalHoursWorked * 100) / 100,
     hourlyRate: Math.round(hourlyRate * 100) / 100,
+    dailyRate,
+    isDailyRated: false,
     baseSalary,
     sequenceDates
   };

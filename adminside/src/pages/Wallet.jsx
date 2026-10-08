@@ -46,6 +46,17 @@ const WalletView = ({ onLock }) => {
   const currentMonthName = now.toLocaleString('default', { month: 'long', year: 'numeric' });
   const [selectedExpenseMonth, setSelectedExpenseMonth] = useState(currentMonthName);
   const [selectedIncomeMonth, setSelectedIncomeMonth] = useState(currentMonthName);
+  const [selectedMonthFilter, setSelectedMonthFilter] = useState('all');
+
+  const handleIncomeMonthChange = (month) => {
+    setSelectedIncomeMonth(month);
+    setSelectedMonthFilter(month);
+  };
+
+  const handleExpenseMonthChange = (month) => {
+    setSelectedExpenseMonth(month);
+    setSelectedMonthFilter(month);
+  };
 
   useEffect(() => {
     const filterFromUrl = searchParams.get('filter');
@@ -70,6 +81,69 @@ const WalletView = ({ onLock }) => {
   const [allClientsList, setAllClientsList] = useState([]);
   const [allOldClientsList, setAllOldClientsList] = useState([]);
   const [isDownloadDropdownOpen, setIsDownloadDropdownOpen] = useState(false);
+
+  const getTransactionSalaryMonth = (t) => {
+    if (t.projectMonth && !t.projectMonth.match(/^\d{4}-\d{2}$/)) {
+      return t.projectMonth;
+    }
+    if (t.description) {
+      const match = t.description.match(/Salary payment for ([A-Za-z]+ \d{4})/i);
+      if (match && match[1]) {
+        return match[1];
+      }
+    }
+    if (t.date) {
+      const d = new Date(t.date);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleString('default', { month: 'long', year: 'numeric' });
+      }
+    }
+    return '';
+  };
+
+  const getTransactionProjectMonth = (t) => {
+    if (t.projectMonth && !t.projectMonth.match(/^\d{4}-\d{2}$/)) {
+      return t.projectMonth;
+    }
+    if (t.projectDate || t.cycleDate) {
+      const pd = new Date(t.projectDate || t.cycleDate);
+      if (!isNaN(pd.getTime())) {
+        return pd.toLocaleString('default', { month: 'long', year: 'numeric' });
+      }
+    }
+    if (t.date) {
+      const d = new Date(t.date);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleString('default', { month: 'long', year: 'numeric' });
+      }
+    }
+    return '';
+  };
+
+  const getTransactionMonth = (t) => {
+    if (t.source === 'salary' || t.type === 'salary') {
+      return getTransactionSalaryMonth(t);
+    }
+    if (t.source === 'client_payment' || t.type === 'client_payment' || t.type === 'income') {
+      return getTransactionProjectMonth(t);
+    }
+    if (t.projectMonth && !t.projectMonth.match(/^\d{4}-\d{2}$/)) {
+      return t.projectMonth;
+    }
+    if (t.projectDate || t.cycleDate) {
+      const pd = new Date(t.projectDate || t.cycleDate);
+      if (!isNaN(pd.getTime())) {
+        return pd.toLocaleString('default', { month: 'long', year: 'numeric' });
+      }
+    }
+    if (t.date) {
+      const d = new Date(t.date);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleString('default', { month: 'long', year: 'numeric' });
+      }
+    }
+    return '';
+  };
 
   const pendingClientsList = useMemo(() => {
     const list = [];
@@ -143,39 +217,26 @@ const WalletView = ({ onLock }) => {
   }, [allClientsList, allOldClientsList]);
 
   const filteredTransactions = useMemo(() => {
+    let list = transactions || [];
     if (filterType === 'client_payment') {
-      return transactions.filter(t => t.type === 'client_payment' || t.type === 'income' || t.source === 'client_payment');
+      list = list.filter(t => t.type === 'client_payment' || t.type === 'income' || t.source === 'client_payment');
+    } else if (filterType === 'expense') {
+      list = list.filter(t => t.type === 'salary' || t.type === 'other_expenses' || t.source === 'salary' || t.source === 'other_expenses');
+    } else if (filterType === 'salary') {
+      list = list.filter(t => t.type === 'salary' || t.source === 'salary');
+    } else if (filterType === 'other_expenses') {
+      list = list.filter(t => t.type === 'other_expenses' || t.source === 'other_expenses');
     }
-    if (filterType === 'expense') {
-      return transactions.filter(t => t.type === 'salary' || t.type === 'other_expenses' || t.source === 'salary' || t.source === 'other_expenses');
-    }
-    if (filterType === 'salary') {
-      return transactions.filter(t => t.type === 'salary' || t.source === 'salary');
-    }
-    if (filterType === 'other_expenses') {
-      return transactions.filter(t => t.type === 'other_expenses' || t.source === 'other_expenses');
-    }
-    return transactions;
-  }, [transactions, filterType]);
 
-  const getTransactionProjectMonth = (t) => {
-    if (t.projectMonth && !t.projectMonth.match(/^\d{4}-\d{2}$/)) {
-      return t.projectMonth;
+    if (selectedMonthFilter && selectedMonthFilter !== 'all') {
+      list = list.filter(t => {
+        const m = getTransactionMonth(t);
+        return m && m.toLowerCase() === selectedMonthFilter.toLowerCase();
+      });
     }
-    if (t.projectDate || t.cycleDate) {
-      const pd = new Date(t.projectDate || t.cycleDate);
-      if (!isNaN(pd.getTime())) {
-        return pd.toLocaleString('default', { month: 'long', year: 'numeric' });
-      }
-    }
-    if (t.date) {
-      const d = new Date(t.date);
-      if (!isNaN(d.getTime())) {
-        return d.toLocaleString('default', { month: 'long', year: 'numeric' });
-      }
-    }
-    return '';
-  };
+
+    return list;
+  }, [transactions, filterType, selectedMonthFilter]);
 
   const totalIncome = useMemo(() => {
     return (transactions || [])
@@ -291,6 +352,8 @@ const WalletView = ({ onLock }) => {
     months.add(currentMonthName);
     (transactions || []).forEach(t => {
       if (t.type === 'salary' || t.type === 'other_expenses' || t.source === 'salary' || t.source === 'other_expenses') {
+        const m = getTransactionSalaryMonth(t);
+        if (m) months.add(m);
         if (t.date) {
           const d = new Date(t.date);
           if (!isNaN(d.getTime())) {
@@ -310,21 +373,29 @@ const WalletView = ({ onLock }) => {
     });
   }, [transactions, currentMonthName]);
 
-  const getTransactionSalaryMonth = (t) => {
-    if (t.description) {
-      const match = t.description.match(/Salary payment for ([A-Za-z]+ \d{4})/i);
-      if (match && match[1]) {
-        return match[1];
+  const availableAllMonths = useMemo(() => {
+    const months = new Set();
+    months.add(currentMonthName);
+    (transactions || []).forEach(t => {
+      const m = getTransactionMonth(t);
+      if (m) months.add(m);
+      if (t.date) {
+        const d = new Date(t.date);
+        if (!isNaN(d.getTime())) {
+          months.add(d.toLocaleString('default', { month: 'long', year: 'numeric' }));
+        }
       }
+    });
+    for (let i = 0; i < 6; i++) {
+      const past = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.add(past.toLocaleString('default', { month: 'long', year: 'numeric' }));
     }
-    if (t.date) {
-      const d = new Date(t.date);
-      if (!isNaN(d.getTime())) {
-        return d.toLocaleString('default', { month: 'long', year: 'numeric' });
-      }
-    }
-    return '';
-  };
+    return Array.from(months).sort((a, b) => {
+      const dateA = new Date(Date.parse(a + " 1"));
+      const dateB = new Date(Date.parse(b + " 1"));
+      return dateB.getTime() - dateA.getTime();
+    });
+  }, [transactions, currentMonthName]);
 
   const monthlySalaryExpense = useMemo(() => {
     return (transactions || [])
@@ -399,6 +470,24 @@ const WalletView = ({ onLock }) => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const downloadFilteredViewReport = () => {
+    const sorted = [...filteredTransactions].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    const headers = ['Name / Payee', 'Source / Type', 'Amount', 'Date', 'Month', 'Mode', 'Method', 'UTR Number', 'Description'];
+    const rows = sorted.map(t => [
+      t.name || '',
+      t.source === 'client_payment' ? 'Income' : (t.source === 'salary' ? 'Salary Expense' : 'Other Expense'),
+      t.amount || 0,
+      t.date ? new Date(t.date).toLocaleDateString('en-IN') : '',
+      getTransactionMonth(t) || '',
+      t.mode || '',
+      t.method || '',
+      t.utrNumber || '',
+      t.description || ''
+    ]);
+    const monthSuffix = selectedMonthFilter !== 'all' ? `_${selectedMonthFilter.replace(/\s+/g, '_')}` : '_all_months';
+    downloadCSV(`wallet_${filterType}${monthSuffix}.csv`, headers, rows);
   };
 
   const downloadIncomeReport = () => {
@@ -806,8 +895,21 @@ const WalletView = ({ onLock }) => {
                     initial={{ opacity: 0, y: 10, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute right-0 mt-2 w-56 rounded-2xl border border-gray-200 dark:border-white/10 shadow-2xl z-50 p-2 space-y-1 bg-white dark:bg-gray-900"
+                    className="absolute right-0 mt-2 w-64 rounded-2xl border border-gray-200 dark:border-white/10 shadow-2xl z-50 p-2 space-y-1 bg-white dark:bg-gray-900"
                   >
+                    <button
+                      onClick={() => {
+                        downloadFilteredViewReport();
+                        setIsDownloadDropdownOpen(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-left text-sm font-semibold text-blue-600 dark:text-blue-400 bg-blue-50/70 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+                    >
+                      <Download size={16} className="text-blue-500" />
+                      <span>
+                        Filtered View CSV {selectedMonthFilter !== 'all' ? `(${selectedMonthFilter.split(' ')[0]})` : ''}
+                      </span>
+                    </button>
+
                     <button
                       onClick={() => {
                         downloadIncomeReport();
@@ -1020,7 +1122,7 @@ const WalletView = ({ onLock }) => {
                 <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">Active Month:</span>
                 <select
                   value={selectedIncomeMonth}
-                  onChange={(e) => setSelectedIncomeMonth(e.target.value)}
+                  onChange={(e) => handleIncomeMonthChange(e.target.value)}
                   className="bg-transparent text-xs font-bold text-gray-900 dark:text-white border-0 outline-none cursor-pointer pr-1"
                 >
                   {availableIncomeMonths.map((m) => (
@@ -1034,7 +1136,17 @@ const WalletView = ({ onLock }) => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* 1. Overall Total Income */}
-              <div className="text-left p-5 rounded-2xl glass border border-emerald-500/60 ring-2 ring-emerald-500/20 bg-emerald-500/5 flex flex-col justify-between">
+              <div 
+                onClick={() => {
+                  setFilterType('client_payment');
+                  setSelectedMonthFilter('all');
+                }}
+                className={`text-left p-5 rounded-2xl glass border cursor-pointer transition-all duration-300 hover:scale-[1.01] hover:shadow-lg flex flex-col justify-between ${
+                  selectedMonthFilter === 'all'
+                    ? 'border-emerald-500 ring-2 ring-emerald-500/30 bg-emerald-500/5'
+                    : 'border-emerald-500/40 bg-emerald-500/5'
+                }`}
+              >
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
@@ -1048,13 +1160,24 @@ const WalletView = ({ onLock }) => {
                     ₹{(totalIncome || 0).toLocaleString('en-IN')}
                   </div>
                 </div>
-                <div className="text-xs pt-2 border-t border-gray-100 dark:border-white/5 text-gray-500 mt-2">
+                <div className="flex items-center justify-between text-xs pt-2 border-t border-gray-100 dark:border-white/5 text-gray-500 mt-2">
                   <span>All-time total collections</span>
+                  <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">View All</span>
                 </div>
               </div>
 
               {/* 2. Monthly Income with Month Selector */}
-              <div className="text-left p-5 rounded-2xl glass border border-teal-500/60 ring-2 ring-teal-500/20 bg-teal-500/5 flex flex-col justify-between">
+              <div 
+                onClick={() => {
+                  setFilterType('client_payment');
+                  setSelectedMonthFilter(selectedIncomeMonth);
+                }}
+                className={`text-left p-5 rounded-2xl glass border cursor-pointer transition-all duration-300 hover:scale-[1.01] hover:shadow-lg flex flex-col justify-between ${
+                  selectedMonthFilter.toLowerCase() === selectedIncomeMonth.toLowerCase()
+                    ? 'border-teal-500 ring-2 ring-teal-500/30 bg-teal-500/10 shadow-md'
+                    : 'border-teal-500/60 bg-teal-500/5'
+                }`}
+              >
                 <div>
                   <div className="flex items-center justify-between mb-3 gap-2">
                     <span className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
@@ -1064,7 +1187,7 @@ const WalletView = ({ onLock }) => {
                       <Calendar size={13} className="text-teal-600 dark:text-teal-400" />
                       <select
                         value={selectedIncomeMonth}
-                        onChange={(e) => setSelectedIncomeMonth(e.target.value)}
+                        onChange={(e) => handleIncomeMonthChange(e.target.value)}
                         className="bg-transparent text-[11px] font-bold text-teal-700 dark:text-teal-300 border-0 outline-none cursor-pointer"
                       >
                         {availableIncomeMonths.map((m) => (
@@ -1080,13 +1203,20 @@ const WalletView = ({ onLock }) => {
                   </div>
                 </div>
                 <div className="flex items-center justify-between text-xs pt-2 border-t border-gray-100 dark:border-white/5 text-gray-500 mt-2">
-                  <span>For:</span>
-                  <span className="font-semibold text-gray-700 dark:text-gray-300">{selectedIncomeMonth}</span>
+                  <span>For: <strong className="text-gray-700 dark:text-gray-300">{selectedIncomeMonth}</strong></span>
+                  <span className="text-[11px] font-semibold text-teal-600 dark:text-teal-400">Filter Table</span>
                 </div>
               </div>
 
               {/* 3. Monthly Salary Paid (To Deduct) */}
-              <div className="text-left p-5 rounded-2xl glass border border-rose-500/40 bg-rose-500/5 flex flex-col justify-between">
+              <div 
+                onClick={() => {
+                  setFilterType('salary');
+                  setSelectedMonthFilter(selectedIncomeMonth);
+                  setSelectedExpenseMonth(selectedIncomeMonth);
+                }}
+                className="text-left p-5 rounded-2xl glass border border-rose-500/40 bg-rose-500/5 flex flex-col justify-between cursor-pointer hover:scale-[1.01] hover:shadow-lg transition-all"
+              >
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
@@ -1107,11 +1237,17 @@ const WalletView = ({ onLock }) => {
               </div>
 
               {/* 4. Net Monthly Revenue Generated */}
-              <div className={`text-left p-5 rounded-2xl glass border flex flex-col justify-between ${
-                monthlyNetRevenue >= 0
-                  ? 'border-blue-500/70 ring-2 ring-blue-500/20 bg-blue-500/5'
-                  : 'border-amber-500/70 ring-2 ring-amber-500/20 bg-amber-500/5'
-              }`}>
+              <div 
+                onClick={() => {
+                  setFilterType('all');
+                  setSelectedMonthFilter(selectedIncomeMonth);
+                }}
+                className={`text-left p-5 rounded-2xl glass border flex flex-col justify-between cursor-pointer hover:scale-[1.01] hover:shadow-lg transition-all ${
+                  monthlyNetRevenue >= 0
+                    ? 'border-blue-500/70 ring-2 ring-blue-500/20 bg-blue-500/5'
+                    : 'border-amber-500/70 ring-2 ring-amber-500/20 bg-amber-500/5'
+                }`}
+              >
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
@@ -1139,7 +1275,13 @@ const WalletView = ({ onLock }) => {
             {/* Online, Cash & Cheque Payment Modes Breakdown */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
               {/* Online Payments */}
-              <div className="text-left p-4 rounded-2xl glass border border-gray-200/70 dark:border-white/10 flex items-center justify-between">
+              <div 
+                onClick={() => {
+                  setFilterType('client_payment');
+                  setSelectedMonthFilter(selectedIncomeMonth);
+                }}
+                className="text-left p-4 rounded-2xl glass border border-gray-200/70 dark:border-white/10 flex items-center justify-between cursor-pointer hover:border-blue-400 hover:shadow-md transition-all"
+              >
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
                     <CreditCard size={20} />
@@ -1156,7 +1298,13 @@ const WalletView = ({ onLock }) => {
               </div>
 
               {/* Cash Payments */}
-              <div className="text-left p-4 rounded-2xl glass border border-gray-200/70 dark:border-white/10 flex items-center justify-between">
+              <div 
+                onClick={() => {
+                  setFilterType('client_payment');
+                  setSelectedMonthFilter(selectedIncomeMonth);
+                }}
+                className="text-left p-4 rounded-2xl glass border border-gray-200/70 dark:border-white/10 flex items-center justify-between cursor-pointer hover:border-emerald-400 hover:shadow-md transition-all"
+              >
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
                     <Wallet size={20} />
@@ -1173,7 +1321,13 @@ const WalletView = ({ onLock }) => {
               </div>
 
               {/* Cheque Payments */}
-              <div className="text-left p-4 rounded-2xl glass border border-gray-200/70 dark:border-white/10 flex items-center justify-between">
+              <div 
+                onClick={() => {
+                  setFilterType('client_payment');
+                  setSelectedMonthFilter(selectedIncomeMonth);
+                }}
+                className="text-left p-4 rounded-2xl glass border border-gray-200/70 dark:border-white/10 flex items-center justify-between cursor-pointer hover:border-purple-400 hover:shadow-md transition-all"
+              >
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 rounded-xl bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400">
                     <FileText size={20} />
@@ -1220,7 +1374,7 @@ const WalletView = ({ onLock }) => {
                 <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">Active Month:</span>
                 <select
                   value={selectedExpenseMonth}
-                  onChange={(e) => setSelectedExpenseMonth(e.target.value)}
+                  onChange={(e) => handleExpenseMonthChange(e.target.value)}
                   className="bg-transparent text-xs font-bold text-gray-900 dark:text-white border-0 outline-none cursor-pointer pr-1"
                 >
                   {availableExpenseMonths.map((m) => (
@@ -1236,9 +1390,12 @@ const WalletView = ({ onLock }) => {
               {/* 1. Total Combined Expense Card */}
               <button
                 type="button"
-                onClick={() => setFilterType('expense')}
-                className={`text-left p-5 rounded-2xl glass border transition-all duration-300 hover:scale-[1.01] hover:shadow-lg flex flex-col justify-between ${
-                  filterType === 'expense'
+                onClick={() => {
+                  setFilterType('expense');
+                  setSelectedMonthFilter('all');
+                }}
+                className={`text-left p-5 rounded-2xl glass border transition-all duration-300 hover:scale-[1.01] hover:shadow-lg flex flex-col justify-between cursor-pointer ${
+                  filterType === 'expense' && selectedMonthFilter === 'all'
                     ? 'border-rose-500 ring-2 ring-rose-500/30 bg-rose-500/5'
                     : 'border-gray-200/70 dark:border-white/10'
                 }`}
@@ -1265,9 +1422,12 @@ const WalletView = ({ onLock }) => {
               {/* 2. Overall Salary Expense Card */}
               <button
                 type="button"
-                onClick={() => setFilterType('salary')}
-                className={`text-left p-5 rounded-2xl glass border transition-all duration-300 hover:scale-[1.01] hover:shadow-lg flex flex-col justify-between ${
-                  filterType === 'salary'
+                onClick={() => {
+                  setFilterType('salary');
+                  setSelectedMonthFilter('all');
+                }}
+                className={`text-left p-5 rounded-2xl glass border transition-all duration-300 hover:scale-[1.01] hover:shadow-lg flex flex-col justify-between cursor-pointer ${
+                  filterType === 'salary' && selectedMonthFilter === 'all'
                     ? 'border-indigo-500 ring-2 ring-indigo-500/30 bg-indigo-500/5'
                     : 'border-gray-200/70 dark:border-white/10'
                 }`}
@@ -1285,17 +1445,21 @@ const WalletView = ({ onLock }) => {
                     ₹{(totalSalaryExpense || 0).toLocaleString('en-IN')}
                   </div>
                 </div>
-                <div className="text-xs pt-2 border-t border-gray-100 dark:border-white/5 text-gray-500 mt-2">
+                <div className="flex items-center justify-between text-xs pt-2 border-t border-gray-100 dark:border-white/5 text-gray-500 mt-2">
                   <span>All-time cumulative salary</span>
+                  <span className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400">View All</span>
                 </div>
               </button>
 
               {/* 3. Monthly Salary Expense Card (With Month Selector) */}
               <div
-                onClick={() => setFilterType('salary')}
+                onClick={() => {
+                  setFilterType('salary');
+                  setSelectedMonthFilter(selectedExpenseMonth);
+                }}
                 className={`text-left p-5 rounded-2xl glass border transition-all duration-300 hover:scale-[1.01] hover:shadow-lg flex flex-col justify-between cursor-pointer ${
-                  filterType === 'salary'
-                    ? 'border-blue-500 ring-2 ring-blue-500/30 bg-blue-500/5'
+                  filterType === 'salary' && selectedMonthFilter.toLowerCase() === selectedExpenseMonth.toLowerCase()
+                    ? 'border-blue-500 ring-2 ring-blue-500/30 bg-blue-500/10 shadow-md'
                     : 'border-gray-200/70 dark:border-white/10'
                 }`}
               >
@@ -1308,7 +1472,7 @@ const WalletView = ({ onLock }) => {
                       <Calendar size={13} className="text-blue-600 dark:text-blue-400" />
                       <select
                         value={selectedExpenseMonth}
-                        onChange={(e) => setSelectedExpenseMonth(e.target.value)}
+                        onChange={(e) => handleExpenseMonthChange(e.target.value)}
                         className="bg-transparent text-[11px] font-bold text-blue-700 dark:text-blue-300 border-0 outline-none cursor-pointer"
                       >
                         {availableExpenseMonths.map((m) => (
@@ -1324,16 +1488,19 @@ const WalletView = ({ onLock }) => {
                   </div>
                 </div>
                 <div className="flex items-center justify-between text-xs pt-2 border-t border-gray-100 dark:border-white/5 text-gray-500 mt-2">
-                  <span>For:</span>
-                  <span className="font-semibold text-gray-700 dark:text-gray-300">{selectedExpenseMonth}</span>
+                  <span>For: <strong className="text-gray-700 dark:text-gray-300">{selectedExpenseMonth}</strong></span>
+                  <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400">Filter Table</span>
                 </div>
               </div>
 
               {/* 4. Other Expenses Card */}
               <button
                 type="button"
-                onClick={() => setFilterType('other_expenses')}
-                className={`text-left p-5 rounded-2xl glass border transition-all duration-300 hover:scale-[1.01] hover:shadow-lg flex flex-col justify-between ${
+                onClick={() => {
+                  setFilterType('other_expenses');
+                  setSelectedMonthFilter(selectedExpenseMonth);
+                }}
+                className={`text-left p-5 rounded-2xl glass border transition-all duration-300 hover:scale-[1.01] hover:shadow-lg flex flex-col justify-between cursor-pointer ${
                   filterType === 'other_expenses'
                     ? 'border-amber-500 ring-2 ring-amber-500/30 bg-amber-500/5'
                     : 'border-gray-200/70 dark:border-white/10'
@@ -1362,35 +1529,105 @@ const WalletView = ({ onLock }) => {
         )}
       </AnimatePresence>
 
-      {/* Filters */}
-      <div className="flex items-center gap-4">
-        <Filter size={20} className="text-gray-500" />
-        <div className="flex flex-wrap gap-2">
-          {[
-            { id: 'all', label: 'All' },
-            { id: 'client_payment', label: 'Total Income' },
-            { id: 'expense', label: 'Total Expense' },
-            { id: 'salary', label: 'Salary' },
-            { id: 'other_expenses', label: 'Other Expenses' },
-            { id: 'pending_dues', label: 'Pending Dues' }
-          ].map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setFilterType(item.id)}
-              className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                filterType === item.id
-                  ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-bold shadow-sm'
-                  : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-white/5'
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
+      {/* Filters Toolbar */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <Filter size={20} className="text-gray-500" />
+          <div className="flex flex-wrap gap-2">
+            {[
+              { id: 'all', label: 'All' },
+              { id: 'client_payment', label: 'Total Income' },
+              { id: 'expense', label: 'Total Expense' },
+              { id: 'salary', label: 'Salary' },
+              { id: 'other_expenses', label: 'Other Expenses' },
+              { id: 'pending_dues', label: 'Pending Dues' }
+            ].map((item) => (
+              <button
+                key={item.id}
+                onClick={() => setFilterType(item.id)}
+                className={`px-4 py-2 rounded-xl font-medium transition-all ${
+                  filterType === item.id
+                    ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-500/20'
+                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5'
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
         </div>
+
+        {/* Month Filter Selector for all tabs (except pending dues) */}
+        {filterType !== 'pending_dues' && (
+          <div className="flex items-center gap-2 self-start md:self-auto">
+            <div className="flex items-center gap-2 bg-white dark:bg-gray-800/90 px-3.5 py-2 rounded-xl border border-gray-200 dark:border-white/10 shadow-sm">
+              <Calendar size={16} className="text-blue-500" />
+              <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">Month:</span>
+              <select
+                value={selectedMonthFilter}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSelectedMonthFilter(val);
+                  if (val !== 'all') {
+                    setSelectedIncomeMonth(val);
+                    setSelectedExpenseMonth(val);
+                  }
+                }}
+                className="bg-transparent text-xs font-bold text-gray-900 dark:text-white border-0 outline-none cursor-pointer pr-1"
+              >
+                <option value="all" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
+                  All Months (All Time)
+                </option>
+                {availableAllMonths.map((m) => (
+                  <option key={m} value={m} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
+                    {m}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {selectedMonthFilter !== 'all' && (
+              <button
+                onClick={() => setSelectedMonthFilter('all')}
+                className="text-xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 px-2.5 py-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                title="Clear month filter to see all months"
+              >
+                Show All Months
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Transactions List */}
-      <section className="glass rounded-2xl overflow-hidden">
+      <section className="glass rounded-2xl overflow-hidden border border-gray-200/50 dark:border-white/10 shadow-xl">
+        {/* Table summary sub-header for active filter */}
+        {filterType !== 'pending_dues' && (
+          <div className="px-6 py-3.5 bg-gray-50/80 dark:bg-white/[0.03] border-b border-gray-200 dark:border-white/10 flex flex-wrap items-center justify-between gap-2 text-xs font-medium text-gray-500 dark:text-gray-400">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-gray-800 dark:text-gray-200">
+                {filteredTransactions.length} {filteredTransactions.length === 1 ? 'Transaction' : 'Transactions'}
+              </span>
+              <span>•</span>
+              {selectedMonthFilter !== 'all' ? (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 font-semibold">
+                  <Calendar size={12} />
+                  {selectedMonthFilter}
+                </span>
+              ) : (
+                <span className="text-gray-600 dark:text-gray-400">All Months</span>
+              )}
+            </div>
+            {selectedMonthFilter !== 'all' && (
+              <button
+                onClick={() => setSelectedMonthFilter('all')}
+                className="text-blue-600 hover:text-blue-700 dark:text-blue-400 hover:underline font-semibold text-xs cursor-pointer"
+              >
+                Reset to All Months
+              </button>
+            )}
+          </div>
+        )}
+
         <div className="overflow-x-auto">
           {filterType === 'pending_dues' ? (
             <table className="w-full">
@@ -1458,7 +1695,19 @@ const WalletView = ({ onLock }) => {
                   </tr>
                 ) : filteredTransactions.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-6 py-12 text-center text-gray-500">No transactions yet</td>
+                    <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
+                      <div className="text-sm font-medium">
+                        No transactions found {selectedMonthFilter !== 'all' ? `for ${selectedMonthFilter}` : ''}
+                      </div>
+                      {selectedMonthFilter !== 'all' && (
+                        <button
+                          onClick={() => setSelectedMonthFilter('all')}
+                          className="mt-2 text-xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 hover:underline cursor-pointer"
+                        >
+                          View All Months
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ) : (
                   filteredTransactions.map((transaction, idx) => (
@@ -1497,14 +1746,14 @@ const WalletView = ({ onLock }) => {
                         <div className="flex justify-end gap-2">
                           <button
                             onClick={() => handleOpenEditModal(transaction)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 dark:text-blue-450 dark:hover:bg-white/10 rounded-lg transition-colors"
+                            className="p-2 text-blue-600 hover:bg-blue-50 dark:text-blue-450 dark:hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
                             title="Edit Transaction"
                           >
                             <Edit2 size={16} />
                           </button>
                           <button
                             onClick={() => handleDeleteTransaction(transaction._id)}
-                            className="p-2 text-rose-600 hover:bg-rose-50 dark:text-rose-455 dark:hover:bg-white/10 rounded-lg transition-colors"
+                            className="p-2 text-rose-600 hover:bg-rose-50 dark:text-rose-455 dark:hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
                             title="Delete Transaction"
                           >
                             <Trash2 size={16} />

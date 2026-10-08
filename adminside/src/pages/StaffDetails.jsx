@@ -47,11 +47,28 @@ import {
   addStaffAdvance, 
   deleteStaffAdvance, 
   updateStaffAdvance, 
+  updateStaffAttendance,
   BASE_URL 
 } from '../api';
-import { getStaffAdvanceSummary } from '../utils/salaryCalculator';
+import { getStaffAdvanceSummary, isDailyRatedStaff, calculatePayoutForMonth } from '../utils/salaryCalculator';
+import ManageAttendanceModal from '../components/attendance/ManageAttendanceModal';
 
-const PREDEFINED_ROLES = ['HR', 'Client Support', 'Admin', 'Data Analyst', 'Sales Team'];
+const PREDEFINED_ROLES = [
+  'HR', 
+  'Client Support', 
+  'Admin', 
+  'Data Analyst', 
+  'Sales Team', 
+  'Counselor',
+  'Chef', 
+  'Driver', 
+  'Maid', 
+  'Security / Guard', 
+  'Housekeeping', 
+  'Pantry'
+];
+
+const DAILY_AUTO_ROLES = ['chef', 'driver', 'maid', 'security', 'guard', 'housekeeping', 'pantry', 'peon', 'cook', 'safe', 'deriver', 'made'];
 
 const EditStaffModal = ({ isOpen, onClose, staffMember, onUpdate }) => {
   const [formData, setFormData] = useState({
@@ -64,6 +81,8 @@ const EditStaffModal = ({ isOpen, onClose, staffMember, onUpdate }) => {
     joiningDate: '',
     salaryStatus: '',
     jobType: '',
+    salaryCalculationType: 'hourly',
+    exemptClockInOut: false,
     role: '',
     reportingPerson: '',
     newDocumentName: ''
@@ -73,6 +92,7 @@ const EditStaffModal = ({ isOpen, onClose, staffMember, onUpdate }) => {
 
   useEffect(() => {
     if (staffMember) {
+      const isDaily = isDailyRatedStaff(staffMember);
       setFormData({
         monthlySalary: staffMember.monthlySalary,
         department: staffMember.department,
@@ -83,6 +103,8 @@ const EditStaffModal = ({ isOpen, onClose, staffMember, onUpdate }) => {
         joiningDate: staffMember.joiningDate,
         salaryStatus: staffMember.salaryStatus,
         jobType: staffMember.jobType,
+        salaryCalculationType: staffMember.salaryCalculationType || (isDaily ? 'daily' : 'hourly'),
+        exemptClockInOut: staffMember.exemptClockInOut ?? isDaily,
         role: staffMember.role || 'Employee',
         reportingPerson: Array.isArray(staffMember.reportingPerson) ? staffMember.reportingPerson.join(', ') : (staffMember.reportingPerson || ''),
         newDocumentName: ''
@@ -203,18 +225,41 @@ const EditStaffModal = ({ isOpen, onClose, staffMember, onUpdate }) => {
                       value={isCustomRole ? 'Other' : formData.role}
                       onChange={(e) => {
                         const val = e.target.value;
+                        const roleLower = (val || '').toLowerCase();
+                        const isAutoDaily = DAILY_AUTO_ROLES.some(r => roleLower.includes(r));
                         if (val === 'Other') {
-                          setFormData({ ...formData, role: '' });
+                          setFormData(prev => ({ 
+                            ...prev, 
+                            role: '',
+                            salaryCalculationType: isAutoDaily ? 'daily' : prev.salaryCalculationType,
+                            exemptClockInOut: isAutoDaily ? true : prev.exemptClockInOut
+                          }));
                         } else {
-                          setFormData({ ...formData, role: val });
+                          setFormData(prev => ({ 
+                            ...prev, 
+                            role: val,
+                            salaryCalculationType: isAutoDaily ? 'daily' : (prev.salaryCalculationType === 'daily' ? 'daily' : 'hourly'),
+                            exemptClockInOut: isAutoDaily ? true : prev.exemptClockInOut
+                          }));
                         }
                       }}
                     >
-                      <option value="HR" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">HR</option>
-                      <option value="Client Support" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Client Support</option>
-                      <option value="Admin" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Admin</option>
-                      <option value="Data Analyst" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Data Analyst</option>
-                      <option value="Sales Team" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Sales Team</option>
+                      <optgroup label="Office & Management Roles">
+                        <option value="Counselor" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Counselor</option>
+                        <option value="HR" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">HR</option>
+                        <option value="Client Support" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Client Support</option>
+                        <option value="Admin" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Admin</option>
+                        <option value="Data Analyst" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Data Analyst</option>
+                        <option value="Sales Team" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Sales Team</option>
+                      </optgroup>
+                      <optgroup label="Daily-Rated / Non-Clocking Roles">
+                        <option value="Chef" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Chef (Safe/Cook)</option>
+                        <option value="Driver" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Driver</option>
+                        <option value="Maid" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Maid / Cleaning Staff</option>
+                        <option value="Security / Guard" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Security / Guard</option>
+                        <option value="Housekeeping" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Housekeeping</option>
+                        <option value="Pantry" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Pantry / Office Boy</option>
+                      </optgroup>
                       <option value="Other" className="bg-white dark:bg-[#030303] text-gray-900 dark:text-white">Other (Type custom role)</option>
                     </select>
                     {(isCustomRole || formData.role === '' || !PREDEFINED_ROLES.includes(formData.role)) && (
@@ -223,12 +268,60 @@ const EditStaffModal = ({ isOpen, onClose, staffMember, onUpdate }) => {
                         className="w-full bg-black/5 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:border-blue-500 outline-none transition-all"
                         placeholder="Type custom role..."
                         value={formData.role}
-                        onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          const roleLower = val.toLowerCase();
+                          const isAutoDaily = DAILY_AUTO_ROLES.some(r => roleLower.includes(r));
+                          setFormData(prev => ({ 
+                            ...prev, 
+                            role: val,
+                            salaryCalculationType: isAutoDaily ? 'daily' : prev.salaryCalculationType,
+                            exemptClockInOut: isAutoDaily ? true : prev.exemptClockInOut
+                          }));
+                        }}
                       />
                     )}
                   </div>
                 );
               })()}
+            </div>
+
+            {/* Salary Calculation Mode */}
+            <div className="md:col-span-2 space-y-1.5 p-3 rounded-2xl bg-black/5 dark:bg-white/5 border border-gray-100 dark:border-white/5">
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block">Calculation Mode</label>
+                {formData.monthlySalary > 0 && formData.salaryCalculationType === 'daily' && (
+                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">
+                    1-Day: ₹{Math.round(Number(formData.monthlySalary) / 30)}/day (30-day basis)
+                  </span>
+                )}
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, salaryCalculationType: 'hourly', exemptClockInOut: false })}
+                  className={`p-2.5 rounded-xl text-left border text-xs font-bold transition-all ${
+                    formData.salaryCalculationType === 'hourly'
+                      ? 'bg-blue-500/15 border-blue-500/40 text-blue-600 dark:text-blue-400'
+                      : 'bg-white dark:bg-black/30 border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 opacity-70'
+                  }`}
+                >
+                  <p className="flex items-center gap-1.5">🕒 Hourly (Clock-In Required)</p>
+                  <p className="text-[10px] font-normal text-gray-500 mt-0.5">Calculates from logged clock-in/out hours</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, salaryCalculationType: 'daily', exemptClockInOut: true })}
+                  className={`p-2.5 rounded-xl text-left border text-xs font-bold transition-all ${
+                    formData.salaryCalculationType === 'daily'
+                      ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-400'
+                      : 'bg-white dark:bg-black/30 border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 opacity-70'
+                  }`}
+                >
+                  <p className="flex items-center gap-1.5">📅 30-Day Day-Wise (Chef, Driver, Maid)</p>
+                  <p className="text-[10px] font-normal text-gray-500 mt-0.5">Auto-present default, 1-day rate calculation</p>
+                </button>
+              </div>
             </div>
 
             <div>
@@ -1581,10 +1674,35 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
     }
   };
 
-  const handleAccessSaved = (id, newPermissions) => {
+  // Attendance modal state
+  const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
+  const [selectedStaffForAttendance, setSelectedStaffForAttendance] = useState(null);
+
+  const openAttendanceModal = async (member) => {
+    let fullMember = member;
+    try {
+      const res = await getStaffById(member._id);
+      if (res?.success && res.data) {
+        fullMember = res.data;
+      }
+    } catch (err) {
+      console.warn('Using member summary for attendance modal:', err);
+    }
+    setSelectedStaffForAttendance(fullMember);
+    setIsAttendanceModalOpen(true);
+  };
+
+  const handleAttendanceUpdated = (updatedStaff) => {
+    if (!updatedStaff) return;
     setStaff(prev => prev.map(m =>
-      (m._id === id || m.id === id) ? { ...m, permissions: newPermissions } : m
+      (m._id === updatedStaff._id || m.id === updatedStaff._id) ? updatedStaff : m
     ));
+    if (selectedStaffForAttendance && (selectedStaffForAttendance._id === updatedStaff._id || selectedStaffForAttendance.id === updatedStaff._id)) {
+      setSelectedStaffForAttendance(updatedStaff);
+    }
+    if (selectedStaffForSalary && (selectedStaffForSalary._id === updatedStaff._id || selectedStaffForSalary.id === updatedStaff._id)) {
+      setSelectedStaffForSalary(updatedStaff);
+    }
   };
 
   // Salary modal state
@@ -1821,175 +1939,36 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
   };
 
   const calculatePayoutForSelectedMonth = (staffInfo, monthStr) => {
-    if (!staffInfo || !monthStr) return { payout: 0, fullLeaves: 0, halfDays: 0, casualLeaveUsed: false, isPaid: false, daysWorked: 0 };
+    if (!staffInfo || !monthStr) return { payout: 0, fullLeaves: 0, halfDays: 0, casualLeaveUsed: false, isPaid: false, daysWorked: 0, isDailyRated: false, dailyRate: 0, presentDays: 0, absentDays: 0 };
     const cleanMonth = monthStr.replace(/\s*\(Current\)/i, '').trim();
-    const match = cleanMonth.match(/([A-Za-z]+)\s+(\d+)/);
-    if (!match) return calculatePayout(staffInfo);
 
-    const monthName = match[1];
-    const year = parseInt(match[2]);
-    const monthIndex = new Date(Date.parse(monthName + " 1, 2012")).getMonth();
-
-    const baseSalary = staffInfo.monthlySalary || 0;
-    const STANDARD_HOURS_PER_DAY = 8.5;
-    const EXPECTED_MONTHLY_HOURS = STANDARD_HOURS_PER_DAY * 30;
-    const hourlyRate = baseSalary / EXPECTED_MONTHLY_HOURS;
-
-    const today = new Date();
-    const isCurrentMonth = today.getMonth() === monthIndex && today.getFullYear() === year;
-
-    const createdAt = staffInfo.createdAt || staffInfo.joiningDate;
-    const sequenceDates = get30DaySequenceDates(year, monthIndex, createdAt);
-
-    const todayEnd = new Date();
-    todayEnd.setHours(23, 59, 59, 999);
-
-    const validSequenceDates = isCurrentMonth
-      ? sequenceDates.filter(d => d <= todayEnd)
-      : sequenceDates;
-
-    const seqDateStrings = new Set(validSequenceDates.map(d => d.toDateString()));
-
-    const parseTotalHours = (str) => {
-      if (!str || str === '-') return 0;
-      const h = str.match(/(\d+)\s*h/i);
-      const m = str.match(/(\d+)\s*m/i);
-      return (h ? parseInt(h[1], 10) : 0) + (m ? parseInt(m[1], 10) / 60 : 0);
-    };
-
-    const monthlyClockRecords = (staffInfo.clock || []).filter(r => {
-      return seqDateStrings.has(new Date(r.date).toDateString());
-    });
-
-    const dailyHoursMap = {};
-    const creditedDates = new Set();
-
-    monthlyClockRecords.forEach(r => {
-      const dStr = new Date(r.date).toDateString();
-      const actualHrs = parseTotalHours(r.totalHours);
-      let hrs = 0;
-      if (actualHrs > 9) {
-        hrs = 8.5 + (actualHrs - 9);
-      } else if (actualHrs >= 8.5) {
-        hrs = 8.5;
-      } else {
-        hrs = actualHrs;
-      }
-      dailyHoursMap[dStr] = hrs;
-      creditedDates.add(dStr);
-    });
-
-    validSequenceDates.forEach(d => {
-      const dStr = d.toDateString();
-      if (d.getDay() === 0 && !creditedDates.has(dStr)) {
-        dailyHoursMap[dStr] = STANDARD_HOURS_PER_DAY;
-        creditedDates.add(dStr);
-      }
-    });
-
-    (staffInfo.leaves || []).forEach(leave => {
-      const ld = new Date(leave.date);
-      const ldStr = ld.toDateString();
-      if (seqDateStrings.has(ldStr) && !creditedDates.has(ldStr)) {
-        dailyHoursMap[ldStr] = STANDARD_HOURS_PER_DAY;
-        creditedDates.add(ldStr);
-      }
-    });
-
-    (staffInfo.attendance || []).forEach(att => {
-      if (att.status === 'On Leave') {
-        const ad = new Date(att.date);
-        const adStr = ad.toDateString();
-        if (seqDateStrings.has(adStr) && !creditedDates.has(adStr)) {
-          dailyHoursMap[adStr] = STANDARD_HOURS_PER_DAY;
-          creditedDates.add(adStr);
-        }
-      }
-    });
-
-    const absentDaysList = validSequenceDates.filter(d => {
-      if (d.getDay() === 0) return false;
-      return !creditedDates.has(d.toDateString());
-    });
-
-    const halfDayRecords = (staffInfo.attendance || []).filter(att => {
-      if (att.status !== 'Half-Day') return false;
-      const ad = new Date(att.date);
-      return seqDateStrings.has(ad.toDateString());
-    });
-    const halfDayLeaveUnits = Math.floor(halfDayRecords.length / 2);
-
-    let casualLeaveUsed = false;
-    if (absentDaysList.length > 0) {
-      const casualLeaveDate = absentDaysList[0];
-      const dStr = casualLeaveDate.toDateString();
-      dailyHoursMap[dStr] = STANDARD_HOURS_PER_DAY;
-      creditedDates.add(dStr);
-      casualLeaveUsed = true;
-    } else if (halfDayLeaveUnits > 0) {
-      for (let i = 0; i < 2; i++) {
-        const hdDate = new Date(halfDayRecords[i].date);
-        const dStr = hdDate.toDateString();
-        const cr = monthlyClockRecords.find(r => new Date(r.date).toDateString() === dStr);
-        const actualHrs = cr ? parseTotalHours(cr.totalHours) : 0;
-        const halfTarget = STANDARD_HOURS_PER_DAY / 2;
-        if (actualHrs < halfTarget) {
-          dailyHoursMap[dStr] = (dailyHoursMap[dStr] || actualHrs) + (halfTarget - actualHrs);
-        }
-      }
-      casualLeaveUsed = true;
-    }
-
-    let calculatedPayout = 0;
-    let totalHoursWorked = 0;
-
-    validSequenceDates.forEach(d => {
-      const dStr = d.toDateString();
-      const hrs = dailyHoursMap[dStr] || 0;
-      totalHoursWorked += hrs;
-      const { salary: daySalary } = getSalaryForDate(staffInfo, d);
-      const dayHourlyRate = daySalary / EXPECTED_MONTHLY_HOURS;
-      calculatedPayout += hrs * dayHourlyRate;
-    });
-
-    calculatedPayout = Math.round(calculatedPayout);
-
-    const presents = monthlyClockRecords.length;
-    const fullLeaves = Math.max(0, absentDaysList.length - (casualLeaveUsed && absentDaysList.length > 0 ? 1 : 0));
     const advanceSummary = getStaffAdvanceSummary(staffInfo);
     const activeAdvanceBalance = advanceSummary.pendingBalance || 0;
+
+    const coreCalc = calculatePayoutForMonth(staffInfo, cleanMonth);
+    const baseSalary = coreCalc.baseSalary;
+    const isDaily = isDailyRatedStaff(staffInfo);
+    const dailyRate = Math.round(baseSalary / 30);
 
     const paidHistory = (staffInfo.salaryHistory || []).find(h => {
       const hClean = h.month ? h.month.replace(/\s*\(Current\)/i, '').trim() : '';
       return hClean === cleanMonth;
     });
 
-    // If paid, use historical recorded numbers
     if (paidHistory) {
-      const earnedSalary = paidHistory.earnedSalary ?? paidHistory.baseSalary ?? paidHistory.payoutSalary;
-      const advanceDeduction = paidHistory.advanceDeduction || 0;
-      const payout = paidHistory.payoutSalary;
-      const advanceBalanceRemaining = paidHistory.advanceBalanceRemaining ?? 0;
-
       return {
-        payout,
-        earnedSalary,
-        baseSalary,
-        advanceDeduction,
-        advanceBalanceRemaining,
+        ...coreCalc,
         activeAdvanceBalance,
-        totalHoursWorked: Math.round(totalHoursWorked * 100) / 100,
-        daysWorked: presents,
-        hourlyRate: Math.round(hourlyRate * 100) / 100,
-        fullLeaves,
-        halfDays: halfDayRecords.length,
-        casualLeaveUsed: !!casualLeaveUsed,
+        totalHoursWorked: isDaily ? coreCalc.presentDays * 8 : (coreCalc.daysWorked * 8.5),
+        hourlyRate: Math.round((baseSalary / 255) * 100) / 100,
+        fullLeaves: coreCalc.absentDays,
+        halfDays: coreCalc.halfDays,
+        casualLeaveUsed: false,
         isPaid: true
       };
     }
 
-    // If pending, calculate based on selected settlement choice
-    const earnedSalary = calculatedPayout;
+    const earnedSalary = coreCalc.earnedSalary;
     let advanceDeduction = 0;
     if (advanceSettlementChoice === 'defer' || advanceSettlementChoice === 'no_deduction') {
       advanceDeduction = 0;
@@ -2000,7 +1979,6 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
         advanceDeduction = Math.round(activeAdvanceBalance / 2);
       }
     } else {
-      // 'full' or 'settle' default
       if (customAdvanceCut !== '' && !isNaN(Number(customAdvanceCut))) {
         advanceDeduction = Math.min(activeAdvanceBalance, Math.max(0, Number(customAdvanceCut)));
       } else {
@@ -2018,12 +1996,17 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
       advanceDeduction,
       advanceBalanceRemaining,
       activeAdvanceBalance,
-      totalHoursWorked: Math.round(totalHoursWorked * 100) / 100,
-      daysWorked: presents,
-      hourlyRate: Math.round(hourlyRate * 100) / 100,
-      fullLeaves,
-      halfDays: halfDayRecords.length,
-      casualLeaveUsed: !!casualLeaveUsed,
+      totalHoursWorked: isDaily ? coreCalc.presentDays * 8 : (coreCalc.daysWorked * 8.5),
+      daysWorked: coreCalc.daysWorked,
+      hourlyRate: Math.round((baseSalary / 255) * 100) / 100,
+      dailyRate,
+      isDailyRated: isDaily,
+      presentDays: coreCalc.presentDays,
+      absentDays: coreCalc.absentDays,
+      halfDays: coreCalc.halfDays,
+      totalCycleDays: coreCalc.totalCycleDays,
+      fullLeaves: coreCalc.absentDays,
+      casualLeaveUsed: false,
       isPaid: false
     };
   };
@@ -2545,6 +2528,14 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
                             );
                           })()}
                           <button
+                            onClick={() => openAttendanceModal(member)}
+                            className="group/att flex items-center gap-1.5 rounded-xl border border-teal-500/20 bg-teal-500/10 px-3 py-2 text-teal-600 dark:text-teal-400 shadow-sm transition-all hover:bg-teal-600 hover:text-white"
+                            title="Manage Attendance & Mark Absences"
+                          >
+                            <Calendar size={15} className="transition-transform group-hover/att:scale-110" />
+                            <span className="text-xs font-black uppercase tracking-widest">Attendance</span>
+                          </button>
+                          <button
                             onClick={() => openAccessModal(member)}
                             className="group/access flex items-center gap-1.5 rounded-xl border border-indigo-500/20 bg-indigo-500/10 px-3 py-2 text-indigo-600 dark:text-indigo-400 shadow-lg shadow-indigo-500/10 transition-all hover:bg-indigo-600 hover:text-white"
                             title="Manage Feature Access & Password"
@@ -2614,6 +2605,19 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
         )}
       </AnimatePresence>
 
+      {/* Attendance & Absences Management Modal */}
+      <AnimatePresence>
+        {isAttendanceModalOpen && selectedStaffForAttendance && (
+          <ManageAttendanceModal
+            isOpen={isAttendanceModalOpen}
+            onClose={() => setIsAttendanceModalOpen(false)}
+            staffMember={selectedStaffForAttendance}
+            monthStr={selectedSalaryMonth}
+            onAttendanceUpdated={handleAttendanceUpdated}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Salary Payment Modal with Full Breakout & Advance Settlement Selection */}
       <AnimatePresence>
         {isSalaryModalOpen && selectedStaffForSalary && (
@@ -2669,9 +2673,18 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
 
                 {/* Select Month to Clear */}
                 <div>
-                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block mb-1.5">
-                    Select Month
-                  </label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block">
+                      Select Month
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => openAttendanceModal(selectedStaffForSalary)}
+                      className="text-[11px] font-bold text-teal-600 dark:text-teal-400 hover:underline flex items-center gap-1"
+                    >
+                      <Calendar size={12} /> Mark Absent / Check Days
+                    </button>
+                  </div>
                   <select
                     value={selectedSalaryMonth}
                     onChange={(e) => setSelectedSalaryMonth(e.target.value)}

@@ -112,6 +112,14 @@ export const getStaffAdvanceSummary = (emp) => {
   };
 };
 
+export const isDailyRatedStaff = (emp) => {
+  if (!emp) return false;
+  if (emp.salaryCalculationType === 'daily' || emp.exemptClockInOut === true) return true;
+  const role = (emp.role || '').toLowerCase();
+  const dailyRoles = ['chef', 'safe', 'driver', 'deriver', 'maid', 'made', 'security', 'guard', 'housekeeping', 'pantry', 'peon', 'cook'];
+  return dailyRoles.some(r => role.includes(r));
+};
+
 export const calculatePayoutForMonth = (emp, monthStr) => {
   if (!emp) {
     return {
@@ -123,10 +131,17 @@ export const calculatePayoutForMonth = (emp, monthStr) => {
       totalPendingAdvance: 0,
       isPaid: false,
       paidAmount: 0,
-      daysWorked: 0
+      daysWorked: 0,
+      isDailyRated: false,
+      dailyRate: 0,
+      presentDays: 0,
+      absentDays: 0,
+      halfDays: 0,
+      totalCycleDays: 30
     };
   }
 
+  const isDaily = isDailyRatedStaff(emp);
   const now = new Date();
   const defaultMonthStr = now.toLocaleString('default', { month: 'long', year: 'numeric' });
   const targetMonth = monthStr || defaultMonthStr;
@@ -134,6 +149,7 @@ export const calculatePayoutForMonth = (emp, monthStr) => {
 
   const baseSalary = emp.monthlySalary || 0;
   const advanceSummary = getStaffAdvanceSummary(emp);
+  const dailyRate = Math.round(baseSalary / 30);
 
   const match = cleanMonth.match(/([A-Za-z]+)\s+(\d+)/);
   if (!match) {
@@ -146,7 +162,13 @@ export const calculatePayoutForMonth = (emp, monthStr) => {
       totalPendingAdvance: advanceSummary.pendingBalance,
       isPaid: false,
       paidAmount: 0,
-      daysWorked: 0
+      daysWorked: 30,
+      isDailyRated: isDaily,
+      dailyRate,
+      presentDays: 30,
+      absentDays: 0,
+      halfDays: 0,
+      totalCycleDays: 30
     };
   }
 
@@ -173,6 +195,78 @@ export const calculatePayoutForMonth = (emp, monthStr) => {
     : sequenceDates;
   const seqDateStrings = new Set(validSequenceDates.map(d => d.toDateString()));
 
+  // -------------------------------------------------------------
+  // DAILY-RATED / EXEMPT FROM CLOCK-IN EMPLOYEES (Chef, Driver, Maid, etc.)
+  // -------------------------------------------------------------
+  if (isDaily) {
+    let absentCount = 0;
+    let halfDayCount = 0;
+    let totalPresentCredits = 0;
+    const dayCreditsMap = {};
+
+    validSequenceDates.forEach(d => {
+      const dStr = d.toDateString();
+      const attRecord = (emp.attendance || []).find(a => new Date(a.date).toDateString() === dStr);
+
+      if (attRecord) {
+        if (attRecord.status === 'Absent') {
+          dayCreditsMap[dStr] = 0;
+          absentCount++;
+        } else if (attRecord.status === 'Half-Day') {
+          dayCreditsMap[dStr] = 0.5;
+          halfDayCount++;
+        } else {
+          // 'Present' or 'On Leave'
+          dayCreditsMap[dStr] = 1;
+        }
+      } else {
+        // Default is AUTO-PRESENT for daily-rated staff!
+        dayCreditsMap[dStr] = 1;
+      }
+      totalPresentCredits += dayCreditsMap[dStr];
+    });
+
+    let totalPayout = 0;
+    validSequenceDates.forEach(d => {
+      const dStr = d.toDateString();
+      const credit = dayCreditsMap[dStr] !== undefined ? dayCreditsMap[dStr] : 1;
+      const { salary: dayMonthlySalary } = getSalaryForDate(emp, d);
+      const dayRate = dayMonthlySalary / 30;
+      totalPayout += credit * dayRate;
+    });
+
+    const calculated = Math.round(totalPayout);
+    const earnedSalary = paidHistory 
+      ? (paidHistory.earnedSalary ?? paidHistory.payoutSalary ?? calculated) 
+      : calculated;
+
+    const advanceDeduction = paidHistory ? (paidHistory.advanceDeduction || 0) : 0;
+    const payout = paidHistory ? paidHistory.payoutSalary : Math.max(0, earnedSalary - advanceDeduction);
+    const advanceBalanceRemaining = paidHistory ? (paidHistory.advanceBalanceRemaining ?? advanceSummary.pendingBalance) : advanceSummary.pendingBalance;
+
+    return {
+      payout,
+      earnedSalary,
+      baseSalary,
+      advanceDeduction,
+      advanceBalanceRemaining,
+      totalPendingAdvance: advanceSummary.pendingBalance,
+      totalAdvancesGiven: advanceSummary.totalGiven,
+      isPaid: !!paidHistory,
+      paidAmount: paidHistory ? (paidHistory.payoutSalary || payout) : 0,
+      daysWorked: totalPresentCredits,
+      isDailyRated: true,
+      dailyRate,
+      presentDays: totalPresentCredits,
+      absentDays: absentCount,
+      halfDays: halfDayCount,
+      totalCycleDays: validSequenceDates.length
+    };
+  }
+
+  // -------------------------------------------------------------
+  // HOURLY / CLOCK-IN BASED EMPLOYEES (Regular Office Staff)
+  // -------------------------------------------------------------
   const monthlyClockRecords = (emp.clock || []).filter(r => {
     return seqDateStrings.has(new Date(r.date).toDateString());
   });
@@ -284,7 +378,13 @@ export const calculatePayoutForMonth = (emp, monthStr) => {
     totalAdvancesGiven: advanceSummary.totalGiven,
     isPaid: !!paidHistory,
     paidAmount: paidHistory ? (paidHistory.payoutSalary || payout) : 0,
-    daysWorked: monthlyClockRecords.length
+    daysWorked: monthlyClockRecords.length,
+    isDailyRated: false,
+    dailyRate,
+    presentDays: validSequenceDates.length - absentDays.length,
+    absentDays: absentDays.length,
+    halfDays: halfDayRecords.length,
+    totalCycleDays: validSequenceDates.length
   };
 };
 

@@ -2061,7 +2061,7 @@ exports.submitAllReports = async (req, res) => {
 // Update attendance manually (Admin feature)
 exports.updateAttendance = async (req, res) => {
   try {
-    const { status, date } = req.body; // status: 'Absent', 'Half-Day', 'On Leave', etc.
+    const { status, date } = req.body; // status: 'Present', 'Absent', 'Half-Day', 'On Leave', etc.
     const staffId = req.params.id;
 
     const recordDate = date ? new Date(date) : new Date();
@@ -2075,15 +2075,18 @@ exports.updateAttendance = async (req, res) => {
       $pull: { attendance: { date: { $gte: startOfDay, $lte: endOfDay } } }
     });
 
-    // Add new attendance record
-    const staff = await Staff.findByIdAndUpdate(
-      staffId,
-      {
-        $push: { attendance: { date: recordDate, status } },
-        status: status // Also update current status
-      },
-      { new: true }
-    );
+    const updateDoc = {
+      $push: { attendance: { date: recordDate, status } }
+    };
+
+    // If updating today's attendance, also update current staff status
+    const today = new Date();
+    if (recordDate.toDateString() === today.toDateString()) {
+      updateDoc.status = status;
+    }
+
+    const staff = await Staff.findByIdAndUpdate(staffId, updateDoc, { new: true });
+    cache.del('staff:all');
 
     res.status(200).json({
       success: true,

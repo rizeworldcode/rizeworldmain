@@ -411,6 +411,12 @@ export const deleteApplication = (hearingId: string, appId: string) =>
     method: 'DELETE',
   });
 
+export const updateStaffAttendance = (staffId: string, data: { status: string; date?: string | Date }) =>
+  apiRequest(`/staff/${staffId}/attendance`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+
 export default {
   BASE_URL,
   getDashboardStats,
