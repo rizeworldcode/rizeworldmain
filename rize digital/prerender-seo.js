@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import puppeteer from 'puppeteer';
 import { spawn } from 'child_process';
 import xml2js from 'xml2js';
+import jsBeautify from 'js-beautify';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -344,8 +345,23 @@ async function runPrerender() {
         }
 
         if (metadata.rootHtml) {
-          html = html.replace(/<div id="root">[\s\S]*?<\/div>/, () => `<div id="root">${metadata.rootHtml}</div>`);
+          html = html.replace(/<div id="root">[\s\S]*?<\/div>/, () => `<div id="root">\n${metadata.rootHtml}\n</div>`);
         }
+
+        // Format HTML with proper indentation, tag wrapping, and line breaks so all tags are neatly aligned
+        const formattedHtml = jsBeautify.html(html, {
+          indent_size: 2,
+          indent_char: ' ',
+          max_preserve_newlines: 1,
+          preserve_newlines: true,
+          indent_inner_html: true,
+          extra_liners: [],
+          inline: [], // Don't collapse inline elements (like <a>, <span>, <img>) onto one long line
+          unformatted: ['code', 'pre'], // Only code and pre keep raw whitespace
+          wrap_line_length: 120, // Break lines exceeding 120 characters
+          wrap_attributes: 'auto', // Break long attribute lists across lines cleanly
+          end_with_newline: true
+        });
 
         let outputPath = templatePath;
         if (route !== '/') {
@@ -356,7 +372,7 @@ async function runPrerender() {
           outputPath = path.join(dir, 'index.html');
         }
 
-        fs.writeFileSync(outputPath, html, 'utf-8');
+        fs.writeFileSync(outputPath, formattedHtml, 'utf-8');
         successCount++;
         break; // Successfully prerendered this route
       } catch (e) {
