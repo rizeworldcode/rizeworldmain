@@ -14,7 +14,8 @@ import {
   Users,
   Receipt,
   PieChart,
-  Calendar
+  Calendar,
+  FileText
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -244,6 +245,23 @@ const WalletView = ({ onLock }) => {
       .filter(t => {
         if (t.type !== 'client_payment' && t.type !== 'income' && t.source !== 'client_payment') return false;
         if ((t.mode || '').toLowerCase() !== 'cash') return false;
+        const m = getTransactionProjectMonth(t);
+        return m === selectedIncomeMonth;
+      })
+      .reduce((sum, t) => sum + (t.amount || 0), 0);
+  }, [transactions, selectedIncomeMonth]);
+
+  const totalChequeIncome = useMemo(() => {
+    return (transactions || [])
+      .filter(t => (t.type === 'client_payment' || t.type === 'income' || t.source === 'client_payment') && ((t.mode || '').toLowerCase() === 'cheque' || (t.mode || '').toLowerCase() === 'cheq'))
+      .reduce((sum, t) => sum + (t.amount || 0), 0);
+  }, [transactions]);
+
+  const monthlyChequeIncome = useMemo(() => {
+    return (transactions || [])
+      .filter(t => {
+        if (t.type !== 'client_payment' && t.type !== 'income' && t.source !== 'client_payment') return false;
+        if ((t.mode || '').toLowerCase() !== 'cheque' && (t.mode || '').toLowerCase() !== 'cheq') return false;
         const m = getTransactionProjectMonth(t);
         return m === selectedIncomeMonth;
       })
@@ -1118,8 +1136,8 @@ const WalletView = ({ onLock }) => {
               </div>
             </div>
 
-            {/* Online & Cash Payment Modes Breakdown */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+            {/* Online, Cash & Cheque Payment Modes Breakdown */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
               {/* Online Payments */}
               <div className="text-left p-4 rounded-2xl glass border border-gray-200/70 dark:border-white/10 flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -1127,12 +1145,12 @@ const WalletView = ({ onLock }) => {
                     <CreditCard size={20} />
                   </div>
                   <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block">Online Payments (Total)</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block">Online (Total)</span>
                     <span className="text-lg font-bold text-blue-600 dark:text-blue-400">₹{(totalOnlineIncome || 0).toLocaleString('en-IN')}</span>
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase block">Monthly ({selectedIncomeMonth.split(' ')[0]})</span>
+                  <span className="text-[10px] font-bold text-gray-400 uppercase block">Monthly</span>
                   <span className="text-sm font-extrabold text-blue-600 dark:text-blue-400">₹{(monthlyOnlineIncome || 0).toLocaleString('en-IN')}</span>
                 </div>
               </div>
@@ -1144,13 +1162,30 @@ const WalletView = ({ onLock }) => {
                     <Wallet size={20} />
                   </div>
                   <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block">Cash Payments (Total)</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block">Cash (Total)</span>
                     <span className="text-lg font-bold text-emerald-700 dark:text-emerald-300">₹{(totalCashIncome || 0).toLocaleString('en-IN')}</span>
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase block">Monthly ({selectedIncomeMonth.split(' ')[0]})</span>
+                  <span className="text-[10px] font-bold text-gray-400 uppercase block">Monthly</span>
                   <span className="text-sm font-extrabold text-emerald-700 dark:text-emerald-300">₹{(monthlyCashIncome || 0).toLocaleString('en-IN')}</span>
+                </div>
+              </div>
+
+              {/* Cheque Payments */}
+              <div className="text-left p-4 rounded-2xl glass border border-gray-200/70 dark:border-white/10 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400">
+                    <FileText size={20} />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block">Cheque (Total)</span>
+                    <span className="text-lg font-bold text-purple-600 dark:text-purple-400">₹{(totalChequeIncome || 0).toLocaleString('en-IN')}</span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase block">Monthly</span>
+                  <span className="text-sm font-extrabold text-purple-600 dark:text-purple-400">₹{(monthlyChequeIncome || 0).toLocaleString('en-IN')}</span>
                 </div>
               </div>
             </div>
@@ -1565,6 +1600,7 @@ const WalletView = ({ onLock }) => {
                   >
                     <option value="online" className="text-gray-900 dark:bg-gray-800 dark:text-white">Online</option>
                     <option value="cash" className="text-gray-900 dark:bg-gray-800 dark:text-white">Cash</option>
+                    <option value="cheque" className="text-gray-900 dark:bg-gray-800 dark:text-white">Cheque</option>
                   </select>
                 </div>
                 {newTransaction.mode === 'online' && (
@@ -1604,6 +1640,20 @@ const WalletView = ({ onLock }) => {
                       )}
                     </div>
                   </>
+                )}
+                {newTransaction.mode === 'cheque' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Cheque Number / Reference
+                    </label>
+                    <input
+                      type="text"
+                      value={newTransaction.utrNumber}
+                      onChange={(e) => setNewTransaction({ ...newTransaction, utrNumber: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white"
+                      placeholder="e.g., 000123"
+                    />
+                  </div>
                 )}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -1730,6 +1780,7 @@ const WalletView = ({ onLock }) => {
                   >
                     <option value="online" className="text-gray-900 dark:bg-gray-800 dark:text-white">Online</option>
                     <option value="cash" className="text-gray-900 dark:bg-gray-800 dark:text-white">Cash</option>
+                    <option value="cheque" className="text-gray-900 dark:bg-gray-800 dark:text-white">Cheque</option>
                   </select>
                 </div>
                 {editingTransaction.mode === 'online' && (
@@ -1769,6 +1820,20 @@ const WalletView = ({ onLock }) => {
                       )}
                     </div>
                   </>
+                )}
+                {editingTransaction.mode === 'cheque' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Cheque Number / Reference
+                    </label>
+                    <input
+                      type="text"
+                      value={editingTransaction.utrNumber}
+                      onChange={(e) => setEditingTransaction({ ...editingTransaction, utrNumber: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white"
+                      placeholder="e.g., 000123"
+                    />
+                  </div>
                 )}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">

@@ -275,7 +275,7 @@ const ClientsScreen = ({ staffInfo, token, onBack, onSelectClient, getApiUrl, on
 
                 <Text style={styles.label}>Payment Mode</Text>
                 <View style={styles.modeRow}>
-                  {['Online', 'Cash', 'UPI', 'Bank Transfer'].map(mode => (
+                  {['Online', 'Cash', 'Cheque', 'UPI', 'Bank Transfer'].map(mode => (
                     <TouchableOpacity
                       key={mode}
                       onPress={() => setPaymentMode(mode)}
@@ -295,6 +295,18 @@ const ClientsScreen = ({ staffInfo, token, onBack, onSelectClient, getApiUrl, on
                       value={utrNumber}
                       onChangeText={setUtrNumber}
                       placeholder="e.g. 304958392019"
+                      style={styles.input}
+                    />
+                  </>
+                ) : null}
+
+                {paymentMode === 'Cheque' ? (
+                  <>
+                    <Text style={styles.label}>Cheque Number / Reference</Text>
+                    <TextInput
+                      value={utrNumber}
+                      onChangeText={setUtrNumber}
+                      placeholder="e.g. 000123"
                       style={styles.input}
                     />
                   </>

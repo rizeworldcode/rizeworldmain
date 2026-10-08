@@ -516,8 +516,8 @@ exports.updateTransaction = async (req, res) => {
       histItem.pendingAmount = Math.max(0, currentPending - diff);
       payment.amount = newAmount;
       if (date) payment.date = new Date(date);
-      if (mode) payment.mode = mode === 'cash' ? 'Cash' : 'Online';
-      if (utrNumber !== undefined) payment.utr = mode === 'cash' ? '' : utrNumber;
+      if (mode) payment.mode = mode.toLowerCase() === 'cash' ? 'Cash' : (mode.toLowerCase() === 'cheque' || mode.toLowerCase() === 'cheq' ? 'Cheque' : 'Online');
+      if (utrNumber !== undefined) payment.utr = (payment.mode === 'Cash') ? '' : utrNumber;
 
       client.markModified('history');
       await client.save();
@@ -543,8 +543,8 @@ exports.updateTransaction = async (req, res) => {
 
       payment.amount = newAmount;
       if (date) payment.date = new Date(date);
-      if (mode) payment.mode = mode === 'cash' ? 'Cash' : 'Online';
-      if (utrNumber !== undefined) payment.utr = mode === 'cash' ? '' : utrNumber;
+      if (mode) payment.mode = mode.toLowerCase() === 'cash' ? 'Cash' : (mode.toLowerCase() === 'cheque' || mode.toLowerCase() === 'cheq' ? 'Cheque' : 'Online');
+      if (utrNumber !== undefined) payment.utr = (payment.mode === 'Cash') ? '' : utrNumber;
 
       await client.save();
     }
@@ -560,7 +560,7 @@ exports.updateTransaction = async (req, res) => {
       amount: payment.amount,
       date: payment.date,
       mode: payment.mode,
-      method: (payment.mode || '').toLowerCase() === 'online' ? 'bank_transfer' : 'cash',
+      method: (payment.mode || '').toLowerCase() === 'online' ? 'bank_transfer' : ((payment.mode || '').toLowerCase() === 'cheque' ? 'cheque' : 'cash'),
       utrNumber: payment.utr || null,
       referenceId: client._id,
       referenceModel: modelName,

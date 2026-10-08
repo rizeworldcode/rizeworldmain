@@ -300,6 +300,7 @@ const AddPaymentModal = ({ client, isOpen, onClose, onAdd, maxAmount }) => {
             >
               <option value="Online" className="bg-white text-black">Online</option>
               <option value="Cash" className="bg-white text-black">Cash</option>
+              <option value="Cheque" className="bg-white text-black">Cheque</option>
             </select>
           </div>
           {formData.mode === 'Online' && (
@@ -319,6 +320,18 @@ const AddPaymentModal = ({ client, isOpen, onClose, onAdd, maxAmount }) => {
                   UTR number must be between 12 and 16 characters. (Current length: {utrTrimmed.length})
                 </p>
               )}
+            </motion.div>
+          )}
+          {formData.mode === 'Cheque' && (
+            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}>
+              <label className="text-[10px] font-bold text-black uppercase tracking-widest block mb-1.5">Cheque Number / Reference</label>
+              <input
+                type="text"
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-black outline-none transition-all placeholder:text-gray-600 focus:border-blue-500"
+                placeholder="Enter Cheque number (e.g. 000123)"
+                value={formData.utr}
+                onChange={(e) => setFormData({ ...formData, utr: e.target.value })}
+              />
             </motion.div>
           )}
           <div>
@@ -1437,11 +1450,19 @@ const PaymentModal = ({ client, isOpen, onClose, theme }) => {
                         </div>
                       </div>
                       <div className="text-right">
-                        <span className="text-[10px] font-bold text-blue-600 bg-blue-500/10 px-2 py-0.5 rounded uppercase">
-                          {payment.mode}
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
+                          (payment.mode || '').toLowerCase() === 'cash'
+                            ? 'text-amber-600 bg-amber-500/10'
+                            : (payment.mode || '').toLowerCase() === 'cheque' || (payment.mode || '').toLowerCase() === 'cheq'
+                            ? 'text-purple-600 bg-purple-500/10'
+                            : 'text-blue-600 bg-blue-500/10'
+                        }`}>
+                          {payment.mode || 'Online'}
                         </span>
                         {payment.utr && (
-                          <p className="text-[10px] text-gray-900 mt-1 font-mono">#{payment.utr}</p>
+                          <p className="text-[10px] text-gray-900 mt-1 font-mono">
+                            {(payment.mode || '').toLowerCase() === 'cheque' || (payment.mode || '').toLowerCase() === 'cheq' ? `Cheque #${payment.utr}` : `#${payment.utr}`}
+                          </p>
                         )}
                       </div>
                     </div>
@@ -1619,7 +1640,7 @@ const handleAddPayment = async (data) => {
       body: JSON.stringify({
         payingAmount: parseFloat(data.amount),
         paymentMethod: data.mode,
-        ...(data.mode === 'Online' && { utr: data.utr }),
+        utr: data.utr || '',
         month: data.month,
         periodFrom: data.periodFrom,
         periodTo: data.periodTo,
@@ -1827,7 +1848,7 @@ const handleAddPayment = async (data) => {
       const paymentItem = {
         date: data.date ? new Date(data.date) : new Date(),
         amount: amount,
-        mode: data.mode === 'Cash' ? 'Cash' : 'Online',
+        mode: data.mode === 'Cash' ? 'Cash' : (data.mode === 'Cheque' ? 'Cheque' : 'Online'),
         utr: data.utr || '',
         month: data.month || ''
       };
