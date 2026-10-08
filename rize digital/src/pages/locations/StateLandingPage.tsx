@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useParams, Navigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, ArrowUpRight, Building2, Briefcase, ChevronDown, CheckCircle2, Sparkles, Target, Users } from 'lucide-react';
+import { MapPin, ArrowUpRight, Building2, Briefcase, ChevronDown, CheckCircle2, Target, Users } from 'lucide-react';
+import { RiAwardLine, RiCompassDiscoverLine, RiQuestionAnswerLine } from 'react-icons/ri';
+import { HiMiniGlobeAmericas } from 'react-icons/hi2';
 import SEO from '../../components/common/SEO';
 import Breadcrumbs from '../../components/common/Breadcrumbs';
 import InternalLinkSection from '../../components/common/InternalLinkSection';
@@ -264,7 +266,7 @@ export default function StateLandingPage() {
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-24">
           <div className="text-center mb-14 max-w-3xl mx-auto">
             <span className="text-xs font-black uppercase tracking-widest text-orange-500 flex items-center justify-center gap-2 mb-3">
-              <Sparkles className="w-4 h-4" /> Strategic Advantage
+              <RiAwardLine className="w-4 h-4" /> Strategic Advantage
             </span>
             <h2 className="text-3xl md:text-5xl font-black text-gray-950 uppercase tracking-tight mb-4">
               {customContent.whyChoose.headline}
@@ -328,7 +330,7 @@ export default function StateLandingPage() {
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-24">
           <div className="bg-white border border-gray-200/85 rounded-[2.5rem] p-8 md:p-14 shadow-2xs">
             <span className="text-xs font-black uppercase tracking-widest text-orange-500 flex items-center gap-2 mb-4">
-              <Sparkles className="w-4 h-4" /> Scalable Reach
+              <HiMiniGlobeAmericas className="w-4 h-4" /> Scalable Reach
             </span>
             <h2 className="text-2xl md:text-4xl font-black text-gray-950 uppercase tracking-tight mb-6 max-w-2xl">
               {customContent.expansionSection.headline}
@@ -360,7 +362,7 @@ export default function StateLandingPage() {
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-24">
           <div className="text-center mb-14 max-w-2xl mx-auto">
             <span className="text-xs font-black uppercase tracking-widest text-orange-500 flex items-center justify-center gap-2 mb-3">
-              <Sparkles className="w-4 h-4" /> Methodology
+              <RiCompassDiscoverLine className="w-4 h-4" /> Methodology
             </span>
             <h2 className="text-3xl md:text-5xl font-black text-gray-950 uppercase tracking-tight">
               {customContent.approach.headline}
@@ -457,7 +459,7 @@ export default function StateLandingPage() {
         <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mb-24">
           <div className="text-center mb-12">
             <span className="text-xs font-black uppercase tracking-widest text-orange-500 flex items-center justify-center gap-2 mb-3">
-              <Sparkles className="w-4 h-4" /> FAQs
+              <RiQuestionAnswerLine className="w-4 h-4" /> FAQs
             </span>
             <h2 className="text-3xl md:text-5xl font-black text-gray-950 uppercase tracking-tight mb-4">
               FAQs About Digital Marketing in {state.name}

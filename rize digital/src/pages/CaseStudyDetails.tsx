@@ -1,6 +1,7 @@
 import { useParams, Navigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowUpRight, Trophy, ChevronRight, Sparkles, Check } from 'lucide-react';
+import { ArrowUpRight, Trophy, ChevronRight, Check } from 'lucide-react';
+import { RiAwardLine } from 'react-icons/ri';
 import SEO from '../components/common/SEO';
 import Breadcrumbs from '../components/common/Breadcrumbs';
 import InternalLinkSection from '../components/common/InternalLinkSection';
@@ -118,7 +119,7 @@ export default function CaseStudyDetails() {
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(249,115,22,0.1),transparent_50%)] pointer-events-none" />
           <div className="relative z-10">
             <span className="text-xs font-black uppercase tracking-widest text-orange-500 block mb-4">
-              <Sparkles className="w-4 h-4 inline mr-2" />Key Results
+              <RiAwardLine className="w-4 h-4 inline mr-2" />Key Results
             </span>
             <h2 className="text-3xl md:text-4xl font-black uppercase tracking-tight mb-10">
               Measurable Impact

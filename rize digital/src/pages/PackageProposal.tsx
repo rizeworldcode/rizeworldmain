@@ -1,6 +1,7 @@
 import React from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Printer, PhoneCall, Sparkles, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Printer, PhoneCall, AlertCircle } from 'lucide-react';
+import { HiRocketLaunch } from 'react-icons/hi2';
 import { getPackageById } from '../data/pricingData';
 import SEO from '../components/common/SEO';
 
@@ -268,7 +269,7 @@ export default function PackageProposal() {
               to="/contact"
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-[#c25e00] hover:bg-[#a34e00] text-white px-8 py-3.5 rounded-full text-xs font-black uppercase tracking-wider transition-all shadow-md"
             >
-              <Sparkles size={15} /> Contact & Get Started
+              <HiRocketLaunch size={15} /> Contact & Get Started
             </Link>
           </div>
 

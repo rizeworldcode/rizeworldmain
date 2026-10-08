@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, Sparkles, Building2, ArrowUpRight, ChevronDown, CheckCircle2 } from 'lucide-react';
+import { MapPin, Building2, ArrowUpRight, ChevronDown, CheckCircle2 } from 'lucide-react';
+import { RiCompassDiscoverLine, RiQuestionAnswerLine } from 'react-icons/ri';
+import { HiRocketLaunch } from 'react-icons/hi2';
 import { motion, AnimatePresence } from 'framer-motion';
 import SEO from '../components/common/SEO';
 import Breadcrumbs from '../components/common/Breadcrumbs';
@@ -204,7 +206,7 @@ export default function Locations() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-20">
         <div className="text-center max-w-4xl mx-auto">
           <span className="text-xs font-black uppercase tracking-widest text-orange-500 flex items-center justify-center gap-2 mb-4">
-            <Sparkles className="w-4 h-4" /> WHERE IDEAS MEET OPPORTUNITY
+            <RiCompassDiscoverLine className="w-4 h-4" /> WHERE IDEAS MEET OPPORTUNITY
           </span>
           <h1 className="text-4xl md:text-6xl font-black text-gray-950 uppercase tracking-tighter mb-6 leading-tight">
             BUILT FOR BUSINESSES, WHEREVER THEY GROW.
@@ -346,7 +348,7 @@ export default function Locations() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-24">
         <div className="text-center mb-16 max-w-3xl mx-auto">
           <span className="text-xs font-black uppercase tracking-widest text-orange-500 flex items-center justify-center gap-2 mb-4">
-            <Sparkles className="w-4 h-4" /> Full Spectrum Solutions
+            <HiRocketLaunch className="w-4 h-4" /> Full Spectrum Solutions
           </span>
           <h2 className="text-3xl md:text-5xl font-black text-gray-950 uppercase tracking-tighter mb-6">
             Digital Marketing Services We Offer
@@ -387,7 +389,7 @@ export default function Locations() {
       <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mb-16">
         <div className="text-center mb-12">
           <span className="text-xs font-black uppercase tracking-widest text-orange-500 flex items-center justify-center gap-2 mb-4">
-            <Sparkles className="w-4 h-4" /> Clarifications & Answers
+            <RiQuestionAnswerLine className="w-4 h-4" /> Clarifications & Answers
           </span>
           <h2 className="text-3xl md:text-5xl font-black text-gray-950 uppercase tracking-tighter mb-4">
             Frequently Asked Questions

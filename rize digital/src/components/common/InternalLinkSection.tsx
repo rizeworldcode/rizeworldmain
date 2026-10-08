@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom';
-import { ArrowUpRight, Briefcase, HelpCircle, DollarSign, FolderOpen, Phone } from 'lucide-react';
+import { ArrowUpRight, Briefcase, HelpCircle, IndianRupee, FolderOpen, Phone } from 'lucide-react';
 
 const LINKS = [
   { name: "Portfolio", path: "/portfolio", icon: FolderOpen, desc: "View our work" },
-  { name: "Pricing", path: "/pricing", icon: DollarSign, desc: "Transparent models" },
+  { name: "Pricing", path: "/pricing", icon: IndianRupee, desc: "Transparent models" },
   { name: "FAQ", path: "/faq", icon: HelpCircle, desc: "Common questions" },
   { name: "Services", path: "/services", icon: Briefcase, desc: "All solutions" },
   { name: "Contact", path: "/contact", icon: Phone, desc: "Get in touch" },

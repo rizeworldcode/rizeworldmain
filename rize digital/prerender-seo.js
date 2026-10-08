@@ -130,94 +130,104 @@ async function runPrerender() {
 
     console.log(`Generating SEO prerendered HTML files across ${routes.length} routes...`);
 
-    const CONCURRENCY = 4;
+    const CONCURRENCY = 2;
     let cursor = 0;
+    const apiCache = new Map();
 
     async function processRoute(route, index) {
       const url = `http://localhost:4173${route}`;
       console.log(`[${index + 1}/${routes.length}] Prerendering ${route}...`);
       
-      const page = await browser.newPage();
-      
-      await page.setRequestInterception(true);
-      page.on('request', async (req) => {
-        try {
-          const reqUrl = req.url();
-          const rType = req.resourceType();
-          if (['image', 'font', 'media'].includes(rType)) {
-            return req.abort();
-          }
-          if (rType === 'stylesheet') {
-            return req.abort();
-          }
-          if (reqUrl.includes(':45000') || reqUrl.includes('localhost:45000')) {
-            const remoteUrl = reqUrl.replace(/https?:\/\/localhost:45000/, 'https://rizeworldmain.onrender.com');
-            try {
-              const resp = await fetch(remoteUrl);
-              const body = await resp.text();
-              const headers = {
-                'content-type': resp.headers.get('content-type') || 'application/json',
-                'access-control-allow-origin': '*'
-              };
-              return req.respond({
-                status: resp.status,
-                headers,
-                body
-              });
-            } catch (err) {
+      let attempt = 0;
+      const MAX_ATTEMPTS = 3;
+      while (attempt < MAX_ATTEMPTS) {
+        attempt++;
+        const page = await browser.newPage();
+        
+        await page.setRequestInterception(true);
+        page.on('request', async (req) => {
+          try {
+            const reqUrl = req.url();
+            const rType = req.resourceType();
+            if (['image', 'font', 'media'].includes(rType)) {
               return req.abort();
             }
-          }
-          req.continue();
-        } catch (e) {
-          // Ignored if request was already responded to or aborted
-        }
-      });
-
-      try {
-        await page.goto(url, { waitUntil: 'networkidle0', timeout: 15000 });
-        
-        const isHomepage = route === '/';
-        const expectedCanonical = isHomepage 
-          ? 'https://rizeworld.in/' 
-          : `https://rizeworld.in${route.endsWith('/') && route.length > 1 ? route.slice(0, -1) : route}`;
-
-        // Wait for deterministic readiness condition
-        await page.waitForFunction(
-          (canonical, isHome) => {
-            const title = document.title;
-            const canLink = document.querySelector('link[rel="canonical"]');
-            const ogTag = document.querySelector('meta[property="og:url"]');
-            const descTag = document.querySelector('meta[name="description"]');
-            const root = document.getElementById('root');
-            if (!title || !canLink || !ogTag || !descTag) return false;
-            if (!root || !root.firstElementChild || root.innerHTML.trim().length === 0) return false;
-            
-            const actualCanonical = canLink.href.replace(/https?:\/\/localhost:\d+/, 'https://rizeworld.in');
-            const actualOg = ogTag.content.replace(/https?:\/\/localhost:\d+/, 'https://rizeworld.in');
-            
-            if (isHome) {
-              return actualCanonical === canonical && actualOg === canonical;
-            } else {
-              const isGenericTitle = title === 'RizeWorld Digital' || 
-                                     title === 'Digital Marketing Agency for Indian Startups' ||
-                                     title === 'Full-Service Digital Marketing Agency & SEO Company | RizeWorld';
-              const isGenericDesc = descTag.content === 'RizeWorld Digital Solutions' || 
-                                    descTag.content.includes('RizeWorld provides SEO, social media marketing') ||
-                                    descTag.content.includes('Looking for the best digital marketing services');
-              const is404 = title.includes('404');
-              
-              return actualCanonical === canonical && 
-                     actualOg === canonical && 
-                     !isGenericTitle && 
-                     !isGenericDesc &&
-                     !is404;
+            if (rType === 'stylesheet') {
+              return req.abort();
             }
-          },
-          { timeout: 10000 },
-          expectedCanonical,
-          isHomepage
-        );
+            if (reqUrl.includes(':45000') || reqUrl.includes('localhost:45000')) {
+              const remoteUrl = reqUrl.replace(/https?:\/\/localhost:45000/, 'https://rizeworldmain.onrender.com');
+              if (apiCache.has(remoteUrl)) {
+                const cached = apiCache.get(remoteUrl);
+                return req.respond(cached);
+              }
+              try {
+                const resp = await fetch(remoteUrl);
+                const body = await resp.text();
+                const cached = {
+                  status: resp.status,
+                  headers: {
+                    'content-type': resp.headers.get('content-type') || 'application/json',
+                    'access-control-allow-origin': '*'
+                  },
+                  body
+                };
+                apiCache.set(remoteUrl, cached);
+                return req.respond(cached);
+              } catch (err) {
+                return req.abort();
+              }
+            }
+            req.continue();
+          } catch (e) {
+            // Ignored if request was already responded to or aborted
+          }
+        });
+
+        try {
+          await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+          
+          const isHomepage = route === '/';
+          const expectedCanonical = isHomepage 
+            ? 'https://rizeworld.in/' 
+            : `https://rizeworld.in${route.endsWith('/') && route.length > 1 ? route.slice(0, -1) : route}`;
+
+          // Wait for deterministic readiness condition
+          await page.waitForFunction(
+            (canonical, isHome) => {
+              const title = document.title;
+              const canLink = document.querySelector('link[rel="canonical"]');
+              const ogTag = document.querySelector('meta[property="og:url"]');
+              const descTag = document.querySelector('meta[name="description"]');
+              const root = document.getElementById('root');
+              if (!title || !canLink || !ogTag || !descTag) return false;
+              if (!root || !root.firstElementChild || root.innerHTML.trim().length === 0) return false;
+              
+              const actualCanonical = canLink.href.replace(/https?:\/\/localhost:\d+/, 'https://rizeworld.in');
+              const actualOg = ogTag.content.replace(/https?:\/\/localhost:\d+/, 'https://rizeworld.in');
+              
+              if (isHome) {
+                return actualCanonical === canonical && actualOg === canonical;
+              } else {
+                const isGenericTitle = title === 'RizeWorld Digital' || 
+                                       title === 'Digital Marketing Agency for Indian Startups' ||
+                                       title === 'Full-Service Digital Marketing Agency & SEO Company | RizeWorld';
+                const isGenericDesc = descTag.content === 'RizeWorld Digital Solutions' || 
+                                      descTag.content.includes('RizeWorld provides SEO, social media marketing') ||
+                                      descTag.content.includes('Looking for the best digital marketing services');
+                const is404 = title.includes('404');
+                
+                return actualCanonical === canonical && 
+                       actualOg === canonical && 
+                       !isGenericTitle && 
+                       !isGenericDesc &&
+                       !is404;
+              }
+            },
+            { timeout: 30000 },
+            expectedCanonical,
+            isHomepage
+          );
 
         // Extract metadata
         const metadata = await page.evaluate(() => {
@@ -348,12 +358,19 @@ async function runPrerender() {
 
         fs.writeFileSync(outputPath, html, 'utf-8');
         successCount++;
+        break; // Successfully prerendered this route
       } catch (e) {
         try { await page.close(); } catch (_) {}
-        console.error(`Error prerendering ${route}:`, e.message);
-        failedRoutes.push({ route, error: e.message });
+        if (attempt < MAX_ATTEMPTS) {
+          console.warn(`Retry attempt ${attempt + 1} for ${route} after error: ${e.message}`);
+          await new Promise(r => setTimeout(r, 1000));
+        } else {
+          console.error(`Error prerendering ${route}:`, e.message);
+          failedRoutes.push({ route, error: e.message });
+        }
       }
     }
+  }
 
     async function worker() {
       while (cursor < routes.length) {
