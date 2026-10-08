@@ -13,9 +13,9 @@ import {
   ChevronRight,
   Phone,
   MapPin,
-  Sparkles,
   Quote
 } from 'lucide-react';
+import { RiCompassDiscoverLine, RiQuillPenLine } from 'react-icons/ri';
 import SEO from '../../components/common/SEO';
 import Breadcrumbs from '../../components/common/Breadcrumbs';
 import AreasWeServe from '../../components/common/AreasWeServe';
@@ -49,7 +49,7 @@ const SERVICES_LIST = [
     title: "Content Strategy",
     desc: "Structured content planning tailored to your audience questions, business goals, and competitive landscape.",
     tags: ["Strategy", "Audience Research", "Editorial Blueprint", "Growth"],
-    icon: Sparkles
+    icon: RiCompassDiscoverLine
   },
   {
     title: "Content Optimization & Updates",
@@ -262,7 +262,7 @@ export default function ContentMarketing() {
               className="bg-white border border-gray-200/80 rounded-[2.5rem] p-8 md:p-12 shadow-sm flex flex-col justify-center grow relative overflow-hidden"
             >
               <span className="text-orange-500 font-black uppercase tracking-widest text-xs mb-4 flex items-center gap-1.5">
-                <Sparkles size={14} className="animate-pulse" /> Engaging Brand Stories
+                <RiQuillPenLine size={15} className="shrink-0" /> Engaging Brand Stories
               </span>
               <h1 className="text-4xl md:text-5xl lg:text-[3.2rem] font-black text-gray-950 leading-[1.05] uppercase tracking-tighter mb-6">
                 Content Marketing <br />

@@ -13,9 +13,9 @@ import {
   ChevronRight,
   Phone,
   MapPin,
-  Sparkles,
   Quote
 } from 'lucide-react';
+import { RiPaletteLine } from 'react-icons/ri';
 import SEO from '../../components/common/SEO';
 import Breadcrumbs from '../../components/common/Breadcrumbs';
 import AreasWeServe from '../../components/common/AreasWeServe';
@@ -254,7 +254,7 @@ export default function GraphicDesign() {
               className="bg-white border border-gray-200/80 rounded-[2.5rem] p-8 md:p-12 shadow-sm flex flex-col justify-center grow relative overflow-hidden"
             >
               <span className="text-orange-500 font-black uppercase tracking-widest text-xs mb-4 flex items-center gap-1.5">
-                <Sparkles size={14} className="animate-pulse" /> Visual Communication & Brand Identity
+                <RiPaletteLine size={15} className="shrink-0" /> Visual Communication & Brand Identity
               </span>
               <h1 className="text-4xl md:text-5xl lg:text-[3.5rem] font-black text-gray-950 leading-[1.05] uppercase tracking-tighter mb-6">
                 Graphic Design <br />

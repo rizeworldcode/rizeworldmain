@@ -10,16 +10,16 @@ import {
   Settings, 
   ShoppingBag, 
   Layers, 
-  ArrowUpRight, 
-  Sparkles
+  ArrowUpRight
 } from 'lucide-react';
+import { HiRocketLaunch } from 'react-icons/hi2';
 import SEO from '../components/common/SEO';
 
 const ALL_SERVICES = [
   {
     title: "Digital Marketing",
     description: "Holistic marketing campaigns designed to establish presence, build brand identity, and generate verified revenue pipelines.",
-    icon: <Sparkles className="w-6 h-6" />,
+    icon: <HiRocketLaunch className="w-6 h-6" />,
     path: "/services/digital-marketing",
     tags: ["Strategy", "Growth", "Data Analytics"],
     colorClass: "icon-box-blue"
@@ -161,7 +161,7 @@ export default function Services() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-20">
         <div className="max-w-4xl">
           <span className="text-xs font-black uppercase tracking-widest text-rize-primary flex items-center gap-2 mb-4">
-            <Sparkles className="w-4 h-4 text-rize-primary" /> Solutions Hub
+            <HiRocketLaunch className="w-4 h-4 text-rize-primary" /> Solutions Hub
           </span>
           <h1 className="text-5xl md:text-7xl font-black text-gray-950 leading-[0.95] uppercase tracking-tighter mb-8">
             Digital Marketing <br />

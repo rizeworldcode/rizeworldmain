@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
-import { ArrowUpRight, Sparkles, Trophy } from 'lucide-react';
+import { ArrowUpRight, Trophy } from 'lucide-react';
+import { RiAwardLine } from 'react-icons/ri';
 import { Link } from 'react-router-dom';
 import SEO from '../components/common/SEO';
 import Breadcrumbs from '../components/common/Breadcrumbs';
@@ -50,7 +51,7 @@ export default function CaseStudies() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-24">
         <div className="text-center mb-16">
           <span className="text-xs font-black uppercase tracking-widest text-orange-500 flex items-center justify-center gap-2 mb-4">
-            <Sparkles className="w-4 h-4" /> Portfolios of Growth
+            <RiAwardLine className="w-4 h-4" /> Portfolios of Growth
           </span>
           <h1 className="text-4xl md:text-6xl font-black text-gray-950 uppercase tracking-tighter mb-6">
             Digital Marketing <br />

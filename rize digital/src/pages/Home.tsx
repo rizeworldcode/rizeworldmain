@@ -1,17 +1,15 @@
-import { lazy, Suspense } from 'react';
 import HeroSection from '../components/home/HeroSection';
 import SEO from '../components/common/SEO';
 import AreasWeServe from '../components/common/AreasWeServe';
-
-const AgencyHighlightsSection = lazy(() => import('../components/home/AgencyHighlightsSection'));
-const AiRankingSection = lazy(() => import('../components/home/AiRankingSection'));
-const AwardsSection = lazy(() => import('../components/home/AwardsSection'));
-const CaseStudiesSection = lazy(() => import('../components/home/teamSection'));
-const StrategySection = lazy(() => import('../components/home/StrategySection'));
-const GrowthLabsSection = lazy(() => import('../components/home/GrowthLabsSection'));
-const ThoughtLeadershipSection = lazy(() => import('../components/home/ThoughtLeadershipSection'));
-const ServicesGridSection = lazy(() => import('../components/home/ServicesGridSection'));
-const MailboxRevealSection = lazy(() => import('../components/home/MailboxRevealSection'));
+import AgencyHighlightsSection from '../components/home/AgencyHighlightsSection';
+import AiRankingSection from '../components/home/AiRankingSection';
+import AwardsSection from '../components/home/AwardsSection';
+import CaseStudiesSection from '../components/home/teamSection';
+import StrategySection from '../components/home/StrategySection';
+import GrowthLabsSection from '../components/home/GrowthLabsSection';
+import ThoughtLeadershipSection from '../components/home/ThoughtLeadershipSection';
+import ServicesGridSection from '../components/home/ServicesGridSection';
+import MailboxRevealSection from '../components/home/MailboxRevealSection';
 
 export default function Home() {
   const orgSchema = {
@@ -59,18 +57,16 @@ export default function Home() {
         </div>
       </div>
 
-      <Suspense fallback={<div className="min-h-screen bg-transparent" />}>
-        <AgencyHighlightsSection />
-        <ServicesGridSection />
-        <CaseStudiesSection />
-        <StrategySection />
-        <GrowthLabsSection />
-        <ThoughtLeadershipSection />
-        <AiRankingSection />
-        <AwardsSection />
-        <AreasWeServe />
-        <MailboxRevealSection />
-      </Suspense>
+      <AgencyHighlightsSection />
+      <ServicesGridSection />
+      <CaseStudiesSection />
+      <StrategySection />
+      <GrowthLabsSection />
+      <ThoughtLeadershipSection />
+      <AiRankingSection />
+      <AwardsSection />
+      <AreasWeServe />
+      <MailboxRevealSection />
     </>
   );
 }

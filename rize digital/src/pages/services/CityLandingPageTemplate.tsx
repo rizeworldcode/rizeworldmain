@@ -13,10 +13,10 @@ import {
   ChevronRight, 
   Phone, 
   MapPin, 
-  Sparkles, 
   Check, 
   Quote
 } from 'lucide-react';
+import { HiMapPin, HiRocketLaunch } from 'react-icons/hi2';
 import SEO from '../../components/common/SEO';
 import Breadcrumbs from '../../components/common/Breadcrumbs';
 
@@ -26,11 +26,15 @@ interface CityContent {
   metaDescription: string;
   heroHeadline: string;
   heroSubtitle: string;
+  eyebrow?: string;
   aboutHeadline: string;
   aboutText1: string;
   aboutText2: string;
   aboutImg: string;
   benefits: string[];
+  whyChooseHeadline?: string;
+  whyChooseDescription?: string;
+  corePillars?: { title: string; desc: string; badge?: string }[];
   faqs: { question: string; answer: string }[];
   localSchemaAddress: {
     streetAddress: string;
@@ -128,7 +132,7 @@ export default function CityLandingPageTemplate({ data }: { data: CityContent })
       title: "Digital Marketing",
       desc: `Comprehensive campaigns designed to establish presence and drive growth in ${data.city}.`,
       tags: ["Strategy", "Growth", "Analytics"],
-      icon: Sparkles,
+      icon: HiRocketLaunch,
       path: "/services/digital-marketing"
     },
     {
@@ -287,7 +291,7 @@ export default function CityLandingPageTemplate({ data }: { data: CityContent })
               className="bg-white border border-gray-200/80 rounded-[2.5rem] p-8 md:p-12 shadow-sm flex flex-col justify-center grow relative overflow-hidden"
             >
               <span className="text-orange-500 font-black uppercase tracking-widest text-xs mb-4 flex items-center gap-1.5">
-                <Sparkles size={14} className="animate-pulse" /> Certified Digital Marketing Partner
+                <HiMapPin size={15} className="shrink-0" /> {data.eyebrow || "Certified Digital Marketing Partner"}
               </span>
               <h1 className="text-4xl md:text-5xl lg:text-[3.2rem] font-black text-gray-950 leading-[1.05] uppercase tracking-tighter mb-6">
                 {data.heroHeadline}
@@ -389,27 +393,39 @@ export default function CityLandingPageTemplate({ data }: { data: CityContent })
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 h-full">
-            <div className="bg-orange-50/70 border border-orange-100 rounded-3xl p-6 flex flex-col justify-between shadow-xs">
-              <span className="text-[10px] font-black text-orange-600 uppercase tracking-widest block">Strategy</span>
-              <p className="text-gray-900 text-sm font-black uppercase mt-2">SEO Dominance</p>
-              <p className="text-gray-500 text-[11px] leading-relaxed mt-1">First-page visibility for search queries that generate ready-to-buy local leads.</p>
-            </div>
-            <div className="bg-stone-900 text-white border border-stone-850 rounded-3xl p-6 flex flex-col justify-between shadow-xs relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-12 h-12 bg-orange-500/10 rounded-full blur-xl" />
-              <span className="text-[10px] font-black text-orange-400 uppercase tracking-widest block">Ads Management</span>
-              <p className="text-white text-sm font-black uppercase mt-2">Elite PPC</p>
-              <p className="text-stone-450 text-[11px] leading-relaxed mt-1">Maximize ROI and scale customer acquisitions with Google & Meta Ads campaigns.</p>
-            </div>
-            <div className="bg-stone-50 border border-gray-200/80 rounded-3xl p-6 flex flex-col justify-between shadow-xs">
-              <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest block">Social Media</span>
-              <p className="text-gray-900 text-sm font-black uppercase mt-2">SMM Curation</p>
-              <p className="text-gray-500 text-[11px] leading-relaxed mt-1">Creative campaigns that engage and build active community loyalty online.</p>
-            </div>
-            <div className="bg-blue-50/60 border border-blue-100 rounded-3xl p-6 flex flex-col justify-between shadow-xs">
-              <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest block">Web Design</span>
-              <p className="text-blue-950 text-sm font-black uppercase mt-2">Elite Layouts</p>
-              <p className="text-blue-900/60 text-[11px] leading-relaxed mt-1">Fast-loading, responsive custom websites engineered for optimal conversions.</p>
-            </div>
+            {data.corePillars && data.corePillars.length > 0 ? (
+              data.corePillars.map((pillar, idx) => (
+                <div key={idx} className="bg-stone-50 border border-gray-200/80 rounded-3xl p-6 flex flex-col justify-between shadow-xs hover:border-orange-500/40 transition-colors">
+                  <span className="text-[10px] font-black text-orange-600 uppercase tracking-widest block">{pillar.badge || "Strategy"}</span>
+                  <p className="text-gray-900 text-sm font-black uppercase mt-2">{pillar.title}</p>
+                  <p className="text-gray-500 text-[11px] leading-relaxed mt-1">{pillar.desc}</p>
+                </div>
+              ))
+            ) : (
+              <>
+                <div className="bg-orange-50/70 border border-orange-100 rounded-3xl p-6 flex flex-col justify-between shadow-xs">
+                  <span className="text-[10px] font-black text-orange-600 uppercase tracking-widest block">Strategy</span>
+                  <p className="text-gray-900 text-sm font-black uppercase mt-2">SEO Dominance</p>
+                  <p className="text-gray-500 text-[11px] leading-relaxed mt-1">First-page visibility for search queries that generate ready-to-buy local leads.</p>
+                </div>
+                <div className="bg-stone-900 text-white border border-stone-850 rounded-3xl p-6 flex flex-col justify-between shadow-xs relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-12 h-12 bg-orange-500/10 rounded-full blur-xl" />
+                  <span className="text-[10px] font-black text-orange-400 uppercase tracking-widest block">Ads Management</span>
+                  <p className="text-white text-sm font-black uppercase mt-2">Elite PPC</p>
+                  <p className="text-stone-450 text-[11px] leading-relaxed mt-1">Maximize ROI and scale customer acquisitions with Google & Meta Ads campaigns.</p>
+                </div>
+                <div className="bg-stone-50 border border-gray-200/80 rounded-3xl p-6 flex flex-col justify-between shadow-xs">
+                  <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest block">Social Media</span>
+                  <p className="text-gray-900 text-sm font-black uppercase mt-2">SMM Curation</p>
+                  <p className="text-gray-500 text-[11px] leading-relaxed mt-1">Creative campaigns that engage and build active community loyalty online.</p>
+                </div>
+                <div className="bg-blue-50/60 border border-blue-100 rounded-3xl p-6 flex flex-col justify-between shadow-xs">
+                  <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest block">Web Design</span>
+                  <p className="text-blue-950 text-sm font-black uppercase mt-2">Elite Layouts</p>
+                  <p className="text-blue-900/60 text-[11px] leading-relaxed mt-1">Fast-loading, responsive custom websites engineered for optimal conversions.</p>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </section>
@@ -479,10 +495,10 @@ export default function CityLandingPageTemplate({ data }: { data: CityContent })
         <div className="max-w-3xl mb-16 relative z-10">
           <span className="text-xs font-black uppercase tracking-widest text-orange-500">WHY RIZEWORLD</span>
           <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tight mt-2 mb-6">
-            Driving Digital Domination
+            {data.whyChooseHeadline || "Driving Digital Domination"}
           </h2>
           <p className="text-zinc-400 text-sm md:text-base leading-relaxed">
-            We combine target audience mapping, content curation, and real-time optimization to build campaigns that deliver maximum lead conversion metrics.
+            {data.whyChooseDescription || "We combine target audience mapping, content curation, and real-time optimization to build campaigns that deliver maximum lead conversion metrics."}
           </p>
         </div>
 

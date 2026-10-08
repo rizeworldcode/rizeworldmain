@@ -52,7 +52,11 @@ const PROJECT_LOGOS: Record<string, string> = {
   "bhavik-dairy": "/logos/logo1/bhavikdairy_14050326_165157844.jpg.jpeg_nobg.png",
   "travelia": "/logos/TT logo.png",
   "Santsukhdav Shah Charitable Hospital": "/logos/sant.png",
-  "Chappan Bhog": "/logos/chappan.png"
+  "santsukhdav": "/logos/sant.png",
+  "santsukhdav-shah-charitable-hospital": "/logos/sant.png",
+  "Chappan Bhog": "/logos/chappan.png",
+  "chappan-bhog": "/logos/chappan.png",
+  "chappan": "/logos/chappan.png"
 };
 
 const PROJECT_THEMES: Record<string, { bg: string; text: string; isDark: boolean }> = {
@@ -74,7 +78,14 @@ export default function ProjectDetails() {
   const navigate = useNavigate();
   const [selectedGalleryImage, setSelectedGalleryImage] = useState<string | null>(null);
 
-  const project = PROJECTS.find(p => p.id === projectId);
+  const decodedId = projectId ? decodeURIComponent(projectId) : '';
+  const project = PROJECTS.find(p => 
+    p.id === decodedId ||
+    p.id === projectId ||
+    p.id.toLowerCase() === decodedId.toLowerCase() ||
+    p.id.toLowerCase().replace(/\s+/g, '-') === decodedId.toLowerCase() ||
+    p.id.toLowerCase().replace(/[^a-z0-9]+/g, '-') === decodedId.toLowerCase()
+  );
 
   if (!project) {
     return (
@@ -145,12 +156,12 @@ export default function ProjectDetails() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-12 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <button 
           onClick={() => navigate(`/portfolio#${project.id}`)}
-          className={`inline-flex items-center gap-2 text-xs font-black uppercase tracking-wider transition-colors group cursor-pointer w-fit ${isDark ? "text-white hover:text-rize-primary" : "text-gray-900 hover:text-rize-primary"}`}
+          className={`inline-flex items-center gap-2 text-xs font-black uppercase tracking-wider transition-colors group cursor-pointer w-fit ${isDark ? "text-white hover:text-amber-400" : "text-gray-900 hover:text-rize-primary"}`}
         >
           <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" /> Back to Portfolio
         </button>
 
-        <Breadcrumbs items={[{ name: 'Portfolio', path: '/portfolio' }, { name: project.title }]} />
+        <Breadcrumbs items={[{ name: 'Portfolio', path: '/portfolio' }, { name: project.title }]} isDark={isDark} />
       </div>
 
       {/* 2. SPLIT HERO BLOCK */}
@@ -158,15 +169,15 @@ export default function ProjectDetails() {
         
         {/* Left Info Column */}
         <div className="flex flex-col text-left">
-          <span className="text-rize-primary font-bold uppercase tracking-widest text-xs flex items-center gap-1.5 mb-3">
-            <Tag size={12} /> {project.category}
+          <span className={`font-bold uppercase tracking-widest text-xs flex items-center gap-1.5 mb-3 ${isDark ? 'text-amber-400' : 'text-rize-primary'}`}>
+            <Tag size={12} className={isDark ? 'text-amber-400' : 'text-rize-primary'} /> {project.category}
           </span>
           <h1 className="mb-8">
             {(PROJECT_LOGOS[project.id] || project.logo) ? (
               <img 
                 src={PROJECT_LOGOS[project.id] || project.logo} 
                 alt={project.title} 
-                className={`${project.id === 'medi-compares' ? 'h-20 md:h-24' : 'h-24 md:h-32'} object-contain object-left`} 
+                className={`${project.id === 'medi-compares' ? 'h-16 md:h-20' : project.id === 'shinelimos' ? 'h-18 md:h-24 max-w-[300px] md:max-w-[360px]' : 'h-20 md:h-26 max-w-[380px]'} object-contain object-left`} 
               />
             ) : (
               <span className={`text-5xl md:text-6xl font-black leading-none uppercase tracking-tighter block ${isDark ? "text-white" : "text-gray-950"}`}>
@@ -184,7 +195,7 @@ export default function ProjectDetails() {
           {/* Key Parameters */}
           <div className="grid grid-cols-2 gap-6 pt-6 mb-8">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-rize-primary/10 text-rize-primary flex items-center justify-center">
+              <div className={`w-10 h-10 rounded-full ${isDark ? 'bg-amber-400/15 text-amber-400' : 'bg-rize-primary/10 text-rize-primary'} flex items-center justify-center`}>
                 <Calendar size={18} />
               </div>
               <div>
@@ -193,7 +204,7 @@ export default function ProjectDetails() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-rize-primary/10 text-rize-primary flex items-center justify-center">
+              <div className={`w-10 h-10 rounded-full ${isDark ? 'bg-amber-400/15 text-amber-400' : 'bg-rize-primary/10 text-rize-primary'} flex items-center justify-center`}>
                 <ShieldCheck size={18} />
               </div>
               <div>
@@ -206,7 +217,7 @@ export default function ProjectDetails() {
           <div>
             <Link 
               to="/contact" 
-              className={`inline-flex items-center gap-2 font-bold text-xs uppercase tracking-wider py-4 px-8 rounded-full transition-all ${isDark ? "bg-white text-black hover:bg-rize-primary hover:text-white" : "bg-gray-950 text-white hover:bg-rize-primary"}`}
+              className={`inline-flex items-center gap-2 font-bold text-xs uppercase tracking-wider py-4 px-8 rounded-full transition-all ${isDark ? "bg-white text-black hover:bg-amber-400 hover:text-black shadow-lg" : "bg-gray-950 text-white hover:bg-rize-primary"}`}
             >
               Start Your Project <ExternalLink size={14} />
             </Link>
@@ -228,7 +239,7 @@ export default function ProjectDetails() {
       {/* 3. PROJECT IMAGE GALLERY */}
       <section className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t pt-20 ${isDark ? "border-zinc-900" : "border-gray-200/60"}`}>
         <div className="text-left mb-12">
-          <span className="text-xs font-bold uppercase tracking-widest text-rize-primary">Visual Showcase</span>
+          <span className={`text-xs font-bold uppercase tracking-widest ${isDark ? 'text-amber-400' : 'text-rize-primary'}`}>Visual Showcase</span>
           <h2 className={`text-3xl md:text-4xl font-extrabold uppercase tracking-tight mt-1 ${isDark ? "text-white" : "text-gray-950"}`}>
             Project Gallery
           </h2>

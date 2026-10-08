@@ -40,7 +40,7 @@ export default function BlogDetails() {
     window.scrollTo(0, 0);
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000);
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
 
     const loadBlog = async () => {
       try {

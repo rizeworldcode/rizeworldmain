@@ -681,5 +681,389 @@ export const STATE_CUSTOM_CONTENT: Record<string, StateCustomContent> = {
       text: "Whether you're targeting customers in Kochi, Trivandrum, or other parts of Kerala, RizeWorld can help you build a practical digital strategy focused on visibility, relevant traffic, leads, and sustainable growth.",
       buttonText: "Talk to RizeWorld"
     }
+  },
+  "telangana": {
+    eyebrow: "Digital Marketing in Telangana",
+    heroHeadline: "Digital Marketing in Telangana",
+    heroDescription: "RizeWorld helps businesses in Telangana build a stronger online presence through SEO, paid advertising, social media marketing, content, and website development. Our strategies are designed around the business, its target audience, competition, and specific growth objectives. With Hyderabad as our current service location in Telangana, we help businesses improve search visibility, reach relevant customers, and create a digital presence that supports long-term growth.",
+    presenceSubtitle: "We work with businesses across key Telangana markets, helping them improve search visibility, connect with relevant audiences, and create digital experiences that support long-term growth.",
+    cityDescriptions: {
+      "hyderabad": "Hyderabad has a diverse and competitive business environment, with companies across technology, healthcare, education, real estate, hospitality, professional services, ecommerce, and other industries. RizeWorld helps businesses build stronger online visibility through SEO, local SEO, Google Ads, social media marketing, content, and website solutions."
+    },
+    marketFit: {
+      headline: "Digital Marketing That Fits the Hyderabad Market",
+      paragraphs: [
+        "Hyderabad is home to businesses across multiple industries, which means customer behavior, competition, and marketing requirements can vary considerably.",
+        "RizeWorld considers your industry, target audience, location, competition, and business goals when developing a strategy. Whether your goal is to improve local search visibility, generate leads through paid campaigns, grow organic traffic, or strengthen your website, we focus on the channels that best fit your objectives."
+      ]
+    },
+    expansionSection: {
+      headline: "Turning Online Visibility Into Business Opportunities",
+      paragraphs: [
+        "A successful digital presence requires more than simply getting traffic. SEO can bring relevant visitors, content can answer their questions, paid advertising can reach high-intent audiences, and a well-designed website can encourage visitors to take the next step.",
+        "RizeWorld brings these elements together to create a practical strategy focused on visibility, engagement, leads, and sustainable growth."
+      ]
+    },
+    whyChoose: {
+      headline: "Why Choose RizeWorld?",
+      bullets: [
+        "Strategies built around your business goals",
+        "SEO focused on relevant search intent",
+        "Local SEO for location-based visibility",
+        "Performance-focused Google Ads campaigns",
+        "Content created for users and search engines",
+        "Responsive and user-friendly websites",
+        "Ongoing tracking and optimization"
+      ]
+    },
+    faqs: [
+      {
+        question: "What does a digital marketing agency in Telangana do?",
+        answer: "A digital marketing agency helps businesses improve their online presence through SEO, paid advertising, social media marketing, content marketing, website development, and other digital strategies."
+      },
+      {
+        question: "Which city does RizeWorld serve in Telangana?",
+        answer: "RizeWorld currently provides digital marketing solutions in Hyderabad."
+      },
+      {
+        question: "Do you provide SEO services in Hyderabad?",
+        answer: "Yes. Our SEO strategies focus on improving organic search visibility, attracting relevant visitors, and supporting long-term online growth."
+      },
+      {
+        question: "Can you help with local SEO in Hyderabad?",
+        answer: "Yes. Local SEO can help businesses improve their visibility for location-based searches and connect with customers looking for nearby products or services."
+      },
+      {
+        question: "Do you provide Google Ads and PPC services in Hyderabad?",
+        answer: "Yes. We can plan and manage paid advertising campaigns based on your target audience, services, competition, budget, and business goals."
+      },
+      {
+        question: "Can SEO and social media marketing work together?",
+        answer: "Yes. SEO and social media can complement each other by improving visibility, distributing useful content, and maintaining consistent communication with your audience."
+      }
+    ],
+    cta: {
+      headline: "Ready to Grow Your Business in Telangana?",
+      text: "Whether you're targeting customers in Hyderabad or other parts of Telangana, RizeWorld can help you build a practical digital strategy focused on visibility, relevant traffic, leads, and sustainable growth.",
+      buttonText: "Talk to RizeWorld"
+    }
+  },
+  "andhra-pradesh": {
+    eyebrow: "Digital Marketing in Andhra Pradesh",
+    heroHeadline: "Digital Marketing in Andhra Pradesh",
+    heroDescription: "RizeWorld helps businesses across Andhra Pradesh build a stronger online presence through SEO, paid advertising, social media marketing, content, and website development. Our approach is based on understanding the business, its target audience, competition, and the market it serves. From businesses in Visakhapatnam to growing brands in Vijayawada, we focus on improving online visibility, attracting relevant customers, and creating digital strategies that support sustainable growth.",
+    presenceSubtitle: "We work with businesses across key Andhra Pradesh markets, helping them improve search visibility, connect with relevant audiences, and create digital experiences that support long-term growth.",
+    cityDescriptions: {
+      "visakhapatnam": "Visakhapatnam has businesses across industries such as tourism, healthcare, education, retail, professional services, and other growing sectors. RizeWorld helps businesses strengthen their online presence through SEO, local SEO, Google Ads, social media marketing, content, and website solutions.",
+      "vijayawada": "Businesses in Vijayawada can use digital marketing to reach local customers while also building visibility across wider markets. RizeWorld combines SEO, paid advertising, social media, content marketing, and website development to create strategies aligned with business goals."
+    },
+    marketFit: {
+      headline: "A Digital Strategy Built Around Your Business",
+      paragraphs: [
+        "Andhra Pradesh has businesses across a wide range of industries, and each market can have different customer behavior and competition. A business targeting customers in Visakhapatnam may have different requirements from one operating in Vijayawada.",
+        "RizeWorld considers your industry, target audience, location, competition, and business goals when planning a digital marketing strategy. This allows us to focus on the channels that are most relevant to your business instead of following a one-size-fits-all approach."
+      ]
+    },
+    expansionSection: {
+      headline: "Connecting Digital Marketing With Business Growth",
+      paragraphs: [
+        "Digital marketing works best when different channels support each other. SEO can attract relevant organic traffic, useful content can answer customer questions, paid advertising can reach high-intent audiences, and a well-designed website can help turn visitors into enquiries or customers.",
+        "RizeWorld brings these elements together to create a practical digital presence focused on visibility, engagement, leads, and sustainable growth."
+      ]
+    },
+    whyChoose: {
+      headline: "Why Choose RizeWorld?",
+      bullets: [
+        "Strategies built around your business objectives",
+        "SEO focused on relevant search intent",
+        "Local SEO for location-based visibility",
+        "Performance-focused Google Ads campaigns",
+        "Content created for users and search engines",
+        "Responsive and user-friendly websites",
+        "Ongoing monitoring and optimization"
+      ]
+    },
+    faqs: [
+      {
+        question: "What does a digital marketing agency in Andhra Pradesh do?",
+        answer: "A digital marketing agency helps businesses improve their online presence through SEO, paid advertising, social media marketing, content marketing, website development, and other digital strategies."
+      },
+      {
+        question: "Which cities in Andhra Pradesh does RizeWorld serve?",
+        answer: "RizeWorld currently provides digital marketing solutions in Visakhapatnam and Vijayawada."
+      },
+      {
+        question: "Do you provide SEO services in Andhra Pradesh?",
+        answer: "Yes. Our SEO strategies focus on improving search visibility, attracting relevant organic traffic, and supporting long-term online growth."
+      },
+      {
+        question: "Can you help with local SEO in Andhra Pradesh?",
+        answer: "Yes. Local SEO can help businesses improve their visibility for location-based searches and make it easier for nearby customers to discover their products or services."
+      },
+      {
+        question: "Do you provide Google Ads and PPC services?",
+        answer: "Yes. We can plan and manage paid advertising campaigns based on your target audience, services, competition, budget, and business objectives."
+      },
+      {
+        question: "Can SEO and social media marketing work together?",
+        answer: "Yes. SEO and social media can complement each other by improving visibility, distributing useful content, and helping businesses maintain consistent communication with their audience."
+      }
+    ],
+    cta: {
+      headline: "Ready to Grow Your Business in Andhra Pradesh?",
+      text: "Whether you're targeting customers in Visakhapatnam, Vijayawada, or other parts of Andhra Pradesh, RizeWorld can help you build a practical digital strategy focused on visibility, relevant traffic, leads, and sustainable growth.",
+      buttonText: "Talk to RizeWorld"
+    }
+  },
+  "west-bengal": {
+    eyebrow: "Digital Marketing in West Bengal",
+    heroHeadline: "Digital Marketing in West Bengal",
+    heroDescription: "RizeWorld helps businesses in West Bengal build a stronger online presence through SEO, paid advertising, social media marketing, content, and website development. Our strategies are planned around each business's audience, competition, location, and growth objectives. With Kolkata as our current service location in West Bengal, we help businesses improve their online visibility, attract relevant customers, and build a digital presence that supports long-term growth.",
+    presenceSubtitle: "We work with businesses across key West Bengal markets, helping them improve search visibility, connect with relevant audiences, and create digital experiences that support long-term growth.",
+    cityDescriptions: {
+      "kolkata": "Kolkata has a diverse business environment covering professional services, education, healthcare, retail, hospitality, ecommerce, technology, and other industries. RizeWorld helps businesses strengthen their online presence through SEO, local SEO, Google Ads, social media marketing, content, and website solutions."
+    },
+    marketFit: {
+      headline: "Digital Marketing That Fits the Kolkata Market",
+      paragraphs: [
+        "Kolkata has businesses across many industries, and each business can have different customers, competitors, and marketing requirements. A local service provider may need a different strategy from an ecommerce brand or professional services company.",
+        "RizeWorld considers your industry, target audience, location, competition, and business goals when developing a digital marketing strategy. We focus on the channels that are relevant to your business rather than using a one-size-fits-all approach."
+      ]
+    },
+    expansionSection: {
+      headline: "Turning Online Visibility Into Business Growth",
+      paragraphs: [
+        "Digital marketing should do more than generate website traffic. SEO can bring relevant visitors, useful content can answer their questions, social media can build awareness, and paid advertising can reach people with stronger purchase intent.",
+        "A well-structured website then helps turn those visits into enquiries, bookings, purchases, or other meaningful actions. RizeWorld brings these elements together to create a practical digital strategy focused on measurable business outcomes."
+      ]
+    },
+    whyChoose: {
+      headline: "Why Choose RizeWorld?",
+      bullets: [
+        "Strategies built around your business goals",
+        "SEO focused on relevant search intent",
+        "Local SEO for location-based visibility",
+        "Performance-focused Google Ads campaigns",
+        "Content created for users and search engines",
+        "Responsive and user-friendly websites",
+        "Ongoing tracking and optimization"
+      ]
+    },
+    faqs: [
+      {
+        question: "What does a digital marketing agency in West Bengal do?",
+        answer: "A digital marketing agency helps businesses improve their online presence through SEO, paid advertising, social media marketing, content marketing, website development, and other digital strategies."
+      },
+      {
+        question: "Which city does RizeWorld serve in West Bengal?",
+        answer: "RizeWorld currently provides digital marketing solutions in Kolkata."
+      },
+      {
+        question: "Do you provide SEO services in West Bengal?",
+        answer: "Yes. Our SEO strategies focus on improving organic search visibility, attracting relevant traffic, and supporting long-term online growth."
+      },
+      {
+        question: "Can you help with local SEO in Kolkata?",
+        answer: "Yes. Local SEO can help businesses improve their visibility for location-based searches and make it easier for nearby customers to discover their products or services."
+      },
+      {
+        question: "Do you provide Google Ads and PPC services?",
+        answer: "Yes. We can plan and manage paid advertising campaigns based on your target audience, services, competition, budget, and business objectives."
+      },
+      {
+        question: "Can SEO and social media marketing work together?",
+        answer: "Yes. SEO and social media can complement each other by improving visibility, distributing useful content, and helping businesses maintain consistent communication with their audience."
+      }
+    ],
+    cta: {
+      headline: "Ready to Grow Your Business in West Bengal?",
+      text: "Whether you're targeting customers in Kolkata or other parts of West Bengal, RizeWorld can help you build a practical digital strategy focused on visibility, relevant traffic, leads, and sustainable growth.",
+      buttonText: "Talk to RizeWorld"
+    }
+  },
+  "uttarakhand": {
+    eyebrow: "Digital Marketing in Uttarakhand",
+    heroHeadline: "Digital Marketing in Uttarakhand",
+    heroDescription: "RizeWorld helps businesses in Uttarakhand build a stronger online presence through SEO, paid advertising, social media marketing, content, and website development. Our strategies are planned around the business, its target audience, competition, location, and growth objectives. With Dehradun as our current service location in Uttarakhand, we help businesses improve their online visibility, reach relevant customers, and create a digital presence that supports sustainable growth.",
+    presenceSubtitle: "We work with businesses across key Uttarakhand markets, helping them improve search visibility, connect with relevant audiences, and create digital experiences that support long-term growth.",
+    cityDescriptions: {
+      "dehradun": "Dehradun has businesses across education, healthcare, hospitality, tourism, professional services, retail, and other sectors. RizeWorld helps businesses strengthen their online presence through SEO, local SEO, Google Ads, social media marketing, content, and website solutions."
+    },
+    marketFit: {
+      headline: "Digital Marketing That Fits the Uttarakhand Market",
+      paragraphs: [
+        "Uttarakhand has a varied business environment, with businesses operating across tourism, hospitality, education, healthcare, retail, professional services, and other industries. Each business can have different audiences and marketing requirements.",
+        "RizeWorld considers your industry, target audience, location, competition, and business goals when developing a digital marketing strategy. Instead of following a fixed formula, we focus on the channels that are most relevant to your business."
+      ]
+    },
+    expansionSection: {
+      headline: "Connecting Online Visibility With Business Growth",
+      paragraphs: [
+        "SEO can help potential customers discover your business, useful content can answer their questions, social media can build awareness, and paid advertising can reach audiences with stronger intent.",
+        "A well-designed website then provides the experience needed to turn visitors into enquiries, bookings, purchases, or other meaningful actions. RizeWorld brings these elements together to create a practical digital strategy focused on visibility, leads, and sustainable growth."
+      ]
+    },
+    whyChoose: {
+      headline: "Why Choose RizeWorld?",
+      bullets: [
+        "Strategies built around your business objectives",
+        "SEO focused on relevant search intent",
+        "Local SEO for location-based visibility",
+        "Performance-focused Google Ads campaigns",
+        "Content created for users and search engines",
+        "Responsive and user-friendly websites",
+        "Ongoing monitoring and optimization"
+      ]
+    },
+    faqs: [
+      {
+        question: "What does a digital marketing agency in Uttarakhand do?",
+        answer: "A digital marketing agency helps businesses improve their online presence through SEO, paid advertising, social media marketing, content marketing, website development, and other digital strategies."
+      },
+      {
+        question: "Which city does RizeWorld serve in Uttarakhand?",
+        answer: "RizeWorld currently provides digital marketing solutions in Dehradun."
+      },
+      {
+        question: "Do you provide SEO services in Uttarakhand?",
+        answer: "Yes. Our SEO strategies focus on improving organic search visibility, attracting relevant traffic, and supporting long-term online growth."
+      },
+      {
+        question: "Can you help with local SEO in Dehradun?",
+        answer: "Yes. Local SEO can help businesses improve their visibility for location-based searches and make it easier for nearby customers to discover their products or services."
+      },
+      {
+        question: "Do you provide Google Ads and PPC services?",
+        answer: "Yes. We can plan and manage paid advertising campaigns based on your target audience, services, competition, budget, and business objectives."
+      },
+      {
+        question: "Can SEO and social media marketing work together?",
+        answer: "Yes. SEO and social media can complement each other by improving visibility, distributing useful content, and helping businesses maintain consistent communication with their audience."
+      }
+    ],
+    cta: {
+      headline: "Ready to Grow Your Business in Uttarakhand?",
+      text: "Whether you're targeting customers in Dehradun or other parts of Uttarakhand, RizeWorld can help you build a practical digital strategy focused on visibility, relevant traffic, leads, and sustainable growth.",
+      buttonText: "Talk to RizeWorld"
+    }
+  },
+  "assam": {
+    eyebrow: "Digital Marketing in Assam",
+    heroHeadline: "Digital Marketing in Assam",
+    heroDescription: "RizeWorld helps businesses in Assam build a stronger online presence through practical digital marketing strategies, SEO, paid advertising, social media, content marketing, and website development. Our approach focuses on understanding the local market, customer behavior, competition, and business goals rather than using the same strategy for every business.",
+    presenceSubtitle: "We work with businesses across key Assam markets, helping them improve search visibility, connect with relevant audiences, and create digital experiences that support long-term growth.",
+    cityDescriptions: {
+      "guwahati": "Guwahati is an important business and commercial hub in Assam, with businesses across retail, education, healthcare, hospitality, real estate, tourism, and professional services. RizeWorld helps businesses in Guwahati improve their online visibility through SEO, local SEO, Google Ads, social media marketing, content, and website development. Whether the goal is to attract customers from nearby areas or reach a wider audience across Assam, we create digital strategies around the business's audience, services, and growth objectives."
+    },
+    whyChoose: {
+      headline: "Why Choose RizeWorld for Digital Marketing in Assam?",
+      description: "A good digital strategy should reflect the market it is targeting. RizeWorld considers factors such as your industry, audience, competition, location, and business goals before planning campaigns. Our approach can combine SEO, local search, paid advertising, social media, content, and website improvements to create a more connected digital presence. We also monitor performance and refine campaigns based on what is working rather than relying on a fixed strategy.",
+      bullets: [
+        "Strategies tailored to the Assam & Northeast market",
+        "SEO focused on relevant search intent",
+        "Local visibility for Guwahati businesses",
+        "Performance-focused Google Ads campaigns",
+        "Content created for both users and search engines",
+        "Responsive, conversion-focused websites",
+        "Ongoing tracking and performance optimization"
+      ]
+    },
+    expansionSection: {
+      headline: "Growing Your Business Beyond Guwahati",
+      paragraphs: [
+        "While Guwahati is our current service location in Assam, businesses can use digital marketing to reach customers beyond a single city. With the right combination of search optimization, content, advertising, and a well-structured website, businesses can gradually expand their visibility across other markets in Assam and beyond."
+      ]
+    },
+    faqs: [
+      {
+        question: "What does a digital marketing agency do for businesses in Assam?",
+        answer: "A digital marketing agency helps businesses improve their online visibility and reach potential customers through SEO, paid advertising, social media, content marketing, and website solutions."
+      },
+      {
+        question: "Does RizeWorld provide digital marketing services in Guwahati?",
+        answer: "Yes. RizeWorld provides digital marketing solutions for businesses in Guwahati, including SEO, local SEO, Google Ads, social media marketing, content, and website development."
+      },
+      {
+        question: "Can SEO help a local business in Assam?",
+        answer: "Yes. Local and organic SEO can help businesses appear for relevant searches and make it easier for nearby customers to discover their products or services."
+      },
+      {
+        question: "How long does SEO take to show results?",
+        answer: "SEO usually takes time because results depend on factors such as competition, website condition, content quality, authority, and the search terms being targeted. Consistent optimization is important for long-term growth."
+      },
+      {
+        question: "Can Google Ads and SEO be used together?",
+        answer: "Yes. Google Ads can help generate targeted traffic more quickly, while SEO focuses on building sustainable organic visibility over time. Using both can support different stages of a digital marketing strategy."
+      },
+      {
+        question: "Does RizeWorld also provide website development?",
+        answer: "Yes. Website development can be included as part of a broader digital strategy, particularly when a business needs a responsive, user-friendly website that supports SEO and conversions."
+      }
+    ],
+    cta: {
+      headline: "Ready to Grow Your Business Online?",
+      text: "Whether you are targeting customers in Guwahati or planning to expand across Assam, RizeWorld can help you build a practical digital strategy focused on visibility, engagement, and sustainable growth.",
+      buttonText: "Talk to RizeWorld"
+    }
+  },
+  "haryana": {
+    eyebrow: "Digital Marketing in Haryana",
+    heroHeadline: "Digital Marketing in Haryana",
+    heroDescription: "RizeWorld helps businesses across Haryana build a stronger online presence through SEO, paid advertising, social media, content marketing, and website development. Our strategies are shaped around each business's audience, competition, location, and growth goals, helping brands build visibility and generate meaningful opportunities online.",
+    presenceSubtitle: "We work with businesses across key Haryana markets, helping them improve search visibility, connect with relevant audiences, and create digital experiences that support long-term growth.",
+    cityDescriptions: {
+      "gurgaon": "Gurgaon is a highly competitive business market with companies across technology, real estate, professional services, startups, healthcare, education, hospitality, and eCommerce. RizeWorld helps businesses in Gurgaon improve their digital presence through SEO, local SEO, Google Ads, social media marketing, content, and website development. We focus on reaching the right audience through relevant search terms, targeted campaigns, useful content, and user-friendly websites.",
+      "faridabad": "Businesses in Faridabad can use digital marketing to reach customers beyond traditional local channels and create a stronger presence across search, social platforms, and other online channels. RizeWorld provides SEO, local SEO, paid advertising, social media marketing, content marketing, and website solutions for businesses targeting customers in Faridabad and nearby markets."
+    },
+    whyChoose: {
+      headline: "Why Choose RizeWorld for Digital Marketing in Haryana?",
+      description: "Haryana has a diverse business environment, and the needs of a technology company in Gurgaon may be very different from those of a local business in Faridabad. RizeWorld considers factors such as industry, audience, competition, location, and business objectives when developing a strategy. Rather than focusing on a single marketing channel, we can combine SEO, paid advertising, social media, content, and website improvements to create a more connected online presence. Campaign performance can then be monitored and refined as your business grows.",
+      bullets: [
+        "Strategies based on your industry & business goals",
+        "SEO focused on relevant search intent",
+        "Local SEO for Gurgaon & Faridabad visibility",
+        "Performance-focused Google Ads campaigns",
+        "Content created for users and search engines",
+        "Responsive and conversion-focused websites",
+        "Ongoing tracking and campaign optimization"
+      ]
+    },
+    expansionSection: {
+      headline: "Building a Stronger Digital Presence Across Haryana",
+      paragraphs: [
+        "Digital marketing gives businesses the opportunity to reach customers beyond their immediate location. With the right SEO strategy, useful content, targeted advertising, and a well-structured website, businesses in Gurgaon and Faridabad can work toward reaching broader markets across Haryana and beyond."
+      ]
+    },
+    faqs: [
+      {
+        question: "What digital marketing services does RizeWorld provide in Haryana?",
+        answer: "RizeWorld provides SEO, local SEO, Google Ads and PPC, social media marketing, content marketing, website development, and related digital solutions."
+      },
+      {
+        question: "Does RizeWorld provide digital marketing services in Gurgaon?",
+        answer: "Yes. RizeWorld works with businesses in Gurgaon on SEO, paid advertising, social media, content, website development, and other digital marketing activities."
+      },
+      {
+        question: "Can local SEO help businesses in Faridabad?",
+        answer: "Yes. Local SEO can improve a business's visibility for location-based searches and help potential customers discover relevant products or services nearby."
+      },
+      {
+        question: "Is SEO useful for businesses in Haryana?",
+        answer: "SEO can help businesses attract relevant organic traffic by improving their visibility for searches related to their products, services, and locations. Results depend on competition, website quality, content, and consistency."
+      },
+      {
+        question: "Should I use Google Ads along with SEO?",
+        answer: "SEO and Google Ads serve different purposes. Paid campaigns can provide targeted visibility while SEO focuses on building organic search presence over time. Using both can be useful when the strategy and budget support it."
+      },
+      {
+        question: "Can social media marketing support SEO?",
+        answer: "Social media and SEO work differently, but social platforms can support brand awareness, content distribution, audience engagement, and website traffic, which can complement an overall digital strategy."
+      }
+    ],
+    cta: {
+      headline: "Ready to Grow Your Business Online?",
+      text: "Whether you are targeting customers in Gurgaon, Faridabad, or other markets across Haryana, RizeWorld can help you build a practical digital marketing strategy focused on visibility, engagement, and sustainable growth.",
+      buttonText: "Talk to RizeWorld"
+    }
   }
 };

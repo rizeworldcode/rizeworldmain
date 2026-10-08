@@ -1,5 +1,6 @@
 import { useParams, Navigate } from 'react-router-dom';
 import CityLandingPageTemplate from './CityLandingPageTemplate';
+import { CITY_CUSTOM_CONTENT } from '../../data/cityCustomContent';
 
 const CITY_NAME_MAPPING: Record<string, string> = {
   "delhi": "Delhi",
@@ -64,24 +65,30 @@ export default function DynamicCityLandingPage() {
     return <Navigate to="/services" replace />;
   }
 
+  const custom = CITY_CUSTOM_CONTENT[rawKey];
+
   const pageData = {
     city: cityName,
-    title: `Digital Marketing Agency in ${cityName} | RizeWorld`,
-    metaDescription: `Looking for the best Digital Marketing Agency in ${cityName}? RizeWorld offers SEO, PPC, Social Media, and Web Development services in ${cityName} to scale your brand.`,
-    heroHeadline: `Digital Marketing Agency in ${cityName}`,
-    heroSubtitle: `RizeWorld is ${cityName}'s premium digital marketing partner, delivering result-focused SEO optimization, local search exposure, and ROI-driven paid ad campaigns.`,
-    aboutHeadline: `RizeWorld – Empowering Brands in ${cityName}`,
-    aboutText1: `RizeWorld is a premium digital marketing company dedicated to elevating retail, education, manufacturing, and local service brands in ${cityName}. We help businesses connect with online consumers through search rankings, localized keywords, and visual storytelling.`,
-    aboutText2: `We design highly targeted growth loops that convert web visits into loyal customers, tailoring local campaigns specifically to your market challenges.`,
+    title: custom?.heroHeadline ? `${custom.heroHeadline} | RizeWorld` : `Digital Marketing Agency in ${cityName} | RizeWorld`,
+    metaDescription: custom?.heroSubtitle || `Looking for the best Digital Marketing Agency in ${cityName}? RizeWorld offers SEO, PPC, Social Media, and Web Development services in ${cityName} to scale your brand.`,
+    heroHeadline: custom?.heroHeadline || `Digital Marketing Agency in ${cityName}`,
+    heroSubtitle: custom?.heroSubtitle || `RizeWorld is ${cityName}'s premium digital marketing partner, delivering result-focused SEO optimization, local search exposure, and ROI-driven paid ad campaigns.`,
+    eyebrow: custom?.eyebrow,
+    aboutHeadline: custom?.aboutHeadline || `RizeWorld – Empowering Brands in ${cityName}`,
+    aboutText1: custom?.aboutText1 || `RizeWorld is a premium digital marketing company dedicated to elevating retail, education, manufacturing, and local service brands in ${cityName}. We help businesses connect with online consumers through search rankings, localized keywords, and visual storytelling.`,
+    aboutText2: custom?.aboutText2 || `We design highly targeted growth loops that convert web visits into loyal customers, tailoring local campaigns specifically to your market challenges.`,
     aboutImg: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=800",
     collageImg: rawKey === "delhi" ? "/loaction/delhi/delhi.jpg" : undefined,
-    benefits: [
+    benefits: custom?.benefits || [
       "Custom Local Search Optimization",
       "High Conversion Paid Ads (PPC)",
       "Responsive & Fast Loading Websites",
       "Strategic Social Media Curation"
     ],
-    faqs: [
+    whyChooseHeadline: custom?.whyChooseHeadline,
+    whyChooseDescription: custom?.whyChooseDescription,
+    corePillars: custom?.corePillars,
+    faqs: custom?.faqs || [
       {
         question: `Why is RizeWorld the best Digital Marketing Agency in ${cityName}?`,
         answer: `We are performance marketing and search engine optimization specialists. We design campaigns based on actual consumer queries and local market context to ensure you get qualified leads.`

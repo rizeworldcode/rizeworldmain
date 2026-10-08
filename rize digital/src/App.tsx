@@ -10,6 +10,7 @@ import FloatingButtons from './components/common/FloatingButtons';
 
 // Register GSAP Plugins
 gsap.registerPlugin(ScrollTrigger);
+ScrollTrigger.clearScrollMemory();
 
 // Pages
 import Home from './pages/Home';

@@ -13,9 +13,9 @@ import {
   MessageSquare, 
   ChevronRight,
   Phone,
-  MapPin,
-  Sparkles
+  MapPin
 } from 'lucide-react';
+import { HiCodeBracketSquare } from 'react-icons/hi2';
 import SEO from '../../components/common/SEO';
 import { LOGOS } from '../../data/logos';
 import Breadcrumbs from '../../components/common/Breadcrumbs';
@@ -242,7 +242,7 @@ export default function WebDevelopment() {
               className="bg-white border border-gray-200/80 rounded-[2.5rem] p-8 md:p-12 shadow-sm flex flex-col justify-center grow relative overflow-hidden"
             >
               <span className="text-orange-500 font-black uppercase tracking-widest text-xs mb-4 flex items-center gap-1.5">
-                <Sparkles size={14} className="animate-pulse" /> Responsive Design & User Experience
+                <HiCodeBracketSquare size={15} className="shrink-0" /> Responsive Design & User Experience
               </span>
               <h1 className="text-4xl md:text-5xl lg:text-[3.5rem] font-black text-gray-950 leading-[1.05] uppercase tracking-tighter mb-6">
                 Web Design <br />

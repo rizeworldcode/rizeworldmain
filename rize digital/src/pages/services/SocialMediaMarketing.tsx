@@ -12,9 +12,10 @@ import {
   ChevronRight,
   Phone,
   MapPin,
-  Sparkles,
   Quote
 } from 'lucide-react';
+import { HiBolt } from 'react-icons/hi2';
+import { RiCommunityLine } from 'react-icons/ri';
 import SEO from '../../components/common/SEO';
 import { LOGOS } from '../../data/logos';
 import Breadcrumbs from '../../components/common/Breadcrumbs';
@@ -39,7 +40,7 @@ const SERVICES_LIST = [
     title: "Social Media Advertising",
     desc: "When organic reach is not enough, paid campaigns can help put your message in front of a more specific audience. We plan campaigns around your objectives, budget, audience, and results.",
     tags: ["Paid Social", "Targeting", "Audience Reach", "Optimization"],
-    icon: Sparkles
+    icon: HiBolt
   },
   {
     title: "Brand Promotion",
@@ -261,7 +262,7 @@ export default function SocialMediaMarketing() {
               className="bg-white border border-gray-200/80 rounded-[2.5rem] p-8 md:p-12 shadow-sm flex flex-col justify-center grow relative overflow-hidden"
             >
               <span className="text-orange-500 font-black uppercase tracking-widest text-xs mb-4 flex items-center gap-1.5">
-                <Sparkles size={14} className="animate-pulse" /> Active Community Growth
+                <RiCommunityLine size={15} className="shrink-0" /> Active Community Growth
               </span>
               <h1 className="text-4xl md:text-5xl lg:text-[3.5rem] font-black text-gray-950 leading-[1.05] uppercase tracking-tighter mb-6">
                 Social Media <br />

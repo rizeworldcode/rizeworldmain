@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Scale, Sparkles } from 'lucide-react';
+import { ArrowLeft, Scale } from 'lucide-react';
+import { RiShieldCheckLine } from 'react-icons/ri';
 import SEO from '../components/common/SEO';
 
 export default function TermsOfService() {
@@ -27,7 +28,7 @@ export default function TermsOfService() {
         <div className="bg-white border border-gray-200/80 rounded-[2.5rem] p-8 md:p-12 shadow-xs mb-12 relative overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(249,115,22,0.05),transparent_50%)] pointer-events-none" />
           <span className="text-orange-500 font-black uppercase tracking-widest text-xs mb-4 flex items-center gap-1.5">
-            <Sparkles size={14} className="animate-pulse" /> Agency Terms
+            <RiShieldCheckLine size={15} className="shrink-0" /> Agency Terms
           </span>
           <h1 className="text-4xl md:text-5xl font-black text-gray-950 uppercase tracking-tight mb-4">
             Terms of Service

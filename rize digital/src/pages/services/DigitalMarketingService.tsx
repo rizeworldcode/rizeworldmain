@@ -13,9 +13,9 @@ import {
   MessageSquare, 
   ChevronRight,
   Phone,
-  MapPin,
-  Sparkles
+  MapPin
 } from 'lucide-react';
+import { HiRocketLaunch, HiBolt } from 'react-icons/hi2';
 import SEO from '../../components/common/SEO';
 import { LOGOS } from '../../data/logos';
 import Breadcrumbs from '../../components/common/Breadcrumbs';
@@ -56,7 +56,7 @@ const SERVICES_LIST = [
     title: "Digital Advertising",
     desc: "Targeted advertising can help businesses reach potential customers at the right stage of their journey. We plan campaigns around your audience, objectives, budget, and performance data.",
     tags: ["PPC", "Targeting", "Optimization"],
-    icon: Sparkles,
+    icon: HiBolt,
     link: "/services/paid-ads"
   },
   {
@@ -252,7 +252,7 @@ export default function DigitalMarketingService() {
               className="bg-white border border-gray-200/80 rounded-[2.5rem] p-8 md:p-12 shadow-sm flex flex-col justify-center grow relative overflow-hidden"
             >
               <span className="text-orange-500 font-black uppercase tracking-widest text-xs mb-4 flex items-center gap-1.5">
-                <Sparkles size={14} className="animate-pulse" /> Customized Growth Plans
+                <HiRocketLaunch size={15} className="shrink-0" /> Customized Growth Plans
               </span>
               <h1 className="text-4xl md:text-5xl lg:text-[3.5rem] font-black text-gray-950 leading-[1.05] uppercase tracking-tighter mb-6">
                 Digital Marketing <br />

@@ -1,6 +1,7 @@
 import { useParams, Navigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Sparkles, ArrowUpRight, Tag } from 'lucide-react';
+import { ArrowUpRight, Tag } from 'lucide-react';
+import { RiArticleLine } from 'react-icons/ri';
 import SEO from '../../components/common/SEO';
 import Breadcrumbs from '../../components/common/Breadcrumbs';
 import InternalLinkSection from '../../components/common/InternalLinkSection';
@@ -73,7 +74,7 @@ export default function BlogCategoryPage() {
 
         {/* Coming soon placeholder */}
         <div className="bg-white border border-gray-200/80 rounded-[2.5rem] p-12 md:p-20 text-center">
-          <Sparkles className="w-12 h-12 text-orange-500/30 mx-auto mb-6" />
+          <RiArticleLine className="w-12 h-12 text-orange-500/30 mx-auto mb-6" />
           <h2 className="text-2xl md:text-3xl font-black text-gray-950 uppercase tracking-tight mb-4">
             Articles Coming Soon
           </h2>

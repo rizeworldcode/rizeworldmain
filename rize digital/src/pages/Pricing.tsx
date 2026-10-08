@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
-  Sparkles, 
   Shield, 
   Search, 
   Share2, 
@@ -12,6 +11,7 @@ import {
   Layers,
   Grid
 } from 'lucide-react';
+import { RiShieldCheckLine } from 'react-icons/ri';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import SEO from '../components/common/SEO';
 import Breadcrumbs from '../components/common/Breadcrumbs';
@@ -267,7 +267,7 @@ export default function Pricing() {
       {/* Hero Header */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-16 text-center">
         <div className="inline-flex items-center gap-2 bg-blue-50 border border-blue-200/60 rounded-full px-4 py-1.5 mb-5 shadow-xs">
-          <Sparkles className="w-4 h-4 text-rize-primary" />
+          <RiShieldCheckLine className="w-4 h-4 text-rize-primary" />
           <span className="text-xs font-black text-rize-primary uppercase tracking-widest">
             Transparent Pricing Systems
           </span>
