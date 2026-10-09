@@ -493,13 +493,15 @@ const DashboardScreen = ({ staffInfo: initialStaffInfo, token, onLogout, onNavig
   // Clock Actions
   const handleClockIn = async () => {
     const staffId = staffInfo.id || staffInfo._id;
+    const deviceTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
     try {
       const response = await fetch(getApiUrl(`/staff/${staffId}/clock-in`), {
         method: 'PATCH',
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
-        }
+        },
+        body: JSON.stringify({ clockInTime: deviceTime })
       });
       const result = await response.json();
       if (result.success) {
@@ -508,7 +510,7 @@ const DashboardScreen = ({ staffInfo: initialStaffInfo, token, onLogout, onNavig
         const todayClock = result.data.todayClock || (result.data.clock && result.data.clock[result.data.clock.length - 1]);
         const sessions = todayClock?.sessions || [];
         const lastSession = sessions[sessions.length - 1];
-        Alert.alert('Success', `Clocked in successfully at ${lastSession?.clockIn || ''}`);
+        Alert.alert('Success', `Clocked in successfully at ${lastSession?.clockIn || deviceTime}`);
       } else {
         Alert.alert('Clock In Failed', result.message || 'Verification failed');
       }
@@ -520,19 +522,21 @@ const DashboardScreen = ({ staffInfo: initialStaffInfo, token, onLogout, onNavig
 
   const handleClockOut = async () => {
     const staffId = staffInfo.id || staffInfo._id;
+    const deviceTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
     try {
       const response = await fetch(getApiUrl(`/staff/${staffId}/clock-out`), {
         method: 'PATCH',
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
-        }
+        },
+        body: JSON.stringify({ clockOutTime: deviceTime })
       });
       const result = await response.json();
       if (result.success) {
         syncStaffDataStates(result.data, true);
         fetchStaffInfo();
-        Alert.alert('Success', 'Clocked out successfully');
+        Alert.alert('Success', `Clocked out successfully at ${deviceTime}`);
       } else {
         Alert.alert('Clock Out Failed', result.message || 'Verification failed');
       }

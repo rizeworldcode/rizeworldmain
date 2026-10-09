@@ -794,8 +794,14 @@ const isSameDayIST = (d1, d2 = new Date()) => {
   return s1 === s2;
 };
 
+// Helper function to check if a date is Sunday in IST
+const isSundayIST = (date = new Date()) => {
+  const dayStr = date.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'Asia/Kolkata' });
+  return dayStr === 'Sun';
+};
+
 // Helper function to format time in IST
-const formatTime = (date) => {
+const formatTime = (date = new Date()) => {
   try {
     return date.toLocaleTimeString('en-US', {
       hour: '2-digit',
@@ -1083,7 +1089,6 @@ exports.clockInStaff = async (req, res) => {
     }
 
     const now = new Date();
-    const istNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
     
     let clockInTime;
     if (req.body.clockInTime) {
@@ -1100,7 +1105,7 @@ exports.clockInStaff = async (req, res) => {
         clockInTime = rawTime;
       }
     } else {
-      clockInTime = formatTime(istNow);
+      clockInTime = formatTime(now);
     }
     console.log('Clock in time:', clockInTime);
 
@@ -1114,7 +1119,7 @@ exports.clockInStaff = async (req, res) => {
     console.log('Staff clock_status:', staff.clock_status);
 
     // Check if today is Sunday in IST
-    if (istNow.getDay() === 0) {
+    if (isSundayIST(now)) {
       console.log("It's Sunday");
       return res.status(400).json({
         success: false,
@@ -1250,7 +1255,6 @@ exports.clockOutStaff = async (req, res) => {
     }
 
     const now = new Date();
-    const istNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
 
     let clockOutTime;
     if (req.body.clockOutTime) {
@@ -1267,7 +1271,7 @@ exports.clockOutStaff = async (req, res) => {
         clockOutTime = rawTime;
       }
     } else {
-      clockOutTime = formatTime(istNow);
+      clockOutTime = formatTime(now);
     }
     console.log('Clock out time:', clockOutTime);
 
@@ -1285,7 +1289,7 @@ exports.clockOutStaff = async (req, res) => {
     }
 
     // Check Sunday in IST
-    if (istNow.getDay() === 0) {
+    if (isSundayIST(now)) {
       return res.status(400).json({
         success: false,
         message: 'Cannot clock in/out on Sunday. Enjoy your day off!'
@@ -1392,7 +1396,6 @@ exports.clockOutAllStaff = async (req, res) => {
     const { clockOutTime: rawInputTime, staffIds } = req.body || {};
 
     const now = new Date();
-    const istNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
 
     let clockOutTime;
     if (rawInputTime) {
@@ -1408,7 +1411,7 @@ exports.clockOutAllStaff = async (req, res) => {
         clockOutTime = rawTime;
       }
     } else {
-      clockOutTime = formatTime(istNow);
+      clockOutTime = formatTime(now);
     }
     console.log('Bulk clock out time:', clockOutTime);
 

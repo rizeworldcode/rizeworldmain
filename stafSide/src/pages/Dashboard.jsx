@@ -1609,11 +1609,14 @@ const Dashboard = ({ onNavigateToProgress }) => {
       alert('Staff ID not found. Please log in again.');
       return;
     }
+
+    const deviceTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
     
     try {
       const response = await fetch(getApiUrl(`/staff/${staffId}/clock-in`), { 
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clockInTime: deviceTime })
       });
       const result = await response.json();
       
@@ -1627,7 +1630,7 @@ const Dashboard = ({ onNavigateToProgress }) => {
         const sessions = todayClock?.sessions || [];
         const lastSession = sessions.length > 0 ? sessions[sessions.length - 1] : null;
 
-        alert(`Clocked in successfully at ${lastSession?.clockIn || ''}`);
+        alert(`Clocked in successfully at ${lastSession?.clockIn || deviceTime}`);
       } else {
         alert(result.message || 'Failed to clock in');
       }
@@ -1645,11 +1648,14 @@ const Dashboard = ({ onNavigateToProgress }) => {
       alert('Staff ID not found. Please log in again.');
       return;
     }
+
+    const deviceTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
     
     try {
       const response = await fetch(getApiUrl(`/staff/${staffId}/clock-out`), { 
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clockOutTime: deviceTime })
       });
       const result = await response.json();
       
@@ -1662,7 +1668,7 @@ const Dashboard = ({ onNavigateToProgress }) => {
         const todayClock = result.data.todayClock || (result.data.clock && result.data.clock[result.data.clock.length - 1]);
         const sessions = todayClock?.sessions || [];
         const lastSession = sessions.length > 0 ? sessions[sessions.length - 1] : null;
-        const clockOutTime = lastSession?.clockOut || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const clockOutTime = lastSession?.clockOut || deviceTime;
 
         alert(`Clocked out successfully at ${clockOutTime}`);
       } else {
