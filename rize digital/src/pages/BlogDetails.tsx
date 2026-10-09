@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, lazy, Suspense } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import SEO from '../components/common/SEO';
 import Breadcrumbs from '../components/common/Breadcrumbs';
-import NotFound from './NotFound';
 import { getApiBaseUrl, getImageUrl, formatDate } from '../utils/api';
+
+const NotFound = lazy(() => import('./NotFound'));
 
 export interface DynamicBlog {
   title: string;
@@ -108,7 +109,11 @@ export default function BlogDetails() {
   }, [slug]);
 
   if (!isLoading && !fetchedBlog && !fallbackBlog) {
-    return <NotFound />;
+    return (
+      <Suspense fallback={<div className="min-h-screen bg-stone-50" />}>
+        <NotFound />
+      </Suspense>
+    );
   }
 
   if (isLoading) {

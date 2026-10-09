@@ -202,7 +202,8 @@ export default defineConfig({
           if (id.includes('node_modules')) {
             if (id.includes('three')) return 'three';
             if (id.includes('tsparticles') || id.includes('react-tsparticles')) return 'tsparticles';
-            if (id.includes('framer-motion') || id.includes('gsap')) return 'animations';
+            if (id.includes('framer-motion')) return 'framer-motion';
+            if (id.includes('gsap')) return 'gsap';
             if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) return 'react-core';
             return 'vendor';
           }

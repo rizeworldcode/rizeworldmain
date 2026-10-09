@@ -139,7 +139,7 @@ const isOfficeWifi = (req) => {
 
 const requireOfficeWifi = (req, res, next) => {
   // Bypass wifi check for admin role
-  if (req.role === 'admin') {
+  if (req.role === 'admin' || req.user?.role === 'admin' || (req.user?.role && req.user.role.toLowerCase() === 'admin')) {
     return next();
   }
 

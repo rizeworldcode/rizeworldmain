@@ -271,6 +271,7 @@ const Overview = ({ onViewClient, onViewStaff }) => {
           staffMembers={staffList} 
           loading={staffLoading} 
           onViewAll={onViewStaff} 
+          onUpdateStaff={(updated) => setStaffList(prev => prev.map(s => s._id === updated._id ? updated : s))}
         />
       </section>
       

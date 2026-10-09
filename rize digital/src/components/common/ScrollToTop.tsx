@@ -13,15 +13,21 @@ export default function ScrollToTop() {
     }
   }, []);
 
-  // Save scroll position for the current route as user scrolls
+  // Save scroll position for the current route as user scrolls (throttled)
   useEffect(() => {
+    let timeoutId: number | null = null;
     const handleScroll = () => {
-      if (window.scrollY > 0) {
-        sessionStorage.setItem(`scroll_pos_${pathname}`, window.scrollY.toString());
-      }
+      if (timeoutId) return;
+      timeoutId = window.setTimeout(() => {
+        if (window.scrollY > 0) {
+          sessionStorage.setItem(`scroll_pos_${pathname}`, window.scrollY.toString());
+        }
+        timeoutId = null;
+      }, 150);
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => {
+      if (timeoutId) clearTimeout(timeoutId);
       window.removeEventListener('scroll', handleScroll);
     };
   }, [pathname]);

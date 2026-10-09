@@ -61,7 +61,7 @@ export default function Footer() {
 
           {/* Column 1: Quick Links */}
           <div className="flex flex-col">
-            <h4 className="text-gray-900 font-bold text-sm tracking-widest mb-5 uppercase">Quick Links</h4>
+            <p className="text-gray-900 font-bold text-sm tracking-widest mb-5 uppercase">Quick Links</p>
             <ul className="flex flex-col gap-3">
               <li><Link to="/" className="text-gray-600 hover:text-rize-primary transition-colors text-sm">Home</Link></li>
               <li><Link to="/services" className="text-gray-600 hover:text-rize-primary transition-colors text-sm">Services</Link></li>
@@ -73,7 +73,7 @@ export default function Footer() {
 
           {/* Column 2: Services */}
           <div className="flex flex-col">
-            <h4 className="text-gray-900 font-bold text-sm tracking-widest mb-5 uppercase">Services</h4>
+            <p className="text-gray-900 font-bold text-sm tracking-widest mb-5 uppercase">Services</p>
             <ul className="flex flex-col gap-3">
               <li><Link to="/services/digital-marketing" className="text-gray-600 hover:text-rize-primary transition-colors text-sm">Digital Marketing</Link></li>
               <li><Link to="/services/seo" className="text-gray-600 hover:text-rize-primary transition-colors text-sm">SEO</Link></li>
@@ -87,7 +87,7 @@ export default function Footer() {
 
           {/* Column 3: Locations */}
           <div className="flex flex-col">
-            <h4 className="text-gray-900 font-bold text-sm tracking-widest mb-5 uppercase">Locations</h4>
+            <p className="text-gray-900 font-bold text-sm tracking-widest mb-5 uppercase">Locations</p>
             <ul className="flex flex-col gap-3">
               <li><Link to="/locations/delhi-ncr" className="text-gray-600 hover:text-rize-primary transition-colors text-sm">Delhi NCR</Link></li>
               <li><Link to="/locations/rajasthan" className="text-gray-600 hover:text-rize-primary transition-colors text-sm">Rajasthan</Link></li>
@@ -101,7 +101,7 @@ export default function Footer() {
 
           {/* Column 4: Resources */}
           <div className="flex flex-col">
-            <h4 className="text-gray-900 font-bold text-sm tracking-widest mb-5 uppercase">Resources</h4>
+            <p className="text-gray-900 font-bold text-sm tracking-widest mb-5 uppercase">Resources</p>
             <ul className="flex flex-col gap-3">
               <li><Link to="/blogs" className="text-gray-600 hover:text-rize-primary transition-colors text-sm">Blogs</Link></li>
               <li><Link to="/faq" className="text-gray-600 hover:text-rize-primary transition-colors text-sm">FAQ</Link></li>
@@ -112,7 +112,7 @@ export default function Footer() {
 
           {/* Column 5: Company */}
           <div className="flex flex-col">
-            <h4 className="text-gray-900 font-bold text-sm tracking-widest mb-5 uppercase">Company</h4>
+            <p className="text-gray-900 font-bold text-sm tracking-widest mb-5 uppercase">Company</p>
             <ul className="flex flex-col gap-3">
               <li><Link to="/about" className="text-gray-600 hover:text-rize-primary transition-colors text-sm">About Us</Link></li>
               <li><Link to="/team" className="text-gray-600 hover:text-rize-primary transition-colors text-sm">Our Team</Link></li>
@@ -122,7 +122,7 @@ export default function Footer() {
 
           {/* Column 6: Get in Touch */}
           <div className="flex flex-col col-span-2 sm:col-span-1">
-            <h4 className="text-gray-900 font-bold text-sm tracking-widest mb-5 uppercase">Get in Touch</h4>
+            <p className="text-gray-900 font-bold text-sm tracking-widest mb-5 uppercase">Get in Touch</p>
             <ul className="flex flex-col gap-5">
               <li className="flex items-start gap-3">
                 <Phone className="w-4 h-4 text-rize-primary shrink-0 mt-0.5" />

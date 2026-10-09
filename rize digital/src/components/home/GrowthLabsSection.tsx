@@ -9,7 +9,7 @@ const VideoModal = ({ isOpen, onClose, videoUrl }: any) => {
   return (
     <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/90 p-4" onClick={onClose}>
       <div className="bg-black w-full max-w-4xl max-h-[90vh] h-full sm:h-auto sm:aspect-video rounded-xl overflow-hidden relative flex justify-center items-center" onClick={e => e.stopPropagation()}>
-        <button onClick={onClose} className="absolute top-4 right-4 text-white font-bold text-xl z-10 w-10 h-10 flex items-center justify-center bg-black/60 rounded-full hover:bg-black transition-colors border border-white/20 shadow-lg">✕</button>
+        <button type="button" onClick={onClose} aria-label="Close video dialog" className="absolute top-4 right-4 text-white font-bold text-xl z-10 w-10 h-10 flex items-center justify-center bg-black/60 rounded-full hover:bg-black transition-colors border border-white/20 shadow-lg cursor-pointer">✕</button>
         {videoUrl ? (
           <video src={videoUrl} autoPlay controls className="w-full h-full object-contain max-h-[90vh]" />
         ) : (
@@ -76,14 +76,16 @@ export default function GrowthLabsSection() {
                       {lab.subtitle}
                     </div>
                     <button
+                      type="button"
+                      aria-label={`Play case study video for ${lab.title}`}
                       onClick={(e) => {
                         e.stopPropagation();
                         setCurrentVideo(lab.video || ""); 
                         setModalOpen(true);
                       }}
-                      className="w-12 h-12 bg-white rounded-full flex items-center justify-center hover:scale-110 transition-transform shadow-lg"
+                      className="w-12 h-12 bg-white rounded-full flex items-center justify-center hover:scale-110 transition-transform shadow-lg cursor-pointer"
                     >
-                      <Play size={20} className="text-black" fill="black" />
+                      <Play size={20} className="text-black" fill="black" aria-hidden="true" />
                     </button>
                   </div>
                   <h3 className="text-sm sm:text-base md:text-lg font-medium mb-6 leading-relaxed text-white/90 max-w-3xl drop-shadow-md">
@@ -133,13 +135,15 @@ export default function GrowthLabsSection() {
 
               {/* Play Button in Center */}
               <button
+                type="button"
+                aria-label={`Play case study video for ${lab.title}`}
                 onClick={() => {
                   setCurrentVideo(lab.video || "");
                   setModalOpen(true);
                 }}
-                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-14 h-14 bg-white text-black rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition-transform shadow-xl z-20"
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-14 h-14 bg-white text-black rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition-transform shadow-xl z-20 cursor-pointer"
               >
-                <Play className="w-6 h-6 text-black fill-black ml-1" />
+                <Play className="w-6 h-6 text-black fill-black ml-1" aria-hidden="true" />
               </button>
             </div>
 

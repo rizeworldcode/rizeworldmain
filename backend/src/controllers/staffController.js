@@ -783,15 +783,45 @@ exports.rejoinStaff = async (req, res) => {
   }
 };
 
-// Helper function to format time
+// Helper function to check if two dates are the same day in IST
+const isSameDayIST = (d1, d2 = new Date()) => {
+  if (!d1 || !d2) return false;
+  const date1 = new Date(d1);
+  const date2 = new Date(d2);
+  if (isNaN(date1.getTime()) || isNaN(date2.getTime())) return false;
+  const s1 = date1.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+  const s2 = date2.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+  return s1 === s2;
+};
+
+// Helper function to format time in IST
 const formatTime = (date) => {
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  try {
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+      timeZone: 'Asia/Kolkata'
+    });
+  } catch (e) {
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const displayH = hours % 12 || 12;
+    const displayM = minutes < 10 ? `0${minutes}` : minutes;
+    return `${displayH < 10 ? '0' : ''}${displayH}:${displayM} ${ampm}`;
+  }
 };
 
 // Helper function to parse time string to minutes since midnight
 const timeToMinutes = (timeStr) => {
-  const [time, modifier] = timeStr.split(' ');
-  let [hours, minutes] = time.split(':').map(Number);
+  if (!timeStr || typeof timeStr !== 'string') return 0;
+  const clean = timeStr.trim().toUpperCase();
+  const match = clean.match(/^(\d{1,2}):(\d{2})(?:\s*(AM|PM))?$/i);
+  if (!match) return 0;
+  let hours = parseInt(match[1], 10);
+  const minutes = parseInt(match[2], 10);
+  const modifier = match[3];
 
   if (modifier === 'PM' && hours < 12) hours += 12;
   if (modifier === 'AM' && hours === 12) hours = 0;
@@ -1065,7 +1095,7 @@ exports.clockInStaff = async (req, res) => {
         const ampm = h >= 12 ? 'PM' : 'AM';
         const displayH = h % 12 || 12;
         const displayM = m < 10 ? `0${m}` : m;
-        clockInTime = `${displayH}:${displayM} ${ampm}`;
+        clockInTime = `${displayH < 10 ? '0' : ''}${displayH}:${displayM} ${ampm}`;
       } else {
         clockInTime = rawTime;
       }
@@ -1082,55 +1112,42 @@ exports.clockInStaff = async (req, res) => {
 
     console.log('Found staff:', staff._id, staff.name);
     console.log('Staff clock_status:', staff.clock_status);
-    console.log('Staff clock:', staff.clock);
 
-    // Check if today is Sunday
-    if (now.getDay() === 0) {
-      console.log('It\'s Sunday');
+    // Check if today is Sunday in IST
+    if (istNow.getDay() === 0) {
+      console.log("It's Sunday");
       return res.status(400).json({
         success: false,
         message: 'Cannot clock in/out on Sunday. Enjoy your day off!'
       });
     }
 
-    // Check if today is a leave day
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    const hasLeave = staff.leaves?.some(l => {
-      const leaveDate = new Date(l.date);
-      leaveDate.setHours(0, 0, 0, 0);
-      return leaveDate.getTime() === today.getTime();
-    });
-
-    const hasLeaveAttendance = staff.attendance?.some(a => {
-      const attDate = new Date(a.date);
-      attDate.setHours(0, 0, 0, 0);
-      return attDate.getTime() === today.getTime() && a.status === 'On Leave';
-    });
+    // Check if today is a leave day in IST
+    const hasLeave = staff.leaves?.some(l => isSameDayIST(l.date, now));
+    const hasLeaveAttendance = staff.attendance?.some(a => isSameDayIST(a.date, now) && a.status === 'On Leave');
 
     if (hasLeave || hasLeaveAttendance) {
-      console.log('It\'s a leave day');
+      console.log("It's a leave day");
       return res.status(400).json({
         success: false,
         message: 'Cannot clock in/out today. It is marked as leave day.'
       });
     }
 
-    // Check if already clocked in today
-    const todayClockIndex = staff.clock?.findIndex(c =>
-      new Date(c.date) >= today && new Date(c.date) < tomorrow
-    );
+    if (!Array.isArray(staff.clock)) {
+      staff.clock = [];
+    }
+
+    // Check if already clocked in today (IST calendar day)
+    let todayClockIndex = staff.clock.findIndex(c => isSameDayIST(c.date, now));
     console.log('Today clock index:', todayClockIndex);
 
-    let updatedStaff;
-
-    if (todayClockIndex !== -1 && todayClockIndex !== undefined) {
+    if (todayClockIndex !== -1) {
       // Clock record exists for today
       const todayClockRecord = staff.clock[todayClockIndex];
-      const lastSession = todayClockRecord.sessions[todayClockRecord.sessions.length - 1];
+      const lastSession = todayClockRecord.sessions && todayClockRecord.sessions.length > 0
+        ? todayClockRecord.sessions[todayClockRecord.sessions.length - 1]
+        : null;
       console.log('Last session:', lastSession);
 
       // Check if last session is already clocked in (no clockOut)
@@ -1138,67 +1155,77 @@ exports.clockInStaff = async (req, res) => {
         console.log('Already clocked in');
         return res.status(400).json({
           success: false,
-          message: 'You already clocked in. Please clock out before clocking in again.'
+          message: 'Staff is already clocked in. Please clock out before clocking in again.'
         });
       }
 
-      // Last session is completed, add new session
-      updatedStaff = await Staff.findOneAndUpdate(
-        { _id: req.params.id, "clock.date": { $gte: today, $lt: tomorrow } },
-        {
-          $push: {
-            "clock.$.sessions": {
-              clockIn: clockInTime,
-              clockOut: null,
-              duration: '-'
-            }
-          },
-          $set: { status: 'Present', clock_status: 'clock_in' }
-        },
-        { new: true }
-      );
+      if (!Array.isArray(todayClockRecord.sessions)) {
+        todayClockRecord.sessions = [];
+      }
+
+      // Add new session to today's clock record
+      todayClockRecord.sessions.push({
+        clockIn: clockInTime,
+        clockOut: null,
+        duration: '-'
+      });
     } else {
       // Create new clock record with first session
       console.log('Creating new clock record');
-      updatedStaff = await Staff.findByIdAndUpdate(
-        req.params.id,
-        {
-          $push: {
-            clock: {
-              date: now,
-              sessions: [{
-                clockIn: clockInTime,
-                clockOut: null,
-                duration: '-'
-              }],
-              totalHours: '-'
-            }
-          },
-          $set: { status: 'Present', clock_status: 'clock_in' }
-        },
-        { new: true }
-      );
+      staff.clock.push({
+        date: now,
+        sessions: [{
+          clockIn: clockInTime,
+          clockOut: null,
+          duration: '-'
+        }],
+        totalHours: '-'
+      });
+      todayClockIndex = staff.clock.length - 1;
     }
 
-    // Fetch today's updated clock data to send back
-    const updatedTodayClockIndex = updatedStaff.clock?.findIndex(c =>
-      new Date(c.date) >= today && new Date(c.date) < tomorrow
-    );
-    const updatedTodayClock = updatedStaff.clock[updatedTodayClockIndex];
-    console.log('Updated today clock:', updatedTodayClock);
+    staff.status = 'Present';
+    staff.clock_status = 'clock_in';
+    staff.markModified('clock');
 
+    // Also ensure attendance record for today is present
+    if (!Array.isArray(staff.attendance)) {
+      staff.attendance = [];
+    }
+    const todayAttendanceIndex = staff.attendance.findIndex(a => isSameDayIST(a.date, now));
+    if (todayAttendanceIndex !== -1) {
+      if (staff.attendance[todayAttendanceIndex].status !== 'On Leave') {
+        staff.attendance[todayAttendanceIndex].status = 'Present';
+        staff.markModified('attendance');
+      }
+    } else {
+      staff.attendance.push({
+        date: now,
+        status: 'Present'
+      });
+      staff.markModified('attendance');
+    }
+
+    const updatedStaff = await staff.save();
+    console.log('Saved staff clock-in successfully');
+
+    const updatedTodayClock = updatedStaff.clock[todayClockIndex];
     const staffObj = updatedStaff.toObject();
+
     // Emit Socket.IO event to notify staff of clock update
     try {
       const io = socketUtil.getIO();
-      io.emit(`staff-clock-update-${staffObj._id}`, {
-        ...staffObj,
-        id: staffObj._id,
-        todayClock: updatedTodayClock
-      });
+      if (io) {
+        io.emit(`staff-clock-update-${staffObj._id}`, {
+          ...staffObj,
+          id: staffObj._id,
+          todayClock: updatedTodayClock
+        });
+      }
     } catch (err) {
       console.error('Error emitting socket event:', err);
     }
+
     res.status(200).json({
       success: true,
       message: 'Clocked in successfully',
@@ -1209,8 +1236,7 @@ exports.clockInStaff = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('=== Clock in error ===');
-    console.error(error);
+    console.error('=== Clock in error ===', error);
     res.status(400).json({ success: false, message: error.message });
   }
 };
@@ -1236,7 +1262,7 @@ exports.clockOutStaff = async (req, res) => {
         const ampm = h >= 12 ? 'PM' : 'AM';
         const displayH = h % 12 || 12;
         const displayM = m < 10 ? `0${m}` : m;
-        clockOutTime = `${displayH}:${displayM} ${ampm}`;
+        clockOutTime = `${displayH < 10 ? '0' : ''}${displayH}:${displayM} ${ampm}`;
       } else {
         clockOutTime = rawTime;
       }
@@ -1250,7 +1276,7 @@ exports.clockOutStaff = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Staff not found' });
     }
 
-    // ✅ Check clock_status instead of date
+    // Check clock_status
     if (staff.clock_status !== 'clock_in') {
       return res.status(400).json({
         success: false,
@@ -1258,7 +1284,7 @@ exports.clockOutStaff = async (req, res) => {
       });
     }
 
-    // Check Sunday
+    // Check Sunday in IST
     if (istNow.getDay() === 0) {
       return res.status(400).json({
         success: false,
@@ -1266,20 +1292,24 @@ exports.clockOutStaff = async (req, res) => {
       });
     }
 
-    // ✅ Find the most recent clock record that has an open session (no clockOut)
+    // Find the most recent clock record that has an open session (no clockOut)
     let targetClockIndex = -1;
     let targetSessionIndex = -1;
 
-    for (let i = staff.clock.length - 1; i >= 0; i--) {
-      const record = staff.clock[i];
-      for (let j = record.sessions.length - 1; j >= 0; j--) {
-        if (!record.sessions[j].clockOut) {
-          targetClockIndex = i;
-          targetSessionIndex = j;
-          break;
+    if (Array.isArray(staff.clock)) {
+      for (let i = staff.clock.length - 1; i >= 0; i--) {
+        const record = staff.clock[i];
+        if (Array.isArray(record.sessions)) {
+          for (let j = record.sessions.length - 1; j >= 0; j--) {
+            if (!record.sessions[j].clockOut) {
+              targetClockIndex = i;
+              targetSessionIndex = j;
+              break;
+            }
+          }
         }
+        if (targetClockIndex !== -1) break;
       }
-      if (targetClockIndex !== -1) break;
     }
 
     if (targetClockIndex === -1) {
@@ -1299,46 +1329,43 @@ exports.clockOutStaff = async (req, res) => {
 
     staff.status = 'Clocked Out';
     staff.clock_status = 'clock_out';
+    staff.markModified('clock');
 
-    const updatedStaff = await staff.save();
-    console.log('Saved staff successfully');
-
-    const updatedTodayClock = updatedStaff.clock[targetClockIndex];
-
-    // Update attendance record
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    const totalHoursStr = updatedTodayClock?.totalHours || '-';
+    // Update attendance record directly
+    const totalHoursStr = staff.clock[targetClockIndex]?.totalHours || '-';
     const [hours] = totalHoursStr.split('h').map(Number);
-    const attendanceStatus = hours < 4 ? 'Half-Day' : 'Present';
+    const attendanceStatus = (isNaN(hours) || hours < 4) ? 'Half-Day' : 'Present';
 
-    const todayAttendanceIndex = staff.attendance?.findIndex(a =>
-      new Date(a.date) >= today && new Date(a.date) < tomorrow
-    );
+    if (!Array.isArray(staff.attendance)) {
+      staff.attendance = [];
+    }
+    const todayAttendanceIndex = staff.attendance.findIndex(a => isSameDayIST(a.date, now));
 
     if (todayAttendanceIndex !== -1) {
-      await Staff.findOneAndUpdate(
-        { _id: req.params.id, "attendance.date": { $gte: today, $lt: tomorrow } },
-        { $set: { "attendance.$.status": attendanceStatus } }
-      );
+      if (staff.attendance[todayAttendanceIndex].status !== 'On Leave') {
+        staff.attendance[todayAttendanceIndex].status = attendanceStatus;
+        staff.markModified('attendance');
+      }
     } else {
-      await Staff.findByIdAndUpdate(req.params.id, {
-        $push: { attendance: { date: now, status: attendanceStatus } }
-      });
+      staff.attendance.push({ date: now, status: attendanceStatus });
+      staff.markModified('attendance');
     }
 
+    const updatedStaff = await staff.save();
+    console.log('Saved staff clock-out successfully');
+
+    const updatedTodayClock = updatedStaff.clock[targetClockIndex];
     const staffObj = updatedStaff.toObject();
 
     try {
       const io = socketUtil.getIO();
-      io.emit(`staff-clock-update-${staffObj._id}`, {
-        ...staffObj,
-        id: staffObj._id,
-        todayClock: updatedTodayClock
-      });
+      if (io) {
+        io.emit(`staff-clock-update-${staffObj._id}`, {
+          ...staffObj,
+          id: staffObj._id,
+          todayClock: updatedTodayClock
+        });
+      }
     } catch (err) {
       console.error('Error emitting socket event:', err);
     }
@@ -1353,8 +1380,7 @@ exports.clockOutStaff = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('=== Clock out error ===');
-    console.error(error);
+    console.error('=== Clock out error ===', error);
     res.status(400).json({ success: false, message: error.message });
   }
 };
@@ -1377,7 +1403,7 @@ exports.clockOutAllStaff = async (req, res) => {
         const ampm = h >= 12 ? 'PM' : 'AM';
         const displayH = h % 12 || 12;
         const displayM = m < 10 ? `0${m}` : m;
-        clockOutTime = `${displayH}:${displayM} ${ampm}`;
+        clockOutTime = `${displayH < 10 ? '0' : ''}${displayH}:${displayM} ${ampm}`;
       } else {
         clockOutTime = rawTime;
       }
@@ -1401,11 +1427,6 @@ exports.clockOutAllStaff = async (req, res) => {
         data: []
       });
     }
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
 
     const updatedStaffList = [];
     let io = null;
@@ -1448,36 +1469,37 @@ exports.clockOutAllStaff = async (req, res) => {
       staff.clock_status = 'clock_out';
       staff.markModified('clock');
 
-      const updatedStaff = await staff.save();
-      const updatedTodayClock = targetClockIndex !== -1 ? updatedStaff.clock[targetClockIndex] : null;
+      const updatedTodayClock = targetClockIndex !== -1 ? staff.clock[targetClockIndex] : null;
 
-      // Update attendance record
+      // Update attendance record directly
       const totalHoursStr = updatedTodayClock?.totalHours || '-';
       const [hours] = totalHoursStr.split('h').map(Number);
       const attendanceStatus = (isNaN(hours) || hours < 4) ? 'Half-Day' : 'Present';
 
-      const todayAttendanceIndex = staff.attendance?.findIndex(a =>
-        new Date(a.date) >= today && new Date(a.date) < tomorrow
-      );
+      if (!Array.isArray(staff.attendance)) {
+        staff.attendance = [];
+      }
+      const todayAttendanceIndex = staff.attendance.findIndex(a => isSameDayIST(a.date, now));
 
-      if (todayAttendanceIndex !== -1 && todayAttendanceIndex !== undefined) {
-        await Staff.findOneAndUpdate(
-          { _id: staff._id, "attendance.date": { $gte: today, $lt: tomorrow } },
-          { $set: { "attendance.$.status": attendanceStatus } }
-        );
+      if (todayAttendanceIndex !== -1) {
+        if (staff.attendance[todayAttendanceIndex].status !== 'On Leave') {
+          staff.attendance[todayAttendanceIndex].status = attendanceStatus;
+          staff.markModified('attendance');
+        }
       } else {
-        await Staff.findByIdAndUpdate(staff._id, {
-          $push: { attendance: { date: now, status: attendanceStatus } }
-        });
+        staff.attendance.push({ date: now, status: attendanceStatus });
+        staff.markModified('attendance');
       }
 
+      const updatedStaff = await staff.save();
       const staffObj = updatedStaff.toObject();
+
       if (io) {
         try {
           io.emit(`staff-clock-update-${staffObj._id}`, {
             ...staffObj,
             id: staffObj._id,
-            todayClock: updatedTodayClock
+            todayClock: targetClockIndex !== -1 ? updatedStaff.clock[targetClockIndex] : null
           });
         } catch (err) {
           console.error('Error emitting socket event:', err);

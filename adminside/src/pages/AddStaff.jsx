@@ -359,7 +359,7 @@ const AddStaff = ({ onBack }) => {
             <div className="space-y-2">
               <div className="flex items-center justify-between px-1">
                 <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block">Monthly Salary (₹)</label>
-                {formData.monthlySalary > 0 && formData.salaryCalculationType === 'daily' && (
+                {Number(formData.monthlySalary) > 0 && formData.salaryCalculationType === 'daily' && (
                   <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md">
                     1-Day Rate: ₹{Math.round(Number(formData.monthlySalary) / 30)}/day
                   </span>

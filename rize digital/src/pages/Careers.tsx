@@ -137,9 +137,9 @@ export default function Careers() {
             </div>
 
             <div className="space-y-2">
-              <h3 className="text-2xl sm:text-3xl font-extrabold text-gray-950">
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-950">
                 Currently No Active Openings
-              </h3>
+              </h2>
               <p className="text-gray-500 text-sm sm:text-base leading-relaxed max-w-lg mx-auto">
                 We don't have any specific job vacancies open right now. However, we are constantly expanding and always love to hear from talented, ambitious creators, designers, and developers!
               </p>
@@ -177,9 +177,9 @@ export default function Careers() {
                     <Briefcase size={22} />
                   </div>
 
-                  <h3 className="text-2xl font-bold uppercase text-gray-950 leading-tight mb-4">
+                  <h2 className="text-2xl font-bold uppercase text-gray-950 leading-tight mb-4">
                     {job.title}
-                  </h3>
+                  </h2>
                   <p className="text-gray-500 text-sm leading-relaxed mb-6">
                     {job.subtitle}
                   </p>

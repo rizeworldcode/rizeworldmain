@@ -16,7 +16,7 @@ const item = {
   show: { opacity: 1, y: 0 }
 };
 
-const StaffList = ({ onViewAll, staffMembers: externalStaff, loading: externalLoading }) => {
+const StaffList = ({ onViewAll, staffMembers: externalStaff, loading: externalLoading, onUpdateStaff }) => {
   const [internalStaff, setInternalStaff] = useState(() => {
     try {
       const cached = localStorage.getItem('rw_cached_overview_staff');
@@ -34,25 +34,33 @@ const StaffList = ({ onViewAll, staffMembers: externalStaff, loading: externalLo
   const [activeMenu, setActiveMenu] = useState(null);
   const menuRef = useRef(null);
 
+  const updateStaffInState = (updatedMember) => {
+    if (typeof onUpdateStaff === 'function') {
+      onUpdateStaff(updatedMember);
+    }
+    setInternalStaff(prev => prev.map(s => s._id === updatedMember._id ? updatedMember : s));
+  };
+
   // Helper function to get today's clock data
   const getTodayClockData = (staff) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const todayStr = new Date().toDateString();
 
-    const todayClockRecord = staff.clock?.find(c => 
-      new Date(c.date) >= today && new Date(c.date) < tomorrow
-    ) || (Array.isArray(staff.clock) && staff.clock.length > 0 ? staff.clock[0] : null);
+    const todayClockRecord = Array.isArray(staff.clock)
+      ? staff.clock.find(c => new Date(c.date).toDateString() === todayStr) || staff.clock[staff.clock.length - 1]
+      : null;
 
-    if (!todayClockRecord || !todayClockRecord.sessions?.length) {
+    const isToday = todayClockRecord && new Date(todayClockRecord.date).toDateString() === todayStr;
+
+    if (!isToday || !todayClockRecord || !todayClockRecord.sessions?.length) {
       return { clockIn: '-', clockOut: '-', totalHours: '-' };
     }
 
-    const lastSession = todayClockRecord.sessions[todayClockRecord.sessions.length - 1];
+    const sessions = todayClockRecord.sessions;
+    const firstSession = sessions[0];
+    const lastSession = sessions[sessions.length - 1];
     return {
-      clockIn: lastSession.clockIn || '-',
-      clockOut: lastSession.clockOut || '-',
+      clockIn: firstSession?.clockIn || '-',
+      clockOut: lastSession?.clockOut || (staff.clock_status === 'clock_in' ? 'Active' : '-'),
       totalHours: todayClockRecord.totalHours || '-'
     };
   };
@@ -149,7 +157,7 @@ const StaffList = ({ onViewAll, staffMembers: externalStaff, loading: externalLo
       });
       const result = await response.json();
       if (result.success) {
-        setStaffMembers(prev => prev.map(s => s._id === id ? result.data : s));
+        updateStaffInState(result.data);
         setActiveMenu(null);
         alert('Staff clocked out successfully');
       } else {
@@ -183,7 +191,7 @@ const StaffList = ({ onViewAll, staffMembers: externalStaff, loading: externalLo
       });
       const result = await response.json();
       if (result.success) {
-        setStaffMembers(prev => prev.map(s => s._id === id ? result.data : s));
+        updateStaffInState(result.data);
         setActiveMenu(null);
         alert('Staff clocked in successfully');
       } else {

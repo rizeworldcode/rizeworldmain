@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowUpRight, MoreVertical, X } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
@@ -7,6 +7,7 @@ export default function Header() {
   const [isServicesOpen, setIsServicesOpen] = useState(false);
   const [isCompanyOpen, setIsCompanyOpen] = useState(false);
   const [isResourcesOpen, setIsResourcesOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
   const location = useLocation();
   const isActive = (path: string) => location.pathname === path;
   const isServicesActive = () => location.pathname.startsWith('/services');
@@ -20,6 +21,16 @@ export default function Header() {
     location.pathname.startsWith('/case-studies') || 
     location.pathname.startsWith('/pricing') ||
     location.pathname.startsWith('/locations');
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrolled = window.scrollY > 20;
+      setIsScrolled(prev => (prev !== scrolled ? scrolled : prev));
+    };
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const handleLogoClick = () => {
     if (location.pathname === '/') {
@@ -35,7 +46,11 @@ export default function Header() {
     <header className="fixed top-6 left-0 w-full z-[100] pointer-events-auto flex flex-col items-center px-4 sm:px-8">
 
       {/* Floating Pill Navbar */}
-      <div className="w-full max-w-7xl bg-white/92 backdrop-blur-md rounded-full py-2.5 px-4 sm:px-6 flex items-center justify-between shadow-sm border border-gray-100 transition-all duration-300">
+      <div className={`w-full max-w-7xl backdrop-blur-md rounded-full py-2.5 px-4 sm:px-6 flex items-center justify-between border border-gray-100 transition-all duration-300 ${
+        isScrolled 
+          ? 'bg-white/98 shadow-[0_4px_24px_rgba(0,0,0,0.08)]' 
+          : 'bg-white/92 shadow-sm'
+      }`}>
 
         {/* Logo */}
         <Link to="/" onClick={handleLogoClick} className="flex items-center gap-2 cursor-pointer shrink-0">
@@ -180,11 +195,13 @@ export default function Header() {
 
           {/* Mobile Menu Button (3-dots) */}
           <button
+            type="button"
             onClick={() => setIsOpen(!isOpen)}
-            className="xl:hidden flex items-center justify-center w-10 h-10 rounded-full bg-gray-50 hover:bg-gray-100 text-gray-700 transition-colors shrink-0 border border-gray-100"
-            aria-label="Toggle Menu"
+            className="xl:hidden flex items-center justify-center w-10 h-10 rounded-full bg-gray-50 hover:bg-gray-100 text-gray-700 transition-colors shrink-0 border border-gray-100 cursor-pointer"
+            aria-label={isOpen ? "Close navigation menu" : "Open navigation menu"}
+            aria-expanded={isOpen}
           >
-            {isOpen ? <X size={20} /> : <MoreVertical size={20} />}
+            {isOpen ? <X size={20} aria-hidden="true" /> : <MoreVertical size={20} aria-hidden="true" />}
           </button>
         </div>
 

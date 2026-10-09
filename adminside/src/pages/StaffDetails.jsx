@@ -290,7 +290,7 @@ const EditStaffModal = ({ isOpen, onClose, staffMember, onUpdate }) => {
             <div className="md:col-span-2 space-y-1.5 p-3 rounded-2xl bg-black/5 dark:bg-white/5 border border-gray-100 dark:border-white/5">
               <div className="flex items-center justify-between mb-1">
                 <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block">Calculation Mode</label>
-                {formData.monthlySalary > 0 && formData.salaryCalculationType === 'daily' && (
+                {Number(formData.monthlySalary) > 0 && formData.salaryCalculationType === 'daily' && (
                   <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">
                     1-Day: ₹{Math.round(Number(formData.monthlySalary) / 30)}/day (30-day basis)
                   </span>
@@ -1645,6 +1645,15 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
   const openAccessModal = (member) => {
     setSelectedStaffForAccess(member);
     setIsAccessModalOpen(true);
+  };
+
+  const handleAccessSaved = (id, newPermissions) => {
+    setStaff(prev => prev.map(m =>
+      (m._id === id || m.id === id) ? { ...m, permissions: newPermissions } : m
+    ));
+    if (selectedStaffForAccess && (selectedStaffForAccess._id === id || selectedStaffForAccess.id === id)) {
+      setSelectedStaffForAccess(prev => ({ ...prev, permissions: newPermissions }));
+    }
   };
 
   const openAdvanceModal = async (member) => {

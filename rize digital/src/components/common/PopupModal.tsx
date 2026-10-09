@@ -64,11 +64,12 @@ export default function PopupModal() {
         
         {/* Close Button */}
         <button 
+          type="button"
           onClick={() => setIsOpen(false)}
-          aria-label="Close"
+          aria-label="Close consultation modal"
           className="absolute top-0 right-2 sm:-top-10 sm:right-0 w-10 h-10 text-gray-500 hover:text-gray-800 sm:text-white/80 sm:hover:text-white flex items-center justify-center transition-all z-50 cursor-pointer"
         >
-          <X size={24} style={{ width: 24, height: 24 }} />
+          <X size={24} style={{ width: 24, height: 24 }} aria-hidden="true" />
         </button>
 
         {/* Container for the Form */}

@@ -282,8 +282,12 @@ export default function Portfolio() {
 
                   <div className="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between">
                     <span className="text-[10px] font-bold tracking-widest text-rize-primary uppercase">View Details</span>
-                    <button className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 text-gray-800 group-hover:bg-rize-primary group-hover:text-white transition-colors duration-300">
-                      <ArrowUpRight size={14} />
+                    <button 
+                      type="button"
+                      aria-label={`View project details for ${project.title}`}
+                      className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 text-gray-800 group-hover:bg-rize-primary group-hover:text-white transition-colors duration-300 cursor-pointer"
+                    >
+                      <ArrowUpRight size={14} aria-hidden="true" />
                     </button>
                   </div>
                 </div>

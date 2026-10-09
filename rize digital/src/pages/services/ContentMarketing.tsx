@@ -268,7 +268,7 @@ export default function ContentMarketing() {
                 Content Marketing <br />
                 Services <span className="relative inline-block px-4 py-1 mx-1 mt-1">
                   Agency
-                  <svg className="absolute inset-0 w-full h-full text-orange-500" viewBox="0 0 100 100" preserveAspectRatio="none">
+                  <svg aria-hidden="true" focusable="false" className="absolute inset-0 w-full h-full text-orange-500" viewBox="0 0 100 100" preserveAspectRatio="none">
                     <path d="M 5, 50 C 5, 20 95, 20 95, 50 C 95, 80 5, 80 5, 50 Z" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="300" strokeDashoffset="0" className="animate-[dash_2s_ease-in-out_infinite]" />
                   </svg>
                 </span>
@@ -313,9 +313,9 @@ export default function ContentMarketing() {
               transition={{ duration: 0.8, ease: "easeOut" }}
               className="bg-sky-50 border border-sky-100 rounded-4xl p-8 flex flex-col justify-center h-full min-h-[160px] shadow-xs hover:-translate-y-1 transition-transform duration-300"
             >
-              <h4 className="text-sm font-black text-sky-950 uppercase tracking-wider mb-2 flex items-center gap-2">
+              <p className="text-sm font-black text-sky-950 uppercase tracking-wider mb-2 flex items-center gap-2">
                 <span className="w-1.5 h-1.5 bg-sky-500 rounded-full" /> EXPERTISE
-              </h4>
+              </p>
               <p className="text-sky-950 text-sm font-bold mb-1">
                 Content Strategy & SEO Writing
               </p>
@@ -331,9 +331,9 @@ export default function ContentMarketing() {
               transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
               className="bg-yellow-50/70 border border-yellow-100 rounded-4xl p-8 flex flex-col justify-center h-full min-h-[160px] shadow-xs hover:-translate-y-1 transition-transform duration-300"
             >
-              <h4 className="text-sm font-black text-yellow-950 uppercase tracking-wider mb-2 flex items-center gap-2">
+              <p className="text-sm font-black text-yellow-950 uppercase tracking-wider mb-2 flex items-center gap-2">
                 <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full" /> CONTENT
-              </h4>
+              </p>
               <p className="text-yellow-950 text-sm font-bold mb-1">
                 Original, Purpose-Driven Content
               </p>
@@ -466,7 +466,7 @@ export default function ContentMarketing() {
                   </p>
 
                   <div className="border-t border-gray-200 pt-8 mt-4">
-                    <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Key Focus Points</h5>
+                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Key Focus Points</h4>
                     <div className="flex flex-wrap gap-4">
                       {STEPS[activeStep].details.map((detail, i) => (
                         <div key={i} className="flex items-center gap-2.5 bg-white border border-gray-200/80 py-3 px-6 rounded-full shadow-2xs">
@@ -568,7 +568,7 @@ export default function ContentMarketing() {
                       className="w-12 h-12 rounded-full object-cover border-2 border-orange-500/20"
                     />
                     <div>
-                      <h4 className="text-sm font-black text-gray-950 uppercase">{TESTIMONIALS[activeTestimonial].author}</h4>
+                      <p className="text-sm font-black text-gray-950 uppercase">{TESTIMONIALS[activeTestimonial].author}</p>
                       <p className="text-[10px] font-bold text-orange-500 uppercase tracking-wider">{TESTIMONIALS[activeTestimonial].role}</p>
                     </div>
                   </div>

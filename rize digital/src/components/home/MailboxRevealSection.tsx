@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
@@ -33,7 +33,7 @@ export default function MailboxRevealSection() {
   const sectionRef = useRef<HTMLElement>(null);    // the sticky panel
   const trainRef = useRef<HTMLDivElement>(null);   // the card train
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     const wrapper = wrapperRef.current;
     const section = sectionRef.current;
     const train = trainRef.current;
