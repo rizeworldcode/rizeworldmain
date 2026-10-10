@@ -37,6 +37,23 @@ import { getStaffAdvanceSummary, isDailyRatedStaff } from '../utils/salaryCalcul
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
+const PREDEFINED_ROLES = [
+  'HR', 
+  'Client Support', 
+  'Admin', 
+  'Data Analyst', 
+  'Sales Team', 
+  'Counselor',
+  'Chef', 
+  'Driver', 
+  'Maid', 
+  'Security / Guard', 
+  'Housekeeping', 
+  'Pantry'
+];
+
+const DAILY_AUTO_ROLES = ['chef', 'driver', 'maid', 'security', 'guard', 'housekeeping', 'pantry', 'peon', 'cook', 'safe', 'deriver', 'made'];
+
 // Helper functions for time calculation
 const calculateTotalMinutesFromDuration = (durationStr) => {
   if (durationStr === '-') return 0;
@@ -845,8 +862,11 @@ const StaffPerformance = ({ staffId, onBack }) => {
     phone: '',
     email: '',
     monthlySalary: '',
-    department: '',
-    jobType: '',
+    department: 'Development',
+    jobType: 'Permanent',
+    role: 'HR',
+    salaryCalculationType: 'hourly',
+    exemptClockInOut: false,
     joiningDate: '',
     salaryEffectiveDate: new Date().toISOString().split('T')[0],
     accountHolder: '',
@@ -907,14 +927,18 @@ const StaffPerformance = ({ staffId, onBack }) => {
         if (staffRes?.success && staffRes.data) {
           const foundStaff = staffRes.data;
           setStaff(foundStaff);
-          // Initialize edit form with staff data, fix legacy department value
+          const isDaily = isDailyRatedStaff(foundStaff);
+          // Initialize edit form with staff data
           setEditForm({
             name: foundStaff?.name || '',
             phone: foundStaff?.phone || '',
             email: foundStaff?.email || '',
             monthlySalary: foundStaff?.monthlySalary || '',
-            department: foundStaff?.department === 'WEB DEvlopment' ? 'WEB Development' : foundStaff?.department || '',
-            jobType: foundStaff?.jobType || '',
+            department: foundStaff?.department || 'Development',
+            jobType: foundStaff?.jobType || 'Permanent',
+            role: foundStaff?.role || 'HR',
+            salaryCalculationType: foundStaff?.salaryCalculationType || (isDaily ? 'daily' : 'hourly'),
+            exemptClockInOut: foundStaff?.exemptClockInOut ?? isDaily,
             joiningDate: foundStaff?.joiningDate ? new Date(foundStaff.joiningDate).toISOString().split('T')[0] : '',
             salaryEffectiveDate: new Date().toISOString().split('T')[0],
             accountHolder: foundStaff?.accountHolder || '',
@@ -960,14 +984,18 @@ const StaffPerformance = ({ staffId, onBack }) => {
       const result = await response.json();
       if (result.success) {
         setStaff(result.data);
+        const isDaily = isDailyRatedStaff(result.data);
         // Update edit form with new data
         setEditForm({
           name: result.data.name || '',
           phone: result.data.phone || '',
           email: result.data.email || '',
           monthlySalary: result.data.monthlySalary || '',
-          department: result.data.department || '',
-          jobType: result.data.jobType || '',
+          department: result.data.department || 'Development',
+          jobType: result.data.jobType || 'Permanent',
+          role: result.data.role || 'HR',
+          salaryCalculationType: result.data.salaryCalculationType || (isDaily ? 'daily' : 'hourly'),
+          exemptClockInOut: result.data.exemptClockInOut ?? isDaily,
           joiningDate: result.data.joiningDate ? new Date(result.data.joiningDate).toISOString().split('T')[0] : '',
           salaryEffectiveDate: new Date().toISOString().split('T')[0],
           accountHolder: result.data.accountHolder || '',
@@ -1345,13 +1373,17 @@ const StaffPerformance = ({ staffId, onBack }) => {
   // Update edit form when modal opens or staff changes
   useEffect(() => {
     if (isEditModalOpen && staff) {
+      const isDaily = isDailyRatedStaff(staff);
       setEditForm({
         name: staff.name || '',
         phone: staff.phone || '',
         email: staff.email || '',
         monthlySalary: staff.monthlySalary || '',
-        department: staff.department === 'WEB DEvlopment' ? 'WEB Development' : staff.department || '',
-        jobType: staff.jobType || '',
+        department: staff.department || 'Development',
+        jobType: staff.jobType || 'Permanent',
+        role: staff.role || 'HR',
+        salaryCalculationType: staff.salaryCalculationType || (isDaily ? 'daily' : 'hourly'),
+        exemptClockInOut: staff.exemptClockInOut ?? isDaily,
         joiningDate: staff.joiningDate ? new Date(staff.joiningDate).toISOString().split('T')[0] : '',
         salaryEffectiveDate: new Date().toISOString().split('T')[0],
         accountHolder: staff.accountHolder || '',
@@ -1460,7 +1492,7 @@ const StaffPerformance = ({ staffId, onBack }) => {
         <div className="flex-1 space-y-4 text-center md:text-left">
           <div>
             <h2 className="text-3xl sm:text-4xl font-black text-gray-900 dark:text-white">{staff.name}</h2>
-            <p className="text-blue-500 font-black uppercase tracking-[0.2em] text-sm mt-1">{staff.department} • {staff.jobType}</p>
+            <p className="text-blue-500 font-black uppercase tracking-[0.2em] text-sm mt-1">{staff.role ? `${staff.role} • ` : ''}{staff.department} • {staff.jobType}</p>
           </div>
           <div className="flex flex-wrap gap-6 justify-center md:justify-start">
             <span className="flex items-center gap-2 text-gray-500 font-bold text-sm"><Mail size={16} /> {staff.email}</span>
@@ -1839,9 +1871,16 @@ const StaffPerformance = ({ staffId, onBack }) => {
                   <Briefcase size={20} />
                   Job Information
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-gray-500 dark:text-gray-400">Monthly Salary (₹)</label>
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-bold text-gray-500 dark:text-gray-400">Monthly Salary (₹)</label>
+                      {Number(editForm.monthlySalary) > 0 && editForm.salaryCalculationType === 'daily' && (
+                        <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md">
+                          1-Day Rate: ₹{Math.round(Number(editForm.monthlySalary) / 30)}/day
+                        </span>
+                      )}
+                    </div>
                     <input
                       type="number"
                       value={editForm.monthlySalary}
@@ -1854,13 +1893,15 @@ const StaffPerformance = ({ staffId, onBack }) => {
                     <select
                       value={editForm.department}
                       onChange={(e) => handleInputChange('department', e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
                     >
-                      <option value="">Select Department</option>
-                      <option value="WEB Development">WEB Development</option>
-                      <option value="SEO">SEO</option>
-                      <option value="Graphic Design & Video Editing">Graphic Design & Video Editing</option>
-                      <option value="SMM">SMM</option>
+                      <option value="Development">Development</option>
+                      <option value="Designing & Editing">Designing & Editing</option>
+                      <option value="Marketing">Marketing</option>
+                      <option value="Accounts">Accounts</option>
+                      <option value="HR">HR</option>
+                      <option value="Sales Team">Sales Team</option>
+                      <option value="Other">Other</option>
                     </select>
                   </div>
                   <div className="space-y-2">
@@ -1868,16 +1909,84 @@ const StaffPerformance = ({ staffId, onBack }) => {
                     <select
                       value={editForm.jobType}
                       onChange={(e) => handleInputChange('jobType', e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
                     >
-                      <option value="">Select Job Type</option>
                       <option value="Permanent">Permanent</option>
                       <option value="Intern">Intern</option>
                       <option value="Part-time">Part-time</option>
                     </select>
                   </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-gray-500 dark:text-gray-400">Employee Role</label>
+                    {(() => {
+                      const isCustomRole = editForm.role && !PREDEFINED_ROLES.includes(editForm.role);
+                      return (
+                        <div className="space-y-2">
+                          <select
+                            className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
+                            value={isCustomRole ? 'Other' : editForm.role}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              const roleLower = (val || '').toLowerCase();
+                              const isAutoDaily = DAILY_AUTO_ROLES.some(r => roleLower.includes(r));
+                              if (val === 'Other') {
+                                setEditForm(prev => ({
+                                  ...prev,
+                                  role: '',
+                                  salaryCalculationType: isAutoDaily ? 'daily' : prev.salaryCalculationType,
+                                  exemptClockInOut: isAutoDaily ? true : prev.exemptClockInOut
+                                }));
+                              } else {
+                                setEditForm(prev => ({
+                                  ...prev,
+                                  role: val,
+                                  salaryCalculationType: isAutoDaily ? 'daily' : (prev.salaryCalculationType === 'daily' ? 'daily' : 'hourly'),
+                                  exemptClockInOut: isAutoDaily ? true : prev.exemptClockInOut
+                                }));
+                              }
+                            }}
+                          >
+                            <optgroup label="Office & Management Roles">
+                              <option value="Counselor">Counselor</option>
+                              <option value="HR">HR</option>
+                              <option value="Client Support">Client Support</option>
+                              <option value="Admin">Admin</option>
+                              <option value="Data Analyst">Data Analyst</option>
+                              <option value="Sales Team">Sales Team</option>
+                            </optgroup>
+                            <optgroup label="Daily-Rated / Non-Clocking Roles (Chef, Driver, Maid, etc.)">
+                              <option value="Chef">Chef (Safe/Cook)</option>
+                              <option value="Driver">Driver</option>
+                              <option value="Maid">Maid / Cleaning Staff</option>
+                              <option value="Security / Guard">Security / Guard</option>
+                              <option value="Housekeeping">Housekeeping</option>
+                              <option value="Pantry">Pantry / Office Boy</option>
+                            </optgroup>
+                            <option value="Other">Other (Custom Role)</option>
+                          </select>
+                          {(isCustomRole || editForm.role === '' || !PREDEFINED_ROLES.includes(editForm.role)) && (
+                            <input
+                              type="text"
+                              className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                              placeholder="Type custom role (e.g. Cook, Guard, Gardener)..."
+                              value={editForm.role}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                const roleLower = val.toLowerCase();
+                                const isAutoDaily = DAILY_AUTO_ROLES.some(r => roleLower.includes(r));
+                                setEditForm(prev => ({
+                                  ...prev,
+                                  role: val,
+                                  salaryCalculationType: isAutoDaily ? 'daily' : prev.salaryCalculationType,
+                                  exemptClockInOut: isAutoDaily ? true : prev.exemptClockInOut
+                                }));
+                              }}
+                            />
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
                   <div className="space-y-2">
                     <label className="text-sm font-bold text-gray-500 dark:text-gray-400">Joining Date</label>
                     <input
@@ -1898,6 +2007,44 @@ const StaffPerformance = ({ staffId, onBack }) => {
                       onChange={(e) => handleInputChange('salaryEffectiveDate', e.target.value)}
                       className="w-full px-4 py-3 bg-blue-50/50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-500/30 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 font-medium"
                     />
+                  </div>
+                </div>
+
+                {/* Salary Calculation & Attendance Model */}
+                <div className="space-y-2 pt-2 pb-1">
+                  <label className="text-sm font-bold text-gray-500 dark:text-gray-400">Salary & Attendance Calculation Type</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div
+                      onClick={() => setEditForm(prev => ({ ...prev, salaryCalculationType: 'hourly', exemptClockInOut: false }))}
+                      className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${
+                        editForm.salaryCalculationType === 'hourly'
+                          ? 'bg-blue-500/10 border-blue-500/40 text-blue-600 dark:text-blue-400 shadow-sm'
+                          : 'bg-black/5 dark:bg-white/5 border-gray-200 dark:border-white/5 opacity-70 hover:opacity-100'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 font-bold text-xs mb-1">
+                        <Clock size={15} /> Standard Hourly Clock-In
+                      </div>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-snug">
+                        Requires daily clock in/out. Salary is calculated based on hours logged (255h target).
+                      </p>
+                    </div>
+
+                    <div
+                      onClick={() => setEditForm(prev => ({ ...prev, salaryCalculationType: 'daily', exemptClockInOut: true }))}
+                      className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${
+                        editForm.salaryCalculationType === 'daily'
+                          ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 shadow-sm'
+                          : 'bg-black/5 dark:bg-white/5 border-gray-200 dark:border-white/5 opacity-70 hover:opacity-100'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 font-bold text-xs mb-1">
+                        <Calendar size={15} /> 30-Day Day-Wise (Chef, Driver, Maid)
+                      </div>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-snug">
+                        No clock-in needed. Auto-present by default. Salary = (Monthly Salary / 30) × Present Days.
+                      </p>
+                    </div>
                   </div>
                 </div>
 
