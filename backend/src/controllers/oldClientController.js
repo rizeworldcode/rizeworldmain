@@ -1,11 +1,15 @@
 const OldClient = require('../models/OldClient');
 const { checkAndTransferCompletedClients } = require('./clientController');
+const cache = require('../utils/cache');
 
 // Create Old Client
 exports.createOldClient = async (req, res) => {
   try {
     const oldClient = new OldClient(req.body);
     await oldClient.save();
+    cache.flushByPrefix('transactions');
+    cache.flushByPrefix('dashboard:');
+    cache.flushByPrefix('clients:');
     res.status(201).json({
       success: true,
       message: 'Old client created successfully',
@@ -72,6 +76,9 @@ exports.updateOldClient = async (req, res) => {
         message: 'Old client not found'
       });
     }
+    cache.flushByPrefix('transactions');
+    cache.flushByPrefix('dashboard:');
+    cache.flushByPrefix('clients:');
     res.status(200).json({
       success: true,
       message: 'Old client updated successfully',
@@ -95,6 +102,9 @@ exports.deleteOldClient = async (req, res) => {
         message: 'Old client not found'
       });
     }
+    cache.flushByPrefix('transactions');
+    cache.flushByPrefix('dashboard:');
+    cache.flushByPrefix('clients:');
     res.status(200).json({
       success: true,
       message: 'Old client deleted successfully'

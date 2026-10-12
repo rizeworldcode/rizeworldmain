@@ -38,6 +38,15 @@ const oldClientSchema = new mongoose.Schema({
     required: true,
     default: 0
   },
+  totalPrice: {
+    type: Number
+  },
+  pendingAmount: {
+    type: Number
+  },
+  deadline: {
+    type: Date
+  },
   address: {
     type: String
   },
@@ -55,6 +64,7 @@ const oldClientSchema = new mongoose.Schema({
     month: { type: String },
     periodFrom: { type: Date },
     periodTo: { type: Date },
+    projectPeriod: { type: String }
   }]
 }, {
   timestamps: true

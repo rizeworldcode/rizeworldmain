@@ -1,4 +1,5 @@
 const clientModel = require('../models/Client');
+const OldClient = require('../models/OldClient');
 const cache = require('../utils/cache');
 
 exports.updateClientPaidAmount = async (req, res) => {
@@ -6,13 +7,20 @@ exports.updateClientPaidAmount = async (req, res) => {
   const payingAmount = Number(req.body.payingAmount);
 
   try {
-    const client = await clientModel.findById(clientID);
+    let client = await clientModel.findById(clientID);
+    let isOldClient = false;
+    if (!client) {
+      client = await OldClient.findById(clientID);
+      if (client) isOldClient = true;
+    }
     if (!client) {
       return res.status(404).json({ success: false, message: 'Client not found' });
     }
     const historyIndex = req.body.historyIndex !== undefined && req.body.historyIndex !== null && req.body.historyIndex !== '' ? Number(req.body.historyIndex) : -1;
 
-    let targetPending = Number(client.pendingAmount);
+    const clientTotal = Number(client.totalPrice !== undefined ? client.totalPrice : (client.totalAmount !== undefined ? client.totalAmount : 0));
+    let targetPending = client.pendingAmount !== undefined ? Number(client.pendingAmount) : Math.max(0, clientTotal - Number(client.paidAmount || 0));
+
     if (historyIndex >= 0 && client.history && client.history[historyIndex]) {
       const histItem = client.history[historyIndex];
       const hTotal = Number(histItem.totalPrice !== undefined ? histItem.totalPrice : (histItem.totalAmount !== undefined ? histItem.totalAmount : 0));
@@ -58,10 +66,12 @@ exports.updateClientPaidAmount = async (req, res) => {
       histItem.payments.push(paymentEntry);
       client.markModified('history');
     } else {
+      const currentTotal = Number(client.totalPrice !== undefined ? client.totalPrice : (client.totalAmount !== undefined ? client.totalAmount : 0));
       const newPaidAmount = Number(client.paidAmount || 0) + payingAmount;
-      const newPendingAmount = Number(client.totalPrice) - newPaidAmount;
+      const newPendingAmount = Math.max(0, currentTotal - newPaidAmount);
       client.paidAmount = newPaidAmount;
       client.pendingAmount = newPendingAmount;
+      if (!client.payments) client.payments = [];
       client.payments.push(paymentEntry);
     }
 
@@ -70,6 +80,7 @@ exports.updateClientPaidAmount = async (req, res) => {
     cache.flushByPrefix('transactions');
     cache.flushByPrefix('dashboard:');
     cache.flushByPrefix('clients:');
+    cache.flushByPrefix('old-clients');
 
     return res.status(200).json({
       success: true,

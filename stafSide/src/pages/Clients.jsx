@@ -94,9 +94,12 @@ const getProjectOptions = (client) => {
   if (!client) return [];
   const options = [];
 
-  const currentPending = client.pendingAmount !== undefined ? client.pendingAmount : Math.max(0, (client.totalPrice || 0) - (client.paidAmount || 0));
+  const currentTotal = Number(client.totalPrice !== undefined ? client.totalPrice : (client.totalAmount !== undefined ? client.totalAmount : 0));
+  const currentPaid = Number(client.paidAmount || 0);
+  const currentPending = client.pendingAmount !== undefined ? Number(client.pendingAmount) : Math.max(0, currentTotal - currentPaid);
   const currentStart = client.startDate ? formatDateFormatted(client.startDate) : 'N/A';
-  const currentEnd = client.deadline ? formatDateFormatted(client.deadline) : 'N/A';
+  const currentEndRaw = client.deadline || client.deliveredDate;
+  const currentEnd = currentEndRaw ? formatDateFormatted(currentEndRaw) : 'N/A';
   options.push({
     key: 'current',
     type: 'current',
@@ -104,14 +107,17 @@ const getProjectOptions = (client) => {
     label: `Current Project (${currentStart} to ${currentEnd}) — Pending: ₹${currentPending.toLocaleString('en-IN')}`,
     pendingAmount: currentPending,
     startDate: client.startDate,
-    deadline: client.deadline
+    deadline: currentEndRaw
   });
 
   if (client.history && client.history.length > 0) {
     client.history.forEach((h, idx) => {
-      const hPending = h.pendingAmount !== undefined ? h.pendingAmount : Math.max(0, (h.totalPrice || 0) - (h.paidAmount || 0));
+      const hTotal = Number(h.totalPrice !== undefined ? h.totalPrice : (h.totalAmount !== undefined ? h.totalAmount : 0));
+      const hPaid = Number(h.paidAmount || 0);
+      const hPending = h.pendingAmount !== undefined ? Number(h.pendingAmount) : Math.max(0, hTotal - hPaid);
       const hStart = h.startDate ? formatDateFormatted(h.startDate) : 'N/A';
-      const hEnd = h.deadline ? formatDateFormatted(h.deadline) : 'N/A';
+      const hEndRaw = h.deadline || h.deliveredDate;
+      const hEnd = hEndRaw ? formatDateFormatted(hEndRaw) : 'N/A';
       options.push({
         key: `history-${idx}`,
         type: 'history',
@@ -119,7 +125,7 @@ const getProjectOptions = (client) => {
         label: `Past Project Cycle #${idx + 1} (${hStart} to ${hEnd}) — Pending: ₹${hPending.toLocaleString('en-IN')}`,
         pendingAmount: hPending,
         startDate: h.startDate,
-        deadline: h.deadline
+        deadline: hEndRaw
       });
     });
   }
@@ -193,7 +199,8 @@ const AddPaymentModal = ({ client, isOpen, onClose, onAdd, maxAmount }) => {
 
   useEffect(() => {
     if (isOpen && projectOptions.length > 0) {
-      setSelectedProjectKey(projectOptions[0].key);
+      const firstWithPending = projectOptions.find(p => p.pendingAmount > 0);
+      setSelectedProjectKey(firstWithPending ? firstWithPending.key : projectOptions[0].key);
     }
   }, [isOpen, client?._id, client?.id]);
 
@@ -1828,10 +1835,27 @@ const handleAddPayment = async (data) => {
     if (!activeOldClient) return;
 
     const amount = parseFloat(data.amount);
-    const maxAmount = (activeOldClient.totalAmount || 0) - (activeOldClient.paidAmount || 0);
+    if (!amount || isNaN(amount) || amount <= 0) {
+      alert('Error: Please enter a valid payment amount.');
+      return;
+    }
 
-    if (amount > maxAmount) {
-      alert(`Error: Payment amount (₹${amount.toLocaleString('en-IN')}) cannot exceed the pending amount (₹${maxAmount.toLocaleString('en-IN')})`);
+    const hIndex = data.historyIndex !== undefined && data.historyIndex !== null && data.historyIndex !== '' ? Number(data.historyIndex) : -1;
+
+    let targetPending = 0;
+    if (hIndex >= 0 && activeOldClient.history && activeOldClient.history[hIndex]) {
+      const histItem = activeOldClient.history[hIndex];
+      const hTotal = Number(histItem.totalAmount !== undefined ? histItem.totalAmount : (histItem.totalPrice || 0));
+      const hPaid = Number(histItem.paidAmount || 0);
+      targetPending = histItem.pendingAmount !== undefined ? Number(histItem.pendingAmount) : Math.max(0, hTotal - hPaid);
+    } else {
+      const currentTotal = Number(activeOldClient.totalAmount !== undefined ? activeOldClient.totalAmount : (activeOldClient.totalPrice || 0));
+      const currentPaid = Number(activeOldClient.paidAmount || 0);
+      targetPending = activeOldClient.pendingAmount !== undefined ? Number(activeOldClient.pendingAmount) : Math.max(0, currentTotal - currentPaid);
+    }
+
+    if (amount > targetPending) {
+      alert(`Error: Payment amount (₹${amount.toLocaleString('en-IN')}) cannot exceed the pending amount (₹${targetPending.toLocaleString('en-IN')})`);
       return;
     }
 
@@ -1844,19 +1868,46 @@ const handleAddPayment = async (data) => {
     }
 
     try {
-      const updatedPaidAmount = (activeOldClient.paidAmount || 0) + amount;
       const paymentItem = {
         date: data.date ? new Date(data.date) : new Date(),
         amount: amount,
         mode: data.mode === 'Cash' ? 'Cash' : (data.mode === 'Cheque' ? 'Cheque' : 'Online'),
         utr: data.utr || '',
-        month: data.month || ''
+        month: data.month || '',
+        periodFrom: data.periodFrom ? new Date(data.periodFrom) : undefined,
+        periodTo: data.periodTo ? new Date(data.periodTo) : undefined,
+        projectPeriod: data.projectPeriod || ''
       };
-      const submitData = {
-        ...activeOldClient,
-        paidAmount: updatedPaidAmount,
-        payments: [...(activeOldClient.payments || []), paymentItem]
-      };
+
+      let submitData;
+      if (hIndex >= 0 && activeOldClient.history && activeOldClient.history[hIndex]) {
+        const updatedHistory = [...activeOldClient.history];
+        const histItem = { ...updatedHistory[hIndex] };
+        const hTotal = Number(histItem.totalAmount !== undefined ? histItem.totalAmount : (histItem.totalPrice || 0));
+        const newHistPaid = Number(histItem.paidAmount || 0) + amount;
+        histItem.paidAmount = newHistPaid;
+        histItem.pendingAmount = Math.max(0, hTotal - newHistPaid);
+        if (!histItem.payments) histItem.payments = [];
+        histItem.payments = [...histItem.payments, paymentItem];
+        updatedHistory[hIndex] = histItem;
+
+        submitData = {
+          ...activeOldClient,
+          history: updatedHistory
+        };
+      } else {
+        const currentTotal = Number(activeOldClient.totalAmount !== undefined ? activeOldClient.totalAmount : (activeOldClient.totalPrice || 0));
+        const updatedPaidAmount = (activeOldClient.paidAmount || 0) + amount;
+        const newPending = Math.max(0, currentTotal - updatedPaidAmount);
+        submitData = {
+          ...activeOldClient,
+          paidAmount: updatedPaidAmount,
+          pendingAmount: newPending,
+          payments: [...(activeOldClient.payments || []), paymentItem]
+        };
+      }
+
+      setOldClients(prev => prev.map(c => c._id === activeOldClientId ? submitData : c));
 
       const response = await fetch(getApiUrl(`/old-clients/${activeOldClientId}`), {
         method: 'PUT',
@@ -1871,13 +1922,16 @@ const handleAddPayment = async (data) => {
       if (result.success) {
         alert('Payment added successfully!');
         fetchOldClients(); // Refresh from backend to sync latest data
+        fetchClients();
         setIsAddOldPaymentOpen(false);
       } else {
         alert(`Error: ${result.message}`);
+        fetchOldClients();
       }
     } catch (error) {
       console.error('Error adding old client payment:', error);
       alert('Failed to add payment. Please try again.');
+      fetchOldClients();
     }
   };
 
@@ -1904,7 +1958,15 @@ const handleAddPayment = async (data) => {
             isOpen={isAddPaymentOpen}
             onClose={() => setIsAddPaymentOpen(false)}
             onAdd={handleAddPayment}
-            maxAmount={clients.find(c => c.id === activeClientId || c._id === activeClientId)?.pendingAmount}
+            maxAmount={
+              (() => {
+                const client = clients.find(c => c.id === activeClientId || c._id === activeClientId);
+                if (!client) return 0;
+                if (client.pendingAmount !== undefined) return Number(client.pendingAmount);
+                const total = Number(client.totalPrice !== undefined ? client.totalPrice : (client.totalAmount || 0));
+                return Math.max(0, total - Number(client.paidAmount || 0));
+              })()
+            }
           />
         )}
         {isAddProjectOpen && (
@@ -1941,7 +2003,10 @@ const handleAddPayment = async (data) => {
             maxAmount={
               (() => {
                 const client = oldClients.find(c => c._id === activeOldClientId);
-                return client ? (client.totalAmount || 0) - (client.paidAmount || 0) : 0;
+                if (!client) return 0;
+                if (client.pendingAmount !== undefined) return Number(client.pendingAmount);
+                const total = Number(client.totalAmount !== undefined ? client.totalAmount : (client.totalPrice || 0));
+                return Math.max(0, total - Number(client.paidAmount || 0));
               })()
             }
           />
@@ -2139,7 +2204,9 @@ const handleAddPayment = async (data) => {
                   </tr>
                 ) : (
                   [...oldClients].sort((a, b) => (a.name || "").localeCompare(b.name || "")).map((oldClient) => {
-                    const pendingAmount = (oldClient.totalAmount || 0) - (oldClient.paidAmount || 0);
+                    const oldTotal = Number(oldClient.totalAmount !== undefined ? oldClient.totalAmount : (oldClient.totalPrice || 0));
+                    const oldPaid = Number(oldClient.paidAmount || 0);
+                    const pendingAmount = oldClient.pendingAmount !== undefined ? Number(oldClient.pendingAmount) : Math.max(0, oldTotal - oldPaid);
                     return (
                       <motion.tr
                         key={oldClient._id}
@@ -2170,10 +2237,10 @@ const handleAddPayment = async (data) => {
                           </p>
                         </td>
                         <td className="py-6 px-6 text-right">
-                          <p className="text-sm font-bold text-black">₹{oldClient.totalAmount?.toLocaleString('en-IN') || '0'}</p>
+                          <p className="text-sm font-bold text-black">₹{oldTotal.toLocaleString('en-IN')}</p>
                         </td>
                         <td className="py-6 px-6 text-right">
-                          <p className="text-sm font-bold text-emerald-600">₹{oldClient.paidAmount?.toLocaleString('en-IN') || '0'}</p>
+                          <p className="text-sm font-bold text-emerald-600">₹{oldPaid.toLocaleString('en-IN')}</p>
                         </td>
                         <td className="py-6 px-6 text-right">
                           <p className={`text-sm font-bold ${pendingAmount > 0 ? 'text-red-600 ' : 'text-emerald-600 '}`}>
