@@ -10,13 +10,23 @@ const StaffLogin = ({ onLogin }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const getLoginApiUrl = () => {
+    if (typeof window !== 'undefined') {
+      const h = window.location.hostname;
+      if (h === 'localhost' || h === '127.0.0.1' || h.startsWith('192.168.') || h.startsWith('10.') || h.endsWith('.local')) {
+        return `http://${h}:45000/api/staff/login`;
+      }
+    }
+    return 'https://rizeworldmain.onrender.com/api/staff/login';
+  };
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
     try {
-      const response = await fetch('https://rizeworldmain.onrender.com/api/staff/login', {
+      const response = await fetch(getLoginApiUrl(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ employeeId, password })

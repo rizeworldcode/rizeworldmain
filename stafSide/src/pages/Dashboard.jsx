@@ -578,8 +578,10 @@ const Dashboard = ({ onNavigateToProgress }) => {
   const [admissionsLoading, setAdmissionsLoading] = useState(false);
 
   const getApiUrl = (endpoint) => {
-    const base = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-      ? 'http://localhost:45000/api'
+    const h = window.location.hostname;
+    const isLocal = h === 'localhost' || h === '127.0.0.1' || h.startsWith('192.168.') || h.startsWith('10.') || h.endsWith('.local');
+    const base = isLocal
+      ? `http://${h}:45000/api`
       : 'https://rizeworldmain.onrender.com/api';
     return `${base}${endpoint}`;
   };
@@ -593,8 +595,10 @@ const Dashboard = ({ onNavigateToProgress }) => {
   const getProfilePicUrl = (pic) => {
     if (!pic) return null;
     if (pic.startsWith('http://') || pic.startsWith('https://')) return pic;
-    const base = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-      ? 'http://localhost:45000'
+    const h = window.location.hostname;
+    const isLocal = h === 'localhost' || h === '127.0.0.1' || h.startsWith('192.168.') || h.startsWith('10.') || h.endsWith('.local');
+    const base = isLocal
+      ? `http://${h}:45000`
       : 'https://rizeworldmain.onrender.com';
     return `${base}${pic.startsWith('/') ? '' : '/'}${pic}`;
   };
@@ -1546,8 +1550,10 @@ const Dashboard = ({ onNavigateToProgress }) => {
     Promise.allSettled(initialPromises);
 
     // Initialize Socket.IO connection
-    const socketBase = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-      ? 'http://localhost:45000'
+    const h = window.location.hostname;
+    const isLocal = h === 'localhost' || h === '127.0.0.1' || h.startsWith('192.168.') || h.startsWith('10.') || h.endsWith('.local');
+    const socketBase = isLocal
+      ? `http://${h}:45000`
       : 'https://rizeworldmain.onrender.com';
     socketRef.current = io(socketBase);
     

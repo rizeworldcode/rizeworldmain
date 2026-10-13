@@ -18,7 +18,15 @@ const MainLayout = ({ onLogout }) => {
   const [searchParams] = useSearchParams();
   const { id: clientId } = useParams();
   const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'dashboard');
-  const staffInfo = JSON.parse(localStorage.getItem('staffInfo') || '{}');
+  const staffInfo = (() => {
+    try {
+      const raw = localStorage.getItem('staffInfo');
+      if (!raw || raw === 'undefined' || raw === 'null') return {};
+      return JSON.parse(raw);
+    } catch {
+      return {};
+    }
+  })();
 
   const isHR = staffInfo.role?.toLowerCase() === 'hr';
   const isCounselor = staffInfo.role?.toLowerCase() === 'counselor';

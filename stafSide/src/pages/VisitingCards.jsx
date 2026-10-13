@@ -35,8 +35,10 @@ export default function VisitingCards({ onBack }) {
   const [copiedField, setCopiedField] = useState(null);
 
   const getApiUrl = (endpoint) => {
-    const base = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-      ? 'http://localhost:45000/api'
+    const h = window.location.hostname;
+    const isLocal = h === 'localhost' || h === '127.0.0.1' || h.startsWith('192.168.') || h.startsWith('10.') || h.endsWith('.local');
+    const base = isLocal
+      ? `http://${h}:45000/api`
       : 'https://rizeworldmain.onrender.com/api';
     return `${base}${endpoint}`;
   };
@@ -70,8 +72,10 @@ export default function VisitingCards({ onBack }) {
     if (photoUrl.startsWith('http://') || photoUrl.startsWith('https://')) {
       return photoUrl;
     }
-    const baseUrl = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-      ? 'http://localhost:45000'
+    const h = window.location.hostname;
+    const isLocal = h === 'localhost' || h === '127.0.0.1' || h.startsWith('192.168.') || h.startsWith('10.') || h.endsWith('.local');
+    const baseUrl = isLocal
+      ? `http://${h}:45000`
       : 'https://rizeworldmain.onrender.com';
     const photoPath = photoUrl.startsWith('/') ? photoUrl.slice(1) : photoUrl;
     return `${baseUrl}/public-file?path=${photoPath}`;

@@ -11,8 +11,11 @@ import {
 } from 'lucide-react';
 
 const getApiBaseUrl = () => {
-  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-    return 'http://localhost:45000';
+  if (typeof window !== 'undefined') {
+    const h = window.location.hostname;
+    if (h === 'localhost' || h === '127.0.0.1' || h.startsWith('192.168.') || h.startsWith('10.') || h.endsWith('.local')) {
+      return `http://${h}:45000`;
+    }
   }
   return 'https://rizeworldmain.onrender.com';
 };
