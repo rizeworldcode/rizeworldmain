@@ -7,6 +7,10 @@ const updateBlogSitemap = async () => {
     const blogs = await Blog.find({ status: 'Published' }).sort({ createdAt: -1 });
 
     const staticBlogs = [
+      'is-ai-changing-seo-forever-in-2026-rizeworld',
+      'top-5-digital-marketing-companies-in-alwar-in-2026',
+      'how-much-does-seo-cost-for-a-small-business-in-2026',
+      'how-long-does-it-take-to-see-results-from-digital-marketing',
       'why-your-business-needs-a-professional-digital-marketing-company',
       'how-to-choose-the-best-web-design-company',
       'unlocking-organic-growth-local-seo-services',
@@ -14,7 +18,19 @@ const updateBlogSitemap = async () => {
       'social-media-marketing-services-brand-building'
     ];
 
-    let urls = `  <url>\n    <loc>https://rizeworld.in/blogs</loc>\n    <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.8</priority>\n  </url>\n`;
+    const categories = [
+      'digital-marketing',
+      'seo',
+      'social-media-marketing',
+      'paid-ads',
+      'web-development',
+      'content-marketing',
+      'ecommerce',
+      'ui-ux'
+    ];
+
+    const today = new Date().toISOString().split('T')[0];
+    let urls = `  <url>\n    <loc>https://rizeworld.in/blogs</loc>\n    <lastmod>${today}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.8</priority>\n  </url>\n`;
 
     const addedSlugs = new Set();
 
@@ -22,7 +38,7 @@ const updateBlogSitemap = async () => {
     for (const b of blogs) {
       if (!b.slug || addedSlugs.has(b.slug)) continue;
       addedSlugs.add(b.slug);
-      const modDate = b.updatedAt ? new Date(b.updatedAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+      const modDate = b.updatedAt ? new Date(b.updatedAt).toISOString().split('T')[0] : today;
       urls += `  <url>\n    <loc>https://rizeworld.in/blogs/${b.slug}</loc>\n    <lastmod>${modDate}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.7</priority>\n  </url>\n`;
     }
 
@@ -30,7 +46,12 @@ const updateBlogSitemap = async () => {
     for (const slug of staticBlogs) {
       if (addedSlugs.has(slug)) continue;
       addedSlugs.add(slug);
-      urls += `  <url>\n    <loc>https://rizeworld.in/blogs/${slug}</loc>\n    <lastmod>2026-06-20</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.7</priority>\n  </url>\n`;
+      urls += `  <url>\n    <loc>https://rizeworld.in/blogs/${slug}</loc>\n    <lastmod>${today}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.7</priority>\n  </url>\n`;
+    }
+
+    // 3. Add blog categories
+    for (const cat of categories) {
+      urls += `  <url>\n    <loc>https://rizeworld.in/blogs/category/${cat}</loc>\n    <lastmod>${today}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.7</priority>\n  </url>\n`;
     }
 
     const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}</urlset>\n`;
@@ -38,7 +59,11 @@ const updateBlogSitemap = async () => {
     const targetPaths = [
       path.resolve(__dirname, '../../../rize digital/public/sitemap-blogs.xml'),
       path.resolve(__dirname, '../../../rize digital/dist/sitemap-blogs.xml'),
-      path.resolve(__dirname, '../../public/sitemap-blogs.xml')
+      path.resolve(__dirname, '../../public/sitemap-blogs.xml'),
+      path.resolve(__dirname, '../public/sitemap-blogs.xml'),
+      path.resolve(process.cwd(), 'public/sitemap-blogs.xml'),
+      path.resolve(process.cwd(), '../rize digital/public/sitemap-blogs.xml'),
+      path.resolve(process.cwd(), '../rize digital/dist/sitemap-blogs.xml')
     ];
 
     for (const targetPath of targetPaths) {
@@ -48,7 +73,7 @@ const updateBlogSitemap = async () => {
           fs.writeFileSync(targetPath, xmlContent, 'utf8');
         }
       } catch (e) {
-        console.error(`Could not write sitemap to ${targetPath}:`, e.message);
+        // Silently skip paths that do not exist in the current runtime environment
       }
     }
 

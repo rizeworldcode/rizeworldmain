@@ -45,8 +45,8 @@ export default function Home() {
   return (
     <>
       <SEO 
-        title="Digital Marketing Agency for Indian Startups"
-        description="RizeWorld provides SEO, social media marketing, Google Ads, content marketing, web development, and digital marketing solutions to help Indian startups and businesses grow online."
+        title="Digital Marketing for Business Growth in India | RizeWorld"
+        description="RizeWorld helps Indian businesses grow with SEO, social media marketing, Google Ads, content marketing, and web development solutions that drive online visibility and leads."
         canonicalUrl="https://rizeworld.in/"
         schema={[orgSchema, localBusinessSchema]}
       />

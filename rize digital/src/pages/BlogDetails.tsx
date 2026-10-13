@@ -430,6 +430,15 @@ export default function BlogDetails() {
 
 const blogsList = [
   {
+    id: 'is-ai-changing-seo-forever-in-2026-rizeworld',
+    slug: 'is-ai-changing-seo-forever-in-2026-rizeworld',
+    category: 'Digital Marketing',
+    image: 'https://res.cloudinary.com/rsck8m4v/image/upload/v1791871149/blogs/ykugljwrkeolvrxndifb.jpg',
+    date: 'OCT 13, 2026',
+    title: 'Is AI Changing SEO Forever in 2026? | RizeWorld',
+    description: 'Discover how AI is changing SEO in 2026, from AI-powered search to content quality and technical SEO. Learn what businesses can do to improve online visibility.'
+  },
+  {
     id: 1,
     slug: 'why-your-business-needs-a-professional-digital-marketing-company',
     category: 'Digital Marketing',
@@ -502,6 +511,31 @@ interface BlogDetailsData {
 }
 
 const blogsData: Record<string, BlogDetailsData> = {
+  'is-ai-changing-seo-forever-in-2026-rizeworld': {
+    title: 'Is AI Changing SEO Forever in 2026? | RizeWorld',
+    category: 'Digital Marketing',
+    date: 'Oct 13, 2026',
+    image: 'https://res.cloudinary.com/rsck8m4v/image/upload/v1791871149/blogs/ykugljwrkeolvrxndifb.jpg',
+    intro: 'Discover how AI is changing SEO in 2026, from AI-powered search to content quality and technical SEO. Learn what businesses can do to improve online visibility.',
+    sections: [
+      {
+        heading: '1. The Evolution of AI in Search',
+        content: 'Search algorithms have fundamentally shifted towards generative engines, AI answer cards, and conversational query resolution. Adapting your SEO strategy for AI-driven platforms is essential to maintain search traffic and brand authority.'
+      },
+      {
+        heading: '2. Quality Over Quantity in the AI Era',
+        content: 'With AI content everywhere, search engines heavily prioritize authentic experience, expertise, authoritativeness, and trustworthiness (E-E-A-T). Original insights and credible case studies stand out in 2026.'
+      },
+      {
+        heading: '3. Technical SEO and Semantic Optimization',
+        content: 'Structured data, schema markup, and semantic context help AI models accurately index and cite your website content as a trusted source in answer engines.'
+      },
+      {
+        heading: '4. Summary',
+        content: 'By adopting modern AI-assisted SEO practices while keeping user trust at the forefront, your business can thrive amidst changing search landscapes.'
+      }
+    ]
+  },
   'why-your-business-needs-a-professional-digital-marketing-company': {
     title: 'Why Your Business Needs a Professional Digital Marketing Company',
     category: 'Digital Marketing',

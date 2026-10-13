@@ -349,6 +349,15 @@ const SERVICES_MARQUEE = [
 
 const blogsList = [
   {
+    id: 'is-ai-changing-seo-forever-in-2026-rizeworld',
+    slug: 'is-ai-changing-seo-forever-in-2026-rizeworld',
+    category: 'digital-marketing',
+    image: 'https://res.cloudinary.com/rsck8m4v/image/upload/v1791871149/blogs/ykugljwrkeolvrxndifb.jpg',
+    date: 'OCT 13, 2026',
+    title: 'Is AI Changing SEO Forever in 2026? | RizeWorld',
+    description: 'Discover how AI is changing SEO in 2026, from AI-powered search to content quality and technical SEO. Learn what businesses can do to improve online visibility.'
+  },
+  {
     id: 1,
     slug: 'why-your-business-needs-a-professional-digital-marketing-company',
     category: 'digital-marketing',
