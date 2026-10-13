@@ -133,3 +133,307 @@
 .editor-canvas li {
   margin-bottom: 0.25rem !important;
 }
+
+/* =========================================================
+   MS WORD / BLOG WYSIWYG TABLES & INLINE MEDIA STYLES
+   ========================================================= */
+
+/* Responsive Table Container */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 1.5rem 0;
+  border-radius: 0.875rem;
+}
+
+/* Base Table */
+.editor-canvas table,
+.preview-canvas table,
+.blog-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  margin: 0;
+  border: 1px solid #e2e8f0;
+}
+
+.editor-canvas th,
+.editor-canvas td,
+.preview-canvas th,
+.preview-canvas td,
+.blog-table th,
+.blog-table td {
+  padding: 0.75rem 1rem;
+  border: 1px solid #e2e8f0;
+  min-width: 90px;
+  vertical-align: top;
+}
+
+.editor-canvas th,
+.preview-canvas th,
+.blog-table th {
+  font-weight: 700;
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+.editor-canvas td:focus,
+.editor-canvas th:focus {
+  outline: 2px solid #8b5cf6 !important;
+  outline-offset: -2px;
+  background-color: rgba(139, 92, 246, 0.05);
+}
+
+/* Style Presets */
+/* 1. Modern Clean */
+.blog-table-modern th {
+  background-color: #f1f5f9;
+  color: #1e293b;
+  font-weight: 700;
+  border-bottom: 2px solid #cbd5e1;
+}
+.blog-table-modern tr:hover td {
+  background-color: #f8fafc;
+}
+
+/* 2. Striped Zebra */
+.blog-table-striped th {
+  background-color: #0f172a;
+  color: #ffffff;
+}
+.blog-table-striped tbody tr:nth-child(even) {
+  background-color: #f8fafc;
+}
+.blog-table-striped tbody tr:hover {
+  background-color: #f1f5f9;
+}
+
+/* 3. Brand Indigo/Purple */
+.blog-table-brand {
+  border: 1px solid #ddd6fe;
+  box-shadow: 0 4px 15px rgba(124, 58, 237, 0.06);
+}
+.blog-table-brand th {
+  background: linear-gradient(135deg, #7c3aed, #6366f1);
+  color: #ffffff;
+  font-weight: 800;
+  letter-spacing: 0.025em;
+  border-color: #6d28d9;
+}
+.blog-table-brand tbody tr:nth-child(even) {
+  background-color: #faf5ff;
+}
+.blog-table-brand tbody tr:hover td {
+  background-color: #f3e8ff;
+}
+
+/* 4. Emerald Matrix */
+.blog-table-emerald {
+  border: 1px solid #a7f3d0;
+}
+.blog-table-emerald th {
+  background: linear-gradient(135deg, #059669, #10b981);
+  color: #ffffff;
+  font-weight: 800;
+  border-color: #047857;
+}
+.blog-table-emerald tbody tr:nth-child(even) {
+  background-color: #f0fdf4;
+}
+.blog-table-emerald tbody tr:hover td {
+  background-color: #ecfdf5;
+}
+
+/* 5. Minimal Borderless */
+.blog-table-minimal {
+  border: none !important;
+}
+.blog-table-minimal th,
+.blog-table-minimal td {
+  border-left: none !important;
+  border-right: none !important;
+  border-top: none !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+.blog-table-minimal th {
+  background-color: transparent !important;
+  color: #475569 !important;
+  font-weight: 700 !important;
+  border-bottom: 2px solid #94a3b8 !important;
+}
+
+/* Table Caption */
+.blog-table-caption {
+  font-size: 0.8125rem;
+  color: #64748b;
+  font-weight: 600;
+  text-align: left;
+  margin-bottom: 0.5rem;
+  font-style: italic;
+}
+
+/* In-Between Blog Content Images & Figures */
+.blog-figure {
+  margin: 1.75rem 0;
+  display: block;
+  max-width: 100%;
+}
+
+.blog-figure-center {
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center;
+  max-width: 100%;
+  clear: both;
+}
+
+.blog-figure-full {
+  width: 100% !important;
+  margin-left: 0;
+  margin-right: 0;
+  text-align: center;
+  clear: both;
+}
+
+.blog-figure-left {
+  float: left;
+  max-width: 100%;
+  margin-right: 1.75rem;
+  margin-bottom: 1.25rem;
+  margin-top: 0.5rem;
+  clear: left;
+}
+
+.blog-figure-right {
+  float: right;
+  max-width: 100%;
+  margin-left: 1.75rem;
+  margin-bottom: 1.25rem;
+  margin-top: 0.5rem;
+  clear: right;
+}
+
+@media (max-width: 640px) {
+  .blog-figure-left,
+  .blog-figure-right {
+    float: none !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+}
+
+.blog-inline-img {
+  max-width: 100%;
+  height: auto;
+  display: inline-block;
+  border-radius: 1rem;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e2e8f0;
+}
+
+/* Image Selection & Hover in Editor Canvas */
+.editor-canvas img {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.editor-canvas img:hover {
+  outline: 2px dashed #8b5cf6;
+  outline-offset: 3px;
+}
+
+.editor-canvas img.selected-blog-img {
+  outline: 2px solid #8b5cf6 !important;
+  outline-offset: 2px;
+}
+
+/* Image Resizer Overlay & Drag Drop Styles */
+.image-resize-overlay {
+  position: absolute;
+  z-index: 30;
+  box-shadow: 0 0 0 1px rgba(124, 58, 237, 0.4), 0 8px 24px rgba(124, 58, 237, 0.2);
+}
+
+.resize-handle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background-color: #ffffff;
+  border: 2px solid #7c3aed;
+  border-radius: 3px;
+  pointer-events: auto;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  transition: transform 0.1s ease, background-color 0.1s ease;
+  z-index: 35;
+}
+
+.resize-handle:hover {
+  transform: scale(1.35);
+  background-color: #ede9fe;
+}
+
+/* Drop indicator line when dragging an image to place it */
+.blog-drop-indicator {
+  position: relative;
+  height: 6px;
+  background: linear-gradient(90deg, #7c3aed, #6366f1, #3b82f6);
+  border-radius: 9999px;
+  margin: 1.25rem 0;
+  box-shadow: 0 0 16px rgba(124, 58, 237, 0.8), 0 0 6px rgba(99, 102, 241, 0.6);
+  pointer-events: none;
+  animation: pulseDropLine 1.2s infinite;
+}
+
+.blog-drop-indicator::after {
+  content: 'Place Image Here';
+  position: absolute;
+  right: 12px;
+  top: -10px;
+  background: #7c3aed;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+@keyframes pulseDropLine {
+  0%, 100% { opacity: 0.8; transform: scaleY(1); }
+  50% { opacity: 1; transform: scaleY(1.4); }
+}
+
+.editor-canvas figure.opacity-40,
+.editor-canvas img.opacity-40 {
+  opacity: 0.35;
+  outline: 2px dashed #7c3aed !important;
+}
+
+.blog-caption {
+  font-size: 0.8125rem;
+  color: #64748b;
+  margin-top: 0.625rem;
+  font-style: italic;
+  font-weight: 500;
+  text-align: center;
+  display: block;
+}
+
+/* Clearfix for blog editor and preview */
+.editor-canvas::after,
+.preview-canvas::after,
+.prose-blog::after {
+  content: "";
+  display: table;
+  clear: both;
+}
+

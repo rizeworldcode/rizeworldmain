@@ -6,7 +6,8 @@ import {
   List, ListOrdered, Image as ImageIcon, Link as LinkIcon, 
   Type, Sparkles, Plus, Search, Eye, Edit3, Trash2, 
   ArrowLeft, CheckCircle2, FileText, Upload, Palette, 
-  Quote, Redo, Undo, Save, Globe, Tag, Layers, X, Loader2
+  Quote, Redo, Undo, Save, Globe, Tag, Layers, X, Loader2,
+  Table as TableIcon, Grid, Check, Move, GripVertical, ArrowUp, ArrowDown
 } from 'lucide-react';
 
 const getApiBaseUrl = () => {
@@ -17,6 +18,14 @@ const getApiBaseUrl = () => {
 };
 
 const API_BASE_URL = getApiBaseUrl();
+
+const TABLE_PRESETS = [
+  { id: 'modern', name: 'Modern Clean', desc: 'Soft slate header, clean dividers' },
+  { id: 'striped', name: 'Zebra Striped', desc: 'Alternating rows for large data' },
+  { id: 'brand', name: 'Brand Purple', desc: 'Vibrant purple gradient header' },
+  { id: 'emerald', name: 'Emerald Growth', desc: 'Green accent, great for stats' },
+  { id: 'minimal', name: 'Minimal Borderless', desc: 'Underlined rows only' }
+];
 
 const FONT_FAMILIES = [
   { name: 'Default (Inter)', value: 'Inter, sans-serif' },
@@ -68,6 +77,33 @@ const BlogManagement = ({ onBack }) => {
   const [linkUrl, setLinkUrl] = useState('');
   const [linkText, setLinkText] = useState('');
   const savedRangeRef = useRef(null);
+
+  // Table Modal & Controls State
+  const [showTableModal, setShowTableModal] = useState(false);
+  const [tableRows, setTableRows] = useState(3);
+  const [tableCols, setTableCols] = useState(3);
+  const [tablePreset, setTablePreset] = useState('modern');
+  const [tableHasHeader, setTableHasHeader] = useState(true);
+  const [tableFirstColHeader, setTableFirstColHeader] = useState(false);
+  const [tableCaption, setTableCaption] = useState('');
+  const [hoverGrid, setHoverGrid] = useState({ r: 3, c: 3 });
+  const [activeTableContext, setActiveTableContext] = useState(null); // { tableEl, cellEl, rowEl }
+
+  // Inline Image Modal State
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [imageSourceType, setImageSourceType] = useState('upload'); // 'upload' | 'url'
+  const [inlineImageUrl, setInlineImageUrl] = useState('');
+  const [inlineImageCaption, setInlineImageCaption] = useState('');
+  const [inlineImageAlt, setInlineImageAlt] = useState('');
+  const [inlineImageAlign, setInlineImageAlign] = useState('center'); // 'center' | 'full' | 'left' | 'right'
+  const [inlineImageWidth, setInlineImageWidth] = useState('100%'); // '25%' | '50%' | '75%' | '100%'
+
+  // In-Editor Image Adjustment State
+  const [selectedImageContext, setSelectedImageContext] = useState(null); // { imgEl, figureEl, width, widthPercent }
+  const [imageOverlayRect, setImageOverlayRect] = useState(null);
+  const [isResizingImage, setIsResizingImage] = useState(false);
+  const editorWrapperRef = useRef(null);
+  const draggedElementRef = useRef(null);
 
   // Current Blog Form State
   const [editingId, setEditingId] = useState(null);
@@ -322,7 +358,741 @@ const BlogManagement = ({ onBack }) => {
     setShowLinkModal(false);
   };
 
-  // Inline Image Upload Handler
+  // Helper to save selection range
+  const saveCurrentSelection = () => {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0 && editorRef.current) {
+      const range = sel.getRangeAt(0);
+      if (editorRef.current.contains(range.commonAncestorContainer)) {
+        savedRangeRef.current = range.cloneRange();
+      }
+    }
+  };
+
+  // Helper to restore saved selection range
+  const restoreSavedSelection = () => {
+    if (editorRef.current) {
+      editorRef.current.focus();
+    }
+    const sel = window.getSelection();
+    if (savedRangeRef.current && sel) {
+      sel.removeAllRanges();
+      sel.addRange(savedRangeRef.current);
+      return sel.getRangeAt(0);
+    }
+    return null;
+  };
+
+  // Check if cursor is inside a table
+  const checkActiveTable = () => {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0 || !editorRef.current) {
+      setActiveTableContext(null);
+      return;
+    }
+    try {
+      const range = sel.getRangeAt(0);
+      let node = range.startContainer;
+      if (node.nodeType === 3) node = node.parentNode;
+      
+      const tableEl = node ? node.closest('table') : null;
+      const cellEl = node ? node.closest('td, th') : null;
+      const rowEl = node ? node.closest('tr') : null;
+
+      if (tableEl && editorRef.current.contains(tableEl)) {
+        setActiveTableContext({ tableEl, cellEl, rowEl });
+      } else {
+        setActiveTableContext(null);
+      }
+    } catch (e) {
+      setActiveTableContext(null);
+    }
+  };
+
+  // Insert Table into Editor
+  const handleInsertTable = (e) => {
+    if (e) e.preventDefault();
+    restoreSavedSelection();
+
+    let tableHtml = `<div class="table-responsive my-6"><table class="blog-table blog-table-${tablePreset}">`;
+    if (tableCaption && tableCaption.trim()) {
+      tableHtml += `<caption class="blog-table-caption">${tableCaption.trim()}</caption>`;
+    }
+
+    if (tableHasHeader) {
+      tableHtml += `<thead><tr>`;
+      for (let c = 1; c <= tableCols; c++) {
+        tableHtml += `<th>Header ${c}</th>`;
+      }
+      tableHtml += `</tr></thead>`;
+    }
+
+    tableHtml += `<tbody>`;
+    for (let r = 1; r <= tableRows; r++) {
+      tableHtml += `<tr>`;
+      for (let c = 1; c <= tableCols; c++) {
+        const isHeader = tableFirstColHeader && c === 1;
+        const tag = isHeader ? 'th' : 'td';
+        tableHtml += `<${tag}>Data ${r},${c}</${tag}>`;
+      }
+      tableHtml += `</tr>`;
+    }
+    tableHtml += `</tbody></table></div><p><br></p>`;
+
+    const sel = window.getSelection();
+    if (savedRangeRef.current && sel && editorRef.current && editorRef.current.contains(savedRangeRef.current.commonAncestorContainer)) {
+      sel.removeAllRanges();
+      sel.addRange(savedRangeRef.current);
+      const range = sel.getRangeAt(0);
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = tableHtml;
+      const frag = document.createDocumentFragment();
+      let node, lastNode;
+      while ((node = tempDiv.firstChild)) {
+        lastNode = frag.appendChild(node);
+      }
+      range.deleteContents();
+      range.insertNode(frag);
+      if (lastNode) {
+        range.setStartAfter(lastNode);
+        range.collapse(true);
+      }
+    } else if (editorRef.current) {
+      editorRef.current.insertAdjacentHTML('beforeend', tableHtml);
+    }
+
+    if (editorRef.current) {
+      setContentHtml(editorRef.current.innerHTML);
+    }
+    setShowTableModal(false);
+    setTableCaption('');
+    showToast('Table inserted successfully!');
+  };
+
+  // Table Row Addition
+  const handleAddRow = (direction = 'below') => {
+    if (!activeTableContext?.tableEl) return;
+    const { tableEl, cellEl } = activeTableContext;
+    const targetRow = cellEl ? cellEl.closest('tr') : tableEl.querySelector('tr:last-child');
+    if (!targetRow) return;
+
+    const colCount = targetRow.children.length;
+    const newTr = document.createElement('tr');
+    for (let i = 0; i < colCount; i++) {
+      const newTd = document.createElement('td');
+      newTd.innerHTML = 'Data';
+      newTr.appendChild(newTd);
+    }
+
+    if (direction === 'above') {
+      targetRow.parentNode.insertBefore(newTr, targetRow);
+    } else {
+      targetRow.parentNode.insertBefore(newTr, targetRow.nextSibling);
+    }
+
+    if (editorRef.current) {
+      setContentHtml(editorRef.current.innerHTML);
+    }
+    showToast(`Row added ${direction}!`);
+  };
+
+  // Table Column Addition
+  const handleAddCol = (direction = 'right') => {
+    if (!activeTableContext?.tableEl) return;
+    const { tableEl, cellEl } = activeTableContext;
+    const targetRow = cellEl ? cellEl.closest('tr') : tableEl.querySelector('tr');
+    if (!targetRow) return;
+
+    const colIndex = cellEl ? Array.from(targetRow.children).indexOf(cellEl) : targetRow.children.length - 1;
+    const allRows = tableEl.querySelectorAll('tr');
+
+    allRows.forEach(row => {
+      const isHeaderRow = row.parentNode.tagName === 'THEAD' || row.querySelector('th');
+      const newCell = document.createElement(isHeaderRow ? 'th' : 'td');
+      newCell.innerHTML = isHeaderRow ? 'Header' : 'Data';
+
+      const currentCell = row.children[colIndex];
+      if (currentCell) {
+        if (direction === 'left') {
+          row.insertBefore(newCell, currentCell);
+        } else {
+          row.insertBefore(newCell, currentCell.nextSibling);
+        }
+      } else {
+        row.appendChild(newCell);
+      }
+    });
+
+    if (editorRef.current) {
+      setContentHtml(editorRef.current.innerHTML);
+    }
+    showToast(`Column added ${direction}!`);
+  };
+
+  // Table Delete Row
+  const handleDeleteRow = () => {
+    if (!activeTableContext?.cellEl || !activeTableContext?.tableEl) return;
+    const row = activeTableContext.cellEl.closest('tr');
+    if (!row) return;
+
+    const tableEl = activeTableContext.tableEl;
+    row.parentNode.removeChild(row);
+
+    if (tableEl.querySelectorAll('tr').length === 0) {
+      handleDeleteTable();
+      return;
+    }
+
+    if (editorRef.current) {
+      setContentHtml(editorRef.current.innerHTML);
+    }
+    setActiveTableContext(null);
+    showToast('Row deleted');
+  };
+
+  // Table Delete Column
+  const handleDeleteCol = () => {
+    if (!activeTableContext?.cellEl || !activeTableContext?.tableEl) return;
+    const row = activeTableContext.cellEl.closest('tr');
+    if (!row) return;
+
+    const colIndex = Array.from(row.children).indexOf(activeTableContext.cellEl);
+    const tableEl = activeTableContext.tableEl;
+    const allRows = tableEl.querySelectorAll('tr');
+
+    allRows.forEach(r => {
+      if (r.children[colIndex]) {
+        r.removeChild(r.children[colIndex]);
+      }
+    });
+
+    const firstRow = tableEl.querySelector('tr');
+    if (!firstRow || firstRow.children.length === 0) {
+      handleDeleteTable();
+      return;
+    }
+
+    if (editorRef.current) {
+      setContentHtml(editorRef.current.innerHTML);
+    }
+    setActiveTableContext(null);
+    showToast('Column deleted');
+  };
+
+  // Table Delete Table
+  const handleDeleteTable = () => {
+    if (!activeTableContext?.tableEl) return;
+    const tableEl = activeTableContext.tableEl;
+    const wrapper = tableEl.closest('.table-responsive') || tableEl;
+    if (wrapper.parentNode) {
+      wrapper.parentNode.removeChild(wrapper);
+    }
+    if (editorRef.current) {
+      setContentHtml(editorRef.current.innerHTML);
+    }
+    setActiveTableContext(null);
+    showToast('Table deleted');
+  };
+
+  // Insert Inline Image into Blog Content
+  const handleInsertInlineImage = (e) => {
+    if (e) e.preventDefault();
+    if (!inlineImageUrl.trim()) {
+      showToast('Please upload an image or provide an image URL', 'error');
+      return;
+    }
+
+    restoreSavedSelection();
+
+    const cleanUrl = inlineImageUrl.trim();
+    const captionHtml = inlineImageCaption.trim() 
+      ? `<figcaption class="blog-caption">${inlineImageCaption.trim()}</figcaption>` 
+      : '';
+    const altAttr = inlineImageAlt.trim() || 'Blog Illustration';
+
+    const figureWidth = inlineImageWidth || '100%';
+    const figureStyle = `style="width: ${figureWidth}; max-width: 100%;"`;
+    const figureHtml = `<figure class="blog-figure blog-figure-${inlineImageAlign} my-6" ${figureStyle} draggable="true"><img src="${cleanUrl}" alt="${altAttr}" class="blog-inline-img" draggable="true" style="width: 100%; max-width: 100%; height: auto;" />${captionHtml}</figure><p><br></p>`;
+
+    const sel = window.getSelection();
+    if (savedRangeRef.current && sel && editorRef.current && editorRef.current.contains(savedRangeRef.current.commonAncestorContainer)) {
+      sel.removeAllRanges();
+      sel.addRange(savedRangeRef.current);
+      const range = sel.getRangeAt(0);
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = figureHtml;
+      const frag = document.createDocumentFragment();
+      let node, lastNode;
+      while ((node = tempDiv.firstChild)) {
+        lastNode = frag.appendChild(node);
+      }
+      range.deleteContents();
+      range.insertNode(frag);
+      if (lastNode) {
+        range.setStartAfter(lastNode);
+        range.collapse(true);
+      }
+    } else if (editorRef.current) {
+      editorRef.current.insertAdjacentHTML('beforeend', figureHtml);
+    }
+
+    if (editorRef.current) {
+      setContentHtml(editorRef.current.innerHTML);
+    }
+
+    setShowImageModal(false);
+    setInlineImageUrl('');
+    setInlineImageCaption('');
+    setInlineImageAlt('');
+    setInlineImageAlign('center');
+    setInlineImageWidth('100%');
+    showToast('Image inserted into blog content!');
+  };
+
+  // Re-calculate image overlay box position & dimensions relative to editor
+  const updateOverlayPosition = () => {
+    if (!selectedImageContext?.imgEl || !editorWrapperRef.current) {
+      setImageOverlayRect(null);
+      return;
+    }
+    if (!editorWrapperRef.current.contains(selectedImageContext.imgEl)) {
+      setSelectedImageContext(null);
+      setImageOverlayRect(null);
+      return;
+    }
+    const imgRect = selectedImageContext.imgEl.getBoundingClientRect();
+    const wrapperRect = editorWrapperRef.current.getBoundingClientRect();
+    setImageOverlayRect({
+      top: imgRect.top - wrapperRect.top,
+      left: imgRect.left - wrapperRect.left,
+      width: imgRect.width,
+      height: imgRect.height,
+      widthPercent: selectedImageContext.widthPercent
+    });
+  };
+
+  // Keep overlay tracked during scroll or window resize
+  useEffect(() => {
+    updateOverlayPosition();
+    const handleScrollOrResize = () => {
+      updateOverlayPosition();
+    };
+    window.addEventListener('scroll', handleScrollOrResize, true);
+    window.addEventListener('resize', handleScrollOrResize);
+    return () => {
+      window.removeEventListener('scroll', handleScrollOrResize, true);
+      window.removeEventListener('resize', handleScrollOrResize);
+    };
+  }, [selectedImageContext, selectedImageContext?.widthPercent]);
+
+  // Editor Click Handler: detects clicking on an image or inside a table
+  const handleEditorClick = (e) => {
+    saveCurrentSelection();
+    checkActiveTable();
+
+    // Check if clicked element is an image or inside a figure
+    const clickedImg = e.target && e.target.tagName === 'IMG' 
+      ? e.target 
+      : (e.target && e.target.closest('figure')?.querySelector('img'));
+
+    if (clickedImg) {
+      if (editorRef.current) {
+        editorRef.current.querySelectorAll('img.selected-blog-img').forEach(el => {
+          el.classList.remove('selected-blog-img');
+        });
+      }
+
+      clickedImg.classList.add('selected-blog-img');
+      const figure = clickedImg.closest('figure');
+      const targetEl = figure || clickedImg;
+      const currentWidthStr = targetEl.style.width || clickedImg.style.width || '100%';
+      let numericWidth = parseInt(currentWidthStr) || 100;
+      setSelectedImageContext({
+        imgEl: clickedImg,
+        figureEl: figure,
+        width: currentWidthStr,
+        widthPercent: numericWidth
+      });
+      setTimeout(() => {
+        updateOverlayPosition();
+      }, 20);
+    } else if (!e.target.closest('.image-control-bar') && !e.target.closest('.image-resize-overlay')) {
+      if (editorRef.current) {
+        editorRef.current.querySelectorAll('img.selected-blog-img').forEach(el => {
+          el.classList.remove('selected-blog-img');
+        });
+      }
+      setSelectedImageContext(null);
+      setImageOverlayRect(null);
+    }
+  };
+
+  // Interactive Mouse Drag-to-Resize on handles
+  const startResize = (e, handleType) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!selectedImageContext?.imgEl || !editorRef.current) return;
+
+    const isTouch = e.type.startsWith('touch');
+    const startClientX = isTouch ? e.touches[0].clientX : e.clientX;
+    const startClientY = isTouch ? e.touches[0].clientY : e.clientY;
+
+    const targetEl = selectedImageContext.figureEl || selectedImageContext.imgEl;
+    const startWidth = targetEl.offsetWidth;
+    const startHeight = targetEl.offsetHeight;
+    const aspectRatio = startWidth / (startHeight || 1);
+    const editorWidth = editorRef.current.clientWidth - 64; // accounting for padding
+
+    // Set cursor on body while resizing so it stays smooth even if mouse wanders
+    const cursors = {
+      nw: 'nwse-resize',
+      se: 'nwse-resize',
+      ne: 'nesw-resize',
+      sw: 'nesw-resize',
+      e: 'ew-resize',
+      w: 'ew-resize',
+      s: 'ns-resize',
+      n: 'ns-resize'
+    };
+    if (cursors[handleType]) {
+      document.body.style.cursor = cursors[handleType];
+      document.body.style.userSelect = 'none';
+    }
+
+    setIsResizingImage(true);
+
+    const onMove = (moveEvent) => {
+      const clientX = moveEvent.type.startsWith('touch') ? moveEvent.touches[0].clientX : moveEvent.clientX;
+      const clientY = moveEvent.type.startsWith('touch') ? moveEvent.touches[0].clientY : moveEvent.clientY;
+
+      const dx = clientX - startClientX;
+      const dy = clientY - startClientY;
+
+      let newWidth = startWidth;
+
+      if (handleType === 'se') {
+        const delta = Math.abs(dx) > Math.abs(dy * aspectRatio) ? dx : (dy * aspectRatio);
+        newWidth = startWidth + delta;
+      } else if (handleType === 'sw') {
+        const delta = Math.abs(dx) > Math.abs(dy * aspectRatio) ? -dx : (dy * aspectRatio);
+        newWidth = startWidth + delta;
+      } else if (handleType === 'ne') {
+        const delta = Math.abs(dx) > Math.abs(dy * aspectRatio) ? dx : (-dy * aspectRatio);
+        newWidth = startWidth + delta;
+      } else if (handleType === 'nw') {
+        const delta = Math.abs(dx) > Math.abs(dy * aspectRatio) ? -dx : (-dy * aspectRatio);
+        newWidth = startWidth + delta;
+      } else if (handleType === 'e') {
+        newWidth = startWidth + dx;
+      } else if (handleType === 'w') {
+        newWidth = startWidth - dx;
+      } else if (handleType === 's') {
+        newWidth = startWidth + (dy * aspectRatio);
+      } else if (handleType === 'n') {
+        newWidth = startWidth - (dy * aspectRatio);
+      }
+
+      newWidth = Math.max(100, Math.min(newWidth, editorWidth));
+      const percent = Math.min(100, Math.max(15, Math.round((newWidth / editorWidth) * 100)));
+
+      if (selectedImageContext.figureEl) {
+        selectedImageContext.figureEl.style.width = `${percent}%`;
+        selectedImageContext.figureEl.style.maxWidth = '100%';
+      }
+      selectedImageContext.imgEl.style.width = selectedImageContext.figureEl ? '100%' : `${percent}%`;
+      selectedImageContext.imgEl.style.maxWidth = '100%';
+      selectedImageContext.imgEl.style.height = 'auto';
+
+      setSelectedImageContext(prev => ({
+        ...prev,
+        width: `${percent}%`,
+        widthPercent: percent
+      }));
+
+      // Immediate overlay tracking
+      if (editorWrapperRef.current && selectedImageContext.imgEl) {
+        const imgRect = selectedImageContext.imgEl.getBoundingClientRect();
+        const wrapperRect = editorWrapperRef.current.getBoundingClientRect();
+        setImageOverlayRect({
+          top: imgRect.top - wrapperRect.top,
+          left: imgRect.left - wrapperRect.left,
+          width: imgRect.width,
+          height: imgRect.height,
+          widthPercent: percent
+        });
+      }
+    };
+
+    const onEnd = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onEnd);
+      window.removeEventListener('touchmove', onMove);
+      window.removeEventListener('touchend', onEnd);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      setIsResizingImage(false);
+      updateOverlayPosition();
+      if (editorRef.current) {
+        setContentHtml(editorRef.current.innerHTML);
+      }
+    };
+
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onEnd);
+    window.addEventListener('touchmove', onMove, { passive: false });
+    window.addEventListener('touchend', onEnd);
+  };
+
+  // Drag and Drop Placement System with Mouse
+  const handleImageDragStart = (e, elToDrag) => {
+    const target = elToDrag || selectedImageContext?.figureEl || selectedImageContext?.imgEl;
+    if (!target) return;
+    draggedElementRef.current = target;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', 'image-placement');
+    target.classList.add('opacity-40');
+    setImageOverlayRect(null);
+  };
+
+  const handleEditorDragStart = (e) => {
+    if (e.target && e.target.tagName === 'IMG') {
+      const targetElement = e.target.closest('figure') || e.target;
+      handleImageDragStart(e, targetElement);
+    }
+  };
+
+  const handleEditorDragOver = (e) => {
+    if (!draggedElementRef.current || !editorRef.current) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+
+    const pointEl = document.elementFromPoint(e.clientX, e.clientY);
+    if (!pointEl || !editorRef.current.contains(pointEl)) return;
+
+    let block = pointEl;
+    while (block && block.parentNode !== editorRef.current && block !== editorRef.current) {
+      block = block.parentNode;
+    }
+
+    let indicator = document.getElementById('blog-drop-indicator');
+    if (!indicator) {
+      indicator = document.createElement('div');
+      indicator.id = 'blog-drop-indicator';
+      indicator.className = 'blog-drop-indicator';
+    }
+
+    if (!block || block === editorRef.current) {
+      if (editorRef.current.lastChild !== indicator) {
+        editorRef.current.appendChild(indicator);
+      }
+      return;
+    }
+
+    if (block === draggedElementRef.current) return;
+
+    const rect = block.getBoundingClientRect();
+    const isAfter = (e.clientY - rect.top) > (rect.height / 2);
+
+    if (isAfter) {
+      if (block.nextSibling !== indicator) {
+        block.parentNode.insertBefore(indicator, block.nextSibling);
+      }
+    } else {
+      if (block !== indicator.nextSibling) {
+        block.parentNode.insertBefore(indicator, block);
+      }
+    }
+  };
+
+  const handleEditorDrop = (e) => {
+    if (!draggedElementRef.current || !editorRef.current) return;
+    e.preventDefault();
+
+    const indicator = document.getElementById('blog-drop-indicator');
+    const targetToMove = draggedElementRef.current;
+
+    if (indicator && indicator.parentNode) {
+      indicator.parentNode.insertBefore(targetToMove, indicator);
+      indicator.parentNode.removeChild(indicator);
+    } else {
+      const pointEl = document.elementFromPoint(e.clientX, e.clientY);
+      let block = pointEl;
+      while (block && block.parentNode !== editorRef.current && block !== editorRef.current) {
+        block = block.parentNode;
+      }
+      if (block && block !== editorRef.current && block !== targetToMove) {
+        const rect = block.getBoundingClientRect();
+        const isAfter = (e.clientY - rect.top) > (rect.height / 2);
+        if (isAfter) {
+          block.parentNode.insertBefore(targetToMove, block.nextSibling);
+        } else {
+          block.parentNode.insertBefore(targetToMove, block);
+        }
+      } else {
+        editorRef.current.appendChild(targetToMove);
+      }
+    }
+
+    targetToMove.classList.remove('opacity-40');
+    draggedElementRef.current = null;
+
+    const movedImg = targetToMove.tagName === 'IMG' ? targetToMove : targetToMove.querySelector('img');
+    if (movedImg) {
+      movedImg.classList.add('selected-blog-img');
+      const fig = movedImg.closest('figure');
+      const targetEl = fig || movedImg;
+      const curWidth = targetEl.style.width || movedImg.style.width || '100%';
+      setSelectedImageContext({
+        imgEl: movedImg,
+        figureEl: fig,
+        width: curWidth,
+        widthPercent: parseInt(curWidth) || 100
+      });
+      setTimeout(() => {
+        updateOverlayPosition();
+      }, 50);
+    }
+
+    if (editorRef.current) {
+      setContentHtml(editorRef.current.innerHTML);
+    }
+    showToast('Image placed at new position!');
+  };
+
+  const handleEditorDragLeave = (e) => {
+    if (e.target === editorRef.current) {
+      const indicator = document.getElementById('blog-drop-indicator');
+      if (indicator && indicator.parentNode) {
+        indicator.parentNode.removeChild(indicator);
+      }
+    }
+  };
+
+  const handleEditorDragEnd = () => {
+    const indicator = document.getElementById('blog-drop-indicator');
+    if (indicator && indicator.parentNode) {
+      indicator.parentNode.removeChild(indicator);
+    }
+    if (draggedElementRef.current) {
+      draggedElementRef.current.classList.remove('opacity-40');
+      draggedElementRef.current = null;
+    }
+    updateOverlayPosition();
+  };
+
+  // Move Selected Image Block Up or Down
+  const handleMoveImageBlock = (direction) => {
+    if (!selectedImageContext) return;
+    const target = selectedImageContext.figureEl || selectedImageContext.imgEl;
+    if (!target || !editorRef.current) return;
+
+    if (direction === 'up') {
+      const prev = target.previousElementSibling;
+      if (prev && prev !== editorRef.current) {
+        target.parentNode.insertBefore(target, prev);
+        updateOverlayPosition();
+        if (editorRef.current) setContentHtml(editorRef.current.innerHTML);
+        showToast('Moved image up');
+      }
+    } else if (direction === 'down') {
+      const next = target.nextElementSibling;
+      if (next && next !== editorRef.current) {
+        target.parentNode.insertBefore(next, target);
+        updateOverlayPosition();
+        if (editorRef.current) setContentHtml(editorRef.current.innerHTML);
+        showToast('Moved image down');
+      }
+    }
+  };
+
+  // Update Selected Image Width / Size
+  const handleUpdateImageSize = (percent) => {
+    if (!selectedImageContext?.imgEl) return;
+    const { figureEl, imgEl } = selectedImageContext;
+
+    if (figureEl) {
+      figureEl.style.width = `${percent}%`;
+      figureEl.style.maxWidth = '100%';
+    }
+    imgEl.style.width = figureEl ? '100%' : `${percent}%`;
+    imgEl.style.maxWidth = '100%';
+    imgEl.style.height = 'auto';
+
+    setSelectedImageContext(prev => ({
+      ...prev,
+      width: `${percent}%`,
+      widthPercent: percent
+    }));
+
+    setTimeout(() => {
+      updateOverlayPosition();
+    }, 20);
+
+    if (editorRef.current) {
+      setContentHtml(editorRef.current.innerHTML);
+    }
+  };
+
+  // Update Selected Image Alignment
+  const handleUpdateImageAlign = (alignId) => {
+    if (!selectedImageContext) return;
+    const { figureEl, imgEl } = selectedImageContext;
+    if (figureEl) {
+      ['blog-figure-center', 'blog-figure-full', 'blog-figure-left', 'blog-figure-right'].forEach(c => {
+        figureEl.classList.remove(c);
+      });
+      figureEl.classList.add(`blog-figure-${alignId}`);
+      if (alignId === 'full') {
+        figureEl.style.width = '100%';
+        setSelectedImageContext(prev => ({ ...prev, width: '100%', widthPercent: 100 }));
+      }
+    } else if (imgEl) {
+      if (alignId === 'left') {
+        imgEl.style.float = 'left';
+        imgEl.style.margin = '0 1.5rem 1rem 0';
+      } else if (alignId === 'right') {
+        imgEl.style.float = 'right';
+        imgEl.style.margin = '0 0 1rem 1.5rem';
+      } else if (alignId === 'full') {
+        imgEl.style.float = 'none';
+        imgEl.style.width = '100%';
+        imgEl.style.margin = '1.5rem 0';
+        imgEl.style.display = 'block';
+        setSelectedImageContext(prev => ({ ...prev, width: '100%', widthPercent: 100 }));
+      } else {
+        imgEl.style.float = 'none';
+        imgEl.style.margin = '1.5rem auto';
+        imgEl.style.display = 'block';
+      }
+    }
+
+    setTimeout(() => {
+      updateOverlayPosition();
+    }, 30);
+
+    if (editorRef.current) {
+      setContentHtml(editorRef.current.innerHTML);
+    }
+    showToast(`Alignment set to ${alignId}`);
+  };
+
+  // Delete Selected Image
+  const handleDeleteSelectedImage = () => {
+    if (!selectedImageContext) return;
+    const { figureEl, imgEl } = selectedImageContext;
+    const target = figureEl || imgEl;
+    if (target && target.parentNode) {
+      target.parentNode.removeChild(target);
+    }
+    setSelectedImageContext(null);
+    setImageOverlayRect(null);
+    if (editorRef.current) {
+      setContentHtml(editorRef.current.innerHTML);
+    }
+    showToast('Image deleted');
+  };
+
+  // Inline Image Upload File Handler
   const handleInlineImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -346,10 +1116,9 @@ const BlogManagement = ({ onBack }) => {
           ? data.imageUrl 
           : `${API_BASE_URL}${data.imageUrl}`;
         
-        // Insert image at cursor
-        const imgHtml = `<div class="my-4 text-center"><img src="${fullUrl}" alt="Blog Image" class="max-w-full rounded-2xl shadow-lg mx-auto inline-block border border-gray-200" /><p class="text-xs text-gray-400 mt-1 italic">Image caption</p></div><p><br></p>`;
-        executeCommand('insertHTML', imgHtml);
-        showToast('Image inserted into content!');
+        setInlineImageUrl(fullUrl);
+        setShowImageModal(true);
+        showToast('Image uploaded! Choose alignment and insert.');
       } else {
         showToast(data.message || 'Image upload failed', 'error');
       }
@@ -428,6 +1197,18 @@ const BlogManagement = ({ onBack }) => {
   // Save / Update Blog Post
   const handleSaveBlog = async (e) => {
     if (e) e.preventDefault();
+
+    if (editorRef.current) {
+      editorRef.current.querySelectorAll('img.selected-blog-img').forEach(el => {
+        el.classList.remove('selected-blog-img');
+      });
+      editorRef.current.querySelectorAll('.opacity-40').forEach(el => {
+        el.classList.remove('opacity-40');
+      });
+      editorRef.current.querySelectorAll('.blog-drop-indicator, #blog-drop-indicator').forEach(el => {
+        el.remove();
+      });
+    }
 
     const currentContent = editorRef.current ? editorRef.current.innerHTML : contentHtml;
 
@@ -807,19 +1588,34 @@ const BlogManagement = ({ onBack }) => {
 
                 {/* MS WORD RICH TEXT TOOLBAR & CANVAS */}
                 <div className="clay-flat p-6 rounded-3xl bg-[#eef2f6] space-y-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
                     <span className="text-xs font-black uppercase tracking-widest text-purple-700 flex items-center gap-2">
                       <Sparkles size={14} /> MS Word Style Content Editor
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => inlineImageInputRef.current?.click()}
-                      disabled={uploadingImage}
-                      className="px-3 py-1.5 bg-purple-100 hover:bg-purple-200 text-purple-700 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all"
-                    >
-                      {uploadingImage ? <Loader2 className="animate-spin" size={14} /> : <Upload size={14} />}
-                      Insert Image into Article
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          saveCurrentSelection();
+                          setShowImageModal(true);
+                        }}
+                        className="px-3 py-1.5 bg-purple-100 hover:bg-purple-200 text-purple-700 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-sm"
+                      >
+                        <ImageIcon size={14} />
+                        Insert Image
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          saveCurrentSelection();
+                          setShowTableModal(true);
+                        }}
+                        className="px-3 py-1.5 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-sm"
+                      >
+                        <TableIcon size={14} />
+                        Insert Table
+                      </button>
+                    </div>
                   </div>
 
                   {/* TOOLBAR CONTROLS */}
@@ -1005,7 +1801,31 @@ const BlogManagement = ({ onBack }) => {
 
                         <div className="h-5 w-[1px] bg-gray-300 mx-1" />
 
-                        {/* Link & HR */}
+                        {/* Table, Image, Link & HR */}
+                        <button
+                          type="button"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            saveCurrentSelection();
+                            setShowTableModal(true);
+                          }}
+                          className="p-2 bg-indigo-50 hover:bg-indigo-100 rounded-lg text-indigo-700 transition-colors font-bold flex items-center gap-1"
+                          title="Insert Table"
+                        >
+                          <TableIcon size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            saveCurrentSelection();
+                            setShowImageModal(true);
+                          }}
+                          className="p-2 bg-purple-50 hover:bg-purple-100 rounded-lg text-purple-700 transition-colors font-bold flex items-center gap-1"
+                          title="Insert Image into Article"
+                        >
+                          <ImageIcon size={16} />
+                        </button>
                         <button
                           type="button"
                           onMouseDown={(e) => e.preventDefault()}
@@ -1065,16 +1885,438 @@ const BlogManagement = ({ onBack }) => {
                     </div>
                   </div>
 
+                  {/* Contextual Table Controls Floating Bar */}
+                  {activeTableContext && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="p-2.5 bg-gradient-to-r from-purple-100/90 via-indigo-50/90 to-purple-100/90 border border-purple-200/80 rounded-2xl flex items-center justify-between gap-2 flex-wrap shadow-sm backdrop-blur-sm"
+                    >
+                      <div className="flex items-center gap-1.5 text-xs font-black text-purple-900">
+                        <TableIcon size={14} className="text-purple-600" />
+                        <span>Table Controls:</span>
+                      </div>
+                      <div className="flex items-center gap-1 flex-wrap">
+                        <button
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => handleAddRow('below')}
+                          className="px-2.5 py-1 bg-white hover:bg-purple-50 text-purple-700 font-bold rounded-lg text-[11px] shadow-sm border border-purple-200 flex items-center gap-1"
+                          title="Add Row Below"
+                        >
+                          <Plus size={12} /> Row Below
+                        </button>
+                        <button
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => handleAddRow('above')}
+                          className="px-2.5 py-1 bg-white hover:bg-purple-50 text-purple-700 font-bold rounded-lg text-[11px] shadow-sm border border-purple-200 flex items-center gap-1"
+                          title="Add Row Above"
+                        >
+                          <Plus size={12} /> Row Above
+                        </button>
+                        <button
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => handleAddCol('right')}
+                          className="px-2.5 py-1 bg-white hover:bg-purple-50 text-purple-700 font-bold rounded-lg text-[11px] shadow-sm border border-purple-200 flex items-center gap-1"
+                          title="Add Column Right"
+                        >
+                          <Plus size={12} /> Col Right
+                        </button>
+                        <button
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => handleAddCol('left')}
+                          className="px-2.5 py-1 bg-white hover:bg-purple-50 text-purple-700 font-bold rounded-lg text-[11px] shadow-sm border border-purple-200 flex items-center gap-1"
+                          title="Add Column Left"
+                        >
+                          <Plus size={12} /> Col Left
+                        </button>
+                        <div className="h-4 w-[1px] bg-purple-300 mx-1" />
+                        <button
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={handleDeleteRow}
+                          className="px-2 py-1 bg-white hover:bg-rose-50 text-rose-600 font-bold rounded-lg text-[11px] shadow-sm border border-rose-200"
+                          title="Delete Current Row"
+                        >
+                          Del Row
+                        </button>
+                        <button
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={handleDeleteCol}
+                          className="px-2 py-1 bg-white hover:bg-rose-50 text-rose-600 font-bold rounded-lg text-[11px] shadow-sm border border-rose-200"
+                          title="Delete Current Column"
+                        >
+                          Del Col
+                        </button>
+                        <button
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={handleDeleteTable}
+                          className="px-2.5 py-1 bg-rose-500 hover:bg-rose-600 text-white font-bold rounded-lg text-[11px] shadow-sm flex items-center gap-1"
+                          title="Delete Entire Table"
+                        >
+                          <Trash2 size={12} /> Delete Table
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Contextual Image Adjustment Controls Bar */}
+                  {selectedImageContext && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="image-control-bar p-3 bg-gradient-to-r from-purple-100/95 via-indigo-50/95 to-purple-100/95 border-2 border-purple-300 rounded-2xl flex items-center justify-between gap-3 flex-wrap shadow-lg backdrop-blur-md sticky top-2 z-20"
+                    >
+                      <div className="flex items-center gap-2 text-xs font-black text-purple-900">
+                        <ImageIcon size={16} className="text-purple-600" />
+                        <span>Adjust Image:</span>
+                        <span className="px-2 py-0.5 bg-purple-200/80 rounded-md text-[11px] font-bold text-purple-800">
+                          {selectedImageContext.widthPercent}%
+                        </span>
+                      </div>
+
+                      {/* Quick Width Buttons */}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mr-1">Size:</span>
+                        {[
+                          { label: '25%', value: 25 },
+                          { label: '50%', value: 50 },
+                          { label: '75%', value: 75 },
+                          { label: '100%', value: 100 }
+                        ].map((size) => (
+                          <button
+                            key={size.value}
+                            type="button"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => handleUpdateImageSize(size.value)}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                              selectedImageContext.widthPercent === size.value
+                                ? 'bg-purple-600 text-white shadow-sm font-black'
+                                : 'bg-white hover:bg-purple-50 text-gray-700 border border-purple-200'
+                            }`}
+                          >
+                            {size.label}
+                          </button>
+                        ))}
+
+                        {/* Slider for precision adjustment */}
+                        <div className="flex items-center gap-2 px-2 py-0.5 bg-white rounded-lg border border-purple-200 ml-1">
+                          <input
+                            type="range"
+                            min="15"
+                            max="100"
+                            step="5"
+                            value={selectedImageContext.widthPercent}
+                            onChange={(e) => handleUpdateImageSize(parseInt(e.target.value))}
+                            className="w-24 accent-purple-600 cursor-pointer"
+                          />
+                          <span className="text-[10px] font-mono font-bold text-purple-800 w-8">
+                            {selectedImageContext.widthPercent}%
+                          </span>
+                        </div>
+
+                        <div className="h-5 w-[1px] bg-purple-300 mx-1" />
+
+                        {/* Alignment Buttons */}
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mr-1">Align:</span>
+                        {[
+                          { id: 'left', icon: AlignLeft, title: 'Float Left (Text Wrap)' },
+                          { id: 'center', icon: AlignCenter, title: 'Center' },
+                          { id: 'right', icon: AlignRight, title: 'Float Right (Text Wrap)' },
+                          { id: 'full', icon: AlignJustify, title: 'Full Width' }
+                        ].map((align) => (
+                          <button
+                            key={align.id}
+                            type="button"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => handleUpdateImageAlign(align.id)}
+                            className="p-1.5 bg-white hover:bg-purple-50 text-gray-700 hover:text-purple-700 rounded-lg border border-purple-200 transition-colors cursor-pointer"
+                            title={align.title}
+                          >
+                            <align.icon size={14} />
+                          </button>
+                        ))}
+
+                        <div className="h-5 w-[1px] bg-purple-300 mx-1" />
+
+                        {/* Delete Image */}
+                        <button
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={handleDeleteSelectedImage}
+                          className="px-2.5 py-1 bg-rose-500 hover:bg-rose-600 text-white font-bold rounded-lg text-xs shadow-sm flex items-center gap-1 transition-all cursor-pointer"
+                          title="Delete Image"
+                        >
+                          <Trash2 size={12} /> Delete
+                        </button>
+
+                        {/* Close button */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (editorRef.current) {
+                              editorRef.current.querySelectorAll('img.selected-blog-img').forEach(el => el.classList.remove('selected-blog-img'));
+                            }
+                            setSelectedImageContext(null);
+                          }}
+                          className="p-1 text-gray-400 hover:text-gray-700 rounded-lg ml-1 cursor-pointer"
+                          title="Deselect"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+
                   {/* WYSIWYG Editable Document Area */}
-                  <div
-                    ref={editorRef}
-                    contentEditable
-                    onInput={() => {
-                      if (editorRef.current) setContentHtml(editorRef.current.innerHTML);
-                    }}
-                    style={{ fontFamily: currentFont }}
-                    className="editor-canvas min-h-[450px] p-8 bg-white rounded-3xl border border-gray-200 shadow-2xl focus:outline-none prose prose-purple max-w-none text-gray-800 leading-relaxed overflow-y-auto"
-                  />
+                  <div ref={editorWrapperRef} className="relative">
+                    <div
+                      ref={editorRef}
+                      contentEditable
+                      onInput={(e) => {
+                        if (editorRef.current) setContentHtml(editorRef.current.innerHTML);
+                        handleEditorClick(e);
+                      }}
+                      onKeyUp={(e) => {
+                        handleEditorClick(e);
+                      }}
+                      onMouseUp={(e) => {
+                        handleEditorClick(e);
+                      }}
+                      onClick={(e) => {
+                        handleEditorClick(e);
+                      }}
+                      onDragStart={handleEditorDragStart}
+                      onDragOver={handleEditorDragOver}
+                      onDragLeave={handleEditorDragLeave}
+                      onDrop={handleEditorDrop}
+                      onDragEnd={handleEditorDragEnd}
+                      style={{ fontFamily: currentFont }}
+                      className="editor-canvas min-h-[450px] p-8 bg-white rounded-3xl border border-gray-200 shadow-2xl focus:outline-none prose prose-purple max-w-none text-gray-800 leading-relaxed overflow-y-auto"
+                    />
+
+                    {/* Interactive Image Mouse Resize & Placement Overlay */}
+                    {selectedImageContext && imageOverlayRect && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: `${imageOverlayRect.top}px`,
+                          left: `${imageOverlayRect.left}px`,
+                          width: `${imageOverlayRect.width}px`,
+                          height: `${imageOverlayRect.height}px`,
+                          pointerEvents: isResizingImage ? 'none' : 'auto'
+                        }}
+                        draggable={!isResizingImage}
+                        onDragStart={(e) => {
+                          if (e.target.closest('.resize-handle') || e.target.closest('.image-control-bar') || e.target.closest('button')) {
+                            e.preventDefault();
+                            return;
+                          }
+                          handleImageDragStart(e, selectedImageContext.figureEl || selectedImageContext.imgEl);
+                        }}
+                        onDragEnd={handleEditorDragEnd}
+                        className="image-resize-overlay border-2 border-purple-600 rounded-xl select-none cursor-grab active:cursor-grabbing group transition-shadow"
+                        title="Drag with mouse to reposition anywhere in the article • Pull handles to resize"
+                      >
+                        {/* Center Drag Hint visible on hover */}
+                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+                          <div className="bg-gray-900/85 backdrop-blur-sm text-white px-3 py-1 rounded-full text-[10px] font-bold flex items-center gap-1.5 shadow-xl border border-purple-400/40">
+                            <Move size={12} className="text-purple-300" />
+                            <span>Drag anywhere with mouse to place</span>
+                          </div>
+                        </div>
+
+                        {/* Floating On-Image Placement & Sizing Bar */}
+                        <div
+                          style={{ pointerEvents: 'auto' }}
+                          className="image-control-bar absolute -top-12 left-1/2 -translate-x-1/2 bg-gray-900/95 backdrop-blur-md text-white px-2.5 py-1.5 rounded-2xl shadow-2xl flex items-center gap-1.5 whitespace-nowrap z-40 border border-purple-500/40"
+                        >
+                          {/* Drag to Place handle */}
+                          <div
+                            draggable="true"
+                            onDragStart={(e) => handleImageDragStart(e, selectedImageContext.figureEl || selectedImageContext.imgEl)}
+                            onDragEnd={handleEditorDragEnd}
+                            className="flex items-center gap-1 px-2.5 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-[10px] font-black cursor-grab active:cursor-grabbing shadow-sm"
+                            title="Click and drag with mouse to place anywhere in the article"
+                          >
+                            <Move size={12} />
+                            <span>Drag to Place</span>
+                          </div>
+
+                          {/* Quick Step Move Up / Down Buttons */}
+                          <button
+                            type="button"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => handleMoveImageBlock('up')}
+                            className="p-1 hover:bg-gray-800 text-gray-300 hover:text-white rounded-md text-[10px] transition-colors cursor-pointer"
+                            title="Move Up (Before previous paragraph)"
+                          >
+                            <ArrowUp size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => handleMoveImageBlock('down')}
+                            className="p-1 hover:bg-gray-800 text-gray-300 hover:text-white rounded-md text-[10px] transition-colors cursor-pointer"
+                            title="Move Down (After next paragraph)"
+                          >
+                            <ArrowDown size={13} />
+                          </button>
+
+                          <div className="h-3 w-[1px] bg-gray-700 mx-0.5" />
+
+                          {/* Alignment / Placement shortcuts */}
+                          <button
+                            type="button"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => handleUpdateImageAlign('left')}
+                            className="p-1 hover:bg-gray-800 text-gray-300 hover:text-white rounded-md text-[10px] transition-colors cursor-pointer"
+                            title="Float Left (Wrap text on right)"
+                          >
+                            <AlignLeft size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => handleUpdateImageAlign('center')}
+                            className="p-1 hover:bg-gray-800 text-gray-300 hover:text-white rounded-md text-[10px] transition-colors cursor-pointer"
+                            title="Center on page"
+                          >
+                            <AlignCenter size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => handleUpdateImageAlign('right')}
+                            className="p-1 hover:bg-gray-800 text-gray-300 hover:text-white rounded-md text-[10px] transition-colors cursor-pointer"
+                            title="Float Right (Wrap text on left)"
+                          >
+                            <AlignRight size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => handleUpdateImageAlign('full')}
+                            className="p-1 hover:bg-gray-800 text-gray-300 hover:text-white rounded-md text-[10px] transition-colors cursor-pointer"
+                            title="Full Width (100%)"
+                          >
+                            <AlignJustify size={13} />
+                          </button>
+
+                          <div className="h-3 w-[1px] bg-gray-700 mx-0.5" />
+
+                          {/* Quick Size Chips */}
+                          {[25, 33, 50, 75, 100].map(pct => (
+                            <button
+                              key={pct}
+                              type="button"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => handleUpdateImageSize(pct)}
+                              className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition-all cursor-pointer ${
+                                selectedImageContext.widthPercent === pct
+                                  ? 'bg-purple-600 text-white font-black'
+                                  : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                              }`}
+                              title={`Set size to ${pct}%`}
+                            >
+                              {pct}%
+                            </button>
+                          ))}
+
+                          <div className="h-3 w-[1px] bg-gray-700 mx-0.5" />
+
+                          {/* Delete button */}
+                          <button
+                            type="button"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={handleDeleteSelectedImage}
+                            className="p-1 text-rose-400 hover:bg-rose-950/50 hover:text-rose-300 rounded-md cursor-pointer transition-colors"
+                            title="Delete Image"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+
+                        {/* Corner and Edge Resize Handles */}
+                        {/* Top-Left (NW) */}
+                        <div
+                          style={{ top: -6, left: -6, cursor: 'nwse-resize', pointerEvents: 'auto' }}
+                          onMouseDown={(e) => startResize(e, 'nw')}
+                          onTouchStart={(e) => startResize(e, 'nw')}
+                          className="resize-handle"
+                          title="Drag with mouse to resize image"
+                        />
+                        {/* Top-Center (N) */}
+                        <div
+                          style={{ top: -6, left: '50%', transform: 'translateX(-50%)', cursor: 'ns-resize', pointerEvents: 'auto' }}
+                          onMouseDown={(e) => startResize(e, 'n')}
+                          onTouchStart={(e) => startResize(e, 'n')}
+                          className="resize-handle"
+                          title="Drag with mouse to resize height"
+                        />
+                        {/* Top-Right (NE) */}
+                        <div
+                          style={{ top: -6, right: -6, cursor: 'nesw-resize', pointerEvents: 'auto' }}
+                          onMouseDown={(e) => startResize(e, 'ne')}
+                          onTouchStart={(e) => startResize(e, 'ne')}
+                          className="resize-handle"
+                          title="Drag with mouse to resize image"
+                        />
+                        {/* Bottom-Left (SW) */}
+                        <div
+                          style={{ bottom: -6, left: -6, cursor: 'nesw-resize', pointerEvents: 'auto' }}
+                          onMouseDown={(e) => startResize(e, 'sw')}
+                          onTouchStart={(e) => startResize(e, 'sw')}
+                          className="resize-handle"
+                          title="Drag with mouse to resize image"
+                        />
+                        {/* Bottom-Right (SE) - Primary handle */}
+                        <div
+                          style={{ bottom: -7, right: -7, cursor: 'nwse-resize', pointerEvents: 'auto' }}
+                          onMouseDown={(e) => startResize(e, 'se')}
+                          onTouchStart={(e) => startResize(e, 'se')}
+                          className="resize-handle w-4 h-4 bg-purple-600 border-2 border-white ring-2 ring-purple-500/50"
+                          title="Drag with mouse to resize image"
+                        />
+                        {/* Middle-Right (E) */}
+                        <div
+                          style={{ top: '50%', right: -6, transform: 'translateY(-50%)', cursor: 'ew-resize', pointerEvents: 'auto' }}
+                          onMouseDown={(e) => startResize(e, 'e')}
+                          onTouchStart={(e) => startResize(e, 'e')}
+                          className="resize-handle"
+                          title="Drag with mouse to resize width"
+                        />
+                        {/* Middle-Left (W) */}
+                        <div
+                          style={{ top: '50%', left: -6, transform: 'translateY(-50%)', cursor: 'ew-resize', pointerEvents: 'auto' }}
+                          onMouseDown={(e) => startResize(e, 'w')}
+                          onTouchStart={(e) => startResize(e, 'w')}
+                          className="resize-handle"
+                          title="Drag with mouse to resize width"
+                        />
+                        {/* Bottom-Center (S) */}
+                        <div
+                          style={{ bottom: -6, left: '50%', transform: 'translateX(-50%)', cursor: 'ns-resize', pointerEvents: 'auto' }}
+                          onMouseDown={(e) => startResize(e, 's')}
+                          onTouchStart={(e) => startResize(e, 's')}
+                          className="resize-handle"
+                          title="Drag with mouse to resize height"
+                        />
+
+                        {/* Live Dimensions Tooltip Badge */}
+                        <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-gray-900/90 border border-purple-500/30 text-white text-[10px] font-mono font-bold px-3 py-0.5 rounded-full shadow-md whitespace-nowrap pointer-events-none flex items-center gap-1.5">
+                          <span>{Math.round(imageOverlayRect.width)}px</span>
+                          <span className="text-purple-400">•</span>
+                          <span>{selectedImageContext.widthPercent}% width</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -1216,7 +2458,7 @@ const BlogManagement = ({ onBack }) => {
 
               {/* Formatted Article Output */}
               <div 
-                className="prose prose-purple max-w-none text-gray-800 leading-relaxed"
+                className="prose prose-purple max-w-none text-gray-800 leading-relaxed preview-canvas"
                 dangerouslySetInnerHTML={{ __html: contentHtml || '<p>No content preview available.</p>' }}
               />
             </div>
@@ -1334,6 +2576,451 @@ const BlogManagement = ({ onBack }) => {
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* TABLE INSERTION MODAL */}
+      <AnimatePresence>
+        {showTableModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              className="bg-[#eef2f6] clay-flat p-6 sm:p-8 rounded-3xl max-w-xl w-full text-left space-y-5 shadow-2xl my-8 max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex items-center justify-between border-b border-gray-200 pb-3">
+                <h3 className="text-lg font-black text-gray-800 uppercase flex items-center gap-2">
+                  <TableIcon className="text-indigo-600" size={20} /> Insert Content Table
+                </h3>
+                <button 
+                  type="button"
+                  onClick={() => setShowTableModal(false)}
+                  className="p-1 text-gray-400 hover:text-gray-600 rounded-lg cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Quick Grid Selector */}
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-indigo-700 block mb-2">
+                  Quick Grid Selector ({hoverGrid.r} Rows × {hoverGrid.c} Columns)
+                </label>
+                <div 
+                  className="inline-grid grid-cols-6 gap-1.5 p-3 bg-white rounded-2xl border border-gray-200 shadow-inner"
+                  onMouseLeave={() => setHoverGrid({ r: tableRows, c: tableCols })}
+                >
+                  {Array.from({ length: 6 }).map((_, rIdx) => (
+                    Array.from({ length: 6 }).map((_, cIdx) => {
+                      const r = rIdx + 1;
+                      const c = cIdx + 1;
+                      const isHovered = r <= hoverGrid.r && c <= hoverGrid.c;
+                      return (
+                        <div
+                          key={`${r}-${c}`}
+                          onMouseEnter={() => setHoverGrid({ r, c })}
+                          onClick={() => {
+                            setTableRows(r);
+                            setTableCols(c);
+                            setHoverGrid({ r, c });
+                          }}
+                          className={`w-6 h-6 rounded-md border cursor-pointer transition-colors ${
+                            isHovered 
+                              ? 'bg-indigo-600 border-indigo-700' 
+                              : 'bg-gray-100 border-gray-200 hover:bg-indigo-200'
+                          }`}
+                          title={`${r} rows × ${c} columns`}
+                        />
+                      );
+                    })
+                  ))}
+                </div>
+              </div>
+
+              {/* Exact Rows and Columns Number Inputs */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 block mb-1">
+                    Rows count
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="30"
+                    value={tableRows}
+                    onChange={(e) => setTableRows(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-full px-3 py-2 bg-white clay-inset rounded-xl font-bold text-sm text-gray-800 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 block mb-1">
+                    Columns count
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="12"
+                    value={tableCols}
+                    onChange={(e) => setTableCols(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-full px-3 py-2 bg-white clay-inset rounded-xl font-bold text-sm text-gray-800 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Table Style Presets */}
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 block mb-2">
+                  Table Design Theme
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {TABLE_PRESETS.map((preset) => (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() => setTablePreset(preset.id)}
+                      className={`p-2.5 rounded-xl text-left border transition-all text-xs cursor-pointer ${
+                        tablePreset === preset.id
+                          ? 'border-indigo-600 bg-indigo-50/80 shadow-md font-black text-indigo-900 ring-2 ring-indigo-500/20'
+                          : 'border-gray-200 bg-white hover:bg-gray-50 text-gray-700 font-bold'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span>{preset.name}</span>
+                        {tablePreset === preset.id && <Check size={14} className="text-indigo-600" />}
+                      </div>
+                      <p className="text-[10px] text-gray-400 font-normal mt-0.5 line-clamp-1">{preset.desc}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Options: Headers & Caption */}
+              <div className="space-y-3 pt-1">
+                <div className="flex items-center gap-6">
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-gray-700">
+                    <input
+                      type="checkbox"
+                      checked={tableHasHeader}
+                      onChange={(e) => setTableHasHeader(e.target.checked)}
+                      className="rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                    />
+                    Include Header Row (TH)
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-gray-700">
+                    <input
+                      type="checkbox"
+                      checked={tableFirstColHeader}
+                      onChange={(e) => setTableFirstColHeader(e.target.checked)}
+                      className="rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                    />
+                    Header on First Column
+                  </label>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 block mb-1">
+                    Table Caption / Title (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={tableCaption}
+                    onChange={(e) => setTableCaption(e.target.value)}
+                    placeholder="e.g. Table 1: Feature Matrix & Comparison"
+                    className="w-full px-3 py-2 bg-white clay-inset rounded-xl font-medium text-xs text-gray-800 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => setShowTableModal(false)}
+                  className="px-5 py-2.5 clay-inset rounded-xl font-bold text-gray-600 text-xs uppercase cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleInsertTable}
+                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl shadow-lg text-xs uppercase tracking-wider flex items-center gap-2 cursor-pointer"
+                >
+                  <TableIcon size={14} /> Insert Table
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* INLINE IMAGE INSERTION MODAL */}
+      <AnimatePresence>
+        {showImageModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              className="bg-[#eef2f6] clay-flat p-6 sm:p-8 rounded-3xl max-w-xl w-full text-left space-y-5 shadow-2xl my-8 max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex items-center justify-between border-b border-gray-200 pb-3">
+                <h3 className="text-lg font-black text-gray-800 uppercase flex items-center gap-2">
+                  <ImageIcon className="text-purple-600" size={20} /> Insert Image in Article
+                </h3>
+                <button 
+                  type="button"
+                  onClick={() => setShowImageModal(false)}
+                  className="p-1 text-gray-400 hover:text-gray-600 rounded-lg cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Source Tabs: Upload from Computer vs Image Link */}
+              <div className="flex items-center gap-2 bg-[#eef2f6] p-1 rounded-2xl clay-inset">
+                <button
+                  type="button"
+                  onClick={() => setImageSourceType('upload')}
+                  className={`flex-1 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                    imageSourceType === 'upload'
+                      ? 'clay-flat text-purple-700 font-bold'
+                      : 'text-gray-500 hover:text-purple-700'
+                  }`}
+                >
+                  <Upload size={14} /> Upload Image
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setImageSourceType('url')}
+                  className={`flex-1 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                    imageSourceType === 'url'
+                      ? 'clay-flat text-purple-700 font-bold'
+                      : 'text-gray-500 hover:text-purple-700'
+                  }`}
+                >
+                  <LinkIcon size={14} /> Image URL
+                </button>
+              </div>
+
+              {imageSourceType === 'upload' ? (
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 block mb-2">
+                    Choose Image File
+                  </label>
+                  <div className="p-4 border-2 border-dashed border-purple-200 rounded-2xl bg-white text-center flex flex-col items-center justify-center gap-2">
+                    <input
+                      type="file"
+                      id="modal-inline-file"
+                      accept="image/*"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        setUploadingImage(true);
+                        const formData = new FormData();
+                        formData.append('image', file);
+                        try {
+                          const res = await fetch(`${API_BASE_URL}/api/blogs/upload-image`, {
+                            method: 'POST',
+                            headers: { Authorization: `Bearer ${getStaffToken()}` },
+                            body: formData
+                          });
+                          const data = await res.json();
+                          if (data.success && data.imageUrl) {
+                            const full = data.imageUrl.startsWith('http') ? data.imageUrl : `${API_BASE_URL}${data.imageUrl}`;
+                            setInlineImageUrl(full);
+                            showToast('Image uploaded successfully!');
+                          } else {
+                            showToast(data.message || 'Upload failed', 'error');
+                          }
+                        } catch(err) {
+                          showToast('Error uploading image', 'error');
+                        } finally {
+                          setUploadingImage(false);
+                        }
+                      }}
+                      className="hidden"
+                    />
+                    <label
+                      htmlFor="modal-inline-file"
+                      className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl text-xs cursor-pointer shadow-md inline-flex items-center gap-2 transition-all"
+                    >
+                      {uploadingImage ? <Loader2 className="animate-spin" size={14} /> : <Upload size={14} />}
+                      {uploadingImage ? 'Uploading to Cloudinary...' : 'Browse Computer'}
+                    </label>
+                    <span className="text-[10px] text-gray-400">Supports PNG, JPG, WEBP, GIF, SVG (up to 5MB)</span>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 block mb-1">
+                    Image Direct URL
+                  </label>
+                  <input
+                    type="text"
+                    value={inlineImageUrl}
+                    onChange={(e) => setInlineImageUrl(e.target.value)}
+                    placeholder="https://example.com/images/sample.jpg"
+                    className="w-full px-3 py-2.5 bg-white clay-inset rounded-xl font-medium text-xs text-gray-800 focus:outline-none"
+                  />
+                </div>
+              )}
+
+              {/* Preview Thumbnail if image is selected */}
+              {inlineImageUrl && (
+                <div className="p-3 bg-white rounded-2xl border border-gray-200 flex items-center gap-3">
+                  <div className="w-20 h-16 rounded-xl overflow-hidden bg-gray-100 shrink-0 border border-gray-200">
+                    <img src={inlineImageUrl} alt="Preview" className="w-full h-full object-cover" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-gray-800 truncate">{inlineImageUrl}</p>
+                    <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1 mt-0.5">
+                      <CheckCircle2 size={12} /> Image ready to insert
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setInlineImageUrl('')}
+                    className="p-1 text-rose-500 hover:bg-rose-50 rounded-lg text-xs cursor-pointer"
+                    title="Remove"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              )}
+
+              {/* Image Width / Size Options */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">
+                    Image Width / Size
+                  </label>
+                  <span className="text-xs font-black text-purple-700 bg-purple-100 px-2 py-0.5 rounded-md">
+                    {inlineImageWidth}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {[
+                    { label: '25% (Small)', value: '25%' },
+                    { label: '50% (Medium)', value: '50%' },
+                    { label: '75% (Large)', value: '75%' },
+                    { label: '100% (Full)', value: '100%' }
+                  ].map((s) => (
+                    <button
+                      key={s.value}
+                      type="button"
+                      onClick={() => setInlineImageWidth(s.value)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        inlineImageWidth === s.value
+                          ? 'bg-purple-600 text-white font-black ring-2 ring-purple-500/20'
+                          : 'border border-gray-200 bg-white hover:bg-gray-50 text-gray-700'
+                      }`}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                  <div className="flex items-center gap-2 bg-white px-3 py-1 rounded-xl border border-gray-200 ml-auto flex-1 sm:flex-initial">
+                    <span className="text-[10px] text-gray-400 font-bold">Slider:</span>
+                    <input
+                      type="range"
+                      min="15"
+                      max="100"
+                      step="5"
+                      value={parseInt(inlineImageWidth) || 100}
+                      onChange={(e) => setInlineImageWidth(`${e.target.value}%`)}
+                      className="w-24 accent-purple-600 cursor-pointer"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Alignment / Placement Options */}
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 block mb-2">
+                  Placement & Layout
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {[
+                    { id: 'center', label: 'Centered', desc: 'Standard width' },
+                    { id: 'full', label: 'Full Width', desc: '100% banner' },
+                    { id: 'left', label: 'Float Left', desc: 'Text wraps right' },
+                    { id: 'right', label: 'Float Right', desc: 'Text wraps left' }
+                  ].map((align) => (
+                    <button
+                      key={align.id}
+                      type="button"
+                      onClick={() => setInlineImageAlign(align.id)}
+                      className={`p-2.5 rounded-xl text-center border transition-all text-xs cursor-pointer ${
+                        inlineImageAlign === align.id
+                          ? 'border-purple-600 bg-purple-50 text-purple-900 font-black ring-2 ring-purple-500/20'
+                          : 'border-gray-200 bg-white hover:bg-gray-50 text-gray-700 font-bold'
+                      }`}
+                    >
+                      <div>{align.label}</div>
+                      <div className="text-[9px] text-gray-400 font-normal">{align.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Caption & Alt Text */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 block mb-1">
+                    Image Caption (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={inlineImageCaption}
+                    onChange={(e) => setInlineImageCaption(e.target.value)}
+                    placeholder="e.g. Figure 1: Growth Analytics"
+                    className="w-full px-3 py-2 bg-white clay-inset rounded-xl font-medium text-xs text-gray-800 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 block mb-1">
+                    Alt Text (SEO & Accessibility)
+                  </label>
+                  <input
+                    type="text"
+                    value={inlineImageAlt}
+                    onChange={(e) => setInlineImageAlt(e.target.value)}
+                    placeholder="e.g. Growth Analytics chart showing SEO traffic"
+                    className="w-full px-3 py-2 bg-white clay-inset rounded-xl font-medium text-xs text-gray-800 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => setShowImageModal(false)}
+                  className="px-5 py-2.5 clay-inset rounded-xl font-bold text-gray-600 text-xs uppercase cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleInsertInlineImage}
+                  disabled={!inlineImageUrl.trim()}
+                  className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-black rounded-xl shadow-lg text-xs uppercase tracking-wider flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  <ImageIcon size={14} /> Insert into Blog
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         )}

@@ -448,4 +448,213 @@ body {
   color: #111827;
 }
 
+/* =========================================================
+   BLOG TABLES & INLINE MEDIA ENHANCEMENTS
+   ========================================================= */
+
+/* Responsive Table Wrapper */
+.prose-blog .table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 2rem 0;
+  border-radius: 1rem;
+}
+
+/* Base Blog Tables */
+.prose-blog table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  margin: 1.5rem 0;
+  border: 1px solid #e2e8f0;
+}
+
+.prose-blog th,
+.prose-blog td {
+  padding: 0.875rem 1.125rem;
+  border: 1px solid #e2e8f0;
+  min-width: 90px;
+  vertical-align: top;
+}
+
+.prose-blog th {
+  font-weight: 700;
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+/* Style Presets */
+/* 1. Modern Clean */
+.prose-blog .blog-table-modern th {
+  background-color: #f1f5f9;
+  color: #1e293b;
+  font-weight: 700;
+  border-bottom: 2px solid #cbd5e1;
+}
+.prose-blog .blog-table-modern tr:hover td {
+  background-color: #f8fafc;
+}
+
+/* 2. Striped Zebra */
+.prose-blog .blog-table-striped th {
+  background-color: #0f172a;
+  color: #ffffff;
+}
+.prose-blog .blog-table-striped tbody tr:nth-child(even) {
+  background-color: #f8fafc;
+}
+.prose-blog .blog-table-striped tbody tr:hover td {
+  background-color: #f1f5f9;
+}
+
+/* 3. Brand Indigo/Purple */
+.prose-blog .blog-table-brand {
+  border: 1px solid #ddd6fe;
+  box-shadow: 0 4px 15px rgba(124, 58, 237, 0.06);
+}
+.prose-blog .blog-table-brand th {
+  background: linear-gradient(135deg, #7c3aed, #6366f1);
+  color: #ffffff;
+  font-weight: 800;
+  letter-spacing: 0.025em;
+  border-color: #6d28d9;
+}
+.prose-blog .blog-table-brand tbody tr:nth-child(even) {
+  background-color: #faf5ff;
+}
+.prose-blog .blog-table-brand tbody tr:hover td {
+  background-color: #f3e8ff;
+}
+
+/* 4. Emerald Matrix */
+.prose-blog .blog-table-emerald {
+  border: 1px solid #a7f3d0;
+}
+.prose-blog .blog-table-emerald th {
+  background: linear-gradient(135deg, #059669, #10b981);
+  color: #ffffff;
+  font-weight: 800;
+  border-color: #047857;
+}
+.prose-blog .blog-table-emerald tbody tr:nth-child(even) {
+  background-color: #f0fdf4;
+}
+.prose-blog .blog-table-emerald tbody tr:hover td {
+  background-color: #ecfdf5;
+}
+
+/* 5. Minimal Borderless */
+.prose-blog .blog-table-minimal {
+  border: none !important;
+}
+.prose-blog .blog-table-minimal th,
+.prose-blog .blog-table-minimal td {
+  border-left: none !important;
+  border-right: none !important;
+  border-top: none !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+.prose-blog .blog-table-minimal th {
+  background-color: transparent !important;
+  color: #475569 !important;
+  font-weight: 700 !important;
+  border-bottom: 2px solid #94a3b8 !important;
+}
+
+/* Table Caption */
+.prose-blog .blog-table-caption {
+  font-size: 0.8125rem;
+  color: #64748b;
+  font-weight: 600;
+  text-align: left;
+  margin-bottom: 0.5rem;
+  font-style: italic;
+}
+
+/* In-Between Blog Content Images & Figures */
+.prose-blog .blog-figure {
+  margin: 2.25rem 0;
+  display: block;
+  max-width: 100%;
+}
+
+.prose-blog .blog-figure-center {
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center;
+  max-width: 100%;
+  clear: both;
+}
+
+.prose-blog .blog-figure-full {
+  width: 100% !important;
+  margin-left: 0;
+  margin-right: 0;
+  text-align: center;
+  clear: both;
+}
+
+.prose-blog .blog-figure-left {
+  float: left;
+  max-width: 100%;
+  margin-right: 2rem;
+  margin-bottom: 1.5rem;
+  margin-top: 0.5rem;
+  clear: left;
+}
+
+.prose-blog .blog-figure-right {
+  float: right;
+  max-width: 100%;
+  margin-left: 2rem;
+  margin-bottom: 1.5rem;
+  margin-top: 0.5rem;
+  clear: right;
+}
+
+@media (max-width: 640px) {
+  .prose-blog .blog-figure-left,
+  .prose-blog .blog-figure-right {
+    float: none !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+}
+
+.prose-blog .blog-inline-img {
+  max-width: 100%;
+  height: auto;
+  display: inline-block;
+  border-radius: 1.25rem;
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+  border: 1px solid #f1f5f9;
+}
+
+.prose-blog .blog-caption {
+  font-size: 0.8125rem;
+  color: #64748b;
+  margin-top: 0.625rem;
+  font-style: italic;
+  font-weight: 500;
+  text-align: center;
+  display: block;
+}
+
+/* Clearfix for headings and content sections */
+.prose-blog::after,
+.prose-blog h1,
+.prose-blog h2,
+.prose-blog h3,
+.prose-blog h4 {
+  clear: both;
+}
+
+
 

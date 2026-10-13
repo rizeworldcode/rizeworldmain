@@ -254,7 +254,7 @@ export default function BlogDetails() {
       </section>
 
       {/* 4. BLOG CONTENT */}
-      <article className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 mb-24">
+      <article className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mb-24">
         {/* Intro text */}
         {blog.intro && (
           <p className="text-gray-600 text-lg md:text-xl font-medium leading-relaxed mb-10 italic border-l-4 border-orange-500 pl-4 py-1">
