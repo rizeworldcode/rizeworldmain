@@ -130,6 +130,16 @@ const BlogManagement = ({ onBack }) => {
 
   const getStaffToken = () => localStorage.getItem('staffToken') || '';
 
+  // Safe JSON parser to prevent unexpected HTML response syntax crashes
+  const parseResponseJson = async (res) => {
+    try {
+      const text = await res.text();
+      return text ? JSON.parse(text) : {};
+    } catch {
+      return {};
+    }
+  };
+
   const showToast = (message, type = 'success') => {
     setNotification({ show: true, message, type });
     setTimeout(() => {
@@ -142,15 +152,15 @@ const BlogManagement = ({ onBack }) => {
     setLoading(true);
     try {
       const res = await fetch(`${API_BASE_URL}/api/blogs`);
-      const data = await res.json();
-      if (data.success) {
+      const data = await parseResponseJson(res);
+      if (res.ok && data.success) {
         setBlogs(data.data || []);
       } else {
         showToast(data.message || 'Failed to load blogs', 'error');
       }
     } catch (err) {
       console.error('Fetch blogs error:', err);
-      showToast('Error connecting to backend server', 'error');
+      showToast('Error connecting to backend server. Please try again.', 'error');
     } finally {
       setLoading(false);
     }
@@ -159,6 +169,15 @@ const BlogManagement = ({ onBack }) => {
   useEffect(() => {
     fetchBlogs();
   }, []);
+
+  // Keep Render server awake while writing blog posts so it doesn't spin down after 15m
+  useEffect(() => {
+    if (activeTab !== 'editor') return;
+    const interval = setInterval(() => {
+      fetch(`${API_BASE_URL}/health`).catch(() => {});
+    }, 4 * 60 * 1000); // Ping every 4 minutes
+    return () => clearInterval(interval);
+  }, [activeTab]);
 
   // Sync editor content with contentHtml when entering editor
   useEffect(() => {
@@ -688,6 +707,48 @@ const BlogManagement = ({ onBack }) => {
     };
   }, [selectedImageContext, selectedImageContext?.widthPercent]);
 
+  // Handle Pasting into Editor (interception of direct pasted images to Cloudinary)
+  const handleEditorPaste = async (e) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type && items[i].type.startsWith('image/')) {
+        e.preventDefault();
+        const file = items[i].getAsFile();
+        if (!file) continue;
+
+        setUploadingImage(true);
+        showToast('Uploading pasted image to Cloudinary...', 'success');
+        const formData = new FormData();
+        formData.append('image', file);
+
+        try {
+          const res = await fetch(`${API_BASE_URL}/api/blogs/upload-image`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${getStaffToken()}` },
+            body: formData
+          });
+          const data = await parseResponseJson(res);
+          if (res.ok && data.success && data.imageUrl) {
+            const full = data.imageUrl.startsWith('http') ? data.imageUrl : `${API_BASE_URL}${data.imageUrl}`;
+            document.execCommand('insertImage', false, full);
+            if (editorRef.current) setContentHtml(editorRef.current.innerHTML);
+            showToast('Pasted image uploaded & inserted!');
+          } else {
+            showToast(data.message || 'Failed to upload pasted image', 'error');
+          }
+        } catch (err) {
+          console.error('Paste image upload error:', err);
+          showToast('Error uploading pasted image', 'error');
+        } finally {
+          setUploadingImage(false);
+        }
+        return;
+      }
+    }
+  };
+
   // Editor Click Handler: detects clicking on an image or inside a table
   const handleEditorClick = (e) => {
     saveCurrentSelection();
@@ -1113,8 +1174,8 @@ const BlogManagement = ({ onBack }) => {
         body: formData
       });
 
-      const data = await res.json();
-      if (data.success && data.imageUrl) {
+      const data = await parseResponseJson(res);
+      if (res.ok && data.success && data.imageUrl) {
         const fullUrl = data.imageUrl.startsWith('http') 
           ? data.imageUrl 
           : `${API_BASE_URL}${data.imageUrl}`;
@@ -1123,11 +1184,15 @@ const BlogManagement = ({ onBack }) => {
         setShowImageModal(true);
         showToast('Image uploaded! Choose alignment and insert.');
       } else {
-        showToast(data.message || 'Image upload failed', 'error');
+        if (res.status === 401) {
+          showToast('Session expired. Please re-login to upload images.', 'error');
+        } else {
+          showToast(data.message || 'Image upload failed', 'error');
+        }
       }
     } catch (err) {
       console.error('Inline image upload error:', err);
-      showToast('Error uploading image', 'error');
+      showToast('Error uploading image. Please check your connection.', 'error');
     } finally {
       setUploadingImage(false);
       if (inlineImageInputRef.current) inlineImageInputRef.current.value = '';
@@ -1152,19 +1217,23 @@ const BlogManagement = ({ onBack }) => {
         body: formData
       });
 
-      const data = await res.json();
-      if (data.success && data.imageUrl) {
+      const data = await parseResponseJson(res);
+      if (res.ok && data.success && data.imageUrl) {
         const fullUrl = data.imageUrl.startsWith('http') 
           ? data.imageUrl 
           : `${API_BASE_URL}${data.imageUrl}`;
         setCoverImage(fullUrl);
         showToast('Cover image updated!');
       } else {
-        showToast(data.message || 'Cover image upload failed', 'error');
+        if (res.status === 401) {
+          showToast('Session expired. Please re-login to upload images.', 'error');
+        } else {
+          showToast(data.message || 'Cover image upload failed', 'error');
+        }
       }
     } catch (err) {
       console.error('Cover image upload error:', err);
-      showToast('Error uploading cover image', 'error');
+      showToast('Error uploading cover image. Please check your connection.', 'error');
     } finally {
       setUploadingImage(false);
       if (coverImageInputRef.current) coverImageInputRef.current.value = '';
@@ -1225,6 +1294,13 @@ const BlogManagement = ({ onBack }) => {
     }
 
     setSaving(true);
+    const token = getStaffToken();
+    if (!token) {
+      showToast('You must be logged in as an employee to save blogs. Please re-login.', 'error');
+      setSaving(false);
+      return;
+    }
+
     const payload = {
       title,
       subheading,
@@ -1245,22 +1321,28 @@ const BlogManagement = ({ onBack }) => {
         method,
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${getStaffToken()}`
+          Authorization: `Bearer ${token}`
         },
         body: JSON.stringify(payload)
       });
 
-      const data = await res.json();
-      if (data.success) {
+      const data = await parseResponseJson(res);
+      if (res.ok && data.success) {
         showToast(editingId ? 'Blog updated successfully!' : 'Blog post published successfully!');
         fetchBlogs();
         setActiveTab('list');
       } else {
-        showToast(data.message || 'Failed to save blog', 'error');
+        if (res.status === 401) {
+          showToast('Session expired or unauthorized. Please re-login to employee portal.', 'error');
+        } else if (res.status === 413) {
+          showToast('Blog content or images are too large. Please use smaller images.', 'error');
+        } else {
+          showToast(data.message || `Failed to save blog (Server code ${res.status})`, 'error');
+        }
       }
     } catch (err) {
       console.error('Save blog error:', err);
-      showToast('Connection error while saving blog', 'error');
+      showToast('Network error while saving blog. Server may be waking up, please try again.', 'error');
     } finally {
       setSaving(false);
     }
@@ -1277,16 +1359,20 @@ const BlogManagement = ({ onBack }) => {
           Authorization: `Bearer ${getStaffToken()}`
         }
       });
-      const data = await res.json();
-      if (data.success) {
+      const data = await parseResponseJson(res);
+      if (res.ok && data.success) {
         showToast('Blog post deleted successfully');
         setBlogs(blogs.filter(b => b._id !== deleteModal.blogId));
       } else {
-        showToast(data.message || 'Failed to delete blog', 'error');
+        if (res.status === 401) {
+          showToast('Session expired. Please re-login to employee portal.', 'error');
+        } else {
+          showToast(data.message || 'Failed to delete blog', 'error');
+        }
       }
     } catch (err) {
       console.error('Delete error:', err);
-      showToast('Error deleting blog post', 'error');
+      showToast('Error deleting blog post. Check connection.', 'error');
     } finally {
       setDeleteModal({ show: false, blogId: null });
     }
@@ -2081,6 +2167,7 @@ const BlogManagement = ({ onBack }) => {
                     <div
                       ref={editorRef}
                       contentEditable
+                      onPaste={handleEditorPaste}
                       onInput={(e) => {
                         if (editorRef.current) setContentHtml(editorRef.current.innerHTML);
                         handleEditorClick(e);
@@ -2840,8 +2927,8 @@ const BlogManagement = ({ onBack }) => {
                             headers: { Authorization: `Bearer ${getStaffToken()}` },
                             body: formData
                           });
-                          const data = await res.json();
-                          if (data.success && data.imageUrl) {
+                          const data = await parseResponseJson(res);
+                          if (res.ok && data.success && data.imageUrl) {
                             const full = data.imageUrl.startsWith('http') ? data.imageUrl : `${API_BASE_URL}${data.imageUrl}`;
                             setInlineImageUrl(full);
                             showToast('Image uploaded successfully!');

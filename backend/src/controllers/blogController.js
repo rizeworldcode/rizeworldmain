@@ -32,6 +32,57 @@ const generateSlug = async (title, currentBlogId = null) => {
   return slug;
 };
 
+// Helper to upload any base64 data URIs found in blog HTML content to Cloudinary
+const processBase64ImagesInContent = async (htmlContent) => {
+  if (!htmlContent || typeof htmlContent !== 'string') return htmlContent;
+
+  const base64Regex = /src=["'](data:image\/[a-zA-Z0-9.+_-]+;base64,[^"']+)["']/g;
+  let match;
+  const matches = [];
+  while ((match = base64Regex.exec(htmlContent)) !== null) {
+    if (!matches.includes(match[1])) {
+      matches.push(match[1]);
+    }
+  }
+
+  if (matches.length === 0) return htmlContent;
+
+  let updatedContent = htmlContent;
+  for (const dataUri of matches) {
+    try {
+      const uploadRes = await cloudinary.uploader.upload(dataUri, {
+        folder: 'blogs',
+        resource_type: 'image'
+      });
+      if (uploadRes && uploadRes.secure_url) {
+        // Replace all occurrences of this data URI with the Cloudinary URL
+        updatedContent = updatedContent.split(dataUri).join(uploadRes.secure_url);
+      }
+    } catch (uploadErr) {
+      console.error('Failed to upload inline base64 image to Cloudinary:', uploadErr.message);
+    }
+  }
+
+  return updatedContent;
+};
+
+// Helper to upload base64 cover image if provided
+const processCoverImage = async (coverImage) => {
+  if (!coverImage || typeof coverImage !== 'string') return coverImage || '';
+  if (!coverImage.startsWith('data:image/')) return coverImage;
+
+  try {
+    const uploadRes = await cloudinary.uploader.upload(coverImage, {
+      folder: 'blogs',
+      resource_type: 'image'
+    });
+    return uploadRes.secure_url || coverImage;
+  } catch (err) {
+    console.error('Failed to upload base64 cover image to Cloudinary:', err.message);
+    return coverImage;
+  }
+};
+
 // POST /api/blogs - Create Blog
 exports.createBlog = async (req, res) => {
   try {
@@ -46,12 +97,16 @@ exports.createBlog = async (req, res) => {
     const authorRole = (req.user && req.user.role) ? req.user.role : '';
     const authorId = req.user ? req.user._id : null;
 
+    // Automatically detect and convert any pasted inline base64 images to Cloudinary URLs
+    const sanitizedContent = await processBase64ImagesInContent(content);
+    const sanitizedCover = await processCoverImage(coverImage);
+
     const newBlog = await Blog.create({
       title,
       slug,
       subheading: subheading || '',
-      content,
-      coverImage: coverImage || '',
+      content: sanitizedContent,
+      coverImage: sanitizedCover || '',
       category: category || 'General',
       tags: Array.isArray(tags) ? tags : (tags ? tags.split(',').map(t => t.trim()) : []),
       authorName,
@@ -160,8 +215,12 @@ exports.updateBlog = async (req, res) => {
       blog.slug = await generateSlug(title, blog._id);
     }
     if (subheading !== undefined) blog.subheading = subheading;
-    if (content !== undefined) blog.content = content;
-    if (coverImage !== undefined) blog.coverImage = coverImage;
+    if (content !== undefined) {
+      blog.content = await processBase64ImagesInContent(content);
+    }
+    if (coverImage !== undefined) {
+      blog.coverImage = await processCoverImage(coverImage);
+    }
     if (category !== undefined) blog.category = category;
     if (tags !== undefined) {
       blog.tags = Array.isArray(tags) ? tags : (tags ? tags.split(',').map(t => t.trim()) : []);

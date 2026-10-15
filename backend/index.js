@@ -18,10 +18,15 @@ const app = express();
 // CORS configuration
 const allowedOrigins = [
   'https://admin.rizeworld.in',
+  'http://admin.rizeworld.in',
   'https://employee.rizeworld.in',
-  'https://admin.rizeworld.in',
+  'http://employee.rizeworld.in',
+  'https://staff.rizeworld.in',
+  'http://staff.rizeworld.in',
   'https://rizeworld.in',
+  'http://rizeworld.in',
   'https://www.rizeworld.in',
+  'http://www.rizeworld.in',
   'http://localhost:5173',
   'http://localhost:5174',
   'http://localhost:5175',
@@ -34,13 +39,23 @@ const allowedOrigins = [
 
 const corsOptions = {
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl)
+    // Allow requests with no origin (like mobile apps, curl, or server-to-server)
     if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) !== -1 || origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
+    if (
+      allowedOrigins.includes(origin) ||
+      origin.startsWith('http://localhost:') ||
+      origin.startsWith('http://127.0.0.1:') ||
+      origin.startsWith('http://192.168.') ||
+      origin.startsWith('http://10.') ||
+      origin.endsWith('.local') ||
+      origin.endsWith('.rizeworld.in') ||
+      origin.includes('rizeworld') ||
+      origin.includes('onrender.com') ||
+      origin.includes('vercel.app')
+    ) {
       return callback(null, true);
-    } else {
-      return callback(new Error('CORS policy: This origin is not allowed by CORS'));
     }
+    return callback(null, false);
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   credentials: true,
@@ -56,7 +71,7 @@ app.use((req, res, next) => {
   // Use Content-Security-Policy frame-ancestors for modern browsers
   res.setHeader(
     'Content-Security-Policy',
-    "frame-ancestors 'self' http://localhost:5173 http://localhost:5174 http://localhost:5175"
+    "frame-ancestors 'self' http://localhost:5173 http://localhost:5174 http://localhost:5175 https://admin.rizeworld.in https://employee.rizeworld.in"
   );
   // Also clear any existing X-Frame-Options header that might block embedding
   res.removeHeader && res.removeHeader('X-Frame-Options');
@@ -73,9 +88,9 @@ app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
 
 app.use(requestProfiler);
 app.use(compression());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
 app.use(cookieParser());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(express.static(path.join(__dirname, '/public')));
 app.use('/uploads', express.static(path.join(__dirname, '/uploads')));
 
@@ -226,6 +241,24 @@ app.get('/public-file', async (req, res) => {
 });
 
 
+
+// Global error handling middleware - ensure all API errors return JSON instead of raw HTML
+app.use((err, req, res, next) => {
+  console.error('Unhandled server error:', err);
+  const statusCode = err.statusCode || err.status || (err.type === 'entity.too.large' ? 413 : 500);
+  const message = err.type === 'entity.too.large'
+    ? 'Payload too large. Please reduce the size of the images or content.'
+    : (err.message || 'Internal server error');
+
+  if (res.headersSent) {
+    return next(err);
+  }
+
+  res.status(statusCode).json({
+    success: false,
+    message: message
+  });
+});
 
 // Setup Socket.IO using the utility
 const server = http.createServer(app);
