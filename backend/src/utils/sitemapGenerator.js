@@ -77,6 +77,17 @@ const updateBlogSitemap = async () => {
       }
     }
 
+    // Ping the live frontend web server to refresh its disk cache immediately
+    try {
+      const axios = require('axios');
+      axios.get('https://rizeworld.in/sitemap-blogs.php?refresh=1', {
+        timeout: 4000,
+        headers: { 'User-Agent': 'RizeWorld-Backend/1.0' }
+      }).catch(() => {});
+    } catch (_) {
+      // Non-blocking ping
+    }
+
     return xmlContent;
   } catch (error) {
     console.error('Error updating blog sitemap:', error);

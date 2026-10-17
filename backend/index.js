@@ -169,6 +169,35 @@ app.get('/sitemap-blogs.xml', async (req, res) => {
   res.status(200).send(xml);
 });
 
+app.get('/sitemap.xml', (req, res) => {
+  const today = new Date().toISOString().split('T')[0];
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <sitemap>
+    <loc>https://rizeworld.in/sitemap-pages.xml</loc>
+    <lastmod>2026-10-13</lastmod>
+  </sitemap>
+  <sitemap>
+    <loc>https://rizeworld.in/sitemap-services.xml</loc>
+    <lastmod>2026-10-13</lastmod>
+  </sitemap>
+  <sitemap>
+    <loc>https://rizeworld.in/sitemap-locations.xml</loc>
+    <lastmod>2026-10-13</lastmod>
+  </sitemap>
+  <sitemap>
+    <loc>https://rizeworld.in/sitemap-blogs.xml</loc>
+    <lastmod>${today}</lastmod>
+  </sitemap>
+  <sitemap>
+    <loc>https://rizeworld.in/sitemap-case-studies.xml</loc>
+    <lastmod>2026-10-13</lastmod>
+  </sitemap>
+</sitemapindex>`;
+  res.header('Content-Type', 'application/xml');
+  res.status(200).send(xml);
+});
+
 
 // Secure proxy endpoint to stream files from backend/public
 // Usage: /public-file?path=uploads/filename.pdf

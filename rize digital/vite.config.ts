@@ -106,6 +106,109 @@ try {
   console.error('Error parsing Excel in vite.config.ts:', error.message);
 }
 
+const ROUTE_FALLBACKS: Record<string, { title: string; description: string }> = {
+  '/about': {
+    title: 'About Our Digital Marketing Agency | RizeWorld',
+    description: 'Learn more about RizeWorld, a leading digital solutions company. Discover how our online marketing services and professional web design agency scale brands.'
+  },
+  '/services': {
+    title: 'Digital Marketing Services & Solutions Company | RizeWorld',
+    description: 'Explore high-impact digital marketing services, custom web design, SEO, PPC management, and social media marketing to grow your business online with RizeWorld.'
+  },
+  '/services/digital-marketing': {
+    title: 'Premium Digital Marketing Service & Agency | RizeWorld',
+    description: 'Accelerate business growth with comprehensive digital marketing services from RizeWorld. Targeted online campaigns, lead generation, and performance marketing.'
+  },
+  '/services/web-development': {
+    title: 'Web Design Services & Website Design Company | RizeWorld',
+    description: 'Custom, fast, and responsive web design services. Build high-converting corporate websites and web applications with RizeWorld expert developers.'
+  },
+  '/services/seo': {
+    title: 'SEO Services India & Search Engine Optimization | RizeWorld',
+    description: 'Boost organic search rankings and traffic with expert SEO services. Technical SEO, on-page optimization, quality link building, and keyword strategies.'
+  },
+  '/services/social-media-marketing': {
+    title: 'Social Media Marketing Services & SMM Agency | RizeWorld',
+    description: 'Grow your social presence, engage followers, and run targeted campaigns across Instagram, LinkedIn, and Facebook with RizeWorld social media marketing.'
+  },
+  '/services/paid-ads': {
+    title: 'PPC Management Services & Google Ads Agency | RizeWorld',
+    description: 'Maximize ROI with high-converting Google Ads and paid advertising campaigns managed by certified PPC experts at RizeWorld.'
+  },
+  '/services/wordpress-development': {
+    title: 'WordPress Development Services & Custom Company | RizeWorld',
+    description: 'Scalable, secure, and custom WordPress website development services tailored for businesses, eCommerce, and enterprise portals.'
+  },
+  '/services/custom-website-development': {
+    title: 'Custom Website Development Services | RizeWorld',
+    description: 'Tailored full-stack website and web application development built with modern technologies for speed, security, and scalability.'
+  },
+  '/services/content-marketing': {
+    title: 'Content Marketing Services & Content Writing Agency | RizeWorld',
+    description: 'Drive engagement and organic conversions with authoritative, SEO-optimized content marketing and copywriting services.'
+  },
+  '/services/graphic-design': {
+    title: 'Graphic Design Services & Branding Agency | RizeWorld',
+    description: 'Transform your brand identity with creative graphic design, logo design, visual branding, and marketing collateral.'
+  },
+  '/services/ecommerce-development': {
+    title: 'Ecommerce Development Services & Online Store Agency | RizeWorld',
+    description: 'Build fast, user-friendly, and secure eCommerce stores with custom checkout workflows and conversion rate optimization.'
+  },
+  '/services/ui-ux-design': {
+    title: 'UI/UX Design Services | RizeWorld',
+    description: 'Deliver intuitive, engaging, and beautiful user experiences with human-centric UI/UX design and wireframing services.'
+  },
+  '/team': {
+    title: 'Our Team | Digital Marketing Experts & Web Developers | RizeWorld',
+    description: 'Meet the passionate team of digital marketers, developers, SEO specialists, and designers behind RizeWorld Digital.'
+  },
+  '/portfolio': {
+    title: 'Our Digital Marketing & Web Design Portfolio | RizeWorld',
+    description: 'Explore client success stories, creative branding, and web design projects successfully delivered by RizeWorld Digital.'
+  },
+  '/careers': {
+    title: 'Careers | Join Our Digital Marketing Agency | RizeWorld',
+    description: 'Explore rewarding career opportunities at RizeWorld. Join our dynamic team of marketing strategists, developers, and designers.'
+  },
+  '/contact': {
+    title: 'Contact Our Digital Marketing Agency | RizeWorld',
+    description: 'Get in touch with RizeWorld Digital, a premier digital solutions company. Contact us to discuss your online marketing services or web development project requirements.'
+  },
+  '/blogs': {
+    title: 'Digital Marketing Insights & Strategy Blog | RizeWorld',
+    description: 'Stay ahead of digital trends with actionable guides, SEO tips, advertising strategies, and web design best practices on RizeWorld blog.'
+  },
+  '/case-studies': {
+    title: 'Case Studies & Results | Digital Marketing Agency | RizeWorld',
+    description: 'Real client case studies demonstrating measurable ROI, traffic surges, and conversion rate growth powered by RizeWorld.'
+  },
+  '/faq': {
+    title: 'FAQ | Digital Marketing & SEO Services Questions | RizeWorld',
+    description: 'Find answers to frequently asked questions about RizeWorld digital marketing, SEO, web development pricing, timelines, and deliverables.'
+  },
+  '/pricing': {
+    title: 'SEO, Social Media & Web Development Pricing Packages | RizeWorld',
+    description: 'Transparent and affordable pricing packages for SEO, social media marketing, PPC campaigns, and web development services at RizeWorld.'
+  },
+  '/privacy': {
+    title: 'Privacy Policy | RizeWorld',
+    description: 'Read the privacy policy of RizeWorld to understand how we collect, protect, and use your personal data.'
+  },
+  '/terms': {
+    title: 'Terms of Service | RizeWorld',
+    description: 'Read the terms of service governing your use of RizeWorld digital solutions, agency services, and website.'
+  },
+  '/accessibility': {
+    title: 'Accessibility Arrangements | RizeWorld',
+    description: 'Learn about RizeWorld accessibility features and commitment to making digital experiences accessible to everyone.'
+  },
+  '/locations': {
+    title: 'Our Serviced Cities & Regional Office Mappings | RizeWorld',
+    description: 'Discover all the cities and regional locations across India serviced by RizeWorld Digital Marketing Agency.'
+  }
+};
+
 function devPrerenderPlugin() {
   return {
     name: 'dev-prerender',
@@ -118,26 +221,88 @@ function devPrerenderPlugin() {
         if (urlPath === '/' || urlPath === '') {
           return html;
         }
+
+        const host = (ctx.req && ctx.req.headers && ctx.req.headers.host) || 'localhost:5173';
+        const protocol = (ctx.req && ctx.req.headers && ctx.req.headers['x-forwarded-proto']) || 'http';
+        const currentUrl = `${protocol}://${host}${urlPath}`;
         
         const targetFile = path.join(__dirname, 'dist', urlPath, 'index.html');
         if (fs.existsSync(targetFile)) {
           const distHtml = fs.readFileSync(targetFile, 'utf-8');
           
-          const titleMatch = distHtml.match(/<title>(.*?)<\/title>/);
+          // 1. Title
+          const titleMatch = distHtml.match(/<title>([\s\S]*?)<\/title>/i);
           if (titleMatch) {
-            html = html.replace(/<title>.*?<\/title>/, `<title>${titleMatch[1]}</title>`);
+            const pageTitle = titleMatch[1].trim();
+            html = html.replace(/<title>.*?<\/title>/i, `<title>${pageTitle}</title>`);
           }
           
-          const descMatch = distHtml.match(/<meta name="description" content="(.*?)" \/>/);
+          // 2. Meta description (robust multiline match)
+          const descMatch = distHtml.match(/<meta\s+[^>]*name=["']description["'][^>]*content=["']([\s\S]*?)["'][^>]*>/i) ||
+                            distHtml.match(/<meta\s+[^>]*content=["']([\s\S]*?)["'][^>]*name=["']description["'][^>]*>/i);
           if (descMatch) {
-            html = html.replace(/<meta name="description".*?>/, `<meta name="description" content="${descMatch[1]}" />`);
+            const pageDesc = descMatch[1].trim();
+            html = html.replace(/<meta\s+name=["']description["'].*?>/i, `<meta name="description" content="${pageDesc}" />`);
           }
 
-          const h1Match = distHtml.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
-          const h2Matches = Array.from(distHtml.matchAll(/<h2[^>]*>([\s\S]*?)<\/h2>/gi)).map(m => m[0]);
-          if (h1Match || h2Matches.length > 0) {
-            const headingsBlock = `<header style="opacity: 0; position: absolute; pointer-events: none;" aria-hidden="true">${h1Match ? h1Match[0] : ''}${h2Matches.slice(0, 3).join('')}</header>`;
-            html = html.replace(/<div id="root">[\s\S]*?<\/div>/, `<div id="root">${headingsBlock}</div>`);
+          // 3. OpenGraph tags
+          const ogProps = ['og:title', 'og:description', 'og:url', 'og:image'];
+          for (const prop of ogProps) {
+            const ogRegex = new RegExp(`<meta\\s+[^>]*property=["']${prop}["'][^>]*content=["']([\\s\\S]*?)["'][^>]*>`, 'i');
+            const m = distHtml.match(ogRegex);
+            if (m) {
+              const val = prop === 'og:url' ? currentUrl : m[1].trim();
+              const targetRegex = new RegExp(`<meta\\s+[^>]*property=["']${prop}["'][^>]*>`, 'i');
+              if (targetRegex.test(html)) {
+                html = html.replace(targetRegex, `<meta property="${prop}" content="${val}" />`);
+              } else {
+                html = html.replace('</head>', `  <meta property="${prop}" content="${val}" />\n</head>`);
+              }
+            }
+          }
+
+          // 4. Twitter tags
+          const twProps = ['twitter:title', 'twitter:description', 'twitter:image'];
+          for (const prop of twProps) {
+            const twRegex = new RegExp(`<meta\\s+[^>]*name=["']${prop}["'][^>]*content=["']([\\s\\S]*?)["'][^>]*>`, 'i');
+            const m = distHtml.match(twRegex);
+            if (m) {
+              const val = m[1].trim();
+              const targetRegex = new RegExp(`<meta\\s+[^>]*name=["']${prop}["'][^>]*>`, 'i');
+              if (targetRegex.test(html)) {
+                html = html.replace(targetRegex, `<meta name="${prop}" content="${val}" />`);
+              } else {
+                html = html.replace('</head>', `  <meta name="${prop}" content="${val}" />\n</head>`);
+              }
+            }
+          }
+
+          // 5. Canonical link
+          if (html.includes('rel="canonical"')) {
+            html = html.replace(/<link\s+[^>]*rel=["']canonical["'][^>]*>/i, `<link rel="canonical" href="${currentUrl}" />`);
+          } else {
+            html = html.replace('</head>', `  <link rel="canonical" href="${currentUrl}" />\n</head>`);
+          }
+
+          // 6. Semantic root content
+          const rootMatch = distHtml.match(/<div id="root">([\s\S]*?)<\/div>/i);
+          if (rootMatch && rootMatch[1].trim()) {
+            html = html.replace(/<div id="root">[\s\S]*?<\/div>/i, `<div id="root">\n${rootMatch[1].trim()}\n</div>`);
+          }
+        } else if (ROUTE_FALLBACKS[urlPath]) {
+          // If dist has not been generated for this route yet, apply built-in route fallback
+          const fb = ROUTE_FALLBACKS[urlPath];
+          html = html.replace(/<title>.*?<\/title>/i, `<title>${fb.title}</title>`);
+          html = html.replace(/<meta\s+name=["']description["'].*?>/i, `<meta name="description" content="${fb.description}" />`);
+          html = html.replace(/<meta\s+property=["']og:title["'].*?>/i, `<meta property="og:title" content="${fb.title}" />`);
+          html = html.replace(/<meta\s+property=["']og:description["'].*?>/i, `<meta property="og:description" content="${fb.description}" />`);
+          html = html.replace(/<meta\s+property=["']og:url["'].*?>/i, `<meta property="og:url" content="${currentUrl}" />`);
+          html = html.replace(/<meta\s+name=["']twitter:title["'].*?>/i, `<meta name="twitter:title" content="${fb.title}" />`);
+          html = html.replace(/<meta\s+name=["']twitter:description["'].*?>/i, `<meta name="twitter:description" content="${fb.description}" />`);
+          if (html.includes('rel="canonical"')) {
+            html = html.replace(/<link\s+[^>]*rel=["']canonical["'][^>]*>/i, `<link rel="canonical" href="${currentUrl}" />`);
+          } else {
+            html = html.replace('</head>', `  <link rel="canonical" href="${currentUrl}" />\n</head>`);
           }
         }
       } catch (e) {
