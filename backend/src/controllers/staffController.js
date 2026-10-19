@@ -11,6 +11,26 @@ const jwt = require('jsonwebtoken');
 const upload = require('../middleware/upload');
 const socketUtil = require('../../socket');
 
+// Helper function to check if two dates are the same day in IST
+const isSameDayIST = (d1, d2 = new Date()) => {
+  if (!d1 || !d2) return false;
+  const date1 = new Date(d1);
+  const date2 = new Date(d2);
+  if (isNaN(date1.getTime()) || isNaN(date2.getTime())) return false;
+  const s1 = date1.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+  const s2 = date2.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+  return s1 === s2;
+};
+
+// Helper function to get exact IST day boundaries in UTC
+const getTodayRangeIST = (baseDate = new Date()) => {
+  const istString = baseDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+  const [year, month, day] = istString.split('-').map(Number);
+  const start = new Date(Date.UTC(year, month - 1, day, 0, 0, 0) - (5.5 * 60 * 60 * 1000));
+  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+  return { start, end, istString };
+};
+
 // Staff Login
 exports.loginStaff = async (req, res) => {
   try {
@@ -38,13 +58,8 @@ exports.loginStaff = async (req, res) => {
     await staff.save();
 
     // Get today's clock record for sending to frontend
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
     const todayClockRecord = staff.clock?.find(c =>
-      new Date(c.date) >= today && new Date(c.date) < tomorrow
+      c.date && isSameDayIST(c.date, new Date())
     );
 
     let reportingPersonName = '-';
@@ -172,8 +187,7 @@ exports.getAllStaff = async (req, res) => {
       const admissionMap = new Map(admissionAgg.map(a => [String(a._id), a.count]));
       const salesMap = new Map(salesAgg.map(s => [String(s._id), s.count]));
 
-      const todayStart = new Date();
-      todayStart.setHours(0, 0, 0, 0);
+      const now = new Date();
 
       return staff.map((staffObj) => {
         const staffIdStr = String(staffObj._id);
@@ -185,19 +199,37 @@ exports.getAllStaff = async (req, res) => {
         }
         // Keep only today's work object in summary list to avoid multi-year work array bloat
         if (staffObj.work && staffObj.work.length > 0) {
-          staffObj.work = staffObj.work.filter(w => {
-            if (!w.date) return false;
-            const d = new Date(w.date);
-            return d >= todayStart;
-          });
+          const todayWorks = staffObj.work.filter(w => w && w.date && isSameDayIST(w.date, now));
+          if (todayWorks.length > 1) {
+            // Consolidate duplicate entries into one coherent entry
+            const consolidatedTasks = [];
+            const seen = new Set();
+            todayWorks.forEach(w => {
+              (w.tasks || []).forEach(t => {
+                const key = (t.name || '').trim().toLowerCase();
+                if (!seen.has(key)) {
+                  seen.add(key);
+                  consolidatedTasks.push(t);
+                } else if (t.completed) {
+                  const existing = consolidatedTasks.find(ct => (ct.name || '').trim().toLowerCase() === key);
+                  if (existing) existing.completed = true;
+                }
+              });
+            });
+            staffObj.work = [{
+              ...todayWorks[0],
+              tasks: consolidatedTasks,
+              date: todayWorks[0].date
+            }];
+          } else {
+            staffObj.work = todayWorks;
+          }
+        } else {
+          staffObj.work = [];
         }
         // Keep only today's clock entry so clock in / clock out times display accurately
         if (staffObj.clock && staffObj.clock.length > 0) {
-          staffObj.clock = staffObj.clock.filter(c => {
-            if (!c.date) return false;
-            const d = new Date(c.date);
-            return d >= todayStart;
-          });
+          staffObj.clock = staffObj.clock.filter(c => c && c.date && isSameDayIST(c.date, now));
         } else {
           staffObj.clock = [];
         }
@@ -491,13 +523,8 @@ exports.getStaffById = async (req, res) => {
     }
 
     // Get today's clock record for sending to frontend
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
     const todayClockRecord = staff.clock?.find(c =>
-      new Date(c.date) >= today && new Date(c.date) < tomorrow
+      c.date && isSameDayIST(c.date, new Date())
     );
 
     let reportingPersonName = '-';
@@ -783,16 +810,6 @@ exports.rejoinStaff = async (req, res) => {
   }
 };
 
-// Helper function to check if two dates are the same day in IST
-const isSameDayIST = (d1, d2 = new Date()) => {
-  if (!d1 || !d2) return false;
-  const date1 = new Date(d1);
-  const date2 = new Date(d2);
-  if (isNaN(date1.getTime()) || isNaN(date2.getTime())) return false;
-  const s1 = date1.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
-  const s2 = date2.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
-  return s1 === s2;
-};
 
 // Helper function to check if a date is Sunday in IST
 const isSundayIST = (date = new Date()) => {
@@ -1527,7 +1544,7 @@ exports.clockOutAllStaff = async (req, res) => {
 // Update today's work
 exports.updateTodayWork = async (req, res) => {
   try {
-    const { todayWork } = req.body;
+    const { todayWork, tasks: incomingTasks, taskIndex } = req.body;
     const now = new Date();
 
     const staff = await Staff.findById(req.params.id);
@@ -1535,74 +1552,175 @@ exports.updateTodayWork = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Staff not found' });
     }
 
-    // Split the input string into individual tasks (comma-separated)
-    const taskNames = todayWork.split(',').map(t => t.trim()).filter(t => t.length > 0);
-
     // Check if today's work record exists
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const { start: todayStart, end: todayEnd } = getTodayRangeIST(now);
 
-    const todayWorkIndex = staff.work?.findIndex(w =>
-      new Date(w.date) >= today && new Date(w.date) < tomorrow
-    );
+    // Find all work entries matching today in IST
+    const todayWorkIndices = [];
+    if (staff.work && staff.work.length > 0) {
+      staff.work.forEach((w, index) => {
+        if (!w || !w.date) return;
+        if (isSameDayIST(w.date, now)) {
+          todayWorkIndices.push(index);
+        }
+      });
+    }
 
-    let tasks;
-    if (todayWorkIndex !== -1 && staff.work[todayWorkIndex].tasks) {
-      const existingTasks = staff.work[todayWorkIndex].tasks;
+    let existingTasks = [];
+    if (todayWorkIndices.length > 0 && staff.work[todayWorkIndices[0]]?.tasks) {
+      existingTasks = staff.work[todayWorkIndices[0]].tasks;
+    }
 
-      // Check if a task is being removed
-      if (taskNames.length < existingTasks.length) {
-        const reqEmployeeId = req.body?.employeeId || staff.employeeId;
-        const allowedEmployeeIds = ['RW-9752', 'RW-1702'];
-        if (!allowedEmployeeIds.includes(reqEmployeeId)) {
-          return res.status(403).json({
-            success: false,
-            message: 'Access Denied: Only employees with Employee ID RW-9752 or RW-1702 can remove daily work tasks.'
-          });
+    // Determine target tasks
+    let tasks = [];
+    if (Array.isArray(incomingTasks)) {
+      tasks = incomingTasks;
+    } else if (typeof taskIndex === 'number' && taskIndex >= 0 && taskIndex < existingTasks.length) {
+      tasks = existingTasks.filter((_, idx) => idx !== taskIndex);
+    } else if (typeof todayWork === 'string') {
+      const taskNames = todayWork.split(',').map(t => t.trim()).filter(t => t.length > 0);
+      if (existingTasks.length > 0) {
+        tasks = taskNames.map(name => {
+          const existing = existingTasks.find(t => t.name === name);
+          return existing ? existing : { name, completed: false };
+        });
+      } else {
+        tasks = taskNames.map(name => ({ name, completed: false }));
+      }
+    } else {
+      tasks = existingTasks;
+    }
+
+    // Check if a task is being removed
+    if (tasks.length < existingTasks.length) {
+      const allowedEmployeeIds = ['RW-9752', 'RW-1702'];
+      const reqEmployeeId = req.user?.employeeId || req.body?.employeeId || req.body?.managerEmployeeId || req.body?.managerId;
+      const reqRole = (req.user?.role || req.body?.managerRole || req.body?.role || '').toLowerCase();
+
+      let isAllowed = allowedEmployeeIds.includes(reqEmployeeId);
+
+      // Check admin
+      if (!isAllowed && (reqRole === 'admin' || req.user?.isAdmin)) {
+        isAllowed = true;
+      }
+
+      // Check if requester has a TL (Team Leader) role
+      if (!isAllowed && (reqRole.includes('tl') || reqRole.includes('team leader'))) {
+        isAllowed = true;
+      }
+
+      // Check if target staff reports to this requester
+      if (!isAllowed && reqEmployeeId && staff.reportingPerson) {
+        const reportingList = Array.isArray(staff.reportingPerson)
+          ? staff.reportingPerson
+          : [staff.reportingPerson];
+        if (reportingList.includes(reqEmployeeId)) {
+          isAllowed = true;
         }
       }
 
-      // Preserve completion status for existing tasks
-      tasks = taskNames.map(name => {
-        const existingTask = existingTasks.find(t => t.name === name);
-        return existingTask ? existingTask : { name, completed: false };
-      });
-    } else {
-      tasks = taskNames.map(name => ({ name, completed: false }));
+      // If still not determined, query manager staff from DB to check role and reporting
+      if (!isAllowed && reqEmployeeId) {
+        const managerStaff = await Staff.findOne({ employeeId: reqEmployeeId });
+        if (managerStaff) {
+          const mRole = (managerStaff.role || '').toLowerCase();
+          if (mRole.includes('tl') || mRole.includes('team leader') || mRole === 'admin') {
+            isAllowed = true;
+          }
+          if (staff.reportingPerson && staff.reportingPerson.includes(reqEmployeeId)) {
+            isAllowed = true;
+          }
+        }
+      }
+
+      if (!isAllowed) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access Denied: Only Team Leaders (TL) or authorized management can remove daily work tasks.'
+        });
+      }
     }
 
-    let updatedStaff;
-    if (todayWorkIndex !== -1) {
-      updatedStaff = await Staff.findOneAndUpdate(
-        { _id: req.params.id, "work.date": { $gte: today, $lt: tomorrow } },
-        {
-          $set: { "work.$.tasks": tasks }
-        },
-        { new: true }
-      );
+    // Update staff work record cleanly and atomically
+    if (todayWorkIndices.length > 0) {
+      const mainIndex = todayWorkIndices[0];
+      staff.work[mainIndex].tasks = tasks;
+
+      // Remove any duplicate today entries
+      if (todayWorkIndices.length > 1) {
+        for (let i = todayWorkIndices.length - 1; i > 0; i--) {
+          staff.work.splice(todayWorkIndices[i], 1);
+        }
+      }
     } else {
-      updatedStaff = await Staff.findByIdAndUpdate(
-        req.params.id,
+      staff.work.push({ tasks, date: now });
+    }
+
+    staff.markModified('work');
+    const updatedStaff = await staff.save();
+
+    // Also sync AssignedWorkReport if one exists for today
+    try {
+      const regularTasks = tasks.filter(t => !t.isExtra);
+      const extraTasks = tasks.filter(t => t.isExtra);
+      const completedRegular = regularTasks.filter(t => t.completed).length;
+      const completedExtra = extraTasks.filter(t => t.completed).length;
+      const totalRegular = regularTasks.length;
+      let progressPercentage = 0;
+      let bonusProgressPercentage = 0;
+      let totalProgressPercentage = 0;
+      if (totalRegular > 0) {
+        progressPercentage = Math.round((completedRegular / totalRegular) * 100);
+        bonusProgressPercentage = Math.round((completedExtra / totalRegular) * 100);
+        totalProgressPercentage = progressPercentage + bonusProgressPercentage;
+      } else if (completedExtra > 0) {
+        bonusProgressPercentage = completedExtra * 25;
+        totalProgressPercentage = bonusProgressPercentage;
+      }
+
+      await AssignedWorkReport.findOneAndUpdate(
+        { staffId: staff._id, date: { $gte: todayStart, $lt: todayEnd } },
         {
-          $push: { work: { tasks, date: now } }
-        },
-        { new: true }
+          $set: {
+            tasks,
+            progressPercentage,
+            bonusProgressPercentage,
+            totalProgressPercentage
+          }
+        }
       );
+    } catch (reportErr) {
+      console.error('Error syncing AssignedWorkReport in updateTodayWork:', reportErr);
+    }
+
+    // Flush all staff cache so admin side and other endpoints immediately reflect the change
+    try {
+      cache.flushByPrefix('staff:');
+      cache.del('staff:all');
+    } catch (cacheErr) {
+      console.error('Error flushing staff cache in updateTodayWork:', cacheErr);
     }
 
     // Emit socket event
     const staffObj = updatedStaff.toObject();
-    const updatedTodayClock = staffObj.work?.find(w =>
-      new Date(w.date) >= today && new Date(w.date) < tomorrow
+    const updatedTodayClock = staffObj.clock?.find(c =>
+      c.date && isSameDayIST(c.date, now)
     );
+    const updatedTodayWork = staffObj.work?.find(w =>
+      w.date && isSameDayIST(w.date, now)
+    );
+
     try {
       const io = socketUtil.getIO();
       io.emit(`staff-clock-update-${staffObj._id}`, {
         ...staffObj,
         id: staffObj._id,
-        todayClock: updatedTodayClock
+        todayClock: updatedTodayClock,
+        todayTasks: updatedTodayWork ? updatedTodayWork.tasks : []
+      });
+      io.emit('staff-work-updated', {
+        staffId: staffObj._id,
+        todayTasks: updatedTodayWork ? updatedTodayWork.tasks : []
       });
     } catch (err) {
       console.error('Error emitting socket event:', err);
@@ -1623,34 +1741,99 @@ exports.toggleTaskComplete = async (req, res) => {
   try {
     const { taskIndex } = req.body;
     const staffId = req.params.id;
+    const now = new Date();
+    const { start: todayStart, end: todayEnd } = getTodayRangeIST(now);
 
     const staff = await Staff.findById(staffId);
     if (!staff) {
       return res.status(404).json({ success: false, message: 'Staff not found' });
     }
 
-    // Check if today's work record exists
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    // Find all work entries matching today in IST
+    const todayWorkIndices = [];
+    if (staff.work && staff.work.length > 0) {
+      staff.work.forEach((w, index) => {
+        if (w && w.date && isSameDayIST(w.date, now)) {
+          todayWorkIndices.push(index);
+        }
+      });
+    }
 
-    const todayWorkIndex = staff.work?.findIndex(w =>
-      new Date(w.date) >= today && new Date(w.date) < tomorrow
-    );
-
-    if (todayWorkIndex === -1) {
+    if (todayWorkIndices.length === 0) {
       return res.status(404).json({ success: false, message: 'No work record found for today' });
     }
 
+    const mainIndex = todayWorkIndices[0];
+
+    // Consolidate duplicate today entries if any exist
+    if (todayWorkIndices.length > 1) {
+      const consolidatedTasks = [...(staff.work[mainIndex].tasks || [])];
+      const seenNames = new Set(consolidatedTasks.map(t => (t.name || '').trim().toLowerCase()));
+
+      for (let i = 1; i < todayWorkIndices.length; i++) {
+        const dupTasks = staff.work[todayWorkIndices[i]]?.tasks || [];
+        dupTasks.forEach(task => {
+          const norm = (task.name || '').trim().toLowerCase();
+          if (!seenNames.has(norm)) {
+            seenNames.add(norm);
+            consolidatedTasks.push(task);
+          } else if (task.completed) {
+            const ex = consolidatedTasks.find(ct => (ct.name || '').trim().toLowerCase() === norm);
+            if (ex) ex.completed = true;
+          }
+        });
+      }
+      staff.work[mainIndex].tasks = consolidatedTasks;
+
+      for (let i = todayWorkIndices.length - 1; i > 0; i--) {
+        staff.work.splice(todayWorkIndices[i], 1);
+      }
+    }
+
+    if (!staff.work[mainIndex].tasks || !staff.work[mainIndex].tasks[taskIndex]) {
+      return res.status(404).json({ success: false, message: 'Task not found' });
+    }
+
     // Toggle the task's completed status
-    staff.work[todayWorkIndex].tasks[taskIndex].completed = !staff.work[todayWorkIndex].tasks[taskIndex].completed;
+    staff.work[mainIndex].tasks[taskIndex].completed = !staff.work[mainIndex].tasks[taskIndex].completed;
+    staff.markModified('work');
     const updatedStaff = await staff.save();
 
-    // Get todayClock
-    const todayClock = updatedStaff.work?.find(w =>
-      new Date(w.date) >= today && new Date(w.date) < tomorrow
-    );
+    const todayWork = updatedStaff.work?.find(w => w.date && isSameDayIST(w.date, now));
+
+    // Update AssignedWorkReport if one exists for today
+    try {
+      const regularTasks = (staff.work[mainIndex].tasks || []).filter(t => !t.isExtra);
+      const extraTasks = (staff.work[mainIndex].tasks || []).filter(t => t.isExtra);
+      const completedRegular = regularTasks.filter(t => t.completed).length;
+      const completedExtra = extraTasks.filter(t => t.completed).length;
+      const totalRegular = regularTasks.length;
+      let progressPercentage = 0;
+      let bonusProgressPercentage = 0;
+      let totalProgressPercentage = 0;
+      if (totalRegular > 0) {
+        progressPercentage = Math.round((completedRegular / totalRegular) * 100);
+        bonusProgressPercentage = Math.round((completedExtra / totalRegular) * 100);
+        totalProgressPercentage = progressPercentage + bonusProgressPercentage;
+      } else if (completedExtra > 0) {
+        bonusProgressPercentage = completedExtra * 25;
+        totalProgressPercentage = bonusProgressPercentage;
+      }
+
+      await AssignedWorkReport.findOneAndUpdate(
+        { staffId: staff._id, date: { $gte: todayStart, $lt: todayEnd } },
+        {
+          $set: {
+            tasks: staff.work[mainIndex].tasks,
+            progressPercentage,
+            bonusProgressPercentage,
+            totalProgressPercentage
+          }
+        }
+      );
+    } catch (reportErr) {
+      console.error('Error syncing AssignedWorkReport in toggleTaskComplete:', reportErr);
+    }
 
     // Emit socket event
     const staffObj = updatedStaff.toObject();
@@ -1659,10 +1842,23 @@ exports.toggleTaskComplete = async (req, res) => {
       io.emit(`staff-clock-update-${staffObj._id}`, {
         ...staffObj,
         id: staffObj._id,
-        todayClock: todayClock
+        todayClock: todayWork,
+        todayTasks: todayWork?.tasks || []
+      });
+      io.emit('staff-work-updated', {
+        staffId: staffObj._id,
+        work: todayWork,
+        tasks: todayWork?.tasks || []
       });
     } catch (err) {
       console.error('Error emitting socket event:', err);
+    }
+
+    try {
+      cache.flushByPrefix('staff:');
+      cache.del('staff:all');
+    } catch (cacheErr) {
+      console.error('Error flushing staff cache:', cacheErr);
     }
 
     res.status(200).json({
@@ -1679,11 +1875,8 @@ exports.toggleTaskComplete = async (req, res) => {
 exports.approveAllTasks = async (req, res) => {
   try {
     const { staffIds } = req.body || {};
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const now = new Date();
+    const { start: todayStart, end: todayEnd } = getTodayRangeIST(now);
 
     const filter = { isRemoved: { $ne: true } };
     if (Array.isArray(staffIds) && staffIds.length > 0) {
@@ -1695,45 +1888,90 @@ exports.approveAllTasks = async (req, res) => {
     let totalApprovedTasks = 0;
 
     for (const staff of allStaff) {
-      const todayWorkIndex = staff.work?.findIndex(w =>
-        new Date(w.date) >= today && new Date(w.date) < tomorrow
-      );
+      if (!staff.work || staff.work.length === 0) continue;
 
-      if (todayWorkIndex !== -1 && staff.work[todayWorkIndex]?.tasks?.length > 0) {
-        let staffTasksChanged = 0;
-        staff.work[todayWorkIndex].tasks.forEach(task => {
-          if (!task.completed) {
-            task.completed = true;
-            staffTasksChanged++;
-          }
-        });
+      // Find ALL work entries matching today in IST
+      const todayIndices = [];
+      staff.work.forEach((w, idx) => {
+        if (w && w.date && isSameDayIST(w.date, now)) {
+          todayIndices.push(idx);
+        }
+      });
 
-        if (staffTasksChanged > 0) {
-          staff.markModified('work');
-          const updatedStaff = await staff.save();
-          totalUpdatedStaff++;
-          totalApprovedTasks += staffTasksChanged;
+      if (todayIndices.length === 0) continue;
 
-          // Emit socket event for real-time sync with staff/mobile app
-          const staffObj = updatedStaff.toObject();
-          const todayClock = staffObj.work?.find(w =>
-            new Date(w.date) >= today && new Date(w.date) < tomorrow
-          );
-          try {
-            const io = socketUtil.getIO();
-            io.emit(`staff-clock-update-${staffObj._id}`, {
-              ...staffObj,
-              id: staffObj._id,
-              todayClock: todayClock
-            });
-          } catch (err) {
-            console.error('Error emitting socket event for staff:', staffObj._id, err);
-          }
+      let staffTasksChanged = 0;
 
-          // If an AssignedWorkReport exists for today, update it as well
-          try {
-            const regularTasks = staff.work[todayWorkIndex].tasks.filter(t => !t.isExtra);
-            const extraTasks = staff.work[todayWorkIndex].tasks.filter(t => t.isExtra);
+      // Mark ALL tasks across ALL today entries as completed
+      todayIndices.forEach(idx => {
+        const w = staff.work[idx];
+        if (Array.isArray(w.tasks)) {
+          w.tasks.forEach(task => {
+            if (!task.completed) {
+              task.completed = true;
+              staffTasksChanged++;
+            }
+          });
+        }
+      });
+
+      // Consolidate duplicate today entries if there are multiple
+      if (todayIndices.length > 1) {
+        const mainIdx = todayIndices[0];
+        const consolidatedTasks = [...(staff.work[mainIdx].tasks || [])];
+        const seenNames = new Set(consolidatedTasks.map(t => (t.name || '').trim().toLowerCase()));
+
+        for (let i = 1; i < todayIndices.length; i++) {
+          const duplicateIdx = todayIndices[i];
+          const dupTasks = staff.work[duplicateIdx]?.tasks || [];
+          dupTasks.forEach(task => {
+            const normalizedName = (task.name || '').trim().toLowerCase();
+            if (!seenNames.has(normalizedName)) {
+              seenNames.add(normalizedName);
+              consolidatedTasks.push(task);
+            }
+          });
+        }
+
+        staff.work[mainIdx].tasks = consolidatedTasks;
+
+        for (let i = todayIndices.length - 1; i > 0; i--) {
+          staff.work.splice(todayIndices[i], 1);
+        }
+      }
+
+      if (staffTasksChanged > 0 || todayIndices.length > 1) {
+        staff.markModified('work');
+        const updatedStaff = await staff.save();
+        totalUpdatedStaff++;
+        totalApprovedTasks += staffTasksChanged;
+
+        const mainWork = updatedStaff.work.find(w => w.date && isSameDayIST(w.date, now));
+
+        // Emit socket event for real-time sync with staff/mobile app
+        const staffObj = updatedStaff.toObject();
+        try {
+          const io = socketUtil.getIO();
+          io.emit(`staff-clock-update-${staffObj._id}`, {
+            ...staffObj,
+            id: staffObj._id,
+            todayClock: mainWork,
+            todayTasks: mainWork?.tasks || []
+          });
+          io.emit('staff-work-updated', {
+            staffId: staffObj._id,
+            work: mainWork,
+            tasks: mainWork?.tasks || []
+          });
+        } catch (err) {
+          console.error('Error emitting socket event for staff:', staffObj._id, err);
+        }
+
+        // Update AssignedWorkReport for today
+        try {
+          if (mainWork && mainWork.tasks) {
+            const regularTasks = mainWork.tasks.filter(t => !t.isExtra);
+            const extraTasks = mainWork.tasks.filter(t => t.isExtra);
             const completedRegular = regularTasks.filter(t => t.completed).length;
             const completedExtra = extraTasks.filter(t => t.completed).length;
             const totalRegular = regularTasks.length;
@@ -1747,14 +1985,28 @@ exports.approveAllTasks = async (req, res) => {
             }
 
             await AssignedWorkReport.findOneAndUpdate(
-              { staffId: staff._id, date: { $gte: today, $lt: tomorrow } },
-              { tasks: staff.work[todayWorkIndex].tasks, progressPercentage }
+              { staffId: staff._id, date: { $gte: todayStart, $lt: todayEnd } },
+              {
+                $set: {
+                  tasks: mainWork.tasks,
+                  progressPercentage,
+                  bonusProgressPercentage: progressPercentage - (totalRegular > 0 ? 100 : 0),
+                  totalProgressPercentage: progressPercentage
+                }
+              }
             );
-          } catch (reportErr) {
-            console.error('Error updating work report:', reportErr);
           }
+        } catch (reportErr) {
+          console.error('Error updating work report:', reportErr);
         }
       }
+    }
+
+    try {
+      cache.flushByPrefix('staff:');
+      cache.del('staff:all');
+    } catch (cacheErr) {
+      console.error('Error flushing staff cache:', cacheErr);
     }
 
     res.status(200).json({
@@ -1777,41 +2029,79 @@ exports.approveStaffTasks = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Staff not found' });
     }
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const now = new Date();
+    const { start: todayStart, end: todayEnd } = getTodayRangeIST(now);
 
-    const todayWorkIndex = staff.work?.findIndex(w =>
-      new Date(w.date) >= today && new Date(w.date) < tomorrow
-    );
+    const todayIndices = [];
+    if (staff.work && staff.work.length > 0) {
+      staff.work.forEach((w, idx) => {
+        if (w && w.date && isSameDayIST(w.date, now)) {
+          todayIndices.push(idx);
+        }
+      });
+    }
 
-    if (todayWorkIndex === -1 || !staff.work[todayWorkIndex]?.tasks?.length) {
+    if (todayIndices.length === 0) {
       return res.status(404).json({ success: false, message: 'No tasks found for today' });
     }
 
     let approvedCount = 0;
-    staff.work[todayWorkIndex].tasks.forEach(task => {
-      if (!task.completed) {
-        task.completed = true;
-        approvedCount++;
+    todayIndices.forEach(idx => {
+      const w = staff.work[idx];
+      if (Array.isArray(w.tasks)) {
+        w.tasks.forEach(task => {
+          if (!task.completed) {
+            task.completed = true;
+            approvedCount++;
+          }
+        });
       }
     });
+
+    // Consolidate duplicate today entries if any
+    if (todayIndices.length > 1) {
+      const mainIdx = todayIndices[0];
+      const consolidatedTasks = [...(staff.work[mainIdx].tasks || [])];
+      const seenNames = new Set(consolidatedTasks.map(t => (t.name || '').trim().toLowerCase()));
+
+      for (let i = 1; i < todayIndices.length; i++) {
+        const duplicateIdx = todayIndices[i];
+        const dupTasks = staff.work[duplicateIdx]?.tasks || [];
+        dupTasks.forEach(task => {
+          const normalizedName = (task.name || '').trim().toLowerCase();
+          if (!seenNames.has(normalizedName)) {
+            seenNames.add(normalizedName);
+            consolidatedTasks.push(task);
+          }
+        });
+      }
+
+      staff.work[mainIdx].tasks = consolidatedTasks;
+
+      for (let i = todayIndices.length - 1; i > 0; i--) {
+        staff.work.splice(todayIndices[i], 1);
+      }
+    }
 
     staff.markModified('work');
     const updatedStaff = await staff.save();
 
+    const mainWork = updatedStaff.work.find(w => w.date && isSameDayIST(w.date, now));
+
     // Emit socket event
     const staffObj = updatedStaff.toObject();
-    const todayClock = staffObj.work?.find(w =>
-      new Date(w.date) >= today && new Date(w.date) < tomorrow
-    );
     try {
       const io = socketUtil.getIO();
       io.emit(`staff-clock-update-${staffObj._id}`, {
         ...staffObj,
         id: staffObj._id,
-        todayClock: todayClock
+        todayClock: mainWork,
+        todayTasks: mainWork?.tasks || []
+      });
+      io.emit('staff-work-updated', {
+        staffId: staffObj._id,
+        work: mainWork,
+        tasks: mainWork?.tasks || []
       });
     } catch (err) {
       console.error('Error emitting socket event:', err);
@@ -1819,26 +2109,42 @@ exports.approveStaffTasks = async (req, res) => {
 
     // Update AssignedWorkReport if exists
     try {
-      const regularTasks = staff.work[todayWorkIndex].tasks.filter(t => !t.isExtra);
-      const extraTasks = staff.work[todayWorkIndex].tasks.filter(t => t.isExtra);
-      const completedRegular = regularTasks.filter(t => t.completed).length;
-      const completedExtra = extraTasks.filter(t => t.completed).length;
-      const totalRegular = regularTasks.length;
-      let progressPercentage = 100;
-      if (totalRegular > 0) {
-        const baseProgress = Math.round((completedRegular / totalRegular) * 100);
-        const bonusProgress = Math.round((completedExtra / totalRegular) * 100);
-        progressPercentage = baseProgress + bonusProgress;
-      } else if (completedExtra > 0) {
-        progressPercentage = completedExtra * 25;
-      }
+      if (mainWork && mainWork.tasks) {
+        const regularTasks = mainWork.tasks.filter(t => !t.isExtra);
+        const extraTasks = mainWork.tasks.filter(t => t.isExtra);
+        const completedRegular = regularTasks.filter(t => t.completed).length;
+        const completedExtra = extraTasks.filter(t => t.completed).length;
+        const totalRegular = regularTasks.length;
+        let progressPercentage = 100;
+        if (totalRegular > 0) {
+          const baseProgress = Math.round((completedRegular / totalRegular) * 100);
+          const bonusProgress = Math.round((completedExtra / totalRegular) * 100);
+          progressPercentage = baseProgress + bonusProgress;
+        } else if (completedExtra > 0) {
+          progressPercentage = completedExtra * 25;
+        }
 
-      await AssignedWorkReport.findOneAndUpdate(
-        { staffId: staff._id, date: { $gte: today, $lt: tomorrow } },
-        { tasks: staff.work[todayWorkIndex].tasks, progressPercentage }
-      );
+        await AssignedWorkReport.findOneAndUpdate(
+          { staffId: staff._id, date: { $gte: todayStart, $lt: todayEnd } },
+          {
+            $set: {
+              tasks: mainWork.tasks,
+              progressPercentage,
+              bonusProgressPercentage: progressPercentage - (totalRegular > 0 ? 100 : 0),
+              totalProgressPercentage: progressPercentage
+            }
+          }
+        );
+      }
     } catch (reportErr) {
       console.error('Error updating work report:', reportErr);
+    }
+
+    try {
+      cache.flushByPrefix('staff:');
+      cache.del('staff:all');
+    } catch (cacheErr) {
+      console.error('Error flushing staff cache:', cacheErr);
     }
 
     res.status(200).json({
@@ -1863,48 +2169,115 @@ exports.addExtraTask = async (req, res) => {
     }
 
     const now = new Date();
-    // Check if today's work record exists
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const { start: todayStart, end: todayEnd } = getTodayRangeIST(now);
 
-    const todayWorkIndex = staff.work?.findIndex(w =>
-      new Date(w.date) >= today && new Date(w.date) < tomorrow
-    );
+    const todayWorkIndices = [];
+    if (staff.work && staff.work.length > 0) {
+      staff.work.forEach((w, index) => {
+        if (w && w.date && isSameDayIST(w.date, now)) {
+          todayWorkIndices.push(index);
+        }
+      });
+    }
 
-    let updatedStaff;
-    if (todayWorkIndex !== -1) {
-      staff.work[todayWorkIndex].tasks.push({
+    if (todayWorkIndices.length > 0) {
+      const mainIndex = todayWorkIndices[0];
+      if (!staff.work[mainIndex].tasks) {
+        staff.work[mainIndex].tasks = [];
+      }
+      staff.work[mainIndex].tasks.push({
         name: taskName,
         completed: false,
         isExtra: true
       });
-      updatedStaff = await staff.save();
+
+      // Consolidate duplicates if any
+      if (todayWorkIndices.length > 1) {
+        for (let i = 1; i < todayWorkIndices.length; i++) {
+          const dupTasks = staff.work[todayWorkIndices[i]]?.tasks || [];
+          dupTasks.forEach(task => {
+            staff.work[mainIndex].tasks.push(task);
+          });
+        }
+        for (let i = todayWorkIndices.length - 1; i > 0; i--) {
+          staff.work.splice(todayWorkIndices[i], 1);
+        }
+      }
     } else {
-      updatedStaff = await Staff.findByIdAndUpdate(
-        staffId,
-        {
-          $push: { work: { tasks: [{ name: taskName, completed: false, isExtra: true }], date: now } }
-        },
-        { new: true }
-      );
+      if (!staff.work) staff.work = [];
+      staff.work.push({
+        tasks: [{ name: taskName, completed: false, isExtra: true }],
+        date: now
+      });
     }
+
+    staff.markModified('work');
+    const updatedStaff = await staff.save();
 
     // Emit socket event
     const staffObj = updatedStaff.toObject();
     const updatedTodayClock = staffObj.work?.find(w =>
-      new Date(w.date) >= today && new Date(w.date) < tomorrow
+      w.date && isSameDayIST(w.date, now)
     );
+
+    // Update AssignedWorkReport if exists
+    try {
+      if (updatedTodayClock && updatedTodayClock.tasks) {
+        const regularTasks = updatedTodayClock.tasks.filter(t => !t.isExtra);
+        const extraTasks = updatedTodayClock.tasks.filter(t => t.isExtra);
+        const completedRegular = regularTasks.filter(t => t.completed).length;
+        const completedExtra = extraTasks.filter(t => t.completed).length;
+        const totalRegular = regularTasks.length;
+        let progressPercentage = 0;
+        let bonusProgressPercentage = 0;
+        let totalProgressPercentage = 0;
+        if (totalRegular > 0) {
+          progressPercentage = Math.round((completedRegular / totalRegular) * 100);
+          bonusProgressPercentage = Math.round((completedExtra / totalRegular) * 100);
+          totalProgressPercentage = progressPercentage + bonusProgressPercentage;
+        } else if (completedExtra > 0) {
+          bonusProgressPercentage = completedExtra * 25;
+          totalProgressPercentage = bonusProgressPercentage;
+        }
+
+        await AssignedWorkReport.findOneAndUpdate(
+          { staffId: staff._id, date: { $gte: todayStart, $lt: todayEnd } },
+          {
+            $set: {
+              tasks: updatedTodayClock.tasks,
+              progressPercentage,
+              bonusProgressPercentage,
+              totalProgressPercentage
+            }
+          }
+        );
+      }
+    } catch (reportErr) {
+      console.error('Error updating AssignedWorkReport in addExtraTask:', reportErr);
+    }
+
     try {
       const io = socketUtil.getIO();
       io.emit(`staff-clock-update-${staffObj._id}`, {
         ...staffObj,
         id: staffObj._id,
-        todayClock: updatedTodayClock
+        todayClock: updatedTodayClock,
+        todayTasks: updatedTodayClock?.tasks || []
+      });
+      io.emit('staff-work-updated', {
+        staffId: staffObj._id,
+        work: updatedTodayClock,
+        tasks: updatedTodayClock?.tasks || []
       });
     } catch (err) {
       console.error('Error emitting socket event:', err);
+    }
+
+    try {
+      cache.flushByPrefix('staff:');
+      cache.del('staff:all');
+    } catch (cacheErr) {
+      console.error('Error flushing staff cache:', cacheErr);
     }
 
     res.status(200).json({
@@ -1928,15 +2301,10 @@ exports.submitWorkReport = async (req, res) => {
     }
 
     // Get today's tasks
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const now = new Date();
+    const { start: todayStart, end: todayEnd } = getTodayRangeIST(now);
 
-    const todayWork = staff.work?.find(w => {
-      const workDate = new Date(w.date);
-      return workDate >= today && workDate < tomorrow;
-    });
+    const todayWork = staff.work?.find(w => w && w.date && isSameDayIST(w.date, now));
 
     if (!todayWork || !todayWork.tasks || todayWork.tasks.length === 0) {
       return res.status(400).json({ success: false, message: 'No tasks found for today' });
@@ -1951,7 +2319,7 @@ exports.submitWorkReport = async (req, res) => {
     // Check if report already exists for today
     const existingReport = await AssignedWorkReport.findOne({
       staffId: staffId,
-      date: { $gte: today, $lt: tomorrow }
+      date: { $gte: todayStart, $lt: todayEnd }
     });
 
     let report;
@@ -1970,7 +2338,7 @@ exports.submitWorkReport = async (req, res) => {
       report = new AssignedWorkReport({
         staffId: staffId,
         staffName: staff.name,
-        date: today,
+        date: todayStart,
         tasks: todayWork.tasks,
         progressPercentage: progressPercentage
       });
@@ -2022,19 +2390,14 @@ exports.getWorkReports = async (req, res) => {
 // Submit all reports
 exports.submitAllReports = async (req, res) => {
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const now = new Date();
+    const { start: todayStart, end: todayEnd } = getTodayRangeIST(now);
 
     const allStaff = await Staff.find({ isRemoved: { $ne: true } });
     const results = [];
 
     for (const staff of allStaff) {
-      const todayWork = staff.work?.find(w => {
-        const workDate = new Date(w.date);
-        return workDate >= today && workDate < tomorrow;
-      });
+      const todayWork = staff.work?.find(w => w && w.date && isSameDayIST(w.date, now));
 
       if (todayWork && todayWork.tasks && todayWork.tasks.length > 0) {
         const completedTasks = todayWork.tasks.filter(t => t.completed).length;
@@ -2045,7 +2408,7 @@ exports.submitAllReports = async (req, res) => {
         // Check if report already exists
         const existingReport = await AssignedWorkReport.findOne({
           staffId: staff._id,
-          date: { $gte: today, $lt: tomorrow }
+          date: { $gte: todayStart, $lt: todayEnd }
         });
 
         if (existingReport) {
@@ -2063,7 +2426,7 @@ exports.submitAllReports = async (req, res) => {
           const report = new AssignedWorkReport({
             staffId: staff._id,
             staffName: staff.name,
-            date: today,
+            date: todayStart,
             tasks: todayWork.tasks,
             progressPercentage: progressPercentage
           });
@@ -2729,18 +3092,15 @@ exports.getMyReportees = async (req, res) => {
     const reportees = await Staff.find({ reportingPerson: managerId, isRemoved: { $ne: true } })
       .select('name employeeId department role jobType status clock work attendance todaySatisfaction todayComment commentUpdatedBy profilePic');
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const now = new Date();
 
     const reporteesData = reportees.map(staff => {
       const todayWorkRecord = staff.work?.find(w =>
-        new Date(w.date) >= today && new Date(w.date) < tomorrow
+        w && w.date && isSameDayIST(w.date, now)
       );
 
       const todayClockRecord = staff.clock?.find(c =>
-        new Date(c.date) >= today && new Date(c.date) < tomorrow
+        c && c.date && isSameDayIST(c.date, now)
       );
 
       return {

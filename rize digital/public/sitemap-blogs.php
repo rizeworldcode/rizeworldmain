@@ -65,13 +65,43 @@ if ($forceRefresh || !file_exists($cacheFile) || $fileAge > $cacheDuration || fi
             $today = date('Y-m-d');
             $indexContent = @file_get_contents($indexFile);
             if ($indexContent) {
-                $updatedIndex = preg_replace(
-                    '/(<loc>https:\/\/rizeworld\.in\/sitemap-blogs\.xml<\/loc>\s*<lastmod>)[^<]+(<\/lastmod>)/',
-                    '$1' . $today . '$2',
-                    $indexContent
-                );
-                if ($updatedIndex && $updatedIndex !== $indexContent) {
+                // If corrupted or missing blog loc, self-heal cleanly
+                if (strpos($indexContent, '<loc>https://rizeworld.in/sitemap-blogs.xml</loc>') === false) {
+                    $updatedIndex = '<?xml version="1.0" encoding="UTF-8"?>' . "\n" .
+                        '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n" .
+                        '  <sitemap>' . "\n" .
+                        '    <loc>https://rizeworld.in/sitemap-pages.xml</loc>' . "\n" .
+                        '    <lastmod>2026-10-13</lastmod>' . "\n" .
+                        '  </sitemap>' . "\n" .
+                        '  <sitemap>' . "\n" .
+                        '    <loc>https://rizeworld.in/sitemap-services.xml</loc>' . "\n" .
+                        '    <lastmod>2026-10-13</lastmod>' . "\n" .
+                        '  </sitemap>' . "\n" .
+                        '  <sitemap>' . "\n" .
+                        '    <loc>https://rizeworld.in/sitemap-locations.xml</loc>' . "\n" .
+                        '    <lastmod>2026-10-13</lastmod>' . "\n" .
+                        '  </sitemap>' . "\n" .
+                        '  <sitemap>' . "\n" .
+                        '    <loc>https://rizeworld.in/sitemap-blogs.xml</loc>' . "\n" .
+                        '    <lastmod>' . $today . '</lastmod>' . "\n" .
+                        '  </sitemap>' . "\n" .
+                        '  <sitemap>' . "\n" .
+                        '    <loc>https://rizeworld.in/sitemap-case-studies.xml</loc>' . "\n" .
+                        '    <lastmod>2026-10-13</lastmod>' . "\n" .
+                        '  </sitemap>' . "\n" .
+                        '</sitemapindex>';
                     @file_put_contents($indexFile, $updatedIndex);
+                } else {
+                    $updatedIndex = preg_replace_callback(
+                        '/(<loc>https:\/\/rizeworld\.in\/sitemap-blogs\.xml<\/loc>\s*<lastmod>)[^<]+(<\/lastmod>)/',
+                        function($matches) use ($today) {
+                            return $matches[1] . $today . $matches[2];
+                        },
+                        $indexContent
+                    );
+                    if ($updatedIndex && $updatedIndex !== $indexContent) {
+                        @file_put_contents($indexFile, $updatedIndex);
+                    }
                 }
             }
         }

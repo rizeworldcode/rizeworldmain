@@ -14,18 +14,36 @@ import {
   Plus,
   Zap,
   Star,
-  CheckCheck
+  CheckCheck,
+  Trash2,
+  RefreshCw
 } from 'lucide-react';
 import { 
   getAllStaff, 
   toggleStaffTask, 
   addStaffExtraTask, 
+  deleteStaffTask,
   submitStaffReport, 
   submitAllStaffReports, 
   approveAllStaffTasks,
-  approveStaffTasks,
-  getStaffWorkReports 
+  approveStaffTasks, 
+  getStaffWorkReports,
+  clearApiCache
 } from '../api';
+
+const isTodayWork = (date) => {
+  if (!date) return false;
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return false;
+  const todayIST = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+  const entryIST = d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+  if (todayIST === entryIST) return true;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  return d >= today && d < tomorrow;
+};
 
 const TodayAssignedWork = ({ initialSearch = '' }) => {
   const [searchTerm, setSearchTerm] = useState(initialSearch);
@@ -39,30 +57,45 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
   const [approvingAll, setApprovingAll] = useState(false);
   const [approvingStaffId, setApprovingStaffId] = useState(null);
   const [newTasks, setNewTasks] = useState({});
+  const [refreshing, setRefreshing] = useState(false);
 
-  const fetchStaff = async () => {
+  const fetchStaff = async (bypassCache = true) => {
     try {
-      const result = await getAllStaff();
+      if (bypassCache) setRefreshing(true);
+      const result = await getAllStaff(!bypassCache);
       if (result.success) setStaffList(result.data);
     } catch (error) {
       console.error('Error fetching staff:', error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
-  useEffect(() => { fetchStaff(); }, []);
+  useEffect(() => { fetchStaff(true); }, []);
 
   const getTodayTasks = (staff) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const todayWork = staff.work?.find(w => {
-      const workDate = new Date(w.date);
-      return workDate >= today && workDate < tomorrow;
+    if (!staff || !staff.work || !Array.isArray(staff.work)) return [];
+    const todayEntries = staff.work.filter(w => w && w.date && isTodayWork(w.date));
+    if (todayEntries.length === 0) return [];
+    if (todayEntries.length === 1) return todayEntries[0].tasks || [];
+
+    // Consolidate across duplicate entries for today
+    const combinedTasks = [];
+    const seen = new Set();
+    todayEntries.forEach(entry => {
+      (entry.tasks || []).forEach(task => {
+        const key = (task.name || '').trim().toLowerCase();
+        if (!seen.has(key)) {
+          seen.add(key);
+          combinedTasks.push(task);
+        } else if (task.completed) {
+          const ex = combinedTasks.find(ct => (ct.name || '').trim().toLowerCase() === key);
+          if (ex) ex.completed = true;
+        }
+      });
     });
-    return todayWork?.tasks || [];
+    return combinedTasks;
   };
 
   // KEY CHANGE: Progress now goes beyond 100% for bonus/extra tasks
@@ -87,14 +120,9 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
     // Optimistically toggle in local state immediately
     setStaffList(prevList => prevList.map(staff => {
       if (staff._id !== staffId) return staff;
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
 
       const updatedWork = (staff.work || []).map(w => {
-        const workDate = new Date(w.date);
-        if (workDate >= today && workDate < tomorrow) {
+        if (isTodayWork(w.date)) {
           const updatedTasks = (w.tasks || []).map((t, idx) => {
             if (idx === taskIndex) {
               return { ...t, completed: !t.completed };
@@ -109,13 +137,14 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
     }));
 
     try {
+      clearApiCache('/staff');
       const result = await toggleStaffTask(staffId, taskIndex);
       if (!result.success) {
-        fetchStaff();
+        await fetchStaff(true);
       }
     } catch (error) {
       console.error('Error toggling task:', error);
-      fetchStaff();
+      await fetchStaff(true);
     }
   };
 
@@ -128,15 +157,51 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
     // Optimistically add task to local state
     setStaffList(prevList => prevList.map(staff => {
       if (staff._id !== staffId) return staff;
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      let foundToday = false;
+      const updatedWork = (staff.work || []).map(w => {
+        if (isTodayWork(w.date)) {
+          foundToday = true;
+          const updatedTasks = [...(w.tasks || []), { name: taskName, completed: false, isExtra: true }];
+          return { ...w, tasks: updatedTasks };
+        }
+        return w;
+      });
+
+      if (!foundToday) {
+        updatedWork.push({
+          date: new Date().toISOString(),
+          tasks: [{ name: taskName, completed: false, isExtra: true }]
+        });
+      }
+
+      return { ...staff, work: updatedWork };
+    }));
+
+    try {
+      clearApiCache('/staff');
+      const result = await addStaffExtraTask(staffId, taskName);
+      if (!result.success) {
+        await fetchStaff(true);
+      }
+    } catch (error) {
+      console.error('Error adding task:', error);
+      await fetchStaff(true);
+    }
+  };
+
+  const handleDeleteTask = async (staffId, taskIndex, taskName) => {
+    if (!window.confirm(`Are you sure you want to delete task "${taskName || 'this task'}"?`)) {
+      return;
+    }
+
+    // Optimistically update local state
+    setStaffList(prevList => prevList.map(staff => {
+      if (staff._id !== staffId) return staff;
 
       const updatedWork = (staff.work || []).map(w => {
-        const workDate = new Date(w.date);
-        if (workDate >= today && workDate < tomorrow) {
-          const updatedTasks = [...(w.tasks || []), { name: taskName, completed: false, isExtra: true }];
+        if (isTodayWork(w.date)) {
+          const updatedTasks = (w.tasks || []).filter((_, idx) => idx !== taskIndex);
           return { ...w, tasks: updatedTasks };
         }
         return w;
@@ -145,13 +210,16 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
     }));
 
     try {
-      const result = await addStaffExtraTask(staffId, taskName);
+      clearApiCache('/staff');
+      const result = await deleteStaffTask(staffId, taskIndex);
       if (!result.success) {
-        fetchStaff();
+        alert(result.message || 'Failed to delete task');
+        await fetchStaff(true);
       }
     } catch (error) {
-      console.error('Error adding task:', error);
-      fetchStaff();
+      console.error('Error deleting task:', error);
+      alert('Failed to delete task');
+      await fetchStaff(true);
     }
   };
 
@@ -187,16 +255,11 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
 
     setApprovingAll(true);
     const previousStaffList = staffList;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
 
     // Optimistically mark all tasks for all staff as completed
     setStaffList(prevList => prevList.map(staff => {
       const updatedWork = (staff.work || []).map(w => {
-        const workDate = new Date(w.date);
-        if (workDate >= today && workDate < tomorrow) {
+        if (isTodayWork(w.date)) {
           const updatedTasks = (w.tasks || []).map(t => ({ ...t, completed: true }));
           return { ...w, tasks: updatedTasks };
         }
@@ -206,6 +269,7 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
     }));
 
     try {
+      clearApiCache('/staff');
       const result = await approveAllStaffTasks();
       if (result.success) {
         alert(result.message || 'All tasks approved successfully!');
@@ -219,24 +283,20 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
       setStaffList(previousStaffList);
     } finally {
       setApprovingAll(false);
-      fetchStaff();
+      clearApiCache('/staff');
+      await fetchStaff(true);
     }
   };
 
   const handleApproveStaff = async (staffId) => {
     setApprovingStaffId(staffId);
     const previousStaffList = staffList;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
 
     // Optimistically mark this staff's tasks as completed
     setStaffList(prevList => prevList.map(staff => {
       if (staff._id !== staffId) return staff;
       const updatedWork = (staff.work || []).map(w => {
-        const workDate = new Date(w.date);
-        if (workDate >= today && workDate < tomorrow) {
+        if (isTodayWork(w.date)) {
           const updatedTasks = (w.tasks || []).map(t => ({ ...t, completed: true }));
           return { ...w, tasks: updatedTasks };
         }
@@ -246,6 +306,7 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
     }));
 
     try {
+      clearApiCache('/staff');
       const result = await approveStaffTasks(staffId);
       if (!result.success) {
         alert(result.message || 'Failed to approve tasks');
@@ -257,7 +318,8 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
       setStaffList(previousStaffList);
     } finally {
       setApprovingStaffId(null);
-      fetchStaff();
+      clearApiCache('/staff');
+      await fetchStaff(true);
     }
   };
 
@@ -313,6 +375,15 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={() => fetchStaff(true)}
+            disabled={refreshing}
+            className="flex items-center gap-2 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-gray-700 dark:text-gray-300 px-4 py-2.5 rounded-2xl font-bold text-sm transition-all active:scale-95 border border-gray-200 dark:border-white/10 cursor-pointer"
+            title="Refresh staff and tasks from server"
+          >
+            <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
+            {refreshing ? 'Refreshing...' : 'Refresh'}
+          </button>
           <button
             onClick={openReportModal}
             className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white px-5 py-2.5 rounded-2xl font-bold text-sm hover:shadow-lg hover:shadow-purple-500/30 transition-all active:scale-95"
@@ -559,6 +630,7 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
                             key={idx}
                             task={task}
                             onClick={() => handleToggleTask(staff._id, tasks.indexOf(task))}
+                            onDelete={() => handleDeleteTask(staff._id, tasks.indexOf(task), task.name)}
                           />
                         ))}
                       </div>
@@ -598,6 +670,7 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
                             task={task}
                             isExtra
                             onClick={() => handleToggleTask(staff._id, tasks.indexOf(task))}
+                            onDelete={() => handleDeleteTask(staff._id, tasks.indexOf(task), task.name)}
                           />
                         ))}
                       </div>
@@ -733,38 +806,52 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
 };
 
 // Extracted task button component
-const TaskButton = ({ task, onClick, isExtra = false }) => (
-  <button
-    onClick={onClick}
-    className={`flex items-center gap-3 p-3.5 rounded-2xl border transition-all text-left w-full group/task cursor-pointer ${
-      task.completed
-        ? isExtra
-          ? 'bg-amber-500/5 border-amber-500/20 hover:bg-amber-500/10 hover:border-amber-500/30'
-          : 'bg-emerald-500/5 border-emerald-500/20 hover:bg-emerald-500/10 hover:border-emerald-500/30'
-        : isExtra
-          ? 'bg-amber-500/5 border-amber-500/10 hover:bg-amber-500/10 hover:border-amber-500/30'
-          : 'bg-black/5 dark:bg-white/5 border-gray-100 dark:border-white/5 hover:bg-blue-500/10 hover:border-blue-500/30'
-    }`}
-  >
-    <div className={`p-1.5 rounded-lg transition-all ${
-      task.completed
-        ? isExtra
-          ? 'bg-amber-500/20 text-amber-500'
-          : 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'
-        : isExtra
-          ? 'bg-amber-500/10 text-amber-400 group-hover/task:bg-amber-500/20 group-hover/task:text-amber-500'
-          : 'bg-gray-500/20 text-gray-500 dark:text-gray-400 group-hover/task:bg-blue-500/20 group-hover/task:text-blue-600 dark:group-hover/task:text-blue-400'
-    }`}>
-      {task.completed ? <CheckCircle2 size={16} /> : <Circle size={16} />}
-    </div>
-    <span className={`text-sm font-bold block transition-all ${
-      task.completed
-        ? isExtra ? 'text-amber-400 line-through' : 'text-gray-400 line-through'
-        : 'text-gray-900 dark:text-white'
-    }`}>
-      {task.name}
-    </span>
-  </button>
+const TaskButton = ({ task, onClick, onDelete, isExtra = false }) => (
+  <div className="relative group/taskContainer flex items-center w-full">
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-3 p-3.5 rounded-2xl border transition-all text-left w-full group/task cursor-pointer ${
+        task.completed
+          ? isExtra
+            ? 'bg-amber-500/5 border-amber-500/20 hover:bg-amber-500/10 hover:border-amber-500/30'
+            : 'bg-emerald-500/5 border-emerald-500/20 hover:bg-emerald-500/10 hover:border-emerald-500/30'
+          : isExtra
+            ? 'bg-amber-500/5 border-amber-500/10 hover:bg-amber-500/10 hover:border-amber-500/30'
+            : 'bg-black/5 dark:bg-white/5 border-gray-100 dark:border-white/5 hover:bg-blue-500/10 hover:border-blue-500/30'
+      }`}
+    >
+      <div className={`p-1.5 rounded-lg transition-all ${
+        task.completed
+          ? isExtra
+            ? 'bg-amber-500/20 text-amber-500'
+            : 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'
+          : isExtra
+            ? 'bg-amber-500/10 text-amber-400 group-hover/task:bg-amber-500/20 group-hover/task:text-amber-500'
+            : 'bg-gray-500/20 text-gray-500 dark:text-gray-400 group-hover/task:bg-blue-500/20 group-hover/task:text-blue-600 dark:group-hover/task:text-blue-400'
+      }`}>
+        {task.completed ? <CheckCircle2 size={16} /> : <Circle size={16} />}
+      </div>
+      <span className={`text-sm font-bold block flex-1 pr-6 transition-all ${
+        task.completed
+          ? isExtra ? 'text-amber-400 line-through' : 'text-gray-400 line-through'
+          : 'text-gray-900 dark:text-white'
+      }`}>
+        {task.name}
+      </span>
+    </button>
+    {onDelete && (
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onDelete();
+        }}
+        className="absolute right-2 opacity-0 group-hover/taskContainer:opacity-100 p-1.5 rounded-lg text-gray-400 hover:text-rose-500 hover:bg-rose-500/10 transition-all cursor-pointer border-none bg-transparent"
+        title="Delete task"
+      >
+        <Trash2 size={14} />
+      </button>
+    )}
+  </div>
 );
 
 export default TodayAssignedWork;

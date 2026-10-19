@@ -12,8 +12,9 @@ export const clearApiCache = (prefix?: string) => {
     cacheStore.clear();
     return;
   }
+  const cleanPrefix = prefix.replace(/^\/+/, '').toLowerCase();
   for (const key of cacheStore.keys()) {
-    if (key.includes(prefix)) {
+    if (key.toLowerCase().includes(cleanPrefix)) {
       cacheStore.delete(key);
     }
   }
@@ -77,6 +78,17 @@ async function apiRequest<T = any>(
 
       if (useCache && method === 'GET' && result && result.success !== false) {
         cacheStore.set(cacheKey, { timestamp: Date.now(), data: result });
+      }
+
+      // Automatically invalidate client cache on any mutation (POST/PUT/PATCH/DELETE)
+      if (method !== 'GET' && result && result.success !== false) {
+        const cleanEndpoint = endpoint.replace(/^\/+/, '');
+        const resourcePrefix = cleanEndpoint.split('/')[0] || '';
+        if (resourcePrefix) {
+          clearApiCache(resourcePrefix);
+        } else {
+          clearApiCache();
+        }
       }
 
       return result as T;
@@ -324,6 +336,14 @@ export const addStaffExtraTask = (staffId: string, taskName: string) => {
   });
 };
 
+export const deleteStaffTask = (staffId: string, taskIndex: number) => {
+  clearApiCache('staff');
+  return apiRequest(`/staff/${staffId}/today-work`, {
+    method: 'PATCH',
+    body: JSON.stringify({ taskIndex, action: 'delete' }),
+  });
+};
+
 export const submitStaffReport = (staffId: string) =>
   apiRequest(`/staff/${staffId}/submit-report`, {
     method: 'POST',
@@ -445,6 +465,7 @@ export default {
   deleteWalletTransaction,
   toggleStaffTask,
   addStaffExtraTask,
+  deleteStaffTask,
   submitStaffReport,
   submitAllStaffReports,
   approveAllStaffTasks,

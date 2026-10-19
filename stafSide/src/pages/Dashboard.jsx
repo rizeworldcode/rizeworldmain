@@ -727,15 +727,36 @@ const Dashboard = ({ onNavigateToProgress }) => {
     }
       
       if (updatedStaff.work) {
+        const todayIST = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
-        const todayWorkRec = updatedStaff.work.find(w => 
-          new Date(w.date) >= today && new Date(w.date) < tomorrow
-        );
-        if (todayWorkRec && todayWorkRec.tasks) {
-          setTodayTasks(todayWorkRec.tasks);
+
+        const todayEntries = updatedStaff.work.filter(w => {
+          if (!w || !w.date) return false;
+          const d = new Date(w.date);
+          if (isNaN(d.getTime())) return false;
+          const entryIST = d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+          return entryIST === todayIST || (d >= today && d < tomorrow);
+        });
+
+        if (todayEntries.length > 0) {
+          const combinedTasks = [];
+          const seen = new Set();
+          todayEntries.forEach(entry => {
+            (entry.tasks || []).forEach(task => {
+              const key = (task.name || '').trim().toLowerCase();
+              if (!seen.has(key)) {
+                seen.add(key);
+                combinedTasks.push(task);
+              } else if (task.completed) {
+                const ex = combinedTasks.find(ct => (ct.name || '').trim().toLowerCase() === key);
+                if (ex) ex.completed = true;
+              }
+            });
+          });
+          setTodayTasks(combinedTasks);
         } else {
           setTodayTasks([]);
         }
@@ -2005,9 +2026,13 @@ const Dashboard = ({ onNavigateToProgress }) => {
   const handleDeleteTask = async (taskIndex) => {
     const staffInfo = JSON.parse(localStorage.getItem('staffInfo') || '{}');
     const allowedEmployeeIds = ['RW-9752', 'RW-1702'];
+    const isTlRole = staffInfo.role && (
+      staffInfo.role.toLowerCase().includes('tl') || 
+      staffInfo.role.toLowerCase().includes('team leader')
+    );
 
-    if (!staffInfo.employeeId || !allowedEmployeeIds.includes(staffInfo.employeeId)) {
-      alert('Access Denied: Only employees with Employee ID RW-9752 or RW-1702 can remove daily work tasks.');
+    if (!staffInfo.employeeId || (!allowedEmployeeIds.includes(staffInfo.employeeId) && !isTlRole)) {
+      alert('Access Denied: Only employees with Employee ID RW-9752, RW-1702 or Team Leaders (TL) can remove daily work tasks.');
       return;
     }
 
@@ -2018,13 +2043,23 @@ const Dashboard = ({ onNavigateToProgress }) => {
     }
     // Create updated tasks list
     const updatedTasks = todayTasks.filter((_, i) => i !== taskIndex);
-    // Convert to comma-separated string for updateTodayWork endpoint
     const todayWork = updatedTasks.map(t => t.name).join(', ');
     try {
+      const staffToken = localStorage.getItem('staffToken');
       const response = await fetch(getApiUrl(`/staff/${staffId}/today-work`), { 
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ todayWork, employeeId: staffInfo.employeeId })
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(staffToken ? { 'Authorization': `Bearer ${staffToken}` } : {})
+        },
+        body: JSON.stringify({ 
+          todayWork, 
+          tasks: updatedTasks,
+          taskIndex,
+          action: 'delete',
+          employeeId: staffInfo.employeeId,
+          role: staffInfo.role
+        })
       });
       const result = await response.json();
       if (result.success) {
@@ -2043,23 +2078,45 @@ const Dashboard = ({ onNavigateToProgress }) => {
   const handleDeleteReporteeTask = async (memberId, taskIndex) => {
     const staffInfo = JSON.parse(localStorage.getItem('staffInfo') || '{}');
     const allowedEmployeeIds = ['RW-9752', 'RW-1702'];
+    const isTlRole = staffInfo.role && (
+      staffInfo.role.toLowerCase().includes('tl') ||
+      staffInfo.role.toLowerCase().includes('team leader')
+    );
+    const isReportee = reportees.some(m => (m.id || m._id) === memberId);
 
-    if (!staffInfo.employeeId || !allowedEmployeeIds.includes(staffInfo.employeeId)) {
-      alert('Access Denied: Only employees with Employee ID RW-9752 or RW-1702 can remove team members\' daily work tasks.');
+    if (!staffInfo.employeeId || (!allowedEmployeeIds.includes(staffInfo.employeeId) && !isTlRole && !isReportee)) {
+      alert('Access Denied: Only Team Leaders (TL) or authorized management can remove team members\' daily work tasks.');
       return;
     }
 
     const member = reportees.find(m => (m.id || m._id) === memberId);
     if (!member) return;
 
+    const taskToRemove = member.todayTasks?.[taskIndex];
+    if (!window.confirm(`Are you sure you want to remove "${taskToRemove?.name || 'this task'}" for ${member.name}?`)) {
+      return;
+    }
+
     const updatedTasks = (member.todayTasks || []).filter((_, i) => i !== taskIndex);
     const todayWork = updatedTasks.map(t => t.name).join(', ');
 
     try {
+      const staffToken = localStorage.getItem('staffToken');
       const response = await fetch(getApiUrl(`/staff/${memberId}/today-work`), {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ todayWork, employeeId: staffInfo.employeeId })
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(staffToken ? { 'Authorization': `Bearer ${staffToken}` } : {})
+        },
+        body: JSON.stringify({ 
+          todayWork, 
+          tasks: updatedTasks,
+          taskIndex,
+          action: 'delete',
+          employeeId: staffInfo.employeeId,
+          managerEmployeeId: staffInfo.employeeId,
+          managerRole: staffInfo.role
+        })
       });
       const result = await response.json();
       if (result.success) {
@@ -2088,9 +2145,13 @@ const Dashboard = ({ onNavigateToProgress }) => {
     }
 
     try {
+      const staffToken = localStorage.getItem('staffToken');
       const response = await fetch(getApiUrl(`/staff/${memberId}/satisfaction-level`), {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(staffToken ? { 'Authorization': `Bearer ${staffToken}` } : {})
+        },
         body: JSON.stringify({ satisfactionLevel: level, employeeId: staffInfo.employeeId })
       });
       const result = await response.json();
@@ -2124,9 +2185,13 @@ const Dashboard = ({ onNavigateToProgress }) => {
       : (reportees.find(m => (m.id || m._id) === memberId)?.todayComment || '');
 
     try {
+      const staffToken = localStorage.getItem('staffToken');
       const response = await fetch(getApiUrl(`/staff/${memberId}/today-comment`), {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(staffToken ? { 'Authorization': `Bearer ${staffToken}` } : {})
+        },
         body: JSON.stringify({ comment: commentText, employeeId: staffInfoLocal.employeeId })
       });
       const result = await response.json();
@@ -3546,7 +3611,14 @@ const Dashboard = ({ onNavigateToProgress }) => {
                               {task.name}
                             </span>
                           </div>
-                          {['RW-9752', 'RW-1702'].includes(staffInfo.employeeId) && (
+                          {(
+                            ['RW-9752', 'RW-1702'].includes(staffInfo.employeeId) ||
+                            (staffInfo.role && (
+                              staffInfo.role.toLowerCase().includes('tl') ||
+                              staffInfo.role.toLowerCase().includes('team leader')
+                            )) ||
+                            reportees.some(r => (r.id || r._id) === (member.id || member._id))
+                          ) && (
                             <button
                               onClick={() => handleDeleteReporteeTask(member.id || member._id, idx)}
                               className="p-1 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-500/10 transition-all cursor-pointer border-none bg-transparent"
