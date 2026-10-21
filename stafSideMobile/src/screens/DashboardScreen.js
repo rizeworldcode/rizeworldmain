@@ -156,16 +156,28 @@ const calculatePayout = (info) => {
     }
   }
 
-  // --- Step 5: Find half-days from attendance records ---
-  const halfDayRecords = (info.attendance || []).filter(att => {
+  // --- Step 5: Find half-days from clock (< 5 hours) or attendance records ---
+  const halfDayDates = new Set();
+  monthlyClockRecords.forEach(cr => {
+    const active = cr.sessions && cr.sessions.some(s => !s.clockOut);
+    const hrs = parseTotalHours(cr.totalHours);
+    const d = new Date(cr.date);
+    if (d <= today && !active && hrs < 5) {
+      halfDayDates.add(d.toDateString());
+    }
+  });
+  (info.attendance || []).forEach(att => {
     const d = new Date(att.date);
-    return (
+    if (
       att.status === 'Half-Day' &&
       d.getMonth() === currentMonth &&
       d.getFullYear() === currentYear &&
       d <= today
-    );
+    ) {
+      halfDayDates.add(d.toDateString());
+    }
   });
+  const halfDayRecords = Array.from(halfDayDates).map(dStr => ({ date: new Date(dStr), status: 'Half-Day' }));
   // 2 half-days = 1 leave unit
   const halfDayLeaveUnits = Math.floor(halfDayRecords.length / 2);
 
@@ -179,19 +191,9 @@ const calculatePayout = (info) => {
     creditedDates.add(absentDays[0].toDateString());
     casualLeaveUsed = true;
   } else if (halfDayLeaveUnits > 0) {
-    // No absent days but 2+ half-days → use casual leave for 1st pair
-    // Top up each of the 2 half-days to 4.25 hrs (half of 8.5 hrs)
-    for (let i = 0; i < 2; i++) {
-      const hdDate = new Date(halfDayRecords[i].date);
-      const clockRecord = monthlyClockRecords.find(
-        r => new Date(r.date).toDateString() === hdDate.toDateString()
-      );
-      const actualHrs = clockRecord ? parseTotalHours(clockRecord.totalHours) : 0;
-      const halfTarget = STANDARD_HOURS_PER_DAY / 2; // 4.25 hrs
-      if (actualHrs < halfTarget) {
-        totalHoursWorked += halfTarget - actualHrs;
-      }
-    }
+    // No absent days but 2+ half-days → use casual leave for 1st pair: add 8.5h total (4.25h each)
+    const halfDayBonusHours = STANDARD_HOURS_PER_DAY / 2; // 4.25h per half day = total 8.5h added across both half days
+    totalHoursWorked += halfDayBonusHours * 2;
     casualLeaveUsed = true;
   }
 

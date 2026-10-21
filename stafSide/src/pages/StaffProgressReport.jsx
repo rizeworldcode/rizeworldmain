@@ -22,7 +22,10 @@ import {
   MessageSquare,
   ListFilter,
   FileSpreadsheet,
-  Printer
+  Printer,
+  X,
+  Coins,
+  Eye
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -182,13 +185,27 @@ const calculatePayoutForMonth = (staffInfo, year, monthIndex, paidHistory = null
     return !creditedDates.has(d.toDateString());
   });
 
-  const halfDayRecords = (staffInfo.attendance || []).filter(att => {
-    if (att.status !== 'Half-Day') return false;
-    const ad = new Date(att.date);
-    return seqDateStrings.has(ad.toDateString());
+  const halfDayRecords = [];
+  validSequenceDates.forEach(d => {
+    const dStr = d.toDateString();
+    const cr = monthlyClockRecords.find(r => new Date(r.date).toDateString() === dStr);
+    const ar = (staffInfo.attendance || []).find(a => new Date(a.date).toDateString() === dStr);
+    const lr = (staffInfo.leaves || []).find(l => new Date(l.date).toDateString() === dStr);
+    if (d.getDay() === 0 || lr || ar?.status === 'On Leave') return;
+
+    if (ar?.status === 'Half-Day') {
+      halfDayRecords.push({ date: d, status: 'Half-Day' });
+    } else if (cr) {
+      const active = cr.sessions && cr.sessions.some(s => !s.clockOut);
+      const hrs = parseTotalHours(cr.totalHours);
+      if (!active && hrs < 5) {
+        halfDayRecords.push({ date: d, status: 'Half-Day' });
+      }
+    }
   });
   const halfDayLeaveUnits = Math.floor(halfDayRecords.length / 2);
 
+  const clToppedUpDates = new Set();
   let casualLeaveUsed = false;
   if (absentDaysList.length > 0) {
     const casualLeaveDate = absentDaysList[0];
@@ -196,22 +213,23 @@ const calculatePayoutForMonth = (staffInfo, year, monthIndex, paidHistory = null
     dailyHoursMap[dStr] = STANDARD_HOURS_PER_DAY;
     creditedDates.add(dStr);
     casualLeaveUsed = true;
+    clToppedUpDates.add(dStr);
   } else if (halfDayLeaveUnits > 0) {
+    const halfDayBonusHours = STANDARD_HOURS_PER_DAY / 2; // 4.25h per half day = total 8.5h added across both half days
     for (let i = 0; i < 2; i++) {
       const hdDate = new Date(halfDayRecords[i].date);
       const dStr = hdDate.toDateString();
       const cr = monthlyClockRecords.find(r => new Date(r.date).toDateString() === dStr);
       const actualHrs = cr ? parseTotalHours(cr.totalHours) : 0;
-      const halfTarget = STANDARD_HOURS_PER_DAY / 2;
-      if (actualHrs < halfTarget) {
-        dailyHoursMap[dStr] = (dailyHoursMap[dStr] || actualHrs) + (halfTarget - actualHrs);
-      }
+      dailyHoursMap[dStr] = Math.round((actualHrs + halfDayBonusHours) * 100) / 100;
+      clToppedUpDates.add(dStr);
     }
     casualLeaveUsed = true;
   }
 
   let calculatedPayout = 0;
   let totalHoursWorked = 0;
+  const dailyBreakdown = [];
 
   validSequenceDates.forEach(d => {
     const dStr = d.toDateString();
@@ -219,12 +237,88 @@ const calculatePayoutForMonth = (staffInfo, year, monthIndex, paidHistory = null
     totalHoursWorked += hrs;
     const { salary: daySalary } = getSalaryForDate(staffInfo, d);
     const dayHourlyRate = daySalary / EXPECTED_MONTHLY_HOURS;
-    calculatedPayout += hrs * dayHourlyRate;
+    const dayPayout = hrs * dayHourlyRate;
+    calculatedPayout += dayPayout;
+
+    const cr = monthlyClockRecords.find(r => new Date(r.date).toDateString() === dStr);
+    const ar = (staffInfo.attendance || []).find(a => new Date(a.date).toDateString() === dStr);
+    const lr = (staffInfo.leaves || []).find(l => new Date(l.date).toDateString() === dStr);
+    const isSunday = d.getDay() === 0;
+
+    let status = 'Absent';
+    let statusType = 'absent';
+    let note = 'Unpaid Absence';
+    const actualHrs = cr ? parseTotalHours(cr.totalHours) : 0;
+    const actualHoursStr = cr ? (cr.totalHours || '-') : '-';
+    const isClApplied = clToppedUpDates.has(dStr);
+
+    if (cr) {
+      const active = cr.sessions && cr.sessions.some(s => !s.clockOut);
+      const isHalfDay = !active && (actualHrs < 5 || ar?.status === 'Half-Day');
+      if (active) {
+        status = 'Active In';
+        statusType = 'active';
+        note = 'Currently Active Session';
+      } else if (isHalfDay) {
+        status = 'Half-Day';
+        statusType = 'halfday';
+        if (isClApplied) {
+          note = `1 CL Applied (+4.25h added to worked hours)`;
+        } else {
+          note = 'Shift under 5 hours (Standard Hourly)';
+        }
+      } else {
+        status = 'Present';
+        statusType = 'present';
+        const roundedActualHrs = Math.round(actualHrs * 100) / 100;
+        note = actualHrs >= 8.5 ? 'Full Shift (8.5h credited)' : `Shift (${roundedActualHrs}h credited)`;
+      }
+    } else if (isSunday) {
+      status = 'Sunday (Holiday)';
+      statusType = 'sunday';
+      note = 'Paid Sunday Off (8.5h credited)';
+    } else if (lr) {
+      status = `Leave (${lr.type || 'Casual'})`;
+      statusType = 'leave';
+      note = 'Approved Leave (8.5h credited)';
+    } else if (ar?.status === 'On Leave') {
+      status = 'On Leave';
+      statusType = 'leave';
+      note = 'Approved Leave (8.5h credited)';
+    } else if (isClApplied) {
+      status = 'Casual Leave';
+      statusType = 'leave';
+      note = '1 Free Casual Leave (8.5h credited)';
+    }
+
+    dailyBreakdown.push({
+      date: d,
+      dateStr: dStr,
+      formattedDate: d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+      weekday: d.toLocaleDateString('en-IN', { weekday: 'short' }),
+      status,
+      statusType,
+      actualHours: actualHrs,
+      actualHoursStr,
+      creditedHours: Math.round(hrs * 100) / 100,
+      hourlyRate: Math.round(dayHourlyRate * 100) / 100,
+      payout: Math.round(dayPayout),
+      isClApplied,
+      note
+    });
   });
 
   calculatedPayout = Math.round(calculatedPayout);
 
-  const presents = monthlyClockRecords.length;
+  const fullPresents = monthlyClockRecords.filter(r => {
+    const active = r.sessions && r.sessions.some(s => !s.clockOut);
+    if (active) return true;
+    const hrs = parseTotalHours(r.totalHours);
+    const dStr = new Date(r.date).toDateString();
+    const ar = (staffInfo.attendance || []).find(a => new Date(a.date).toDateString() === dStr);
+    return hrs >= 5 && ar?.status !== 'Half-Day';
+  }).length;
+  const presents = fullPresents;
   const fullLeaves = Math.max(0, absentDaysList.length - (casualLeaveUsed && absentDaysList.length > 0 ? 1 : 0));
   
   const earnedSalary = paidHistory?.earnedSalary ?? calculatedPayout;
@@ -257,13 +351,14 @@ const calculatePayoutForMonth = (staffInfo, year, monthIndex, paidHistory = null
     daysToCount,
     isCurrentMonth,
     presents,
-    daysWorked: presents,
+    daysWorked: monthlyClockRecords.length,
     leaves: fullLeaves,
     fullLeaves,
     halfDays: halfDayRecords.length,
     casualLeaveUsed: !!casualLeaveUsed,
     deduction,
     earnedSalary,
+    dailyBreakdown,
     advanceDeduction,
     advanceBalanceRemaining,
     totalPendingAdvance,
@@ -314,6 +409,7 @@ const StaffProgressReport = ({ onBack }) => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [dateSearchQuery, setDateSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState('cards'); // 'cards' | 'table'
+  const [isBreakdownModalOpen, setIsBreakdownModalOpen] = useState(false);
 
   const getApiUrl = (endpoint) => {
     const defaultPort = '5000';
@@ -426,8 +522,10 @@ const StaffProgressReport = ({ onBack }) => {
 
       if (clockRecord) {
         const active = clockRecord.sessions && clockRecord.sessions.some(s => !s.clockOut);
-        status = active ? 'Active In' : (attRecord?.status || 'Present');
-        statusType = active ? 'active' : (status === 'Half-Day' ? 'halfday' : 'present');
+        const clockHrs = parseTotalHours(clockRecord.totalHours);
+        const isHalfDay = !active && (clockHrs < 5 || attRecord?.status === 'Half-Day');
+        status = active ? 'Active In' : (isHalfDay ? 'Half-Day' : (attRecord?.status || 'Present'));
+        statusType = active ? 'active' : (isHalfDay ? 'halfday' : 'present');
       } else if (isSunday) {
         status = 'Sunday (Holiday)';
         statusType = 'sunday';
@@ -550,8 +648,10 @@ const StaffProgressReport = ({ onBack }) => {
 
         if (clockRecord) {
           const active = clockRecord.sessions && clockRecord.sessions.some(s => !s.clockOut);
-          status = active ? 'Active' : (attRecord?.status || 'Present');
-          statusClass = status === 'Half-Day' ? 'color: #f59e0b; font-weight: bold;' : 'color: #10b981; font-weight: bold;';
+          const clockHrs = parseTotalHours(clockRecord.totalHours);
+          const isHalfDay = !active && (clockHrs < 5 || attRecord?.status === 'Half-Day');
+          status = active ? 'Active' : (isHalfDay ? 'Half-Day' : (attRecord?.status || 'Present'));
+          statusClass = isHalfDay ? 'color: #f59e0b; font-weight: bold;' : 'color: #10b981; font-weight: bold;';
         } else if (isSunday) {
           status = 'Sunday (Holiday)';
           statusClass = 'color: #3b82f6; font-weight: bold;';
@@ -975,7 +1075,7 @@ const StaffProgressReport = ({ onBack }) => {
       {/* Metric Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {/* Estimated / Final Payout Card */}
-        <motion.div whileHover={{ y: -4 }} className="clay-card p-6 space-y-4">
+        <div className="clay-card p-6 space-y-4">
           <div className="flex justify-between items-start">
             <div className="p-3.5 rounded-2xl clay-inset bg-emerald-500 text-white">
               <IndianRupee size={22} />
@@ -1018,10 +1118,10 @@ const StaffProgressReport = ({ onBack }) => {
               </div>
             )}
           </div>
-        </motion.div>
+        </div>
 
         {/* Clocked Hours Card */}
-        <motion.div whileHover={{ y: -4 }} className="clay-card p-6 space-y-4">
+        <div className="clay-card p-6 space-y-4">
           <div className="flex justify-between items-start">
             <div className="p-3.5 rounded-2xl clay-inset bg-blue-500 text-white">
               <Clock size={22} />
@@ -1048,20 +1148,34 @@ const StaffProgressReport = ({ onBack }) => {
               />
             </div>
           </div>
-        </motion.div>
+        </div>
 
         {/* Days Breakdown Card */}
-        <motion.div whileHover={{ y: -4 }} className="clay-card p-6 space-y-4">
+        <div
+          onClick={() => setIsBreakdownModalOpen(true)}
+          className="clay-card p-6 space-y-4 cursor-pointer relative group border-2 border-transparent hover:border-purple-400/60"
+        >
           <div className="flex justify-between items-start">
             <div className="p-3.5 rounded-2xl clay-inset bg-purple-500 text-white">
               <Calendar size={22} />
             </div>
-            <span className="text-[11px] font-black text-purple-600 bg-purple-500/10 border border-purple-500/20 px-2.5 py-1 rounded-xl">
-              {monthMetrics?.casualLeaveUsed ? 'CL Applied' : 'No CL Used'}
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] font-black text-purple-600 bg-purple-500/10 border border-purple-500/20 px-2.5 py-1 rounded-xl">
+                {monthMetrics?.casualLeaveUsed ? 'CL Applied' : 'No CL Used'}
+              </span>
+              <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 flex items-center gap-1">
+                <Coins size={11} className="text-amber-500" />
+                <span>View Payout</span>
+              </span>
+            </div>
           </div>
           <div>
-            <p className="text-xs font-black uppercase tracking-wider text-slate-500">Days Present / Worked</p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-black uppercase tracking-wider text-slate-500">Days Present / Worked</p>
+              <span className="text-[10px] font-bold text-purple-600 flex items-center gap-0.5">
+                Breakup &rarr;
+              </span>
+            </div>
             <h3 className="text-3xl font-black text-slate-900 mt-1">
               {monthMetrics?.presents || 0} <span className="text-sm text-slate-500 font-bold">Days</span>
             </h3>
@@ -1076,10 +1190,10 @@ const StaffProgressReport = ({ onBack }) => {
               <span>{monthMetrics?.halfDays || 0}d</span>
             </div>
           </div>
-        </motion.div>
+        </div>
 
         {/* Satisfaction Zones Card */}
-        <motion.div whileHover={{ y: -4 }} className="clay-card p-6 space-y-4">
+        <div className="clay-card p-6 space-y-4">
           <div className="flex justify-between items-start">
             <div className="p-3.5 rounded-2xl clay-inset bg-amber-500 text-white">
               <ShieldAlert size={22} />
@@ -1117,7 +1231,7 @@ const StaffProgressReport = ({ onBack }) => {
               </span>
             )}
           </div>
-        </motion.div>
+        </div>
       </div>
 
       {/* Advance Payments History (If staff has received any advances) */}
@@ -1450,6 +1564,148 @@ const StaffProgressReport = ({ onBack }) => {
             </table>
           </div>
         )}
+
+        {/* Daily Payout & Working Hours Breakup Modal */}
+        <AnimatePresence>
+          {isBreakdownModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/60 backdrop-blur-md">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                transition={{ duration: 0.2 }}
+                className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-4xl w-full max-h-[88vh] flex flex-col overflow-hidden"
+              >
+                {/* Modal Header */}
+                <div className="p-5 sm:p-6 border-b border-slate-200/80 bg-gradient-to-r from-purple-50 via-indigo-50 to-purple-50 flex items-start justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2.5 rounded-xl bg-purple-600 text-white shadow-md shadow-purple-500/20">
+                        <Coins size={22} />
+                      </div>
+                      <div>
+                        <h3 className="text-lg sm:text-xl font-black text-slate-900">
+                          Daily Payout & Working Hours Breakup
+                        </h3>
+                        <p className="text-xs text-slate-500 font-bold mt-0.5">
+                          {staffInfo?.name} • {selectedMonth} • Rate: ₹{monthMetrics?.hourlyRate || 0}/hr
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Quick Stat Chips */}
+                    <div className="flex flex-wrap items-center gap-2 mt-3.5">
+                      <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        Gross Payout: <strong className="font-black">₹{(monthMetrics?.earnedSalary || 0).toLocaleString('en-IN')}</strong>
+                      </span>
+                      <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200">
+                        Total Credited Hours: <strong className="font-black">{monthMetrics?.totalHoursWorked || 0} hrs</strong>
+                      </span>
+                      <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-purple-50 text-purple-700 border border-purple-200">
+                        Cycle Days: <strong className="font-black">{monthMetrics?.dailyBreakdown?.length || 0} Days</strong>
+                      </span>
+                      {monthMetrics?.casualLeaveUsed && (
+                        <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 border border-amber-200">
+                          ✨ 1 Casual Leave Applied (+8.5h total across 2 Half-Days)
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => setIsBreakdownModalOpen(false)}
+                    className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+
+                {/* Modal Body / Table */}
+                <div className="p-4 sm:p-6 overflow-y-auto flex-1">
+                  <div className="overflow-x-auto rounded-2xl border border-slate-200 shadow-sm">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-slate-100/90 border-b border-slate-200 text-[11px] font-black uppercase text-slate-600">
+                          <th className="py-3 px-3.5">Date</th>
+                          <th className="py-3 px-3">Status</th>
+                          <th className="py-3 px-3 text-right">Worked Hours</th>
+                          <th className="py-3 px-3 text-right">Credited Hours</th>
+                          <th className="py-3 px-3 text-right">Day Payout</th>
+                          <th className="py-3 px-3.5">Breakup Note</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {monthMetrics?.dailyBreakdown?.map((item, idx) => (
+                          <tr
+                            key={idx}
+                            className={cn(
+                              item.statusType === 'sunday' && "bg-blue-50/40",
+                              item.statusType === 'halfday' && "bg-amber-50/40",
+                              item.statusType === 'absent' && "bg-rose-50/30",
+                              item.statusType !== 'sunday' && item.statusType !== 'halfday' && item.statusType !== 'absent' && "bg-white"
+                            )}
+                          >
+                            <td className="py-2.5 px-3.5 font-bold text-slate-800 whitespace-nowrap">
+                              {item.formattedDate} <span className="text-slate-400 font-semibold text-[10px]">({item.weekday})</span>
+                            </td>
+                            <td className="py-2.5 px-3 whitespace-nowrap">
+                              {getStatusBadge(item.statusType, item.status)}
+                            </td>
+                            <td className="py-2.5 px-3 text-right font-semibold text-slate-600 whitespace-nowrap">
+                              {item.actualHoursStr !== '-' ? (
+                                <span>{item.actualHoursStr}</span>
+                              ) : (
+                                <span className="text-slate-300">—</span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-3 text-right font-black text-slate-800 whitespace-nowrap">
+                              {item.creditedHours > 0 ? (
+                                <span className="text-purple-700">{item.creditedHours} hrs</span>
+                              ) : (
+                                <span className="text-slate-300">0 hrs</span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-3 text-right font-extrabold text-emerald-600 whitespace-nowrap">
+                              {item.payout > 0 ? (
+                                <span>₹{item.payout.toLocaleString('en-IN')}</span>
+                              ) : (
+                                <span className="text-slate-300">₹0</span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-3.5 text-slate-500 font-medium">
+                              {item.isClApplied && item.statusType === 'halfday' ? (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-100/70 px-2 py-0.5 rounded-md">
+                                  ⚡ CL Applied ({item.actualHoursStr} + 4.25h)
+                                </span>
+                              ) : (
+                                <span className="text-[11px]">{item.note}</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Modal Footer */}
+                <div className="p-4 sm:p-5 border-t border-slate-200 bg-slate-50/80 flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 text-xs font-bold text-slate-600">
+                    <span>Formula: <code className="font-mono text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded">Daily Hours &times; ₹{monthMetrics?.hourlyRate || 0}/hr</code></span>
+                    <span>•</span>
+                    <span className="text-emerald-700 font-black">Gross Total: ₹{(monthMetrics?.earnedSalary || 0).toLocaleString('en-IN')}</span>
+                  </div>
+                  <button
+                    onClick={() => setIsBreakdownModalOpen(false)}
+                    className="w-full sm:w-auto px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-black transition-all cursor-pointer shadow-sm"
+                  >
+                    Close Breakup
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

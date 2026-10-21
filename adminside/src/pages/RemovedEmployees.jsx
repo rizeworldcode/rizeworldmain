@@ -194,10 +194,23 @@ const calculatePayoutForSelectedMonth = (staffInfo, monthStr) => {
     return !creditedDates.has(d.toDateString());
   });
 
-  const halfDayRecords = (staffInfo.attendance || []).filter(att => {
-    if (att.status !== 'Half-Day') return false;
-    const ad = new Date(att.date);
-    return seqDateStrings.has(ad.toDateString());
+  const halfDayRecords = [];
+  validSequenceDates.forEach(d => {
+    const dStr = d.toDateString();
+    const cr = monthlyClockRecords.find(r => new Date(r.date).toDateString() === dStr);
+    const ar = (staffInfo.attendance || []).find(a => new Date(a.date).toDateString() === dStr);
+    const lr = (staffInfo.leaves || []).find(l => new Date(l.date).toDateString() === dStr);
+    if (d.getDay() === 0 || lr || ar?.status === 'On Leave') return;
+
+    if (ar?.status === 'Half-Day') {
+      halfDayRecords.push({ date: d, status: 'Half-Day' });
+    } else if (cr) {
+      const active = cr.sessions && cr.sessions.some(s => !s.clockOut);
+      const hrs = parseTotalHours(cr.totalHours);
+      if (!active && hrs < 5) {
+        halfDayRecords.push({ date: d, status: 'Half-Day' });
+      }
+    }
   });
   const halfDayLeaveUnits = Math.floor(halfDayRecords.length / 2);
 
@@ -209,15 +222,13 @@ const calculatePayoutForSelectedMonth = (staffInfo, monthStr) => {
     creditedDates.add(dStr);
     casualLeaveUsed = true;
   } else if (halfDayLeaveUnits > 0) {
+    const halfDayBonusHours = STANDARD_HOURS_PER_DAY / 2; // 4.25h per half day = total 8.5h added across both half days
     for (let i = 0; i < 2; i++) {
       const hdDate = new Date(halfDayRecords[i].date);
       const dStr = hdDate.toDateString();
       const cr = monthlyClockRecords.find(r => new Date(r.date).toDateString() === dStr);
       const actualHrs = cr ? parseTotalHours(cr.totalHours) : 0;
-      const halfTarget = STANDARD_HOURS_PER_DAY / 2;
-      if (actualHrs < halfTarget) {
-        dailyHoursMap[dStr] = (dailyHoursMap[dStr] || actualHrs) + (halfTarget - actualHrs);
-      }
+      dailyHoursMap[dStr] = Math.round((actualHrs + halfDayBonusHours) * 100) / 100;
     }
     casualLeaveUsed = true;
   }

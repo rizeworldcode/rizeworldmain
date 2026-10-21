@@ -522,6 +522,11 @@ exports.getStaffById = async (req, res) => {
       });
     }
 
+    // Auto-sync any completed clock records under 5 hours to Half-Day
+    if (syncHalfDayAttendance(staff)) {
+      await staff.save();
+    }
+
     // Get today's clock record for sending to frontend
     const todayClockRecord = staff.clock?.find(c =>
       c.date && isSameDayIST(c.date, new Date())
@@ -911,6 +916,40 @@ const parseTotalHours = (totalHoursStr) => {
   return hours + (minutes / 60);
 };
 
+// Helper function to sync attendance records with clock hours (under 5 hours = Half-Day)
+const syncHalfDayAttendance = (staff) => {
+  let modified = false;
+  if (!staff || !staff.clock || !Array.isArray(staff.clock)) return modified;
+  if (!Array.isArray(staff.attendance)) staff.attendance = [];
+
+  staff.clock.forEach(clockRec => {
+    if (!clockRec || !clockRec.date) return;
+    const active = clockRec.sessions && clockRec.sessions.some(s => !s.clockOut);
+    if (active) return;
+    const hours = parseTotalHours(clockRec.totalHours);
+    if (hours < 5) {
+      const attIdx = staff.attendance.findIndex(a => isSameDayIST(a.date, clockRec.date));
+      if (attIdx !== -1) {
+        if (staff.attendance[attIdx].status !== 'On Leave' && staff.attendance[attIdx].status !== 'Half-Day') {
+          staff.attendance[attIdx].status = 'Half-Day';
+          modified = true;
+        }
+      } else {
+        staff.attendance.push({
+          date: clockRec.date,
+          status: 'Half-Day'
+        });
+        modified = true;
+      }
+    }
+  });
+
+  if (modified) {
+    staff.markModified('attendance');
+  }
+  return modified;
+};
+
 const getSalaryForDate = (staffInfo, date) => {
   const defaultSalary = staffInfo.monthlySalary || 0;
   const defaultJobType = staffInfo.jobType || '';
@@ -1032,16 +1071,29 @@ const calculatePayout = (staffInfo) => {
     }
   }
 
-  // Find half-days from attendance records
-  const halfDayRecords = (staffInfo.attendance || []).filter(att => {
+  // Find half-days from clock records (< 5 hours) or attendance records
+  const halfDayDates = new Set();
+  monthlyClockRecords.forEach(cr => {
+    const active = cr.sessions && cr.sessions.some(s => !s.clockOut);
+    const hrs = parseTotalHours(cr.totalHours);
+    const d = new Date(cr.date);
+    if (d <= today && !active && hrs < 5) {
+      halfDayDates.add(d.toDateString());
+    }
+  });
+  (staffInfo.attendance || []).forEach(att => {
     const d = new Date(att.date);
-    return (
+    if (
       att.status === 'Half-Day' &&
       d.getMonth() === currentMonth &&
       d.getFullYear() === currentYear &&
       d <= today
-    );
+    ) {
+      halfDayDates.add(d.toDateString());
+    }
   });
+
+  const halfDayRecords = Array.from(halfDayDates).map(dStr => ({ date: new Date(dStr), status: 'Half-Day' }));
   const halfDayLeaveUnits = Math.floor(halfDayRecords.length / 2);
 
   // Apply 1 FREE casual leave per month
@@ -1054,6 +1106,7 @@ const calculatePayout = (staffInfo) => {
     creditedDates.add(dStr);
     casualLeaveUsed = true;
   } else if (halfDayLeaveUnits > 0) {
+    const halfDayBonusHours = STANDARD_HOURS_PER_DAY / 2; // 4.25h per half day = total 8.5h added across both half days
     for (let i = 0; i < 2; i++) {
       const hdDate = new Date(halfDayRecords[i].date);
       const dStr = hdDate.toDateString();
@@ -1061,10 +1114,7 @@ const calculatePayout = (staffInfo) => {
         r => new Date(r.date).toDateString() === dStr
       );
       const actualHrs = clockRecord ? parseTotalHours(clockRecord.totalHours) : 0;
-      const halfTarget = STANDARD_HOURS_PER_DAY / 2;
-      if (actualHrs < halfTarget) {
-        dailyHoursMap[dStr] = (dailyHoursMap[dStr] || actualHrs) + (halfTarget - actualHrs);
-      }
+      dailyHoursMap[dStr] = Math.round((actualHrs + halfDayBonusHours) * 100) / 100;
     }
     casualLeaveUsed = true;
   }
@@ -1354,8 +1404,8 @@ exports.clockOutStaff = async (req, res) => {
 
     // Update attendance record directly
     const totalHoursStr = staff.clock[targetClockIndex]?.totalHours || '-';
-    const [hours] = totalHoursStr.split('h').map(Number);
-    const attendanceStatus = (isNaN(hours) || hours < 4) ? 'Half-Day' : 'Present';
+    const actualHours = parseTotalHours(totalHoursStr);
+    const attendanceStatus = (isNaN(actualHours) || actualHours < 5) ? 'Half-Day' : 'Present';
 
     if (!Array.isArray(staff.attendance)) {
       staff.attendance = [];
@@ -1493,8 +1543,8 @@ exports.clockOutAllStaff = async (req, res) => {
 
       // Update attendance record directly
       const totalHoursStr = updatedTodayClock?.totalHours || '-';
-      const [hours] = totalHoursStr.split('h').map(Number);
-      const attendanceStatus = (isNaN(hours) || hours < 4) ? 'Half-Day' : 'Present';
+      const actualHours = parseTotalHours(totalHoursStr);
+      const attendanceStatus = (isNaN(actualHours) || actualHours < 5) ? 'Half-Day' : 'Present';
 
       if (!Array.isArray(staff.attendance)) {
         staff.attendance = [];

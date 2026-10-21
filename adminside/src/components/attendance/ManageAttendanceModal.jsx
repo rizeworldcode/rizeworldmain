@@ -19,7 +19,8 @@ import {
   getSalaryForDate, 
   isDailyRatedStaff,
   calculatePayoutForMonth,
-  getAvailableSalaryMonths
+  getAvailableSalaryMonths,
+  parseTotalHours
 } from '../../utils/salaryCalculator';
 
 export const ManageAttendanceModal = ({
@@ -82,6 +83,14 @@ export const ManageAttendanceModal = ({
       status = 'Present'; // Sunday credit
     } else if (!isDaily && !clockRec) {
       status = 'Absent';
+    }
+
+    if (clockRec && status !== 'On Leave') {
+      const active = clockRec.sessions && clockRec.sessions.some(s => !s.clockOut);
+      const hrs = parseTotalHours(clockRec.totalHours);
+      if (!active && hrs < 5) {
+        status = 'Half-Day';
+      }
     }
 
     return {
