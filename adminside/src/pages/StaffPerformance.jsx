@@ -196,6 +196,13 @@ const getSalaryForDate = (staffInfo, date) => {
   return { salary: activeSalary, jobType: activeJobType };
 };
 
+const parseTotalHours = (str) => {
+  if (!str || str === '-') return 0;
+  const h = str.match(/(\d+)\s*h/i);
+  const m = str.match(/(\d+)\s*m/i);
+  return (h ? parseInt(h[1], 10) : 0) + (m ? parseInt(m[1], 10) / 60 : 0);
+};
+
 const calculatePayoutForMonth = (staffInfo, year, monthIndex, paidHistory = null) => {
   if (!staffInfo) return null;
   const baseSalary = paidHistory ? paidHistory.baseSalary : (staffInfo.monthlySalary || 0);
@@ -219,13 +226,6 @@ const calculatePayoutForMonth = (staffInfo, year, monthIndex, paidHistory = null
     : sequenceDates;
 
   const seqDateStrings = new Set(validSequenceDates.map(d => d.toDateString()));
-
-  const parseTotalHours = (str) => {
-    if (!str || str === '-') return 0;
-    const h = str.match(/(\d+)\s*h/i);
-    const m = str.match(/(\d+)\s*m/i);
-    return (h ? parseInt(h[1], 10) : 0) + (m ? parseInt(m[1], 10) / 60 : 0);
-  };
 
   // -----------------------------------------------------------------
   // Handle Daily-Rated Staff (Chef, Driver, Maid, etc. - Auto-Present)

@@ -161,6 +161,10 @@ app.use('/api/masterpool', masterPoolRoutes);
 const blogRoutes = require('./src/routes/blogRoutes');
 app.use('/api/blogs', blogRoutes);
 
+// Company Leads CRM routes
+const companyLeadRoutes = require('./src/routes/companyLeadRoutes');
+app.use('/api/company-leads', companyLeadRoutes);
+
 // Dynamic Sitemap route for blogs
 const { updateBlogSitemap } = require('./src/utils/sitemapGenerator');
 app.get('/sitemap-blogs.xml', async (req, res) => {

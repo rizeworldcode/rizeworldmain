@@ -15,7 +15,8 @@ import {
   CreditCard,
   ShieldCheck,
   KeyRound,
-  Briefcase
+  Briefcase,
+  Target
 } from 'lucide-react';
 
 const allNavItems = [
@@ -26,6 +27,7 @@ const allNavItems = [
   { icon: Trash2, label: 'Removed Employees', id: 'removedEmployees' },
   { icon: Briefcase, label: 'Hiring Posts', id: 'hiring' },
   { icon: Users, label: 'Clients', id: 'clients' },
+  { icon: Target, label: 'Company Leads', id: 'companyLeads' },
   { icon: Wallet, label: 'Wallet', id: 'wallet' },
   { icon: MapPin, label: 'Sales Tracking', id: 'salesTracking' },
   { icon: Camera, label: 'Sales Photos', id: 'salesPhotos' },

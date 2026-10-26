@@ -437,8 +437,45 @@ export const updateStaffAttendance = (staffId: string, data: { status: string; d
     body: JSON.stringify(data),
   });
 
+// Company Leads CRM APIs
+export const getNextLeadId = () =>
+  apiRequest<{ success: boolean; nextUnicId?: string; message?: string }>('/company-leads/next-id');
+
+export const getAllCompanyLeads = (params?: Record<string, any>) => {
+  const query = params ? '?' + new URLSearchParams(
+    Object.entries(params).filter(([_, v]) => v !== undefined && v !== '' && v !== null)
+  ).toString() : '';
+  return apiRequest<{ success: boolean; count?: number; stats?: any; data?: any[]; message?: string }>(`/company-leads${query}`);
+};
+
+export const getCompanyLeadById = (id: string) =>
+  apiRequest<{ success: boolean; data?: any; message?: string }>(`/company-leads/${id}`);
+
+export const createCompanyLead = (leadData: any) =>
+  apiRequest<{ success: boolean; message: string; data: any }>('/company-leads', {
+    method: 'POST',
+    body: JSON.stringify(leadData)
+  });
+
+export const updateCompanyLead = (id: string, updates: any) =>
+  apiRequest<{ success: boolean; message: string; data: any }>(`/company-leads/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(updates)
+  });
+
+export const deleteCompanyLead = (id: string) =>
+  apiRequest<{ success: boolean; message: string }>(`/company-leads/${id}`, {
+    method: 'DELETE'
+  });
+
 export default {
   BASE_URL,
+  getNextLeadId,
+  getAllCompanyLeads,
+  getCompanyLeadById,
+  createCompanyLead,
+  updateCompanyLead,
+  deleteCompanyLead,
   getDashboardStats,
   getAllStaff,
   markStaffLeave,

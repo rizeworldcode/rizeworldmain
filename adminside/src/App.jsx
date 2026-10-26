@@ -21,6 +21,7 @@ const VisitingCards = lazy(() => import('./pages/VisitingCards'));
 const SalarySheet = lazy(() => import('./pages/SalarySheet'));
 const AdminUsers = lazy(() => import('./pages/AdminUsers'));
 const HearingManagement = lazy(() => import('./pages/HearingManagement'));
+const CompanyLeads = lazy(() => import('./pages/CompanyLeads'));
 
 const PageLoader = () => (
   <div className="flex items-center justify-center min-h-[50vh]">
@@ -81,6 +82,7 @@ function App() {
     if (pathname.startsWith('/staff')) return 'staffDetail';
     if (pathname.startsWith('/hiring')) return 'hiring';
     if (pathname.startsWith('/clients')) return 'clients';
+    if (pathname.startsWith('/company-leads') || pathname.startsWith('/leads')) return 'companyLeads';
     if (pathname.startsWith('/wallet')) return 'wallet';
     if (pathname.startsWith('/tracking/photos')) return 'salesPhotos';
     if (pathname.startsWith('/tracking/cards')) return 'visitingCards';
@@ -115,6 +117,7 @@ function App() {
       if (perms.includes('staffDetail')) return '/staff';
       if (perms.includes('hiring')) return '/hiring';
       if (perms.includes('clients')) return '/clients';
+      if (perms.includes('companyLeads')) return '/company-leads';
       if (perms.includes('wallet')) return '/wallet';
       if (perms.includes('salesTracking')) return '/tracking';
       if (perms.includes('salarySheet')) return '/salary-sheet';
@@ -159,6 +162,7 @@ function App() {
     else if (tab === 'hiring') navigate('/hiring');
     else if (tab === 'studentAdmissions') navigate('/staff/admissions');
     else if (tab === 'clients') navigate('/clients');
+    else if (tab === 'companyLeads') navigate('/company-leads');
     else if (tab === 'wallet') navigate('/wallet');
     else if (tab === 'salesTracking') navigate('/tracking');
     else if (tab === 'salesPhotos') navigate('/tracking/photos');
@@ -297,6 +301,16 @@ function App() {
                           <AccessDenied onGoToAllowed={() => navigate(firstAllowedRoute)} />
                         )
                       } />
+
+                      <Route path="/company-leads" element={
+                        hasAccess('companyLeads') ? (
+                          <CompanyLeads />
+                        ) : (
+                          <AccessDenied onGoToAllowed={() => navigate(firstAllowedRoute)} />
+                        )
+                      } />
+
+                      <Route path="/leads" element={<Navigate to="/company-leads" replace />} />
 
                       <Route path="/wallet" element={
                         hasAccess('wallet') ? (
