@@ -2,6 +2,7 @@ const cron = require('node-cron');
 const moment = require('moment');
 const Client = require('../models/Client');
 const OldClient = require('../models/OldClient');
+const Notification = require('../models/Notification');
 const { notifyHRAndSupport } = require('./notificationService');
 
 function calculateDaysDifference(date1, date2) {
@@ -13,6 +14,7 @@ function calculateDaysDifference(date1, date2) {
 async function checkAndSendClientNotifications() {
   console.log('Checking client notifications...');
   const today = moment();
+  const startOfToday = moment().startOf('day').toDate();
   
   try {
     const clients = await Client.find({ status: { $ne: 'Completed' } });
@@ -22,6 +24,15 @@ async function checkAndSendClientNotifications() {
       const pending = Number(client.pendingAmount !== undefined ? client.pendingAmount : ((client.totalPrice || client.totalAmount || 0) - (client.paidAmount || 0)));
       if (pending > 0 && client.deadline) {
         const daysUntilDeadline = calculateDaysDifference(today, client.deadline);
+
+        // Check if a payment reminder for this client has already been created today
+        const alreadyNotified = await Notification.findOne({
+          clientId: client._id,
+          createdAt: { $gte: startOfToday }
+        });
+        if (alreadyNotified) {
+          continue;
+        }
         
         if (daysUntilDeadline > 0 && daysUntilDeadline <= 5) {
           await notifyHRAndSupportPreDeadline(client, daysUntilDeadline);
@@ -35,6 +46,15 @@ async function checkAndSendClientNotifications() {
       const pending = Number((oldClient.totalAmount || 0) - (oldClient.paidAmount || 0));
       if (pending > 0 && oldClient.deliveredDate) {
         const daysSinceDelivery = calculateDaysDifference(oldClient.deliveredDate, today);
+
+        // Check if an old client payment reminder has already been created today
+        const alreadyNotifiedOld = await Notification.findOne({
+          oldClientId: oldClient._id,
+          createdAt: { $gte: startOfToday }
+        });
+        if (alreadyNotifiedOld) {
+          continue;
+        }
         
         if (daysSinceDelivery > 0 && daysSinceDelivery <= 5) {
           await notifyHRAndSupportOldClientPreDeadline(oldClient, daysSinceDelivery);
@@ -84,6 +104,44 @@ async function notifyHRAndSupportOldClientPostDeadline(oldClient, daysSinceDeliv
   console.log(`Client Support notified about post-deadline for old client ${oldClient.name}`);
 }
 
+async function checkAndSendLeadFollowUpNotifications() {
+  console.log('Checking CRM lead follow-up notifications...');
+  const startOfToday = moment().startOf('day').toDate();
+  const endOfToday = moment().endOf('day').toDate();
+
+  try {
+    const CompanyLead = require('../models/CompanyLead');
+    const { notifyLeadAssignedStaff } = require('./notificationService');
+
+    // Find active leads whose follow-up is scheduled for today or overdue
+    const leads = await CompanyLead.find({
+      leadStatus: { $nin: ['Converted', 'Lost'] },
+      assignedStaffId: { $exists: true, $ne: null },
+      nextFollowUpDate: { $lte: endOfToday }
+    }).lean();
+
+    for (const lead of leads) {
+      // Check if notification already sent today for this lead to this staff
+      const alreadyNotified = await Notification.findOne({
+        leadId: lead._id,
+        recipientStaff: lead.assignedStaffId,
+        createdAt: { $gte: startOfToday }
+      });
+
+      if (alreadyNotified) {
+        continue;
+      }
+
+      await notifyLeadAssignedStaff(lead);
+      console.log(`Notified assigned staff for lead: ${lead.companyName || lead.name}`);
+    }
+
+    console.log('CRM lead follow-up notifications check complete.');
+  } catch (error) {
+    console.error('Error checking lead follow-up notifications:', error);
+  }
+}
+
 function initCronJobs() {
   const { checkAndTransferCompletedClients } = require('../controllers/clientController');
 
@@ -91,6 +149,14 @@ function initCronJobs() {
   cron.schedule('7 15 * * *', async () => {
     console.log('Running daily notification check at 2:00 PM IST');
     await checkAndSendClientNotifications();
+  }, {
+    timezone: 'Asia/Kolkata'
+  });
+
+  // Daily CRM lead follow-up check at 9:30 AM IST
+  cron.schedule('30 9 * * *', async () => {
+    console.log('Running daily CRM lead follow-up check at 9:30 AM IST');
+    await checkAndSendLeadFollowUpNotifications();
   }, {
     timezone: 'Asia/Kolkata'
   });
@@ -105,15 +171,17 @@ function initCronJobs() {
   setTimeout(async () => {
     try {
       await checkAndTransferCompletedClients();
+      await checkAndSendLeadFollowUpNotifications();
     } catch (e) {
-      console.error('Initial completed client check failed:', e);
+      console.error('Initial cron checks failed:', e);
     }
   }, 10000);
   
-  console.log('Cron jobs initialized - daily notifications & hourly completed client check');
+  console.log('Cron jobs initialized - daily notifications, lead follow-ups & hourly completed client check');
 }
 
 module.exports = {
   initCronJobs,
-  checkAndSendClientNotifications
+  checkAndSendClientNotifications,
+  checkAndSendLeadFollowUpNotifications
 };

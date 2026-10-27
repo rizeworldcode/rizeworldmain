@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const {
   getNextUnicId,
+  getLeadReminders,
   createLead,
   getAllLeads,
   getLeadById,
@@ -14,6 +15,7 @@ const { protect } = require('../middleware/authMiddleware');
 router.use(protect);
 
 router.get('/next-id', getNextUnicId);
+router.get('/reminders', getLeadReminders);
 router.post('/', createLead);
 router.get('/', getAllLeads);
 router.get('/:id', getLeadById);

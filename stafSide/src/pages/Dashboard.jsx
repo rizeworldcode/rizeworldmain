@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Bell, 
@@ -24,7 +24,8 @@ import {
   Sparkles,
   CheckCircle2,
   Trash2,
-  MessageSquare
+  MessageSquare,
+  AlertCircle
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -573,6 +574,7 @@ const Dashboard = ({ onNavigateToProgress }) => {
   });
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [notificationTab, setNotificationTab] = useState('all');
   // Delay Work State
   const [delayWork, setDelayWork] = useState([]);
   const [clients, setClients] = useState([]);
@@ -1537,13 +1539,19 @@ const Dashboard = ({ onNavigateToProgress }) => {
   const fetchNotifications = async () => {
     const staffInfo = JSON.parse(localStorage.getItem('staffInfo') || '{}');
     const staffId = staffInfo.id || staffInfo._id;
+    const staffToken = localStorage.getItem('staffToken');
     
     if (!staffId) return;
     
     try {
-      const response = await fetch(getApiUrl(`/notifications/staff/${staffId}`));
+      const response = await fetch(getApiUrl(`/notifications/staff/${staffId}`), {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(staffToken ? { 'Authorization': `Bearer ${staffToken}` } : {})
+        }
+      });
       const result = await response.json();
-      if (result.success) {
+      if (result.success && Array.isArray(result.data)) {
         setNotifications(result.data);
       }
     } catch (err) {
@@ -1555,10 +1563,15 @@ const Dashboard = ({ onNavigateToProgress }) => {
   const markAsRead = async (notificationId) => {
     const staffInfo = JSON.parse(localStorage.getItem('staffInfo') || '{}');
     const staffId = staffInfo.id || staffInfo._id;
+    const staffToken = localStorage.getItem('staffToken');
     
     try {
       await fetch(getApiUrl(`/notifications/${notificationId}/read/${staffId}`), {
-        method: 'PATCH'
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(staffToken ? { 'Authorization': `Bearer ${staffToken}` } : {})
+        }
       });
       // Update local state to mark as read
       setNotifications(prev => prev.map(n => 
@@ -1567,6 +1580,113 @@ const Dashboard = ({ onNavigateToProgress }) => {
     } catch (err) {
       console.error('Failed to mark as read:', err);
     }
+  };
+
+  // Mark all notifications as read
+  const markAllNotificationsAsRead = async () => {
+    const staffInfo = JSON.parse(localStorage.getItem('staffInfo') || '{}');
+    const staffId = staffInfo.id || staffInfo._id;
+    const staffToken = localStorage.getItem('staffToken');
+    if (!staffId) return;
+
+    try {
+      await fetch(getApiUrl(`/notifications/staff/${staffId}/read-all`), {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(staffToken ? { 'Authorization': `Bearer ${staffToken}` } : {})
+        }
+      });
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    } catch (err) {
+      console.error('Failed to mark all as read:', err);
+    }
+  };
+
+  // Notification timing classification (Today, Upcoming, Overdue)
+  const getNotificationTiming = (notif) => {
+    if (!notif) return { category: 'all', isToday: false, isUpcoming: false, isOverdue: false, dueDate: null };
+    const rawDue = notif.dueDate || notif.leadId?.nextFollowUpDate || notif.clientId?.deadline;
+    const createdAt = notif.createdAt ? new Date(notif.createdAt) : new Date();
+
+    if (!rawDue) {
+      const now = new Date();
+      const isCreatedToday = createdAt.toDateString() === now.toDateString();
+      return {
+        category: isCreatedToday ? 'today' : 'all',
+        isToday: isCreatedToday,
+        isUpcoming: false,
+        isOverdue: false,
+        dueDate: createdAt
+      };
+    }
+
+    const dueDate = new Date(rawDue);
+    const now = new Date();
+
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+    const isToday = dueDate >= startOfToday && dueDate <= endOfToday;
+    const isUpcoming = dueDate > endOfToday;
+    const isOverdue = dueDate < startOfToday && !notif.isRead;
+
+    let category = 'all';
+    if (isToday) category = 'today';
+    else if (isOverdue) category = 'overdue';
+    else if (isUpcoming) category = 'upcoming';
+
+    return {
+      category,
+      isToday,
+      isUpcoming,
+      isOverdue,
+      dueDate
+    };
+  };
+
+  const notificationGroups = useMemo(() => {
+    const today = [];
+    const upcoming = [];
+    const overdue = [];
+
+    notifications.forEach((notif) => {
+      const timing = getNotificationTiming(notif);
+      if (timing.isToday) {
+        today.push(notif);
+      } else if (timing.isUpcoming) {
+        upcoming.push(notif);
+      } else if (timing.isOverdue) {
+        overdue.push(notif);
+      }
+    });
+
+    return {
+      today,
+      upcoming,
+      overdue,
+      all: notifications
+    };
+  }, [notifications]);
+
+  const activeNotifications = useMemo(() => {
+    if (notificationTab === 'today') return notificationGroups.today;
+    if (notificationTab === 'upcoming') return notificationGroups.upcoming;
+    if (notificationTab === 'overdue') return notificationGroups.overdue;
+    return notificationGroups.all;
+  }, [notificationTab, notificationGroups]);
+
+  const handleOpenNotifications = () => {
+    if (notificationGroups.today.length > 0) {
+      setNotificationTab('today');
+    } else if (notificationGroups.upcoming.length > 0) {
+      setNotificationTab('upcoming');
+    } else if (notificationGroups.overdue.length > 0) {
+      setNotificationTab('overdue');
+    } else {
+      setNotificationTab('all');
+    }
+    setShowNotifications(true);
   };
 
   const socketRef = useRef(null);
@@ -1599,12 +1719,46 @@ const Dashboard = ({ onNavigateToProgress }) => {
       ? `http://${h}:45000`
       : 'https://rizeworldmain.onrender.com';
     socketRef.current = io(socketBase);
+
+    // Register staff ID & role so this socket joins targeted rooms
+    const currentStaffId = staffInfoLocal.id || staffInfoLocal._id;
+    if (currentStaffId) {
+      socketRef.current.emit('register-staff', {
+        staffId: currentStaffId,
+        role: staffInfoLocal.role
+      });
+    }
     
-    // Listen for new notifications
+    // Listen for new notifications with strict recipient check
     socketRef.current.on('newNotification', (newNotification) => {
-      // Add the new notification to the state at the beginning
-      setNotifications(prev => [newNotification, ...prev]);
-      // Automatically show the popup
+      if (!newNotification) return;
+
+      const currentStaff = JSON.parse(localStorage.getItem('staffInfo') || '{}');
+      const currentRole = (currentStaff.role || '').trim().toLowerCase();
+      const currentId = (currentStaff.id || currentStaff._id || '').toString();
+
+      const roles = (newNotification.recipientRoles || []).map(r => (r || '').trim().toLowerCase());
+      const staffList = (newNotification.recipientStaff || []).map(s => (s._id || s || '').toString());
+
+      const isTargeted = roles.includes(currentRole) || staffList.includes(currentId);
+
+      // CRITICAL: If this notification is NOT intended for this staff member, ignore completely!
+      if (!isTargeted) {
+        return;
+      }
+
+      setNotifications(prev => {
+        if (prev.some(n => n._id === newNotification._id)) return prev;
+        return [newNotification, ...prev];
+      });
+
+      // Show the popup and switch to appropriate tab for targeted notifications
+      const timing = getNotificationTiming(newNotification);
+      if (timing.isToday) setNotificationTab('today');
+      else if (timing.isUpcoming) setNotificationTab('upcoming');
+      else if (timing.isOverdue) setNotificationTab('overdue');
+      else setNotificationTab('all');
+
       setShowNotifications(true);
     });
 
@@ -2398,8 +2552,9 @@ const Dashboard = ({ onNavigateToProgress }) => {
 
         <div className="flex items-center gap-3 sm:gap-4">
           <button 
-            onClick={() => setShowNotifications(true)}
+            onClick={handleOpenNotifications}
             className="w-11 h-11 sm:w-12 sm:h-12 clay-flat rounded-2xl flex items-center justify-center text-black hover:clay-inset transition-all relative"
+            title="Notifications"
           >
             <Bell size={18} strokeWidth={2.5} />
             {notifications.filter(n => !n.isRead).length > 0 && (
@@ -2416,7 +2571,7 @@ const Dashboard = ({ onNavigateToProgress }) => {
                 {/* Close Button */}
                 <button
                   onClick={() => setShowNotifications(false)}
-                  className="absolute top-4 right-4 sm:top-6 sm:right-6 w-10 h-10 sm:w-12 sm:h-12 clay-flat rounded-2xl flex items-center justify-center text-black hover:clay-inset hover:text-rose-500 transition-all"
+                  className="absolute top-4 right-4 sm:top-6 sm:right-6 w-10 h-10 sm:w-12 sm:h-12 clay-flat rounded-2xl flex items-center justify-center text-black hover:clay-inset hover:text-rose-500 transition-all z-10"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                     <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -2424,61 +2579,213 @@ const Dashboard = ({ onNavigateToProgress }) => {
                   </svg>
                 </button>
                 
-                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 sm:mb-8">
-                  <h2 className="text-2xl sm:text-3xl font-black text-black">Notifications</h2>
-                  <span className="text-sm font-bold text-black bg-purple-100 px-4 py-2 rounded-2xl w-fit">
-                    {notifications.filter(n => !n.isRead).length} unread
-                  </span>
+                {/* Modal Header */}
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 sm:mb-8 pr-12">
+                  <div className="flex items-center gap-3">
+                    <h2 className="text-2xl sm:text-3xl font-black text-black">Notifications</h2>
+                    <span className="text-sm font-bold text-black bg-purple-100 px-3 py-1 rounded-2xl w-fit">
+                      {notifications.filter(n => !n.isRead).length} unread
+                    </span>
+                  </div>
+                  {notifications.some(n => !n.isRead) && (
+                    <button
+                      onClick={markAllNotificationsAsRead}
+                      className="text-xs font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl transition-all w-fit"
+                    >
+                      Mark all as read
+                    </button>
+                  )}
+                </div>
+
+                {/* Filter Tabs: Today, Upcoming, Overdue, All */}
+                <div className="flex items-center gap-2 overflow-x-auto pb-2 mb-6 border-b border-gray-100">
+                  <button
+                    onClick={() => setNotificationTab('today')}
+                    className={cn(
+                      "px-4 py-2 rounded-2xl font-bold text-xs sm:text-sm transition-all whitespace-nowrap flex items-center gap-2",
+                      notificationTab === 'today'
+                        ? "bg-amber-500 text-white shadow-md shadow-amber-500/25 ring-2 ring-amber-400/30"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    )}
+                  >
+                    <span>Today</span>
+                    <span className={cn(
+                      "px-2 py-0.5 rounded-full text-xs font-black",
+                      notificationTab === 'today' ? "bg-white/25 text-white" : "bg-amber-100 text-amber-800"
+                    )}>
+                      {notificationGroups.today.length}
+                    </span>
+                  </button>
+
+                  <button
+                    onClick={() => setNotificationTab('upcoming')}
+                    className={cn(
+                      "px-4 py-2 rounded-2xl font-bold text-xs sm:text-sm transition-all whitespace-nowrap flex items-center gap-2",
+                      notificationTab === 'upcoming'
+                        ? "bg-blue-600 text-white shadow-md shadow-blue-600/25 ring-2 ring-blue-500/30"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    )}
+                  >
+                    <span>Upcoming</span>
+                    <span className={cn(
+                      "px-2 py-0.5 rounded-full text-xs font-black",
+                      notificationTab === 'upcoming' ? "bg-white/25 text-white" : "bg-blue-100 text-blue-800"
+                    )}>
+                      {notificationGroups.upcoming.length}
+                    </span>
+                  </button>
+
+                  <button
+                    onClick={() => setNotificationTab('overdue')}
+                    className={cn(
+                      "px-4 py-2 rounded-2xl font-bold text-xs sm:text-sm transition-all whitespace-nowrap flex items-center gap-2",
+                      notificationTab === 'overdue'
+                        ? "bg-rose-500 text-white shadow-md shadow-rose-500/25 ring-2 ring-rose-400/30"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    )}
+                  >
+                    <span>Overdue</span>
+                    <span className={cn(
+                      "px-2 py-0.5 rounded-full text-xs font-black",
+                      notificationTab === 'overdue' ? "bg-white/25 text-white" : "bg-rose-100 text-rose-800"
+                    )}>
+                      {notificationGroups.overdue.length}
+                    </span>
+                  </button>
+
+                  <button
+                    onClick={() => setNotificationTab('all')}
+                    className={cn(
+                      "px-4 py-2 rounded-2xl font-bold text-xs sm:text-sm transition-all whitespace-nowrap flex items-center gap-2",
+                      notificationTab === 'all'
+                        ? "bg-gray-900 text-white shadow-md shadow-gray-900/25 ring-2 ring-gray-700/30"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    )}
+                  >
+                    <span>All</span>
+                    <span className={cn(
+                      "px-2 py-0.5 rounded-full text-xs font-black",
+                      notificationTab === 'all' ? "bg-white/25 text-white" : "bg-gray-200 text-gray-800"
+                    )}>
+                      {notificationGroups.all.length}
+                    </span>
+                  </button>
                 </div>
                 
-                {notifications.length === 0 ? (
+                {activeNotifications.length === 0 ? (
                   <div className="text-center py-12 sm:py-16">
-                    <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-6 rounded-3xl bg-purple-100 flex items-center justify-center">
-                      <Bell size={36} className="text-purple-500" />
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 rounded-3xl bg-purple-50 flex items-center justify-center text-purple-500">
+                      <CheckCircle2 size={32} />
                     </div>
-                    <h3 className="text-lg sm:text-xl font-bold text-black mb-2">No notifications yet</h3>
-                    <p className="text-black font-semibold">You're all caught up!</p>
+                    <h3 className="text-lg sm:text-xl font-bold text-black mb-1">
+                      {notificationTab === 'today'
+                        ? 'No follow-ups due today'
+                        : notificationTab === 'upcoming'
+                        ? 'No upcoming follow-ups'
+                        : notificationTab === 'overdue'
+                        ? 'Zero overdue tasks'
+                        : 'No notifications yet'}
+                    </h3>
+                    <p className="text-gray-500 font-medium text-sm">
+                      {notificationTab === 'today'
+                        ? "You're all caught up for today!"
+                        : notificationTab === 'upcoming'
+                        ? "You don't have any upcoming scheduled follow-ups."
+                        : notificationTab === 'overdue'
+                        ? "Great job! All your follow-ups are up to date."
+                        : "You're all caught up!"}
+                    </p>
                   </div>
                 ) : (
                   <div className="space-y-3 sm:space-y-4">
-                    {notifications.map((notification) => (
-                      <div 
-                        key={notification._id}
-                        onClick={() => !notification.isRead && markAsRead(notification._id)}
-                        className={cn(
-                          "p-4 sm:p-6 rounded-3xl transition-all cursor-pointer border-2",
-                          notification.isRead 
-                            ? "bg-gray-50 border-gray-200" 
-                            : "bg-purple-50 border-purple-300 shadow-lg shadow-purple-100"
-                        )}
-                      >
-                        <div className="flex justify-between items-start gap-4">
-                          <div className="flex-1">
-                            <h4 className={cn(
-                              "text-lg sm:text-xl font-bold mb-2",
-                              notification.isRead ? "text-black" : "text-black"
-                            )}>
-                              {notification.title}
-                            </h4>
-                            <p className="text-black font-semibold text-sm sm:text-base">
-                              {notification.message}
-                            </p>
-                            <p className="text-xs sm:text-sm text-gray-600 mt-3 font-medium">
-                              {new Date(notification.createdAt).toLocaleString('en-US', { 
-                                year: 'numeric', 
-                                month: 'long', 
-                                day: 'numeric', 
-                                hour: '2-digit', 
-                                minute: '2-digit' 
-                              })}
-                            </p>
-                          </div>
-                          {!notification.isRead && (
-                            <span className="w-4 h-4 bg-purple-500 rounded-full flex-shrink-0 mt-1" />
+                    {activeNotifications.map((notification) => {
+                      const timing = getNotificationTiming(notification);
+                      return (
+                        <div 
+                          key={notification._id}
+                          onClick={() => !notification.isRead && markAsRead(notification._id)}
+                          className={cn(
+                            "p-4 sm:p-6 rounded-3xl transition-all cursor-pointer border-2 relative overflow-hidden",
+                            notification.isRead 
+                              ? "bg-gray-50/90 border-gray-200/90 hover:bg-gray-100/80" 
+                              : "bg-white border-purple-300 shadow-md shadow-purple-100 hover:border-purple-400"
                           )}
+                        >
+                          {/* Accent status line on left edge */}
+                          <div className={cn(
+                            "absolute left-0 top-0 bottom-0 w-1.5",
+                            timing.isToday ? "bg-amber-500" : timing.isUpcoming ? "bg-blue-500" : timing.isOverdue ? "bg-rose-500" : "bg-purple-500"
+                          )} />
+
+                          <div className="flex justify-between items-start gap-4 pl-1">
+                            <div className="flex-1">
+                              {/* Tags: Type + Today/Upcoming/Overdue format */}
+                              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                                <span className={cn(
+                                  "text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider",
+                                  notification.type === 'CRM Follow-up'
+                                    ? "bg-blue-100 text-blue-700 border border-blue-200"
+                                    : "bg-purple-100 text-purple-700 border border-purple-200"
+                                )}>
+                                  {notification.type || 'Notification'}
+                                </span>
+
+                                {timing.isToday && (
+                                  <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1">
+                                    <Clock size={11} className="text-amber-600" />
+                                    Due Today
+                                  </span>
+                                )}
+                                {timing.isUpcoming && (
+                                  <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider bg-blue-100 text-blue-800 border border-blue-300 flex items-center gap-1">
+                                    <Calendar size={11} className="text-blue-600" />
+                                    Upcoming
+                                  </span>
+                                )}
+                                {timing.isOverdue && (
+                                  <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider bg-rose-100 text-rose-800 border border-rose-300 flex items-center gap-1">
+                                    <AlertCircle size={11} className="text-rose-600" />
+                                    Overdue
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Brand Name strictly */}
+                              <h4 className={cn(
+                                "text-lg sm:text-xl font-bold mb-1.5",
+                                notification.isRead ? "text-gray-800" : "text-black"
+                              )}>
+                                {notification.title}
+                              </h4>
+
+                              {/* Date & Time strictly */}
+                              <p className={cn(
+                                "font-bold text-sm sm:text-base flex items-center gap-1.5",
+                                timing.isToday ? "text-amber-800" : timing.isOverdue ? "text-rose-700" : "text-gray-900"
+                              )}>
+                                <Clock size={15} className={timing.isToday ? "text-amber-600" : timing.isOverdue ? "text-rose-500" : "text-blue-500"} />
+                                <span>{notification.message}</span>
+                              </p>
+
+                              {/* Footer timestamp */}
+                              <p className="text-xs text-gray-500 mt-2.5 font-medium">
+                                Received: {new Date(notification.createdAt).toLocaleString('en-US', { 
+                                  month: 'short', 
+                                  day: 'numeric', 
+                                  year: 'numeric', 
+                                  hour: '2-digit', 
+                                  minute: '2-digit' 
+                                })}
+                              </p>
+                            </div>
+
+                            {!notification.isRead && (
+                              <span className="w-3.5 h-3.5 bg-blue-600 rounded-full flex-shrink-0 mt-2 shadow-sm" title="Unread" />
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>

@@ -1,5 +1,8 @@
 const Notification = require('../models/Notification');
 const Staff = require('../models/Staff');
+const Client = require('../models/Client');
+const OldClient = require('../models/OldClient');
+const CompanyLead = require('../models/CompanyLead');
 const cache = require('../utils/cache');
 
 // Get notifications for a staff member based on their role
@@ -9,17 +12,27 @@ exports.getNotificationsForStaff = async (req, res) => {
     const cacheKey = `notifications:staff:${staffId}`;
 
     const responseData = await cache.fetchOrCompute(cacheKey, async () => {
-      const staff = await Staff.findById(staffId).select('role').lean();
+      const staff = await Staff.findById(staffId).select('role permissions employeeId').lean();
       if (!staff) return null;
 
-      // Find notifications where the staff's role is in recipientRoles
+      const staffRole = (staff.role || '').trim();
+      const roleRegex = staffRole ? new RegExp(`^${staffRole.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') : null;
+
+      const orConditions = [];
+      if (roleRegex) {
+        orConditions.push({ recipientRoles: { $regex: roleRegex } });
+      }
+      orConditions.push({ recipientStaff: staffId });
+
+      // Find notifications where staff's role matches or staff is directly targeted
       const notifications = await Notification.find({
-        recipientRoles: { $in: [staff.role] },
-        isActive: true
+        isActive: true,
+        $or: orConditions
       })
         .sort({ createdAt: -1 })
-        .populate('clientId', 'name phone pendingAmount')
-        .populate('oldClientId', 'name phone totalAmount paidAmount')
+        .populate('clientId', 'name phone pendingAmount deadline')
+        .populate('oldClientId', 'name phone totalAmount paidAmount deadline')
+        .populate('leadId', 'name companyName unicId nextFollowUpDate')
         .lean();
 
       // Check which notifications have been read by this staff member
@@ -27,8 +40,10 @@ exports.getNotificationsForStaff = async (req, res) => {
         const isRead = (notification.readBy || []).some(read => 
           read.staffId && read.staffId.toString() === staffId.toString()
         );
+        const dueDate = notification.dueDate || notification.leadId?.nextFollowUpDate || notification.clientId?.deadline || notification.createdAt;
         return {
           ...notification,
+          dueDate,
           isRead
         };
       });
@@ -95,6 +110,39 @@ exports.markNotificationAsRead = async (req, res) => {
   }
 };
 
+// Mark all notifications as read for a staff member
+exports.markAllNotificationsAsRead = async (req, res) => {
+  try {
+    const { staffId } = req.params;
+    await Notification.updateMany(
+      {
+        isActive: true,
+        'readBy.staffId': { $ne: staffId }
+      },
+      {
+        $addToSet: {
+          readBy: {
+            staffId: staffId,
+            readAt: new Date()
+          }
+        }
+      }
+    );
+
+    cache.flushByPrefix('notifications:');
+
+    res.status(200).json({
+      success: true,
+      message: 'All notifications marked as read'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
 // Get all notifications (admin only)
 exports.getAllNotifications = async (req, res) => {
   try {
@@ -105,6 +153,7 @@ exports.getAllNotifications = async (req, res) => {
         .sort({ createdAt: -1 })
         .populate('clientId', 'name phone pendingAmount')
         .populate('oldClientId', 'name phone totalAmount paidAmount')
+        .populate('leadId', 'name companyName unicId')
         .lean();
     }, 30);
 

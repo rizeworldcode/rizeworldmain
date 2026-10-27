@@ -1,5 +1,11 @@
 // Easily change this URL if your backend changes
-const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+const isLocal = typeof window !== 'undefined' && (
+  window.location.hostname === 'localhost' || 
+  window.location.hostname === '127.0.0.1' ||
+  window.location.hostname.startsWith('192.168.') ||
+  window.location.hostname.startsWith('10.') ||
+  window.location.hostname.endsWith('.local')
+);
 export const BASE_URL: string = isLocal ? 'http://localhost:45000/api' : 'https://rizeworldmain.onrender.com/api';
 
 // In-Memory Client Cache & Single-Flight In-Flight Request Tracking
@@ -10,12 +16,18 @@ const CACHE_TTL_MS = 15000; // 15 seconds client-side cache for fast tab navigat
 export const clearApiCache = (prefix?: string) => {
   if (!prefix) {
     cacheStore.clear();
+    inFlightRequests.clear();
     return;
   }
   const cleanPrefix = prefix.replace(/^\/+/, '').toLowerCase();
   for (const key of cacheStore.keys()) {
     if (key.toLowerCase().includes(cleanPrefix)) {
       cacheStore.delete(key);
+    }
+  }
+  for (const key of inFlightRequests.keys()) {
+    if (key.toLowerCase().includes(cleanPrefix)) {
+      inFlightRequests.delete(key);
     }
   }
 };
@@ -37,8 +49,8 @@ async function apiRequest<T = any>(
     }
   }
 
-  // Request deduplication for GET requests in flight
-  if (method === 'GET' && inFlightRequests.has(cacheKey)) {
+  // Request deduplication for GET requests in flight ONLY when caching is allowed
+  if (useCache && method === 'GET' && inFlightRequests.has(cacheKey)) {
     return inFlightRequests.get(cacheKey) as Promise<T>;
   }
 
@@ -320,11 +332,17 @@ export const deleteWalletTransaction = (id: string) => {
   });
 };
 
-export const toggleStaffTask = (staffId: string, taskIndex: number) => {
+export const toggleStaffTask = (
+  staffId: string, 
+  taskData: number | { taskIndex?: number; taskId?: string; taskName?: string }
+) => {
   clearApiCache('staff');
+  const payload = typeof taskData === 'number' 
+    ? { taskIndex: taskData } 
+    : taskData;
   return apiRequest(`/staff/${staffId}/toggle-task`, {
     method: 'PATCH',
-    body: JSON.stringify({ taskIndex }),
+    body: JSON.stringify(payload),
   });
 };
 
@@ -336,11 +354,17 @@ export const addStaffExtraTask = (staffId: string, taskName: string) => {
   });
 };
 
-export const deleteStaffTask = (staffId: string, taskIndex: number) => {
+export const deleteStaffTask = (
+  staffId: string, 
+  taskData: number | { taskIndex?: number; taskId?: string; taskName?: string }
+) => {
   clearApiCache('staff');
+  const payload = typeof taskData === 'number'
+    ? { taskIndex: taskData, action: 'delete' }
+    : { ...taskData, action: 'delete' };
   return apiRequest(`/staff/${staffId}/today-work`, {
     method: 'PATCH',
-    body: JSON.stringify({ taskIndex, action: 'delete' }),
+    body: JSON.stringify(payload),
   });
 };
 
@@ -468,6 +492,27 @@ export const deleteCompanyLead = (id: string) =>
     method: 'DELETE'
   });
 
+export const getLeadReminders = (params?: Record<string, any>) => {
+  const query = params ? '?' + new URLSearchParams(
+    Object.entries(params).filter(([_, v]) => v !== undefined && v !== '' && v !== null)
+  ).toString() : '';
+  return apiRequest<{
+    success: boolean;
+    totalCount: number;
+    urgentCount?: number;
+    todayCount: number;
+    overdueCount: number;
+    upcomingCount: number;
+    data: {
+      today: any[];
+      overdue: any[];
+      upcoming: any[];
+      all: any[];
+    };
+    message?: string;
+  }>(`/company-leads/reminders${query}`);
+};
+
 export default {
   BASE_URL,
   getNextLeadId,
@@ -476,6 +521,7 @@ export default {
   createCompanyLead,
   updateCompanyLead,
   deleteCompanyLead,
+  getLeadReminders,
   getDashboardStats,
   getAllStaff,
   markStaffLeave,

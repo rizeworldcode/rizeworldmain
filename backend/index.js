@@ -300,6 +300,28 @@ const io = socketUtil.init(server);
 
 io.on('connection', (socket) => {
   console.log(`Client connected: ${socket.id}`);
+
+  // Handle staff registration to join personal and role-specific rooms
+  socket.on('register-staff', (data) => {
+    if (!data) return;
+    const staffId = data.staffId || data.id || data._id;
+    const role = data.role;
+    if (staffId) {
+      socket.join(`staff-${staffId}`);
+      console.log(`Socket ${socket.id} joined room: staff-${staffId}`);
+    }
+    if (role && typeof role === 'string') {
+      const normalizedRole = role.trim().toLowerCase().replace(/\s+/g, '-');
+      socket.join(`role-${normalizedRole}`);
+      console.log(`Socket ${socket.id} joined room: role-${normalizedRole}`);
+    }
+  });
+
+  // Handle admin registration
+  socket.on('register-admin', () => {
+    socket.join('admin');
+    console.log(`Socket ${socket.id} joined room: admin`);
+  });
 });
 
 // Setup view engine

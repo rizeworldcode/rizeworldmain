@@ -77,43 +77,79 @@ const sendEmailNotification = async (toEmails, subject, textContent) => {
   }
 };
 
-async function createNotification(title, message, type = 'Payment Reminder', priority = 'Medium', recipientRoles = ['Client Support'], clientId = null, oldClientId = null) {
+const cache = require('./cache');
+const moment = require('moment');
+
+async function createNotification(title, message, type = 'Payment Reminder', priority = 'Medium', recipientRoles = ['Client Support'], clientId = null, oldClientId = null, recipientStaff = [], leadId = null, dueDate = null) {
   try {
+    // Look up staff members matching recipientRoles (case-insensitive)
+    const roleRegexes = (recipientRoles || []).map(r => new RegExp(`^${(r || '').trim()}$`, 'i'));
+    const staffMembers = roleRegexes.length > 0 ? await Staff.find({ 
+      role: { $in: roleRegexes },
+      isRemoved: false
+    }).select('_id email role').lean() : [];
+
+    const staffIdsFromRoles = staffMembers.map(s => s._id.toString());
+    const explicitStaffIds = (Array.isArray(recipientStaff) ? recipientStaff : []).map(s => (s._id || s).toString());
+    const combinedStaffIds = [...new Set([...staffIdsFromRoles, ...explicitStaffIds])];
+
     const notification = new Notification({
       title,
       message,
       type,
       priority,
-      recipientRoles,
+      recipientRoles: recipientRoles || [],
+      recipientStaff: combinedStaffIds,
       clientId,
-      oldClientId
+      oldClientId,
+      leadId,
+      dueDate
     });
     
     const savedNotification = await notification.save();
-    console.log('Notification created successfully');
+    console.log('Notification created successfully for type:', type, 'staff count:', combinedStaffIds.length);
     
-    // Emit socket event to notify staff of new notification (does NOT send to clients!)
-    const io = getIO();
-    io.emit('newNotification', savedNotification);
-    
-    // Fetch all staff with recipient roles to send emails (Client Support only, no HR!)
-    const staffMembers = await Staff.find({ 
-      role: { $in: recipientRoles } 
-    });
-    const emails = staffMembers.map(staff => staff.email).filter(email => email);
-    
-    // Only send to CLIENT_SUPPORT_EMAIL from .env
-    if (process.env.CLIENT_SUPPORT_EMAIL && !emails.includes(process.env.CLIENT_SUPPORT_EMAIL)) {
-      emails.push(process.env.CLIENT_SUPPORT_EMAIL);
+    // Flush notification caches
+    cache.flushByPrefix('notifications:');
+
+    // Emit targeted socket events ONLY to designated staff & role rooms (NEVER global broadcast)
+    try {
+      const io = getIO();
+      if (io) {
+        // Emit to role rooms (e.g., 'role-client-support')
+        (recipientRoles || []).forEach(r => {
+          const roomName = `role-${(r || '').trim().toLowerCase().replace(/\s+/g, '-')}`;
+          io.to(roomName).emit('newNotification', savedNotification);
+        });
+
+        // Emit to specific staff member rooms (e.g., 'staff-6a425103c259e2493e5b94f3')
+        combinedStaffIds.forEach(sId => {
+          io.to(`staff-${sId}`).emit('newNotification', savedNotification);
+        });
+
+        // Also notify admin room
+        io.to('admin').emit('newNotification', savedNotification);
+      }
+    } catch (socketErr) {
+      console.warn('Socket emit error in notificationService:', socketErr.message);
     }
     
-    const uniqueEmails = [...new Set(emails)]; // Remove duplicates
-    if (uniqueEmails.length > 0) {
-      await sendEmailNotification(
-        uniqueEmails,
-        title,
-        message + '\n\nPlease check your staff portal for more details.\n\nThank you,\nRizeWorld Team'
-      );
+    // Send email only for Payment Reminder
+    if (type === 'Payment Reminder') {
+      const emails = staffMembers.map(staff => staff.email).filter(email => email);
+      
+      if (process.env.CLIENT_SUPPORT_EMAIL && !emails.includes(process.env.CLIENT_SUPPORT_EMAIL)) {
+        emails.push(process.env.CLIENT_SUPPORT_EMAIL);
+      }
+      
+      const uniqueEmails = [...new Set(emails)];
+      if (uniqueEmails.length > 0) {
+        await sendEmailNotification(
+          uniqueEmails,
+          title,
+          message + '\n\nPlease check your staff portal for more details.\n\nThank you,\nRizeWorld Team'
+        );
+      }
     }
     
     return { success: true, notification: savedNotification };
@@ -135,7 +171,46 @@ async function notifyHRAndSupport(title, message, priority = 'High', clientId = 
   );
 }
 
+// Send CRM notification to the specific assigned employee's panel (Brand Name & Date/Time only)
+async function notifyLeadAssignedStaff(lead) {
+  try {
+    if (!lead || !lead.assignedStaffId || !lead.nextFollowUpDate) {
+      return { success: false, message: 'Missing assigned staff or next follow-up date' };
+    }
+
+    const staffId = lead.assignedStaffId._id ? lead.assignedStaffId._id.toString() : lead.assignedStaffId.toString();
+
+    // Brand name: only companyName or name
+    const brandName = (lead.companyName && lead.companyName.trim()) 
+      ? lead.companyName.trim() 
+      : (lead.name ? lead.name.trim() : 'Brand');
+
+    // Date and time format
+    const formattedDateTime = moment(lead.nextFollowUpDate).format('DD MMM YYYY, hh:mm A');
+
+    const title = `Brand: ${brandName}`;
+    const message = `Date & Time: ${formattedDateTime}`;
+
+    return await createNotification(
+      title,
+      message,
+      'CRM Follow-up',
+      'Medium',
+      [], // No role broadcast, strictly to the assigned staff member
+      null,
+      null,
+      [staffId],
+      lead._id,
+      lead.nextFollowUpDate
+    );
+  } catch (error) {
+    console.error('Error in notifyLeadAssignedStaff:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 module.exports = {
   createNotification,
-  notifyHRAndSupport
+  notifyHRAndSupport,
+  notifyLeadAssignedStaff
 };

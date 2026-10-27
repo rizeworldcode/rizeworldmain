@@ -3,6 +3,7 @@ const router = express.Router();
 const {
   getNotificationsForStaff,
   markNotificationAsRead,
+  markAllNotificationsAsRead,
   getAllNotifications,
   deleteNotification,
   createManualNotification
@@ -17,6 +18,9 @@ router.get('/staff/:staffId', getNotificationsForStaff);
 
 // Mark a notification as read
 router.patch('/:notificationId/read/:staffId', markNotificationAsRead);
+
+// Mark all notifications as read for staff
+router.patch('/staff/:staffId/read-all', markAllNotificationsAsRead);
 
 // Test endpoint to trigger a demo notification
 router.post('/test', async (req, res) => {

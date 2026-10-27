@@ -11,7 +11,7 @@ const notificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['Payment Reminder', 'Client Alert', 'Urgent'],
+    enum: ['Payment Reminder', 'Client Alert', 'Urgent', 'CRM Follow-up'],
     default: 'Payment Reminder'
   },
   priority: {
@@ -20,9 +20,11 @@ const notificationSchema = new mongoose.Schema({
     default: 'Medium'
   },
   recipientRoles: [{
-    type: String,
-    enum: ['HR', 'Client Support', 'Admin', 'Staff'],
-    required: true
+    type: String
+  }],
+  recipientStaff: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Staff'
   }],
   readBy: [{
     staffId: {
@@ -42,6 +44,13 @@ const notificationSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'OldClient'
   },
+  leadId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'CompanyLead'
+  },
+  dueDate: {
+    type: Date
+  },
   isActive: {
     type: Boolean,
     default: true
@@ -53,7 +62,12 @@ const notificationSchema = new mongoose.Schema({
 notificationSchema.index({ isActive: 1, createdAt: -1 });
 notificationSchema.index({ isActive: 1, recipientRoles: 1, createdAt: -1 });
 notificationSchema.index({ recipientRoles: 1 });
+notificationSchema.index({ recipientStaff: 1 });
 notificationSchema.index({ clientId: 1 });
+notificationSchema.index({ oldClientId: 1 });
+notificationSchema.index({ leadId: 1 });
+notificationSchema.index({ dueDate: 1 });
 notificationSchema.index({ 'readBy.staffId': 1 });
 
 module.exports = mongoose.model('Notification', notificationSchema);
+

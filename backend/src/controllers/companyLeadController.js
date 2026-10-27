@@ -36,6 +36,87 @@ exports.getNextUnicId = async (req, res) => {
   }
 };
 
+// GET /api/company-leads/reminders
+exports.getLeadReminders = async (req, res) => {
+  try {
+    const { assignedStaffId, leadPersonName, targetDate } = req.query;
+
+    const baseDate = targetDate ? new Date(targetDate) : new Date();
+    const startOfDay = new Date(baseDate);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(baseDate);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const baseQuery = {
+      leadStatus: { $nin: ['Converted', 'Lost'] },
+      nextFollowUpDate: { $exists: true, $ne: null }
+    };
+
+    if (assignedStaffId) {
+      baseQuery.assignedStaffId = assignedStaffId;
+    } else if (leadPersonName && leadPersonName !== 'All') {
+      baseQuery.leadPersonName = new RegExp(leadPersonName.trim(), 'i');
+    }
+
+    const todayQuery = {
+      ...baseQuery,
+      nextFollowUpDate: { $gte: startOfDay, $lte: endOfDay }
+    };
+
+    const overdueQuery = {
+      ...baseQuery,
+      nextFollowUpDate: { $lt: startOfDay }
+    };
+
+    const next48Hours = new Date(endOfDay.getTime() + 48 * 60 * 60 * 1000);
+    const upcomingQuery = {
+      ...baseQuery,
+      nextFollowUpDate: { $gt: endOfDay, $lte: next48Hours }
+    };
+
+    const [todayLeads, overdueLeads, upcomingLeads] = await Promise.all([
+      CompanyLead.find(todayQuery)
+        .populate('assignedStaffId', 'name employeeId department')
+        .sort({ nextFollowUpDate: 1 })
+        .lean(),
+      CompanyLead.find(overdueQuery)
+        .populate('assignedStaffId', 'name employeeId department')
+        .sort({ nextFollowUpDate: 1 })
+        .lean(),
+      CompanyLead.find(upcomingQuery)
+        .populate('assignedStaffId', 'name employeeId department')
+        .sort({ nextFollowUpDate: 1 })
+        .lean()
+    ]);
+
+    const urgentCount = todayLeads.length + overdueLeads.length;
+    const totalCount = urgentCount + upcomingLeads.length;
+
+    return res.status(200).json({
+      success: true,
+      totalCount,
+      urgentCount,
+      todayCount: todayLeads.length,
+      overdueCount: overdueLeads.length,
+      upcomingCount: upcomingLeads.length,
+      data: {
+        today: todayLeads,
+        overdue: overdueLeads,
+        upcoming: upcomingLeads,
+        all: [...overdueLeads, ...todayLeads, ...upcomingLeads]
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching lead reminders:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch lead reminders',
+      error: error.message
+    });
+  }
+};
+
 // POST /api/company-leads
 exports.createLead = async (req, res) => {
   try {
@@ -121,6 +202,16 @@ exports.createLead = async (req, res) => {
     });
 
     await newLead.save();
+
+    // Send notification to the assigned employee's panel (Brand & Date/Time only)
+    if (newLead.assignedStaffId && newLead.nextFollowUpDate) {
+      try {
+        const { notifyLeadAssignedStaff } = require('../utils/notificationService');
+        await notifyLeadAssignedStaff(newLead);
+      } catch (notifErr) {
+        console.error('Error notifying assigned staff for lead creation:', notifErr);
+      }
+    }
 
     return res.status(201).json({
       success: true,
@@ -278,6 +369,16 @@ exports.updateLead = async (req, res) => {
 
     Object.assign(existingLead, updates);
     await existingLead.save();
+
+    // Send notification to the assigned employee's panel (Brand & Date/Time only)
+    if (existingLead.assignedStaffId && existingLead.nextFollowUpDate && existingLead.leadStatus !== 'Converted' && existingLead.leadStatus !== 'Lost') {
+      try {
+        const { notifyLeadAssignedStaff } = require('../utils/notificationService');
+        await notifyLeadAssignedStaff(existingLead);
+      } catch (notifErr) {
+        console.error('Error notifying assigned staff for lead update:', notifErr);
+      }
+    }
 
     return res.status(200).json({
       success: true,

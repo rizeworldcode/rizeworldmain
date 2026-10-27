@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Target, 
@@ -62,8 +63,16 @@ export default function CompanyLeads() {
   });
 
   // Filters & Search
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchTerm, setSearchTerm] = useState(() => searchParams.get('search') || '');
   const [selectedStatus, setSelectedStatus] = useState('All');
+
+  useEffect(() => {
+    const q = searchParams.get('search');
+    if (q !== null && q !== searchTerm) {
+      setSearchTerm(q);
+    }
+  }, [searchParams]);
 
   // Modal States
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -287,6 +296,7 @@ export default function CompanyLeads() {
           showToast('Lead updated successfully!');
           setIsFormOpen(false);
           fetchLeads(true);
+          window.dispatchEvent(new CustomEvent('leadUpdated'));
         } else {
           showToast(res?.message || 'Failed to update lead', 'error');
         }
@@ -297,6 +307,7 @@ export default function CompanyLeads() {
           showToast('New lead added to CRM successfully!');
           setIsFormOpen(false);
           fetchLeads(true);
+          window.dispatchEvent(new CustomEvent('leadUpdated'));
         } else {
           showToast(res?.message || 'Failed to create lead', 'error');
         }
@@ -317,6 +328,7 @@ export default function CompanyLeads() {
         showToast('Lead deleted successfully');
         setDeleteConfirmId(null);
         fetchLeads(true);
+        window.dispatchEvent(new CustomEvent('leadUpdated'));
       } else {
         showToast(res?.message || 'Failed to delete lead', 'error');
       }

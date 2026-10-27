@@ -16,8 +16,14 @@ window.fetch = async (input, init = {}) => {
     url = input.url;
   }
 
+  const isLocalHost = window.location.hostname === 'localhost' || 
+    window.location.hostname === '127.0.0.1' ||
+    window.location.hostname.startsWith('192.168.') ||
+    window.location.hostname.startsWith('10.') ||
+    window.location.hostname.endsWith('.local');
+
   // Rewrite localhost backend URL to production backend URL when running on production host (like admin.rizeworld.in)
-  if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+  if (!isLocalHost) {
     const targetBase = 'https://rizeworldmain.onrender.com';
     if (url.includes('localhost:45000')) {
       url = url.replace(/https?:\/\/localhost:45000/g, targetBase);
@@ -34,7 +40,7 @@ window.fetch = async (input, init = {}) => {
           }
         } else {
           try {
-            input['url'] = url;
+            Reflect.set(input, 'url', url);
           } catch (e) {
             console.warn("Could not assign URL to object:", e);
           }

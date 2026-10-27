@@ -1,5 +1,5 @@
 // DashboardScreen with Full-Screen Zone Shading
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   StyleSheet, 
   Text, 
@@ -256,6 +256,7 @@ const DashboardScreen = ({ staffInfo: initialStaffInfo, token, onLogout, onNavig
   // Notifications states
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [notificationTab, setNotificationTab] = useState('all');
 
   const getProfilePicUrl = () => {
     if (!staffInfo.profilePic) return null;
@@ -366,6 +367,108 @@ const DashboardScreen = ({ staffInfo: initialStaffInfo, token, onLogout, onNavig
     } catch (err) {
       console.error('[Notification Debug] Failed to mark read:', err);
     }
+  };
+
+  const markAllNotificationsAsRead = async () => {
+    const staffId = staffInfo.id || staffInfo._id;
+    if (!staffId) return;
+
+    try {
+      await fetch(getApiUrl(`/notifications/staff/${staffId}/read-all`), {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    } catch (err) {
+      console.error('[Notification Debug] Failed to mark all read:', err);
+    }
+  };
+
+  const getNotificationTiming = (notif) => {
+    if (!notif) return { category: 'all', isToday: false, isUpcoming: false, isOverdue: false, dueDate: null };
+    const rawDue = notif.dueDate || notif.leadId?.nextFollowUpDate || notif.clientId?.deadline;
+    const createdAt = notif.createdAt ? new Date(notif.createdAt) : new Date();
+
+    if (!rawDue) {
+      const now = new Date();
+      const isCreatedToday = createdAt.toDateString() === now.toDateString();
+      return {
+        category: isCreatedToday ? 'today' : 'all',
+        isToday: isCreatedToday,
+        isUpcoming: false,
+        isOverdue: false,
+        dueDate: createdAt
+      };
+    }
+
+    const dueDate = new Date(rawDue);
+    const now = new Date();
+
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+    const isToday = dueDate >= startOfToday && dueDate <= endOfToday;
+    const isUpcoming = dueDate > endOfToday;
+    const isOverdue = dueDate < startOfToday && !notif.isRead;
+
+    let category = 'all';
+    if (isToday) category = 'today';
+    else if (isOverdue) category = 'overdue';
+    else if (isUpcoming) category = 'upcoming';
+
+    return {
+      category,
+      isToday,
+      isUpcoming,
+      isOverdue,
+      dueDate
+    };
+  };
+
+  const notificationGroups = useMemo(() => {
+    const today = [];
+    const upcoming = [];
+    const overdue = [];
+
+    notifications.forEach((notif) => {
+      const timing = getNotificationTiming(notif);
+      if (timing.isToday) {
+        today.push(notif);
+      } else if (timing.isUpcoming) {
+        upcoming.push(notif);
+      } else if (timing.isOverdue) {
+        overdue.push(notif);
+      }
+    });
+
+    return {
+      today,
+      upcoming,
+      overdue,
+      all: notifications
+    };
+  }, [notifications]);
+
+  const activeNotifications = useMemo(() => {
+    if (notificationTab === 'today') return notificationGroups.today;
+    if (notificationTab === 'upcoming') return notificationGroups.upcoming;
+    if (notificationTab === 'overdue') return notificationGroups.overdue;
+    return notificationGroups.all;
+  }, [notificationTab, notificationGroups]);
+
+  const handleOpenNotifications = () => {
+    if (notificationGroups.today.length > 0) {
+      setNotificationTab('today');
+    } else if (notificationGroups.upcoming.length > 0) {
+      setNotificationTab('upcoming');
+    } else if (notificationGroups.overdue.length > 0) {
+      setNotificationTab('overdue');
+    } else {
+      setNotificationTab('all');
+    }
+    setShowNotifications(true);
   };
 
   const syncStaffDataStates = (info, notifyParent = true) => {
@@ -761,7 +864,7 @@ const DashboardScreen = ({ staffInfo: initialStaffInfo, token, onLogout, onNavig
         <View style={styles.headerTop}>
           <Text style={styles.headerTitle}>RizeWorld Mobile</Text>
           <View style={styles.headerActions}>
-            <TouchableOpacity onPress={() => setShowNotifications(true)} style={styles.headerActionBtn}>
+            <TouchableOpacity onPress={handleOpenNotifications} style={styles.headerActionBtn}>
               <Bell size={18} color="#fff" />
               {notifications.filter(n => !n.isRead).length > 0 && (
                 <View style={styles.bellBadge}>
@@ -1396,43 +1499,157 @@ const DashboardScreen = ({ staffInfo: initialStaffInfo, token, onLogout, onNavig
                 {notifications.filter(n => !n.isRead).length} unread
               </Text>
             </View>
-            <TouchableOpacity onPress={() => setShowNotifications(false)} style={styles.closeModalBtn}>
-              <X size={20} color="#1e293b" />
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              {notifications.some(n => !n.isRead) && (
+                <TouchableOpacity onPress={markAllNotificationsAsRead} style={styles.markAllReadBtn}>
+                  <Text style={styles.markAllReadText}>Mark all read</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity onPress={() => setShowNotifications(false)} style={styles.closeModalBtn}>
+                <X size={20} color="#1e293b" />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Filter Tabs: Today, Upcoming, Overdue, All */}
+          <View style={styles.mobileTabsContainer}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.mobileTabsScroll}>
+              <TouchableOpacity
+                onPress={() => setNotificationTab('today')}
+                style={[styles.mobileTabBtn, notificationTab === 'today' && styles.mobileTabBtnToday]}
+              >
+                <Text style={[styles.mobileTabText, notificationTab === 'today' && styles.mobileTabTextActive]}>Today</Text>
+                <View style={[styles.mobileTabBadge, notificationTab === 'today' ? styles.mobileTabBadgeActive : styles.mobileTabBadgeToday]}>
+                  <Text style={[styles.mobileTabBadgeText, notificationTab === 'today' && styles.mobileTabBadgeTextActive]}>
+                    {notificationGroups.today.length}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setNotificationTab('upcoming')}
+                style={[styles.mobileTabBtn, notificationTab === 'upcoming' && styles.mobileTabBtnUpcoming]}
+              >
+                <Text style={[styles.mobileTabText, notificationTab === 'upcoming' && styles.mobileTabTextActive]}>Upcoming</Text>
+                <View style={[styles.mobileTabBadge, notificationTab === 'upcoming' ? styles.mobileTabBadgeActive : styles.mobileTabBadgeUpcoming]}>
+                  <Text style={[styles.mobileTabBadgeText, notificationTab === 'upcoming' && styles.mobileTabBadgeTextActive]}>
+                    {notificationGroups.upcoming.length}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setNotificationTab('overdue')}
+                style={[styles.mobileTabBtn, notificationTab === 'overdue' && styles.mobileTabBtnOverdue]}
+              >
+                <Text style={[styles.mobileTabText, notificationTab === 'overdue' && styles.mobileTabTextActive]}>Overdue</Text>
+                <View style={[styles.mobileTabBadge, notificationTab === 'overdue' ? styles.mobileTabBadgeActive : styles.mobileTabBadgeOverdue]}>
+                  <Text style={[styles.mobileTabBadgeText, notificationTab === 'overdue' && styles.mobileTabBadgeTextActive]}>
+                    {notificationGroups.overdue.length}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setNotificationTab('all')}
+                style={[styles.mobileTabBtn, notificationTab === 'all' && styles.mobileTabBtnAll]}
+              >
+                <Text style={[styles.mobileTabText, notificationTab === 'all' && styles.mobileTabTextActive]}>All</Text>
+                <View style={[styles.mobileTabBadge, notificationTab === 'all' ? styles.mobileTabBadgeActive : styles.mobileTabBadgeDefault]}>
+                  <Text style={[styles.mobileTabBadgeText, notificationTab === 'all' && styles.mobileTabBadgeTextActive]}>
+                    {notificationGroups.all.length}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            </ScrollView>
           </View>
 
           <ScrollView contentContainerStyle={styles.notificationsList}>
-            {notifications.length === 0 ? (
+            {activeNotifications.length === 0 ? (
               <View style={styles.emptyNotifications}>
                 <Bell size={36} color="#cbd5e1" />
-                <Text style={styles.emptyNotifText}>No notifications yet.</Text>
+                <Text style={styles.emptyNotificationsTitle}>
+                  {notificationTab === 'today'
+                    ? 'No follow-ups due today'
+                    : notificationTab === 'upcoming'
+                    ? 'No upcoming follow-ups'
+                    : notificationTab === 'overdue'
+                    ? 'Zero overdue tasks'
+                    : 'No notifications yet'}
+                </Text>
+                <Text style={styles.emptyNotifText}>
+                  {notificationTab === 'today'
+                    ? "You're all caught up for today!"
+                    : notificationTab === 'upcoming'
+                    ? "You don't have any upcoming scheduled follow-ups."
+                    : notificationTab === 'overdue'
+                    ? "Great job! All your follow-ups are up to date."
+                    : "You're all caught up!"}
+                </Text>
               </View>
             ) : (
-              notifications.map((notif) => (
-                <TouchableOpacity
-                  key={notif._id}
-                  onPress={() => handleMarkNotificationRead(notif._id)}
-                  style={[
-                    styles.notifCard,
-                    notif.isRead ? styles.notifRead : styles.notifUnread
-                  ]}
-                >
-                  <View style={styles.notifContent}>
-                    <View style={styles.notifHeaderRow}>
-                      <Text style={[styles.notifItemTitle, !notif.isRead && styles.notifItemTitleUnread]}>
-                        {notif.title}
+              activeNotifications.map((notif) => {
+                const timing = getNotificationTiming(notif);
+                return (
+                  <TouchableOpacity
+                    key={notif._id}
+                    onPress={() => !notif.isRead && markAsRead(notif._id)}
+                    style={[
+                      styles.notifCard,
+                      notif.isRead ? styles.notifRead : styles.notifUnread,
+                      timing.isToday && { borderLeftColor: '#f59e0b', borderLeftWidth: 4 },
+                      timing.isUpcoming && { borderLeftColor: '#3b82f6', borderLeftWidth: 4 },
+                      timing.isOverdue && { borderLeftColor: '#f43f5e', borderLeftWidth: 4 }
+                    ]}
+                  >
+                    <View style={styles.notifContent}>
+                      {/* Badge row */}
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 2 }}>
+                        <View style={[styles.typeBadge, notif.type === 'CRM Follow-up' ? styles.crmBadge : styles.generalBadge]}>
+                          <Text style={[styles.typeBadgeText, notif.type === 'CRM Follow-up' ? styles.crmBadgeText : styles.generalBadgeText]}>
+                            {notif.type || 'NOTIFICATION'}
+                          </Text>
+                        </View>
+                        {timing.isToday && (
+                          <View style={styles.todayBadge}>
+                            <Clock size={10} color="#b45309" />
+                            <Text style={styles.todayBadgeText}>Due Today</Text>
+                          </View>
+                        )}
+                        {timing.isUpcoming && (
+                          <View style={styles.upcomingBadge}>
+                            <Calendar size={10} color="#1d4ed8" />
+                            <Text style={styles.upcomingBadgeText}>Upcoming</Text>
+                          </View>
+                        )}
+                        {timing.isOverdue && (
+                          <View style={styles.overdueBadge}>
+                            <AlertCircle size={10} color="#be123c" />
+                            <Text style={styles.overdueBadgeText}>Overdue</Text>
+                          </View>
+                        )}
+                      </View>
+
+                      <View style={styles.notifHeaderRow}>
+                        <Text style={[styles.notifItemTitle, !notif.isRead && styles.notifItemTitleUnread]}>
+                          {notif.title}
+                        </Text>
+                        {!notif.isRead && (
+                          <View style={styles.unreadIndicatorDot} />
+                        )}
+                      </View>
+
+                      <Text style={[styles.notifMessage, timing.isToday && { color: '#92400e', fontWeight: 'bold' }]}>
+                        {notif.message}
                       </Text>
-                      {!notif.isRead && (
-                        <View style={styles.unreadIndicatorDot} />
-                      )}
+
+                      <Text style={styles.notifTime}>
+                        Received: {new Date(notif.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}, {new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </Text>
                     </View>
-                    <Text style={styles.notifMessage}>{notif.message}</Text>
-                    <Text style={styles.notifTime}>
-                      {new Date(notif.createdAt).toLocaleString()}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              ))
+                  </TouchableOpacity>
+                );
+              })
             )}
           </ScrollView>
         </View>
@@ -2016,6 +2233,160 @@ const styles = StyleSheet.create({
     color: '#64748b',
     textAlign: 'center',
     paddingHorizontal: 40
+  },
+  markAllReadBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    backgroundColor: '#eff6ff',
+    borderRadius: 8
+  },
+  markAllReadText: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: '#2563eb'
+  },
+  mobileTabsContainer: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+    backgroundColor: '#fff',
+    paddingVertical: 8
+  },
+  mobileTabsScroll: {
+    paddingHorizontal: 16,
+    gap: 8,
+    flexDirection: 'row'
+  },
+  mobileTabBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: '#f1f5f9'
+  },
+  mobileTabBtnToday: {
+    backgroundColor: '#f59e0b'
+  },
+  mobileTabBtnUpcoming: {
+    backgroundColor: '#2563eb'
+  },
+  mobileTabBtnOverdue: {
+    backgroundColor: '#f43f5e'
+  },
+  mobileTabBtnAll: {
+    backgroundColor: '#0f172a'
+  },
+  mobileTabText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#475569'
+  },
+  mobileTabTextActive: {
+    color: '#fff'
+  },
+  mobileTabBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 10
+  },
+  mobileTabBadgeActive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.3)'
+  },
+  mobileTabBadgeToday: {
+    backgroundColor: '#fef3c7'
+  },
+  mobileTabBadgeUpcoming: {
+    backgroundColor: '#dbeafe'
+  },
+  mobileTabBadgeOverdue: {
+    backgroundColor: '#ffe4e6'
+  },
+  mobileTabBadgeDefault: {
+    backgroundColor: '#e2e8f0'
+  },
+  mobileTabBadgeText: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#1e293b'
+  },
+  mobileTabBadgeTextActive: {
+    color: '#fff'
+  },
+  typeBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6
+  },
+  crmBadge: {
+    backgroundColor: '#dbeafe'
+  },
+  generalBadge: {
+    backgroundColor: '#f3e8ff'
+  },
+  typeBadgeText: {
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.5
+  },
+  crmBadgeText: {
+    color: '#1d4ed8'
+  },
+  generalBadgeText: {
+    color: '#7e22ce'
+  },
+  todayBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    backgroundColor: '#fef3c7',
+    borderRadius: 6
+  },
+  todayBadgeText: {
+    fontSize: 9,
+    fontWeight: '900',
+    color: '#b45309'
+  },
+  upcomingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    backgroundColor: '#dbeafe',
+    borderRadius: 6
+  },
+  upcomingBadgeText: {
+    fontSize: 9,
+    fontWeight: '900',
+    color: '#1d4ed8'
+  },
+  overdueBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    backgroundColor: '#ffe4e6',
+    borderRadius: 6
+  },
+  overdueBadgeText: {
+    fontSize: 9,
+    fontWeight: '900',
+    color: '#be123c'
+  },
+  notifCard: {
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1
   },
   notifItem: {
     borderRadius: 16,

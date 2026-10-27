@@ -1594,7 +1594,7 @@ exports.clockOutAllStaff = async (req, res) => {
 // Update today's work
 exports.updateTodayWork = async (req, res) => {
   try {
-    const { todayWork, tasks: incomingTasks, taskIndex } = req.body;
+    const { todayWork, tasks: incomingTasks, taskIndex, taskId, taskName } = req.body;
     const now = new Date();
 
     const staff = await Staff.findById(req.params.id);
@@ -1625,6 +1625,12 @@ exports.updateTodayWork = async (req, res) => {
     let tasks = [];
     if (Array.isArray(incomingTasks)) {
       tasks = incomingTasks;
+    } else if (taskId || taskName) {
+      tasks = existingTasks.filter(t => {
+        if (taskId && t._id && String(t._id) === String(taskId)) return false;
+        if (taskName && (t.name || '').trim().toLowerCase() === String(taskName).trim().toLowerCase()) return false;
+        return true;
+      });
     } else if (typeof taskIndex === 'number' && taskIndex >= 0 && taskIndex < existingTasks.length) {
       tasks = existingTasks.filter((_, idx) => idx !== taskIndex);
     } else if (typeof todayWork === 'string') {
@@ -1789,7 +1795,7 @@ exports.updateTodayWork = async (req, res) => {
 // Toggle task completion status
 exports.toggleTaskComplete = async (req, res) => {
   try {
-    const { taskIndex } = req.body;
+    const { taskIndex, taskId, taskName } = req.body;
     const staffId = req.params.id;
     const now = new Date();
     const { start: todayStart, end: todayEnd } = getTodayRangeIST(now);
@@ -1799,14 +1805,37 @@ exports.toggleTaskComplete = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Staff not found' });
     }
 
+    if (!staff.work) {
+      staff.work = [];
+    }
+
     // Find all work entries matching today in IST
-    const todayWorkIndices = [];
-    if (staff.work && staff.work.length > 0) {
-      staff.work.forEach((w, index) => {
-        if (w && w.date && isSameDayIST(w.date, now)) {
-          todayWorkIndices.push(index);
+    let todayWorkIndices = [];
+    staff.work.forEach((w, index) => {
+      if (w && w.date && isSameDayIST(w.date, now)) {
+        todayWorkIndices.push(index);
+      }
+    });
+
+    // Fallback: if not found by IST, check if any work entry has this task (by taskId or taskName)
+    if (todayWorkIndices.length === 0) {
+      if (taskId || taskName) {
+        staff.work.forEach((w, index) => {
+          if (w && Array.isArray(w.tasks)) {
+            const hasTask = w.tasks.some(t =>
+              (taskId && t._id && String(t._id) === String(taskId)) ||
+              (taskName && (t.name || '').trim().toLowerCase() === String(taskName).trim().toLowerCase())
+            );
+            if (hasTask) todayWorkIndices.push(index);
+          }
+        });
+      }
+      if (todayWorkIndices.length === 0 && staff.work.length > 0) {
+        const lastEntry = staff.work[staff.work.length - 1];
+        if (lastEntry && lastEntry.date && (now - new Date(lastEntry.date)) < 24 * 60 * 60 * 1000) {
+          todayWorkIndices.push(staff.work.length - 1);
         }
-      });
+      }
     }
 
     if (todayWorkIndices.length === 0) {
@@ -1840,12 +1869,31 @@ exports.toggleTaskComplete = async (req, res) => {
       }
     }
 
-    if (!staff.work[mainIndex].tasks || !staff.work[mainIndex].tasks[taskIndex]) {
+    const tasksList = staff.work[mainIndex].tasks || [];
+    let targetTask = null;
+
+    // 1. Match by taskId (_id)
+    if (taskId) {
+      targetTask = tasksList.find(t => t._id && String(t._id) === String(taskId));
+    }
+
+    // 2. Match by taskName
+    if (!targetTask && taskName) {
+      const cleanName = String(taskName).trim().toLowerCase();
+      targetTask = tasksList.find(t => (t.name || '').trim().toLowerCase() === cleanName);
+    }
+
+    // 3. Match by taskIndex
+    if (!targetTask && typeof taskIndex === 'number' && taskIndex >= 0 && taskIndex < tasksList.length) {
+      targetTask = tasksList[taskIndex];
+    }
+
+    if (!targetTask) {
       return res.status(404).json({ success: false, message: 'Task not found' });
     }
 
     // Toggle the task's completed status
-    staff.work[mainIndex].tasks[taskIndex].completed = !staff.work[mainIndex].tasks[taskIndex].completed;
+    targetTask.completed = !targetTask.completed;
     staff.markModified('work');
     const updatedStaff = await staff.save();
 
@@ -1911,10 +1959,15 @@ exports.toggleTaskComplete = async (req, res) => {
       console.error('Error flushing staff cache:', cacheErr);
     }
 
+    const todayWorks = (staffObj.work || []).filter(w => w && w.date && isSameDayIST(w.date, now));
+
     res.status(200).json({
       success: true,
       message: 'Task status updated',
-      data: updatedStaff
+      data: {
+        ...staffObj,
+        work: todayWorks.length > 0 ? todayWorks : (staffObj.work?.slice(-1) || [])
+      }
     });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
@@ -2091,6 +2144,13 @@ exports.approveStaffTasks = async (req, res) => {
       });
     }
 
+    if (todayIndices.length === 0 && staff.work && staff.work.length > 0) {
+      const lastEntry = staff.work[staff.work.length - 1];
+      if (lastEntry && lastEntry.date && (now - new Date(lastEntry.date)) < 24 * 60 * 60 * 1000) {
+        todayIndices.push(staff.work.length - 1);
+      }
+    }
+
     if (todayIndices.length === 0) {
       return res.status(404).json({ success: false, message: 'No tasks found for today' });
     }
@@ -2197,10 +2257,15 @@ exports.approveStaffTasks = async (req, res) => {
       console.error('Error flushing staff cache:', cacheErr);
     }
 
+    const todayWorks = (staffObj.work || []).filter(w => w && w.date && isSameDayIST(w.date, now));
+
     res.status(200).json({
       success: true,
       message: `Approved ${approvedCount} tasks for ${staff.name}`,
-      data: updatedStaff
+      data: {
+        ...staffObj,
+        work: todayWorks.length > 0 ? todayWorks : (staffObj.work?.slice(-1) || [])
+      }
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

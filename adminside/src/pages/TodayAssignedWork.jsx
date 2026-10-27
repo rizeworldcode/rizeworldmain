@@ -116,15 +116,22 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
     return baseProgress + bonusProgress;
   };
 
-  const handleToggleTask = async (staffId, taskIndex) => {
-    // Optimistically toggle in local state immediately
+  const handleToggleTask = async (staffId, task, taskIndex) => {
+    const taskId = typeof task === 'object' ? task?._id : undefined;
+    const taskName = typeof task === 'object' ? task?.name : undefined;
+    const targetIdx = typeof taskIndex === 'number' ? taskIndex : (typeof task === 'number' ? task : -1);
+
+    // Optimistically toggle in local state immediately by taskId, taskName, or index
     setStaffList(prevList => prevList.map(staff => {
       if (staff._id !== staffId) return staff;
 
       const updatedWork = (staff.work || []).map(w => {
         if (isTodayWork(w.date)) {
           const updatedTasks = (w.tasks || []).map((t, idx) => {
-            if (idx === taskIndex) {
+            const isMatch = (taskId && t._id && String(t._id) === String(taskId))
+              || (taskName && (t.name || '').trim().toLowerCase() === taskName.trim().toLowerCase())
+              || (targetIdx !== -1 && idx === targetIdx);
+            if (isMatch) {
               return { ...t, completed: !t.completed };
             }
             return t;
@@ -138,8 +145,15 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
 
     try {
       clearApiCache('/staff');
-      const result = await toggleStaffTask(staffId, taskIndex);
-      if (!result.success) {
+      const result = await toggleStaffTask(staffId, { taskIndex: targetIdx, taskId, taskName });
+      if (result && result.success && result.data) {
+        // Confirmed data from server - update state smoothly without full re-fetch
+        setStaffList(prevList => prevList.map(staff => {
+          if (staff._id !== staffId) return staff;
+          return { ...staff, ...result.data };
+        }));
+      } else if (!result || !result.success) {
+        console.warn('Failed to toggle task on server, restoring server state:', result?.message);
         await fetchStaff(true);
       }
     } catch (error) {
@@ -190,7 +204,11 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
     }
   };
 
-  const handleDeleteTask = async (staffId, taskIndex, taskName) => {
+  const handleDeleteTask = async (staffId, task, taskIndex, fallbackName = '') => {
+    const taskName = typeof task === 'object' ? task?.name : (typeof taskIndex === 'string' ? taskIndex : fallbackName);
+    const taskId = typeof task === 'object' ? task?._id : undefined;
+    const targetIdx = typeof taskIndex === 'number' ? taskIndex : (typeof task === 'number' ? task : -1);
+
     if (!window.confirm(`Are you sure you want to delete task "${taskName || 'this task'}"?`)) {
       return;
     }
@@ -201,7 +219,12 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
 
       const updatedWork = (staff.work || []).map(w => {
         if (isTodayWork(w.date)) {
-          const updatedTasks = (w.tasks || []).filter((_, idx) => idx !== taskIndex);
+          const updatedTasks = (w.tasks || []).filter((t, idx) => {
+            if (taskId && t._id && String(t._id) === String(taskId)) return false;
+            if (taskName && (t.name || '').trim().toLowerCase() === taskName.trim().toLowerCase()) return false;
+            if (targetIdx !== -1 && idx === targetIdx) return false;
+            return true;
+          });
           return { ...w, tasks: updatedTasks };
         }
         return w;
@@ -211,7 +234,7 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
 
     try {
       clearApiCache('/staff');
-      const result = await deleteStaffTask(staffId, taskIndex);
+      const result = await deleteStaffTask(staffId, { taskIndex: targetIdx, taskId, taskName });
       if (!result.success) {
         alert(result.message || 'Failed to delete task');
         await fetchStaff(true);
@@ -271,10 +294,12 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
     try {
       clearApiCache('/staff');
       const result = await approveAllStaffTasks();
-      if (result.success) {
+      if (result && result.success) {
         alert(result.message || 'All tasks approved successfully!');
+        clearApiCache('/staff');
+        await fetchStaff(true);
       } else {
-        alert(result.message || 'Failed to approve all tasks');
+        alert(result?.message || 'Failed to approve all tasks');
         setStaffList(previousStaffList);
       }
     } catch (error) {
@@ -284,7 +309,6 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
     } finally {
       setApprovingAll(false);
       clearApiCache('/staff');
-      await fetchStaff(true);
     }
   };
 
@@ -308,8 +332,15 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
     try {
       clearApiCache('/staff');
       const result = await approveStaffTasks(staffId);
-      if (!result.success) {
-        alert(result.message || 'Failed to approve tasks');
+      if (result && result.success) {
+        if (result.data) {
+          setStaffList(prevList => prevList.map(staff => {
+            if (staff._id !== staffId) return staff;
+            return { ...staff, ...result.data };
+          }));
+        }
+      } else {
+        alert(result?.message || 'Failed to approve tasks');
         setStaffList(previousStaffList);
       }
     } catch (error) {
@@ -319,7 +350,6 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
     } finally {
       setApprovingStaffId(null);
       clearApiCache('/staff');
-      await fetchStaff(true);
     }
   };
 
@@ -627,10 +657,10 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {regularTasks.map((task, idx) => (
                           <TaskButton
-                            key={idx}
+                            key={task._id || `reg-${idx}`}
                             task={task}
-                            onClick={() => handleToggleTask(staff._id, tasks.indexOf(task))}
-                            onDelete={() => handleDeleteTask(staff._id, tasks.indexOf(task), task.name)}
+                            onClick={() => handleToggleTask(staff._id, task, tasks.indexOf(task))}
+                            onDelete={() => handleDeleteTask(staff._id, task, tasks.indexOf(task))}
                           />
                         ))}
                       </div>
@@ -666,11 +696,11 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 rounded-2xl bg-amber-500/5 border border-amber-500/20">
                         {extraTasks.map((task, idx) => (
                           <TaskButton
-                            key={idx}
+                            key={task._id || `extra-${idx}`}
                             task={task}
                             isExtra
-                            onClick={() => handleToggleTask(staff._id, tasks.indexOf(task))}
-                            onDelete={() => handleDeleteTask(staff._id, tasks.indexOf(task), task.name)}
+                            onClick={() => handleToggleTask(staff._id, task, tasks.indexOf(task))}
+                            onDelete={() => handleDeleteTask(staff._id, task, tasks.indexOf(task))}
                           />
                         ))}
                       </div>
