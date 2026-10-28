@@ -124,10 +124,18 @@ async function runPrerender() {
   const failedRoutes = [];
 
   try {
-    const browser = await puppeteer.launch({
-      headless: "new",
+    const systemChromeWin = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+    const launchOptions = {
+      headless: 'new',
       args: ['--no-sandbox', '--disable-setuid-sandbox']
-    });
+    };
+    if (fs.existsSync(systemChromeWin)) {
+      launchOptions.executablePath = systemChromeWin;
+    } else {
+      launchOptions.channel = 'chrome';
+    }
+
+    const browser = await puppeteer.launch(launchOptions);
 
     console.log(`Generating SEO prerendered HTML files across ${routes.length} routes...`);
 
@@ -208,7 +216,12 @@ async function runPrerender() {
               const actualOg = ogTag.content.replace(/https?:\/\/localhost:\d+/, 'https://rizeworld.in');
               
               if (isHome) {
-                return actualCanonical === canonical && actualOg === canonical;
+                const h1 = document.querySelector('h1');
+                const purpleSpan = h1 ? h1.querySelector('.text-\\[\\#A068FF\\]') : null;
+                return actualCanonical === canonical && 
+                       actualOg === canonical && 
+                       purpleSpan && 
+                       purpleSpan.textContent.includes('boost visibility and leads');
               } else {
                 const isGenericTitle = title === 'RizeWorld Digital' || 
                                        title === 'Digital Marketing for Business Growth in India | RizeWorld' ||

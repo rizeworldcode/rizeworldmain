@@ -41,7 +41,7 @@ function useCountUp(end: number, duration: number = 2000, delay: number = 1200) 
 
 // Typewriter Heading Component
 function TypewriterHeading() {
-  const fullText = "Grow Your Business Online with Professional Web Design, SEO Services, and Elite Digital Marketing Services!";
+  const fullText = "RizeWorld helps Indian businesses grow with SEO, social media marketing, Google Ads, content, and web development to boost visibility and leads.";
   const [typedText, setTypedText] = useState("");
   const [isFinished, setIsFinished] = useState(false);
 
@@ -62,8 +62,8 @@ function TypewriterHeading() {
             return prev;
           }
         });
-      }, 35);
-    }, 400);
+      }, 30);
+    }, 250);
 
     return () => {
       clearTimeout(delayTimer);
@@ -72,9 +72,10 @@ function TypewriterHeading() {
   }, []);
 
   // Split colored text based on length
-  // First 31 characters are white for high contrast, the rest is purple accent!
+  // First 44 characters ("RizeWorld helps Indian businesses grow with ") are white for contrast,
+  // and the rest ("SEO, social media marketing...") is purple accent!
   const renderText = () => {
-    const splitIndex = 31;
+    const splitIndex = 44;
     if (typedText.length <= splitIndex) {
       return <span className="text-white">{typedText}</span>;
     } else {
@@ -91,8 +92,15 @@ function TypewriterHeading() {
 
   return (
     <h1 className="font-sans text-left text-4xl md:text-5xl lg:text-[3.2rem] font-black leading-[1.1] tracking-tight mb-8 select-none relative min-h-[160px] lg:min-h-[220px]">
-      {renderText()}
-      <span className={`inline-block w-[3px] h-[36px] md:h-[48px] bg-[#A068FF] ml-1 align-middle ${!isFinished ? 'animate-pulse' : 'hidden'}`} />
+      {/* Permanent text for SEO, Crawlers, and HTML Source Code */}
+      <span className="sr-only">
+        {fullText}
+      </span>
+      {/* Animated visual display for visitors */}
+      <span aria-hidden="true">
+        {renderText()}
+        <span className={`inline-block w-[3px] h-[36px] md:h-[48px] bg-[#A068FF] ml-1 align-middle ${!isFinished ? 'animate-pulse' : 'hidden'}`} />
+      </span>
     </h1>
   );
 }
