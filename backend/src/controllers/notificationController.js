@@ -25,8 +25,10 @@ exports.getNotificationsForStaff = async (req, res) => {
       orConditions.push({ recipientStaff: staffId });
 
       // Find notifications where staff's role matches or staff is directly targeted
+      // and exclude notifications already dismissed/marked done by this staff member
       const notifications = await Notification.find({
         isActive: true,
+        'dismissedBy.staffId': { $ne: staffId },
         $or: orConditions
       })
         .sort({ createdAt: -1 })
@@ -134,6 +136,68 @@ exports.markAllNotificationsAsRead = async (req, res) => {
     res.status(200).json({
       success: true,
       message: 'All notifications marked as read'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// Mark notification as Done / Dismissed by staff
+exports.dismissNotification = async (req, res) => {
+  try {
+    const { notificationId, staffId } = req.params;
+
+    const notification = await Notification.findById(notificationId);
+    if (!notification) {
+      return res.status(404).json({
+        success: false,
+        message: 'Notification not found'
+      });
+    }
+
+    // Add to dismissedBy if not already present
+    const alreadyDismissed = (notification.dismissedBy || []).some(d =>
+      d.staffId && d.staffId.toString() === staffId.toString()
+    );
+
+    if (!alreadyDismissed) {
+      notification.dismissedBy = notification.dismissedBy || [];
+      notification.dismissedBy.push({
+        staffId: staffId,
+        dismissedAt: new Date()
+      });
+    }
+
+    // Also mark as read
+    const alreadyRead = (notification.readBy || []).some(r =>
+      r.staffId && r.staffId.toString() === staffId.toString()
+    );
+    if (!alreadyRead) {
+      notification.readBy = notification.readBy || [];
+      notification.readBy.push({
+        staffId: staffId,
+        readAt: new Date()
+      });
+    }
+
+    // If targeted solely to this staff member (e.g. CRM Follow-up), mark inactive
+    const isSingleRecipient = (!notification.recipientRoles || notification.recipientRoles.length === 0) &&
+      (notification.recipientStaff || []).length <= 1;
+    if (isSingleRecipient) {
+      notification.isActive = false;
+    }
+
+    await notification.save();
+
+    cache.flushByPrefix('notifications:');
+
+    res.status(200).json({
+      success: true,
+      message: 'Notification marked as done and removed',
+      data: notification
     });
   } catch (error) {
     res.status(500).json({

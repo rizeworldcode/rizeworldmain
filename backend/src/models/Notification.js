@@ -36,6 +36,16 @@ const notificationSchema = new mongoose.Schema({
       default: Date.now
     }
   }],
+  dismissedBy: [{
+    staffId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Staff'
+    },
+    dismissedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   clientId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Client'

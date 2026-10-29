@@ -4,6 +4,7 @@ const {
   getNotificationsForStaff,
   markNotificationAsRead,
   markAllNotificationsAsRead,
+  dismissNotification,
   getAllNotifications,
   deleteNotification,
   createManualNotification
@@ -18,6 +19,10 @@ router.get('/staff/:staffId', getNotificationsForStaff);
 
 // Mark a notification as read
 router.patch('/:notificationId/read/:staffId', markNotificationAsRead);
+
+// Mark a notification as Done / Dismissed
+router.patch('/:notificationId/done/:staffId', dismissNotification);
+router.patch('/:notificationId/dismiss/:staffId', dismissNotification);
 
 // Mark all notifications as read for staff
 router.patch('/staff/:staffId/read-all', markAllNotificationsAsRead);

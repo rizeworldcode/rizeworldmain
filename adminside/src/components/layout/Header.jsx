@@ -53,18 +53,27 @@ const Header = ({ onMenuClick, theme, toggleTheme, onLogout, adminEmail }) => {
   const [reminderTab, setReminderTab] = useState('today');
   const notificationRef = useRef(null);
 
-  // Close notification popover when clicking outside
+  // Close notification popover when clicking outside or pressing Escape
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (notificationRef.current && !notificationRef.current.contains(event.target)) {
         setIsNotificationOpen(false);
       }
     };
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setIsNotificationOpen(false);
+      }
+    };
     if (isNotificationOpen) {
       document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside, { passive: true });
+      document.addEventListener('keydown', handleKeyDown);
     }
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
     };
   }, [isNotificationOpen]);
 
@@ -221,6 +230,8 @@ const Header = ({ onMenuClick, theme, toggleTheme, onLogout, adminEmail }) => {
                   : 'bg-black/5 dark:bg-white/5 border-gray-200 dark:border-white/10 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-black/10 dark:hover:bg-white/10'
               }`}
               title="CRM Follow-up Reminders & Alerts"
+              aria-label="CRM Follow-up Reminders & Alerts"
+              aria-expanded={isNotificationOpen}
             >
               <Bell 
                 size={18} 
@@ -243,248 +254,266 @@ const Header = ({ onMenuClick, theme, toggleTheme, onLogout, adminEmail }) => {
             {/* Notification Popover Dropdown */}
             <AnimatePresence>
               {isNotificationOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10, scale: 0.96 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 10, scale: 0.96 }}
-                  transition={{ duration: 0.15 }}
-                  className="absolute right-0 top-full mt-2 w-[340px] sm:w-[420px] max-w-[94vw] bg-white dark:bg-gray-900 rounded-3xl border border-gray-200 dark:border-white/10 shadow-2xl overflow-hidden z-50 flex flex-col"
-                >
-                  {/* Dropdown Header */}
-                  <div className="p-4 border-b border-gray-100 dark:border-white/10 bg-gray-50/80 dark:bg-white/[0.02] flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center">
-                        <Bell size={16} />
+                <>
+                  {/* Mobile Backdrop Overlay */}
+                  <div
+                    className="fixed inset-0 z-40 bg-black/25 backdrop-blur-[1px] sm:hidden"
+                    onClick={() => setIsNotificationOpen(false)}
+                    aria-hidden="true"
+                  />
+
+                  <motion.div
+                    initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 8, scale: 0.98 }}
+                    transition={{ duration: 0.15 }}
+                    className="fixed left-3 right-3 top-[70px] sm:absolute sm:inset-x-auto sm:left-0 sm:right-auto sm:top-full sm:mt-2 w-auto sm:w-[420px] max-w-[420px] mx-auto sm:mx-0 max-h-[calc(100dvh-5.5rem)] sm:max-h-[min(600px,calc(100vh-6rem))] bg-white dark:bg-gray-900 rounded-2xl sm:rounded-3xl border border-gray-200 dark:border-white/10 shadow-2xl overflow-hidden z-50 flex flex-col"
+                  >
+                    {/* Dropdown Header */}
+                    <div className="p-3.5 sm:p-4 border-b border-gray-100 dark:border-white/10 bg-gray-50/80 dark:bg-white/[0.02] flex items-center justify-between shrink-0">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                          <Bell size={16} />
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5 flex-wrap">
+                            <span className="truncate">CRM Follow-up Reminders</span>
+                            {reminderCounts.urgent > 0 && (
+                              <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-rose-500 text-white shrink-0">
+                                {reminderCounts.urgent} Due
+                              </span>
+                            )}
+                          </h3>
+                          <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
+                            Leads scheduled for follow-ups & updates
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
-                          <span>CRM Follow-up Reminders</span>
-                          {reminderCounts.urgent > 0 && (
-                            <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-rose-500 text-white">
-                              {reminderCounts.urgent} Due
-                            </span>
-                          )}
-                        </h3>
-                        <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                          Leads scheduled for follow-ups & updates
-                        </p>
+
+                      <div className="flex items-center gap-1 shrink-0 ml-2">
+                        <button
+                          onClick={fetchReminders}
+                          disabled={loadingReminders}
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
+                          title="Refresh Reminders"
+                        >
+                          <RefreshCw size={14} className={loadingReminders ? 'animate-spin' : ''} />
+                        </button>
+                        <button
+                          onClick={() => setIsNotificationOpen(false)}
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
+                          title="Close notifications"
+                        >
+                          <X size={15} />
+                        </button>
                       </div>
                     </div>
 
-                    <button
-                      onClick={fetchReminders}
-                      disabled={loadingReminders}
-                      className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
-                      title="Refresh Reminders"
-                    >
-                      <RefreshCw size={14} className={loadingReminders ? 'animate-spin' : ''} />
-                    </button>
-                  </div>
+                    {/* Tabs */}
+                    <div className="px-3 pt-2 pb-2 border-b border-gray-100 dark:border-white/10 bg-white dark:bg-gray-900 flex items-center gap-1.5 overflow-x-auto text-xs font-bold shrink-0 scrollbar-none">
+                      <button
+                        onClick={() => setReminderTab('today')}
+                        className={`px-3 py-1.5 rounded-xl transition-all whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+                          reminderTab === 'today'
+                            ? 'bg-blue-500 text-white shadow-sm shadow-blue-500/25'
+                            : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5'
+                        }`}
+                      >
+                        <span>Today</span>
+                        <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                          reminderTab === 'today' ? 'bg-white/20 text-white' : 'bg-gray-200 dark:bg-white/10 text-gray-600 dark:text-gray-300'
+                        }`}>
+                          {reminderCounts.today}
+                        </span>
+                      </button>
 
-                  {/* Tabs */}
-                  <div className="px-3 pt-2.5 pb-2 border-b border-gray-100 dark:border-white/10 bg-white dark:bg-gray-900 flex items-center gap-1 overflow-x-auto text-xs font-bold">
-                    <button
-                      onClick={() => setReminderTab('today')}
-                      className={`px-3 py-1.5 rounded-xl transition-all whitespace-nowrap flex items-center gap-1.5 ${
-                        reminderTab === 'today'
-                          ? 'bg-blue-500 text-white shadow-sm shadow-blue-500/25'
-                          : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5'
-                      }`}
-                    >
-                      <span>Today</span>
-                      <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
-                        reminderTab === 'today' ? 'bg-white/20 text-white' : 'bg-gray-200 dark:bg-white/10 text-gray-600 dark:text-gray-300'
-                      }`}>
-                        {reminderCounts.today}
-                      </span>
-                    </button>
+                      <button
+                        onClick={() => setReminderTab('overdue')}
+                        className={`px-3 py-1.5 rounded-xl transition-all whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+                          reminderTab === 'overdue'
+                            ? 'bg-rose-500 text-white shadow-sm shadow-rose-500/25'
+                            : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5'
+                        }`}
+                      >
+                        <span>Overdue</span>
+                        <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                          reminderTab === 'overdue' ? 'bg-white/20 text-white' : 'bg-rose-100 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400'
+                        }`}>
+                          {reminderCounts.overdue}
+                        </span>
+                      </button>
 
-                    <button
-                      onClick={() => setReminderTab('overdue')}
-                      className={`px-3 py-1.5 rounded-xl transition-all whitespace-nowrap flex items-center gap-1.5 ${
-                        reminderTab === 'overdue'
-                          ? 'bg-rose-500 text-white shadow-sm shadow-rose-500/25'
-                          : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5'
-                      }`}
-                    >
-                      <span>Overdue</span>
-                      <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
-                        reminderTab === 'overdue' ? 'bg-white/20 text-white' : 'bg-rose-100 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400'
-                      }`}>
-                        {reminderCounts.overdue}
-                      </span>
-                    </button>
+                      <button
+                        onClick={() => setReminderTab('upcoming')}
+                        className={`px-3 py-1.5 rounded-xl transition-all whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+                          reminderTab === 'upcoming'
+                            ? 'bg-amber-500 text-white shadow-sm shadow-amber-500/25'
+                            : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5'
+                        }`}
+                      >
+                        <span>Upcoming</span>
+                        <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                          reminderTab === 'upcoming' ? 'bg-white/20 text-white' : 'bg-gray-200 dark:bg-white/10 text-gray-600 dark:text-gray-300'
+                        }`}>
+                          {reminderCounts.upcoming}
+                        </span>
+                      </button>
 
-                    <button
-                      onClick={() => setReminderTab('upcoming')}
-                      className={`px-3 py-1.5 rounded-xl transition-all whitespace-nowrap flex items-center gap-1.5 ${
-                        reminderTab === 'upcoming'
-                          ? 'bg-amber-500 text-white shadow-sm shadow-amber-500/25'
-                          : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5'
-                      }`}
-                    >
-                      <span>Upcoming</span>
-                      <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
-                        reminderTab === 'upcoming' ? 'bg-white/20 text-white' : 'bg-gray-200 dark:bg-white/10 text-gray-600 dark:text-gray-300'
-                      }`}>
-                        {reminderCounts.upcoming}
-                      </span>
-                    </button>
+                      <button
+                        onClick={() => setReminderTab('all')}
+                        className={`px-3 py-1.5 rounded-xl transition-all whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+                          reminderTab === 'all'
+                            ? 'bg-gray-800 dark:bg-white dark:text-gray-900 text-white shadow-sm'
+                            : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5'
+                        }`}
+                      >
+                        <span>All</span>
+                        <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                          reminderTab === 'all' ? 'bg-white/20 dark:bg-black/10' : 'bg-gray-200 dark:bg-white/10 text-gray-600 dark:text-gray-300'
+                        }`}>
+                          {reminderCounts.total}
+                        </span>
+                      </button>
+                    </div>
 
-                    <button
-                      onClick={() => setReminderTab('all')}
-                      className={`px-3 py-1.5 rounded-xl transition-all whitespace-nowrap flex items-center gap-1.5 ${
-                        reminderTab === 'all'
-                          ? 'bg-gray-800 dark:bg-white dark:text-gray-900 text-white shadow-sm'
-                          : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5'
-                      }`}
-                    >
-                      <span>All</span>
-                      <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
-                        reminderTab === 'all' ? 'bg-white/20 dark:bg-black/10' : 'bg-gray-200 dark:bg-white/10 text-gray-600 dark:text-gray-300'
-                      }`}>
-                        {reminderCounts.total}
-                      </span>
-                    </button>
-                  </div>
-
-                  {/* Notification List */}
-                  <div className="max-h-[380px] overflow-y-auto p-3 space-y-2.5 divide-y divide-gray-100 dark:divide-white/5">
-                    {loadingReminders && activeReminderList.length === 0 ? (
-                      <div className="py-8 flex flex-col items-center justify-center gap-2 text-gray-400 text-xs">
-                        <Loader2 size={20} className="animate-spin text-blue-500" />
-                        <span>Checking CRM follow-ups...</span>
-                      </div>
-                    ) : activeReminderList.length === 0 ? (
-                      <div className="py-10 text-center space-y-2">
-                        <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto">
-                          <CheckCircle2 size={20} />
+                    {/* Notification List */}
+                    <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 space-y-2.5 divide-y divide-gray-100 dark:divide-white/5">
+                      {loadingReminders && activeReminderList.length === 0 ? (
+                        <div className="py-8 flex flex-col items-center justify-center gap-2 text-gray-400 text-xs">
+                          <Loader2 size={20} className="animate-spin text-blue-500" />
+                          <span>Checking CRM follow-ups...</span>
                         </div>
-                        <p className="text-xs font-bold text-gray-800 dark:text-gray-200">
-                          No pending follow-ups
-                        </p>
-                        <p className="text-[11px] text-gray-400 max-w-[200px] mx-auto">
-                          {reminderTab === 'today'
-                            ? 'All caught up for today! No lead follow-ups due.'
-                            : reminderTab === 'overdue'
-                            ? 'Great job! Zero overdue follow-up tasks.'
-                            : 'No leads scheduled in this category.'}
-                        </p>
-                      </div>
-                    ) : (
-                      activeReminderList.map((lead) => {
-                        const isOverdue = lead.nextFollowUpDate && new Date(lead.nextFollowUpDate) < new Date() && new Date(lead.nextFollowUpDate).toDateString() !== new Date().toDateString();
-                        const isToday = lead.nextFollowUpDate && new Date(lead.nextFollowUpDate).toDateString() === new Date().toDateString();
+                      ) : activeReminderList.length === 0 ? (
+                        <div className="py-10 text-center space-y-2">
+                          <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto">
+                            <CheckCircle2 size={20} />
+                          </div>
+                          <p className="text-xs font-bold text-gray-800 dark:text-gray-200">
+                            No pending follow-ups
+                          </p>
+                          <p className="text-[11px] text-gray-400 max-w-[200px] mx-auto">
+                            {reminderTab === 'today'
+                              ? 'All caught up for today! No lead follow-ups due.'
+                              : reminderTab === 'overdue'
+                              ? 'Great job! Zero overdue follow-up tasks.'
+                              : 'No leads scheduled in this category.'}
+                          </p>
+                        </div>
+                      ) : (
+                        activeReminderList.map((lead) => {
+                          const isOverdue = lead.nextFollowUpDate && new Date(lead.nextFollowUpDate) < new Date() && new Date(lead.nextFollowUpDate).toDateString() !== new Date().toDateString();
+                          const isToday = lead.nextFollowUpDate && new Date(lead.nextFollowUpDate).toDateString() === new Date().toDateString();
 
-                        return (
-                          <div
-                            key={lead._id}
-                            className="pt-2.5 first:pt-0 group hover:bg-gray-50/50 dark:hover:bg-white/[0.02] p-2 rounded-2xl transition-all"
-                          >
-                            <div className="flex items-start justify-between gap-2 mb-1.5">
-                              <div>
+                          return (
+                            <div
+                              key={lead._id}
+                              className="pt-2.5 first:pt-0 group hover:bg-gray-50/70 dark:hover:bg-white/[0.03] p-2.5 rounded-2xl transition-all border border-transparent hover:border-gray-100 dark:hover:border-white/5"
+                            >
+                              <div className="flex items-start justify-between gap-2 mb-1.5">
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="font-bold text-xs text-gray-900 dark:text-white truncate">
+                                      {lead.name}
+                                    </span>
+                                    <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300 shrink-0">
+                                      {lead.unicId || '—'}
+                                    </span>
+                                  </div>
+                                  {lead.companyName && (
+                                    <div className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-0.5 truncate">
+                                      <Building2 size={11} className="shrink-0" />
+                                      <span className="truncate">{lead.companyName}</span>
+                                    </div>
+                                  )}
+                                </div>
+
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
+                                  isOverdue
+                                    ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
+                                    : isToday
+                                    ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                                    : 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20'
+                                }`}>
+                                  {isOverdue ? 'Overdue' : isToday ? 'Due Today' : 'Upcoming'}
+                                </span>
+                              </div>
+
+                              {/* Kis ko lena hai follow up */}
+                              <div className="flex items-center gap-1.5 text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50/80 dark:bg-indigo-950/40 px-2.5 py-1.5 rounded-xl border border-indigo-500/15 mb-2">
+                                <UserCheck size={14} className="text-indigo-500 shrink-0" />
+                                <span className="text-[11px] font-normal text-indigo-500 dark:text-indigo-400 shrink-0">Kis ko lena hai:</span>
+                                <span className="font-bold truncate">
+                                  {lead.leadPersonName || lead.assignedStaffId?.name || 'Unassigned'}
+                                </span>
+                              </div>
+
+                              {/* Time & Action Row */}
+                              <div className="flex items-center justify-between gap-2 text-xs text-gray-500 dark:text-gray-400 flex-wrap">
                                 <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className="font-bold text-xs text-gray-900 dark:text-white">
-                                    {lead.name}
+                                  <Clock size={12} className={`shrink-0 ${isOverdue ? 'text-rose-500' : 'text-amber-500'}`} />
+                                  <span className={`text-[11px] ${isOverdue ? 'text-rose-600 dark:text-rose-400 font-bold' : isToday ? 'text-amber-600 dark:text-amber-400 font-semibold' : ''}`}>
+                                    {formatFollowUpTime(lead.nextFollowUpDate)}
                                   </span>
-                                  <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300">
-                                    {lead.unicId || '—'}
+                                  <span className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-white/10 text-[10px] font-bold text-gray-700 dark:text-gray-300 shrink-0">
+                                    {lead.nextAction || 'Call'}
                                   </span>
                                 </div>
-                                {lead.companyName && (
-                                  <div className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-0.5">
-                                    <Building2 size={11} />
-                                    <span>{lead.companyName}</span>
-                                  </div>
-                                )}
-                              </div>
 
-                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                isOverdue
-                                  ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
-                                  : isToday
-                                  ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
-                                  : 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20'
-                              }`}>
-                                {isOverdue ? 'Overdue' : isToday ? 'Due Today' : 'Upcoming'}
-                              </span>
-                            </div>
-
-                            {/* Kis ko lena hai follow up */}
-                            <div className="flex items-center gap-1.5 text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50/80 dark:bg-indigo-950/40 px-2.5 py-1.5 rounded-xl border border-indigo-500/15 mb-2">
-                              <UserCheck size={14} className="text-indigo-500 shrink-0" />
-                              <span className="text-[11px] font-normal text-indigo-500 dark:text-indigo-400">Kis ko lena hai:</span>
-                              <span className="font-bold truncate">
-                                {lead.leadPersonName || lead.assignedStaffId?.name || 'Unassigned'}
-                              </span>
-                            </div>
-
-                            {/* Time & Action Row */}
-                            <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-                              <div className="flex items-center gap-1.5">
-                                <Clock size={12} className={isOverdue ? 'text-rose-500' : 'text-amber-500'} />
-                                <span className={`text-[11px] ${isOverdue ? 'text-rose-600 dark:text-rose-400 font-bold' : isToday ? 'text-amber-600 dark:text-amber-400 font-semibold' : ''}`}>
-                                  {formatFollowUpTime(lead.nextFollowUpDate)}
-                                </span>
-                                <span className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-white/10 text-[10px] font-bold text-gray-700 dark:text-gray-300">
-                                  {lead.nextAction || 'Call'}
-                                </span>
-                              </div>
-
-                              {/* Quick Actions */}
-                              <div className="flex items-center gap-1">
-                                {lead.phoneNumber && (
-                                  <a
-                                    href={`tel:${lead.phoneNumber}`}
-                                    title={`Call ${lead.phoneNumber}`}
-                                    className="p-1 rounded-lg text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40"
+                                {/* Quick Actions */}
+                                <div className="flex items-center gap-1 shrink-0 ml-auto">
+                                  {lead.phoneNumber && (
+                                    <a
+                                      href={`tel:${lead.phoneNumber}`}
+                                      title={`Call ${lead.phoneNumber}`}
+                                      className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 active:scale-95 transition-all"
+                                    >
+                                      <Phone size={14} />
+                                    </a>
+                                  )}
+                                  {lead.whatsappNumber && (
+                                    <a
+                                      href={`https://wa.me/${lead.whatsappNumber.replace(/\D/g, '')}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      title="WhatsApp Chat"
+                                      className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 active:scale-95 transition-all"
+                                    >
+                                      <MessageCircle size={14} />
+                                    </a>
+                                  )}
+                                  <button
+                                    onClick={() => {
+                                      setIsNotificationOpen(false);
+                                      navigate(`/company-leads?search=${encodeURIComponent(lead.unicId || lead.name)}`);
+                                    }}
+                                    className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold flex items-center gap-1 transition-all shadow-sm active:scale-95"
                                   >
-                                    <Phone size={13} />
-                                  </a>
-                                )}
-                                {lead.whatsappNumber && (
-                                  <a
-                                    href={`https://wa.me/${lead.whatsappNumber.replace(/\D/g, '')}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    title="WhatsApp Chat"
-                                    className="p-1 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
-                                  >
-                                    <MessageCircle size={13} />
-                                  </a>
-                                )}
-                                <button
-                                  onClick={() => {
-                                    setIsNotificationOpen(false);
-                                    navigate(`/company-leads?search=${encodeURIComponent(lead.unicId || lead.name)}`);
-                                  }}
-                                  className="px-2 py-0.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold flex items-center gap-0.5 transition-all"
-                                >
-                                  <span>Open</span>
-                                  <ArrowRight size={10} />
-                                </button>
+                                    <span>Open</span>
+                                    <ArrowRight size={11} />
+                                  </button>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
+                          );
+                        })
+                      )}
+                    </div>
 
-                  {/* Dropdown Footer */}
-                  <div className="p-3 border-t border-gray-100 dark:border-white/10 bg-gray-50/70 dark:bg-white/[0.02]">
-                    <button
-                      onClick={() => {
-                        setIsNotificationOpen(false);
-                        navigate('/company-leads');
-                      }}
-                      className="w-full py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-500/20 transition-all flex items-center justify-center gap-1.5"
-                    >
-                      <span>Open Company Leads CRM & Pipeline</span>
-                      <ArrowRight size={14} />
-                    </button>
-                  </div>
-                </motion.div>
+                    {/* Dropdown Footer */}
+                    <div className="p-3 border-t border-gray-100 dark:border-white/10 bg-gray-50/70 dark:bg-white/[0.02] shrink-0">
+                      <button
+                        onClick={() => {
+                          setIsNotificationOpen(false);
+                          navigate('/company-leads');
+                        }}
+                        className="w-full py-2.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white text-xs font-bold shadow-md shadow-blue-500/20 transition-all flex items-center justify-center gap-1.5"
+                      >
+                        <span>Open Company Leads CRM & Pipeline</span>
+                        <ArrowRight size={14} />
+                      </button>
+                    </div>
+                  </motion.div>
+                </>
               )}
             </AnimatePresence>
           </div>

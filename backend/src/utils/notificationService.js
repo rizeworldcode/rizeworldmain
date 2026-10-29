@@ -191,6 +191,50 @@ async function notifyLeadAssignedStaff(lead) {
     const title = `Brand: ${brandName}`;
     const message = `Date & Time: ${formattedDateTime}`;
 
+    // Check if an existing notification exists for this lead
+    let existingNotification = await Notification.findOne({
+      leadId: lead._id,
+      type: 'CRM Follow-up'
+    }).sort({ createdAt: -1 });
+
+    if (existingNotification) {
+      existingNotification.title = title;
+      existingNotification.message = message;
+      existingNotification.dueDate = lead.nextFollowUpDate;
+      existingNotification.recipientStaff = [staffId];
+      existingNotification.isActive = true;
+      // Reset readBy & dismissedBy so employee sees the updated follow-up time
+      existingNotification.readBy = [];
+      existingNotification.dismissedBy = [];
+
+      const savedNotification = await existingNotification.save();
+
+      // Deactivate any duplicate notifications for this lead if any exist
+      await Notification.updateMany(
+        {
+          leadId: lead._id,
+          _id: { $ne: savedNotification._id }
+        },
+        { isActive: false }
+      );
+
+      // Flush notification caches
+      cache.flushByPrefix('notifications:');
+
+      // Emit targeted socket events ONLY to designated staff member
+      try {
+        const io = getIO();
+        if (io) {
+          io.to(`staff-${staffId}`).emit('newNotification', savedNotification);
+        }
+      } catch (socketError) {
+        console.error('Socket emission failed in notifyLeadAssignedStaff:', socketError);
+      }
+
+      console.log('Updated existing CRM notification for lead:', lead._id, 'time:', formattedDateTime);
+      return { success: true, notification: savedNotification };
+    }
+
     return await createNotification(
       title,
       message,

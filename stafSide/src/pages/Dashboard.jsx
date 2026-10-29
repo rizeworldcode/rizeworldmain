@@ -1603,6 +1603,32 @@ const Dashboard = ({ onNavigateToProgress }) => {
     }
   };
 
+  // Mark notification as Done and remove it from employee view
+  const markAsDone = async (notificationId, e) => {
+    if (e && e.stopPropagation) e.stopPropagation();
+
+    const staffInfo = JSON.parse(localStorage.getItem('staffInfo') || '{}');
+    const staffId = staffInfo.id || staffInfo._id;
+    const staffToken = localStorage.getItem('staffToken');
+
+    // Optimistically remove from state immediately
+    setNotifications(prev => prev.filter(n => n._id !== notificationId));
+
+    if (!staffId) return;
+
+    try {
+      await fetch(getApiUrl(`/notifications/${notificationId}/done/${staffId}`), {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(staffToken ? { 'Authorization': `Bearer ${staffToken}` } : {})
+        }
+      });
+    } catch (err) {
+      console.error('Failed to mark notification as done:', err);
+    }
+  };
+
   // Notification timing classification (Today, Upcoming, Overdue)
   const getNotificationTiming = (notif) => {
     if (!notif) return { category: 'all', isToday: false, isUpcoming: false, isOverdue: false, dueDate: null };
@@ -2779,9 +2805,21 @@ const Dashboard = ({ onNavigateToProgress }) => {
                               </p>
                             </div>
 
-                            {!notification.isRead && (
-                              <span className="w-3.5 h-3.5 bg-blue-600 rounded-full flex-shrink-0 mt-2 shadow-sm" title="Unread" />
-                            )}
+                            {/* Actions Column: Done button + Unread dot */}
+                            <div className="flex items-center gap-2 flex-shrink-0 mt-1">
+                              <button
+                                type="button"
+                                onClick={(e) => markAsDone(notification._id, e)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white shadow-sm shadow-emerald-500/25 transition-all cursor-pointer"
+                                title="Mark this follow-up as done and remove"
+                              >
+                                <CheckCircle2 size={13} strokeWidth={2.5} />
+                                <span>Done</span>
+                              </button>
+                              {!notification.isRead && (
+                                <span className="w-3 h-3 bg-blue-600 rounded-full flex-shrink-0 shadow-sm" title="Unread" />
+                              )}
+                            </div>
                           </div>
                         </div>
                       );

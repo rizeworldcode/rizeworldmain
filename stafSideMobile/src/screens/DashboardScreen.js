@@ -386,6 +386,24 @@ const DashboardScreen = ({ staffInfo: initialStaffInfo, token, onLogout, onNavig
     }
   };
 
+  const markAsDone = async (notificationId) => {
+    const staffId = staffInfo.id || staffInfo._id;
+    // Optimistically remove from state
+    setNotifications(prev => prev.filter(n => n._id !== notificationId));
+    if (!staffId) return;
+
+    try {
+      await fetch(getApiUrl(`/notifications/${notificationId}/done/${staffId}`), {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+    } catch (err) {
+      console.error('[Notification Debug] Failed to mark done:', err);
+    }
+  };
+
   const getNotificationTiming = (notif) => {
     if (!notif) return { category: 'all', isToday: false, isUpcoming: false, isOverdue: false, dueDate: null };
     const rawDue = notif.dueDate || notif.leadId?.nextFollowUpDate || notif.clientId?.deadline;
@@ -1634,9 +1652,17 @@ const DashboardScreen = ({ staffInfo: initialStaffInfo, token, onLogout, onNavig
                         <Text style={[styles.notifItemTitle, !notif.isRead && styles.notifItemTitleUnread]}>
                           {notif.title}
                         </Text>
-                        {!notif.isRead && (
-                          <View style={styles.unreadIndicatorDot} />
-                        )}
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <TouchableOpacity
+                            onPress={() => markAsDone(notif._id)}
+                            style={styles.mobileDoneBtn}
+                          >
+                            <Text style={styles.mobileDoneBtnText}>Done</Text>
+                          </TouchableOpacity>
+                          {!notif.isRead && (
+                            <View style={styles.unreadIndicatorDot} />
+                          )}
+                        </View>
                       </View>
 
                       <Text style={[styles.notifMessage, timing.isToday && { color: '#92400e', fontWeight: 'bold' }]}>
@@ -2416,6 +2442,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center'
+  },
+  mobileDoneBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    backgroundColor: '#10b981',
+    borderRadius: 6
+  },
+  mobileDoneBtnText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#fff'
   },
   notifItemTitle: {
     fontSize: 14,

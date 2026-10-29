@@ -378,6 +378,15 @@ exports.updateLead = async (req, res) => {
       } catch (notifErr) {
         console.error('Error notifying assigned staff for lead update:', notifErr);
       }
+    } else if (existingLead.leadStatus === 'Converted' || existingLead.leadStatus === 'Lost') {
+      try {
+        const Notification = require('../models/Notification');
+        const cache = require('../utils/cache');
+        await Notification.updateMany({ leadId: existingLead._id }, { isActive: false });
+        cache.flushByPrefix('notifications:');
+      } catch (notifErr) {
+        console.error('Error deactivating notifications for converted/lost lead:', notifErr);
+      }
     }
 
     return res.status(200).json({
@@ -403,6 +412,15 @@ exports.deleteLead = async (req, res) => {
 
     if (!deleted) {
       return res.status(404).json({ success: false, message: 'Lead not found' });
+    }
+
+    try {
+      const Notification = require('../models/Notification');
+      const cache = require('../utils/cache');
+      await Notification.updateMany({ leadId: id }, { isActive: false });
+      cache.flushByPrefix('notifications:');
+    } catch (notifErr) {
+      console.error('Error deactivating notifications for deleted lead:', notifErr);
     }
 
     return res.status(200).json({
