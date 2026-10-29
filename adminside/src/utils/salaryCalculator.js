@@ -4,6 +4,25 @@ export const DAYS_IN_MONTH = 30;
 export const EXPECTED_MONTHLY_HOURS = STANDARD_HOURS_PER_DAY * DAYS_IN_MONTH; // 255 hrs
 export const CALCULATION_START_DATE = new Date(2026, 6, 1); // July 1, 2026
 
+/**
+ * Returns the current 30-day sequence cycle month name.
+ * Each cycle is strictly 30 days starting July 1, 2026.
+ * e.g. July 2026 (Jul 1 - Jul 30), Aug 2026 (Jul 31 - Aug 29),
+ * Sep 2026 (Aug 30 - Sep 28), Oct 2026 (Sep 29 - Oct 28),
+ * Nov 2026 (Oct 29 - Nov 27).
+ */
+export const getCurrentSalaryCycleMonth = (dateInput = new Date()) => {
+  const d = new Date(dateInput);
+  d.setHours(0, 0, 0, 0);
+  const start = new Date(CALCULATION_START_DATE);
+  start.setHours(0, 0, 0, 0);
+  const diffDays = Math.round((d.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+  if (diffDays < 0) return d.toLocaleString('default', { month: 'long', year: 'numeric' });
+  const monthOffset = Math.floor(diffDays / 30);
+  const targetDate = new Date(2026, 6 + monthOffset, 1);
+  return targetDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+};
+
 export const parseTotalHours = (str) => {
   if (!str || str === '-') return 0;
   const hM = str.match(/(\d+)\s*h/i);
@@ -114,7 +133,7 @@ export const getStaffAdvanceSummary = (emp) => {
 
 export const isDailyRatedStaff = (emp) => {
   if (!emp) return false;
-  if (emp.salaryCalculationType === 'daily' || emp.exemptClockInOut === true) return true;
+  if (emp.salaryCalculationType === 'daily' || emp.exemptClockInOut === true || emp.exemptClockInOut === 'true') return true;
   const role = (emp.role || '').toLowerCase();
   const dailyRoles = ['chef', 'safe', 'driver', 'deriver', 'maid', 'made', 'security', 'guard', 'housekeeping', 'pantry', 'peon', 'cook'];
   return dailyRoles.some(r => role.includes(r));
@@ -143,7 +162,8 @@ export const calculatePayoutForMonth = (emp, monthStr) => {
 
   const isDaily = isDailyRatedStaff(emp);
   const now = new Date();
-  const defaultMonthStr = now.toLocaleString('default', { month: 'long', year: 'numeric' });
+  const currentCycleMonth = getCurrentSalaryCycleMonth(now);
+  const defaultMonthStr = currentCycleMonth;
   const targetMonth = monthStr || defaultMonthStr;
   const cleanMonth = targetMonth.replace(/\s*\(Current\)/i, '').trim();
 
@@ -176,7 +196,7 @@ export const calculatePayoutForMonth = (emp, monthStr) => {
   const year = parseInt(match[2], 10);
   const monthIndex = new Date(Date.parse(monthName + " 1, 2012")).getMonth();
 
-  const isCurrentMonth = now.getMonth() === monthIndex && now.getFullYear() === year;
+  const isCurrentMonth = cleanMonth === currentCycleMonth;
 
   // Check paid salary history for this specific month
   const paidHistory = (emp.salaryHistory || []).find(h => {
@@ -380,7 +400,7 @@ export const calculatePayoutForMonth = (emp, monthStr) => {
   // Gross earned salary before any advance deductions
   const earnedSalary = paidHistory 
     ? (paidHistory.earnedSalary ?? paidHistory.payoutSalary ?? calculated) 
-    : (isCurrentMonth && validSequenceDates.length < 5 && calculated < baseSalary * 0.2 ? baseSalary : calculated);
+    : calculated;
 
   const advanceDeduction = paidHistory ? (paidHistory.advanceDeduction || 0) : 0;
   const payout = paidHistory ? paidHistory.payoutSalary : Math.max(0, earnedSalary - advanceDeduction);
@@ -408,7 +428,7 @@ export const calculatePayoutForMonth = (emp, monthStr) => {
 
 export const getAvailableSalaryMonths = (staffList = []) => {
   const now = new Date();
-  const currentMonthName = now.toLocaleString('default', { month: 'long', year: 'numeric' });
+  const currentMonthName = getCurrentSalaryCycleMonth(now);
   const months = new Set();
   months.add(currentMonthName);
 
@@ -435,11 +455,12 @@ export const getAvailableSalaryMonths = (staffList = []) => {
     (emp.leaves || []).forEach(l => addDateMonth(l.date));
   });
 
-  // Ensure recent 6 months are always available in the selector
+  // Ensure recent 6 cycles are always available in the selector
   for (let i = 0; i < 6; i++) {
-    const past = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    if (past >= CALCULATION_START_DATE) {
-      months.add(past.toLocaleString('default', { month: 'long', year: 'numeric' }));
+    const cycleDate = new Date(now);
+    cycleDate.setDate(cycleDate.getDate() - i * 30);
+    if (cycleDate >= CALCULATION_START_DATE) {
+      months.add(getCurrentSalaryCycleMonth(cycleDate));
     }
   }
 
@@ -459,7 +480,8 @@ export const getAvailableSalaryMonths = (staffList = []) => {
 
 export const getMonthlySalarySummary = (staffList = [], monthStr) => {
   const now = new Date();
-  const defaultMonthStr = now.toLocaleString('default', { month: 'long', year: 'numeric' });
+  const currentCycleMonth = getCurrentSalaryCycleMonth(now);
+  const defaultMonthStr = currentCycleMonth;
   const targetMonth = monthStr || defaultMonthStr;
   const cleanMonth = targetMonth.replace(/\s*\(Current\)/i, '').trim();
 

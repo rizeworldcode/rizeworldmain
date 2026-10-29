@@ -50,7 +50,7 @@ import {
   updateStaffAttendance,
   BASE_URL 
 } from '../api';
-import { getStaffAdvanceSummary, isDailyRatedStaff, calculatePayoutForMonth } from '../utils/salaryCalculator';
+import { getStaffAdvanceSummary, isDailyRatedStaff, calculatePayoutForMonth, getCurrentSalaryCycleMonth } from '../utils/salaryCalculator';
 import ManageAttendanceModal from '../components/attendance/ManageAttendanceModal';
 
 const PREDEFINED_ROLES = [
@@ -1741,7 +1741,7 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
     if (!selectedStaffForSalary) return [];
     const months = new Set();
     const now = new Date();
-    const currentMonthName = now.toLocaleString('default', { month: 'long', year: 'numeric' });
+    const currentMonthName = getCurrentSalaryCycleMonth(now);
     months.add(currentMonthName);
 
     const addDateMonth = (dateInput) => {
@@ -2059,7 +2059,7 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
     // Compute available months for member and select the first pending month
     const months = new Set();
     const now = new Date();
-    const currentMonthName = now.toLocaleString('default', { month: 'long', year: 'numeric' });
+    const currentMonthName = getCurrentSalaryCycleMonth(now);
     months.add(currentMonthName);
 
     const addDateMonth = (dateInput) => {
@@ -2483,7 +2483,7 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
                           })()}
                           {(() => {
                             const now = new Date();
-                            const currentMonthName = now.toLocaleString('default', { month: 'long', year: 'numeric' });
+                            const currentMonthName = getCurrentSalaryCycleMonth(now);
                             const isCurrentMonthPaid = (member.salaryHistory || []).some(h => {
                               const hClean = (h.month || '').replace(/\s*\(Current\)/i, '').trim();
                               return hClean === currentMonthName;

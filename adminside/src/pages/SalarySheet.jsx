@@ -41,6 +41,7 @@ const JOB_TYPE_COLORS = {
 import { 
   calculatePayoutForMonth, 
   getAvailableSalaryMonths,
+  getCurrentSalaryCycleMonth,
   isDailyRatedStaff 
 } from '../utils/salaryCalculator';
 import ManageAttendanceModal from '../components/attendance/ManageAttendanceModal';
@@ -156,8 +157,7 @@ const SalarySheetView = ({ onLock }) => {
   const [sortBy, setSortBy] = useState('name');
   const [sortDir, setSortDir] = useState('asc');
 
-  const now = new Date();
-  const currentMonthName = now.toLocaleString('default', { month: 'long', year: 'numeric' });
+  const currentMonthName = getCurrentSalaryCycleMonth();
   const [selectedMonth, setSelectedMonth] = useState(currentMonthName);
 
   const fetchData = async () => {

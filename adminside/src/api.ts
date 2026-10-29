@@ -127,6 +127,7 @@ export const getRevenueAnalytics = (period?: string) => apiRequest(`/dashboard/r
 
 // Staff Endpoints
 export const getAllStaff = (useCache: boolean = true) => apiRequest('/staff', {}, useCache);
+export const getSalarySheet = (useCache: boolean = false) => apiRequest('/staff/salary-sheet', {}, useCache);
 export const getStaffById = (id: string, useCache: boolean = false) => apiRequest(`/staff/${id}`, {}, useCache);
 export const markStaffLeave = (staffIds: string[], startDate: string, endDate: string, type: string) => {
   clearApiCache('staff');
@@ -524,6 +525,7 @@ export default {
   getLeadReminders,
   getDashboardStats,
   getAllStaff,
+  getSalarySheet,
   markStaffLeave,
   clockOutAllStaff,
   getAllClients,

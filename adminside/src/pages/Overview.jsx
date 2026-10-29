@@ -7,8 +7,8 @@ import RevenueChart from '../components/dashboard/RevenueChart';
 import RecentClients from '../components/dashboard/RecentClients';
 import StaffList from '../components/dashboard/StaffList';
 import DashboardMap from '../components/dashboard/DashboardMap';
-import { getDashboardStats, getAllStaff, markStaffLeave } from '../api';
-import { getAvailableSalaryMonths, getMonthlySalarySummary } from '../utils/salaryCalculator';
+import { getDashboardStats, getAllStaff, getSalarySheet, markStaffLeave } from '../api';
+import { getAvailableSalaryMonths, getMonthlySalarySummary, getCurrentSalaryCycleMonth } from '../utils/salaryCalculator';
 
 const Overview = ({ onViewClient, onViewStaff }) => {
   const navigate = useNavigate();
@@ -47,6 +47,7 @@ const Overview = ({ onViewClient, onViewStaff }) => {
     }
   });
 
+  const [salaryStaffList, setSalaryStaffList] = useState([]);
   const [statsLoading, setStatsLoading] = useState(() => !localStorage.getItem('rw_cached_overview_stats'));
   const [staffLoading, setStaffLoading] = useState(() => !localStorage.getItem('rw_cached_overview_staff'));
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
@@ -55,8 +56,7 @@ const Overview = ({ onViewClient, onViewStaff }) => {
   const [leaveType, setLeaveType] = useState('Casual');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const now = new Date();
-  const currentMonthName = now.toLocaleString('default', { month: 'long', year: 'numeric' });
+  const currentMonthName = getCurrentSalaryCycleMonth();
   const [selectedSalaryMonth, setSelectedSalaryMonth] = useState(currentMonthName);
 
   useEffect(() => {
@@ -85,15 +85,26 @@ const Overview = ({ onViewClient, onViewStaff }) => {
       })
       .catch((error) => console.error('Error fetching staff list:', error))
       .finally(() => setStaffLoading(false));
+
+    // 3. Fetch full salary sheet data (with full clock, attendance, and role data) for accurate salary calculations
+    getSalarySheet(true)
+      .then((salaryRes) => {
+        if (salaryRes && salaryRes.success && Array.isArray(salaryRes.data)) {
+          setSalaryStaffList(salaryRes.data);
+        }
+      })
+      .catch((error) => console.error('Error fetching salary sheet for overview:', error));
   }, []);
 
+  const staffForSalary = salaryStaffList.length > 0 ? salaryStaffList : staffList;
+
   const availableSalaryMonths = useMemo(() => {
-    return getAvailableSalaryMonths(staffList);
-  }, [staffList]);
+    return getAvailableSalaryMonths(staffForSalary);
+  }, [staffForSalary]);
 
   const monthlySalarySummary = useMemo(() => {
-    return getMonthlySalarySummary(staffList, selectedSalaryMonth);
-  }, [staffList, selectedSalaryMonth]);
+    return getMonthlySalarySummary(staffForSalary, selectedSalaryMonth);
+  }, [staffForSalary, selectedSalaryMonth]);
 
   const salaryPaidPercentage = useMemo(() => {
     if (!monthlySalarySummary.totalPayable || monthlySalarySummary.totalPayable === 0) return '0%';

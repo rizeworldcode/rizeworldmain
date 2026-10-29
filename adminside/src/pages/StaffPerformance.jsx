@@ -33,7 +33,7 @@ import {
   Wallet,
   Receipt
 } from 'lucide-react';
-import { getStaffAdvanceSummary, isDailyRatedStaff } from '../utils/salaryCalculator';
+import { getStaffAdvanceSummary, isDailyRatedStaff, getCurrentSalaryCycleMonth } from '../utils/salaryCalculator';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -213,7 +213,10 @@ const calculatePayoutForMonth = (staffInfo, year, monthIndex, paidHistory = null
   const dailyRate = Math.round(baseSalary / 30);
 
   const today = new Date();
-  const isCurrentMonth = today.getMonth() === monthIndex && today.getFullYear() === year;
+  const currentCycleMonth = getCurrentSalaryCycleMonth(today);
+  const currentMonthDate = new Date(year, monthIndex, 1);
+  const targetMonthStr = currentMonthDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+  const isCurrentMonth = targetMonthStr === currentCycleMonth;
 
   const createdAt = staffInfo.createdAt || staffInfo.joiningDate;
   const sequenceDates = get30DaySequenceDates(year, monthIndex, createdAt);
@@ -1110,7 +1113,7 @@ const StaffPerformance = ({ staffId, onBack }) => {
     const months = new Set();
     
     const now = new Date();
-    const currentMonthName = now.toLocaleString('default', { month: 'long', year: 'numeric' });
+    const currentMonthName = getCurrentSalaryCycleMonth(now);
     months.add(currentMonthName);
 
     const addDateMonth = (dateInput) => {
@@ -1172,8 +1175,8 @@ const StaffPerformance = ({ staffId, onBack }) => {
 
         const metrics = calculatePayoutForMonth(staff, year, monthIndex, paidHistory);
         if (metrics) {
-          const today = new Date();
-          const isCurrent = today.getMonth() === monthIndex && today.getFullYear() === year;
+          const currentCycleMonth = getCurrentSalaryCycleMonth();
+          const isCurrent = mStr === currentCycleMonth;
           monthList.push({
             month: isCurrent ? `${mStr} (Current)` : mStr,
             rawMonth: mStr,
