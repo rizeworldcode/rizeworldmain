@@ -31,6 +31,11 @@ import {
   clearApiCache
 } from '../api';
 
+const normalizeTaskName = (name) => {
+  if (!name || typeof name !== 'string') return '';
+  return name.toLowerCase().replace(/[-_]/g, ' ').replace(/\s+/g, ' ').trim();
+};
+
 const isTodayWork = (date) => {
   if (!date) return false;
   const d = new Date(date);
@@ -78,20 +83,29 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
     if (!staff || !staff.work || !Array.isArray(staff.work)) return [];
     const todayEntries = staff.work.filter(w => w && w.date && isTodayWork(w.date));
     if (todayEntries.length === 0) return [];
-    if (todayEntries.length === 1) return todayEntries[0].tasks || [];
 
-    // Consolidate across duplicate entries for today
+    // Consolidate across duplicate entries for today and merge by normalized name
     const combinedTasks = [];
-    const seen = new Set();
+    const seenIndices = new Map();
+
     todayEntries.forEach(entry => {
       (entry.tasks || []).forEach(task => {
-        const key = (task.name || '').trim().toLowerCase();
-        if (!seen.has(key)) {
-          seen.add(key);
-          combinedTasks.push(task);
-        } else if (task.completed) {
-          const ex = combinedTasks.find(ct => (ct.name || '').trim().toLowerCase() === key);
-          if (ex) ex.completed = true;
+        const key = normalizeTaskName(task.name);
+        if (!key) return;
+        if (!seenIndices.has(key)) {
+          seenIndices.set(key, combinedTasks.length);
+          combinedTasks.push({ ...task });
+        } else {
+          const idx = seenIndices.get(key);
+          if (task.completed) {
+            combinedTasks[idx].completed = true;
+          }
+          if (task.isExtra) {
+            combinedTasks[idx].isExtra = true;
+          }
+          if (!combinedTasks[idx]._id && task._id) {
+            combinedTasks[idx]._id = task._id;
+          }
         }
       });
     });
@@ -121,7 +135,13 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
     const taskName = typeof task === 'object' ? task?.name : undefined;
     const targetIdx = typeof taskIndex === 'number' ? taskIndex : (typeof task === 'number' ? task : -1);
 
-    // Optimistically toggle in local state immediately by taskId, taskName, or index
+    // Determine target completed state
+    let targetCompleted = undefined;
+    if (typeof task === 'object' && typeof task?.completed === 'boolean') {
+      targetCompleted = !task.completed;
+    }
+
+    // Optimistically toggle in local state immediately
     setStaffList(prevList => prevList.map(staff => {
       if (staff._id !== staffId) return staff;
 
@@ -129,10 +149,11 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
         if (isTodayWork(w.date)) {
           const updatedTasks = (w.tasks || []).map((t, idx) => {
             const isMatch = (taskId && t._id && String(t._id) === String(taskId))
-              || (taskName && (t.name || '').trim().toLowerCase() === taskName.trim().toLowerCase())
+              || (taskName && normalizeTaskName(t.name) === normalizeTaskName(taskName))
               || (targetIdx !== -1 && idx === targetIdx);
             if (isMatch) {
-              return { ...t, completed: !t.completed };
+              const newStatus = targetCompleted !== undefined ? targetCompleted : !t.completed;
+              return { ...t, completed: newStatus };
             }
             return t;
           });
@@ -145,20 +166,84 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
 
     try {
       clearApiCache('/staff');
-      const result = await toggleStaffTask(staffId, { taskIndex: targetIdx, taskId, taskName });
+      const result = await toggleStaffTask(staffId, {
+        taskIndex: targetIdx,
+        taskId,
+        taskName,
+        completed: targetCompleted
+      });
+
       if (result && result.success && result.data) {
-        // Confirmed data from server - update state smoothly without full re-fetch
+        // Smart merge confirmation from server without reverting other optimistic tasks
         setStaffList(prevList => prevList.map(staff => {
           if (staff._id !== staffId) return staff;
-          return { ...staff, ...result.data };
+
+          const serverWork = (result.data.work || []).find(w => isTodayWork(w.date));
+          if (!serverWork || !Array.isArray(serverWork.tasks)) return staff;
+
+          const updatedWork = (staff.work || []).map(w => {
+            if (isTodayWork(w.date)) {
+              const mergedTasks = (w.tasks || []).map(t => {
+                const sTask = serverWork.tasks.find(st =>
+                  (t._id && st._id && String(t._id) === String(st._id)) ||
+                  normalizeTaskName(t.name) === normalizeTaskName(st.name)
+                );
+                if (sTask) {
+                  return { ...sTask, completed: t.completed || sTask.completed };
+                }
+                return t;
+              });
+              return { ...w, tasks: mergedTasks };
+            }
+            return w;
+          });
+          return { ...staff, work: updatedWork };
         }));
       } else if (!result || !result.success) {
-        console.warn('Failed to toggle task on server, restoring server state:', result?.message);
-        await fetchStaff(true);
+        console.warn('Failed to toggle task on server, reverting only this task:', result?.message);
+        // Only revert the single failed task, do NOT trigger full page fetch
+        setStaffList(prevList => prevList.map(staff => {
+          if (staff._id !== staffId) return staff;
+          const updatedWork = (staff.work || []).map(w => {
+            if (isTodayWork(w.date)) {
+              const updatedTasks = (w.tasks || []).map((t, idx) => {
+                const isMatch = (taskId && t._id && String(t._id) === String(taskId))
+                  || (taskName && normalizeTaskName(t.name) === normalizeTaskName(taskName))
+                  || (targetIdx !== -1 && idx === targetIdx);
+                if (isMatch) {
+                  return { ...t, completed: !t.completed };
+                }
+                return t;
+              });
+              return { ...w, tasks: updatedTasks };
+            }
+            return w;
+          });
+          return { ...staff, work: updatedWork };
+        }));
       }
     } catch (error) {
       console.error('Error toggling task:', error);
-      await fetchStaff(true);
+      // Only revert the single failed task, do NOT trigger full page fetch
+      setStaffList(prevList => prevList.map(staff => {
+        if (staff._id !== staffId) return staff;
+        const updatedWork = (staff.work || []).map(w => {
+          if (isTodayWork(w.date)) {
+            const updatedTasks = (w.tasks || []).map((t, idx) => {
+              const isMatch = (taskId && t._id && String(t._id) === String(taskId))
+                || (taskName && normalizeTaskName(t.name) === normalizeTaskName(taskName))
+                || (targetIdx !== -1 && idx === targetIdx);
+              if (isMatch) {
+                return { ...t, completed: !t.completed };
+              }
+              return t;
+            });
+            return { ...w, tasks: updatedTasks };
+          }
+          return w;
+        });
+        return { ...staff, work: updatedWork };
+      }));
     }
   };
 
@@ -295,9 +380,7 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
       clearApiCache('/staff');
       const result = await approveAllStaffTasks();
       if (result && result.success) {
-        alert(result.message || 'All tasks approved successfully!');
-        clearApiCache('/staff');
-        await fetchStaff(true);
+        // Keep optimistic state intact - all tasks stay approved without page re-fetch
       } else {
         alert(result?.message || 'Failed to approve all tasks');
         setStaffList(previousStaffList);

@@ -335,7 +335,7 @@ export const deleteWalletTransaction = (id: string) => {
 
 export const toggleStaffTask = (
   staffId: string, 
-  taskData: number | { taskIndex?: number; taskId?: string; taskName?: string }
+  taskData: number | { taskIndex?: number; taskId?: string; taskName?: string; completed?: boolean }
 ) => {
   clearApiCache('staff');
   const payload = typeof taskData === 'number' 

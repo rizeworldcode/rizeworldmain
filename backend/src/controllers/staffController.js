@@ -31,6 +31,12 @@ const getTodayRangeIST = (baseDate = new Date()) => {
   return { start, end, istString };
 };
 
+// Helper function to normalize task names (handles hyphens, underscores, extra spaces, and casing)
+const normalizeTaskName = (name) => {
+  if (!name || typeof name !== 'string') return '';
+  return name.toLowerCase().replace(/[-_]/g, ' ').replace(/\s+/g, ' ').trim();
+};
+
 // Staff Login
 exports.loginStaff = async (req, res) => {
   try {
@@ -1628,7 +1634,7 @@ exports.updateTodayWork = async (req, res) => {
     } else if (taskId || taskName) {
       tasks = existingTasks.filter(t => {
         if (taskId && t._id && String(t._id) === String(taskId)) return false;
-        if (taskName && (t.name || '').trim().toLowerCase() === String(taskName).trim().toLowerCase()) return false;
+        if (taskName && normalizeTaskName(t.name) === normalizeTaskName(taskName)) return false;
         return true;
       });
     } else if (typeof taskIndex === 'number' && taskIndex >= 0 && taskIndex < existingTasks.length) {
@@ -1637,7 +1643,9 @@ exports.updateTodayWork = async (req, res) => {
       const taskNames = todayWork.split(',').map(t => t.trim()).filter(t => t.length > 0);
       if (existingTasks.length > 0) {
         tasks = taskNames.map(name => {
-          const existing = existingTasks.find(t => t.name === name);
+          const norm = normalizeTaskName(name);
+          const existing = existingTasks.find(t => normalizeTaskName(t.name) === norm);
+          // Preserve existing task and its completed status so approval is NEVER wiped!
           return existing ? existing : { name, completed: false };
         });
       } else {
@@ -1713,7 +1721,43 @@ exports.updateTodayWork = async (req, res) => {
     }
 
     staff.markModified('work');
-    const updatedStaff = await staff.save();
+    let updatedStaff = null;
+    let saveRetries = 3;
+    while (saveRetries > 0) {
+      try {
+        updatedStaff = await staff.save();
+        break;
+      } catch (saveErr) {
+        if ((saveErr.name === 'VersionError' || saveErr.message?.includes('No matching document')) && saveRetries > 1) {
+          saveRetries--;
+          const freshStaff = await Staff.findById(req.params.id);
+          if (!freshStaff) throw saveErr;
+          staff = freshStaff;
+          const freshTodayIndices = [];
+          if (staff.work && staff.work.length > 0) {
+            staff.work.forEach((w, index) => {
+              if (w && w.date && isSameDayIST(w.date, now)) freshTodayIndices.push(index);
+            });
+          }
+          if (freshTodayIndices.length > 0) {
+            const freshExisting = staff.work[freshTodayIndices[0]].tasks || [];
+            tasks = tasks.map(t => {
+              const ex = freshExisting.find(fe => normalizeTaskName(fe.name) === normalizeTaskName(t.name));
+              return (ex && ex.completed) ? { ...t, completed: true } : t;
+            });
+            staff.work[freshTodayIndices[0]].tasks = tasks;
+            for (let i = freshTodayIndices.length - 1; i > 0; i--) {
+              staff.work.splice(freshTodayIndices[i], 1);
+            }
+          } else {
+            staff.work.push({ tasks, date: now });
+          }
+          staff.markModified('work');
+          continue;
+        }
+        throw saveErr;
+      }
+    }
 
     // Also sync AssignedWorkReport if one exists for today
     try {
@@ -1795,107 +1839,131 @@ exports.updateTodayWork = async (req, res) => {
 // Toggle task completion status
 exports.toggleTaskComplete = async (req, res) => {
   try {
-    const { taskIndex, taskId, taskName } = req.body;
+    const { taskIndex, taskId, taskName, completed: targetCompleted } = req.body;
     const staffId = req.params.id;
     const now = new Date();
     const { start: todayStart, end: todayEnd } = getTodayRangeIST(now);
 
-    const staff = await Staff.findById(staffId);
-    if (!staff) {
-      return res.status(404).json({ success: false, message: 'Staff not found' });
-    }
+    let staff = null;
+    let updatedStaff = null;
+    let mainIndex = 0;
+    let targetTask = null;
+    let retries = 3;
 
-    if (!staff.work) {
-      staff.work = [];
-    }
-
-    // Find all work entries matching today in IST
-    let todayWorkIndices = [];
-    staff.work.forEach((w, index) => {
-      if (w && w.date && isSameDayIST(w.date, now)) {
-        todayWorkIndices.push(index);
+    while (retries > 0) {
+      staff = await Staff.findById(staffId);
+      if (!staff) {
+        return res.status(404).json({ success: false, message: 'Staff not found' });
       }
-    });
 
-    // Fallback: if not found by IST, check if any work entry has this task (by taskId or taskName)
-    if (todayWorkIndices.length === 0) {
-      if (taskId || taskName) {
-        staff.work.forEach((w, index) => {
-          if (w && Array.isArray(w.tasks)) {
-            const hasTask = w.tasks.some(t =>
-              (taskId && t._id && String(t._id) === String(taskId)) ||
-              (taskName && (t.name || '').trim().toLowerCase() === String(taskName).trim().toLowerCase())
-            );
-            if (hasTask) todayWorkIndices.push(index);
+      if (!staff.work) {
+        staff.work = [];
+      }
+
+      // Find all work entries matching today in IST
+      let todayWorkIndices = [];
+      staff.work.forEach((w, index) => {
+        if (w && w.date && isSameDayIST(w.date, now)) {
+          todayWorkIndices.push(index);
+        }
+      });
+
+      // Fallback: if not found by IST, check if any work entry has this task (by taskId or taskName)
+      if (todayWorkIndices.length === 0) {
+        if (taskId || taskName) {
+          staff.work.forEach((w, index) => {
+            if (w && Array.isArray(w.tasks)) {
+              const hasTask = w.tasks.some(t =>
+                (taskId && t._id && String(t._id) === String(taskId)) ||
+                (taskName && normalizeTaskName(t.name) === normalizeTaskName(taskName))
+              );
+              if (hasTask) todayWorkIndices.push(index);
+            }
+          });
+        }
+        if (todayWorkIndices.length === 0 && staff.work.length > 0) {
+          const lastEntry = staff.work[staff.work.length - 1];
+          if (lastEntry && lastEntry.date && (now - new Date(lastEntry.date)) < 24 * 60 * 60 * 1000) {
+            todayWorkIndices.push(staff.work.length - 1);
           }
-        });
-      }
-      if (todayWorkIndices.length === 0 && staff.work.length > 0) {
-        const lastEntry = staff.work[staff.work.length - 1];
-        if (lastEntry && lastEntry.date && (now - new Date(lastEntry.date)) < 24 * 60 * 60 * 1000) {
-          todayWorkIndices.push(staff.work.length - 1);
         }
       }
-    }
 
-    if (todayWorkIndices.length === 0) {
-      return res.status(404).json({ success: false, message: 'No work record found for today' });
-    }
-
-    const mainIndex = todayWorkIndices[0];
-
-    // Consolidate duplicate today entries if any exist
-    if (todayWorkIndices.length > 1) {
-      const consolidatedTasks = [...(staff.work[mainIndex].tasks || [])];
-      const seenNames = new Set(consolidatedTasks.map(t => (t.name || '').trim().toLowerCase()));
-
-      for (let i = 1; i < todayWorkIndices.length; i++) {
-        const dupTasks = staff.work[todayWorkIndices[i]]?.tasks || [];
-        dupTasks.forEach(task => {
-          const norm = (task.name || '').trim().toLowerCase();
-          if (!seenNames.has(norm)) {
-            seenNames.add(norm);
-            consolidatedTasks.push(task);
-          } else if (task.completed) {
-            const ex = consolidatedTasks.find(ct => (ct.name || '').trim().toLowerCase() === norm);
-            if (ex) ex.completed = true;
-          }
-        });
+      if (todayWorkIndices.length === 0) {
+        return res.status(404).json({ success: false, message: 'No work record found for today' });
       }
-      staff.work[mainIndex].tasks = consolidatedTasks;
 
-      for (let i = todayWorkIndices.length - 1; i > 0; i--) {
-        staff.work.splice(todayWorkIndices[i], 1);
+      mainIndex = todayWorkIndices[0];
+
+      // Consolidate duplicate today entries if any exist
+      if (todayWorkIndices.length > 1) {
+        const consolidatedTasks = [...(staff.work[mainIndex].tasks || [])];
+        const seenNames = new Set(consolidatedTasks.map(t => normalizeTaskName(t.name)));
+
+        for (let i = 1; i < todayWorkIndices.length; i++) {
+          const dupTasks = staff.work[todayWorkIndices[i]]?.tasks || [];
+          dupTasks.forEach(task => {
+            const norm = normalizeTaskName(task.name);
+            if (!seenNames.has(norm)) {
+              seenNames.add(norm);
+              consolidatedTasks.push(task);
+            } else if (task.completed) {
+              const ex = consolidatedTasks.find(ct => normalizeTaskName(ct.name) === norm);
+              if (ex) ex.completed = true;
+            }
+          });
+        }
+        staff.work[mainIndex].tasks = consolidatedTasks;
+
+        for (let i = todayWorkIndices.length - 1; i > 0; i--) {
+          staff.work.splice(todayWorkIndices[i], 1);
+        }
+      }
+
+      const tasksList = staff.work[mainIndex].tasks || [];
+      targetTask = null;
+
+      // 1. Match by taskId (_id)
+      if (taskId) {
+        targetTask = tasksList.find(t => t._id && String(t._id) === String(taskId));
+      }
+
+      // 2. Match by taskName (normalized to ignore spaces vs dashes and casing)
+      if (!targetTask && taskName) {
+        const normTarget = normalizeTaskName(taskName);
+        targetTask = tasksList.find(t => normalizeTaskName(t.name) === normTarget);
+      }
+
+      // 3. Match by taskIndex
+      if (!targetTask && typeof taskIndex === 'number' && taskIndex >= 0 && taskIndex < tasksList.length) {
+        targetTask = tasksList[taskIndex];
+      }
+
+      if (!targetTask) {
+        return res.status(404).json({ success: false, message: 'Task not found' });
+      }
+
+      // Set target completed status (idempotent if targetCompleted is passed)
+      if (typeof targetCompleted === 'boolean') {
+        targetTask.completed = targetCompleted;
+      } else {
+        targetTask.completed = !targetTask.completed;
+      }
+
+      staff.markModified('work');
+
+      try {
+        updatedStaff = await staff.save();
+        break; // Save succeeded!
+      } catch (saveErr) {
+        if ((saveErr.name === 'VersionError' || saveErr.message?.includes('No matching document')) && retries > 1) {
+          retries--;
+          await new Promise(r => setTimeout(r, 60 * (4 - retries)));
+          continue;
+        }
+        throw saveErr;
       }
     }
-
-    const tasksList = staff.work[mainIndex].tasks || [];
-    let targetTask = null;
-
-    // 1. Match by taskId (_id)
-    if (taskId) {
-      targetTask = tasksList.find(t => t._id && String(t._id) === String(taskId));
-    }
-
-    // 2. Match by taskName
-    if (!targetTask && taskName) {
-      const cleanName = String(taskName).trim().toLowerCase();
-      targetTask = tasksList.find(t => (t.name || '').trim().toLowerCase() === cleanName);
-    }
-
-    // 3. Match by taskIndex
-    if (!targetTask && typeof taskIndex === 'number' && taskIndex >= 0 && taskIndex < tasksList.length) {
-      targetTask = tasksList[taskIndex];
-    }
-
-    if (!targetTask) {
-      return res.status(404).json({ success: false, message: 'Task not found' });
-    }
-
-    // Toggle the task's completed status
-    targetTask.completed = !targetTask.completed;
-    staff.markModified('work');
-    const updatedStaff = await staff.save();
 
     const todayWork = updatedStaff.work?.find(w => w.date && isSameDayIST(w.date, now));
 
@@ -2022,13 +2090,13 @@ exports.approveAllTasks = async (req, res) => {
       if (todayIndices.length > 1) {
         const mainIdx = todayIndices[0];
         const consolidatedTasks = [...(staff.work[mainIdx].tasks || [])];
-        const seenNames = new Set(consolidatedTasks.map(t => (t.name || '').trim().toLowerCase()));
+        const seenNames = new Set(consolidatedTasks.map(t => normalizeTaskName(t.name)));
 
         for (let i = 1; i < todayIndices.length; i++) {
           const duplicateIdx = todayIndices[i];
           const dupTasks = staff.work[duplicateIdx]?.tasks || [];
           dupTasks.forEach(task => {
-            const normalizedName = (task.name || '').trim().toLowerCase();
+            const normalizedName = normalizeTaskName(task.name);
             if (!seenNames.has(normalizedName)) {
               seenNames.add(normalizedName);
               consolidatedTasks.push(task);
@@ -2045,7 +2113,34 @@ exports.approveAllTasks = async (req, res) => {
 
       if (staffTasksChanged > 0 || todayIndices.length > 1) {
         staff.markModified('work');
-        const updatedStaff = await staff.save();
+        let updatedStaff = null;
+        let saveRetries = 3;
+        while (saveRetries > 0) {
+          try {
+            updatedStaff = await staff.save();
+            break;
+          } catch (err) {
+            if ((err.name === 'VersionError' || err.message?.includes('No matching document')) && saveRetries > 1) {
+              saveRetries--;
+              const fresh = await Staff.findById(staff._id);
+              if (!fresh) break;
+              staff = fresh;
+              const freshTodayIndices = [];
+              (staff.work || []).forEach((w, idx) => {
+                if (w && w.date && isSameDayIST(w.date, now)) freshTodayIndices.push(idx);
+              });
+              freshTodayIndices.forEach(idx => {
+                (staff.work[idx].tasks || []).forEach(t => { t.completed = true; });
+              });
+              staff.markModified('work');
+              continue;
+            }
+            console.error('Error saving staff in approveAllTasks:', err);
+            break;
+          }
+        }
+        if (!updatedStaff) continue;
+
         totalUpdatedStaff++;
         totalApprovedTasks += staffTasksChanged;
 
@@ -2127,74 +2222,89 @@ exports.approveAllTasks = async (req, res) => {
 exports.approveStaffTasks = async (req, res) => {
   try {
     const staffId = req.params.id;
-    const staff = await Staff.findById(staffId);
-    if (!staff) {
-      return res.status(404).json({ success: false, message: 'Staff not found' });
-    }
+    let staff = null;
+    let updatedStaff = null;
+    let approvedCount = 0;
+    let retries = 3;
 
-    const now = new Date();
-    const { start: todayStart, end: todayEnd } = getTodayRangeIST(now);
+    while (retries > 0) {
+      staff = await Staff.findById(staffId);
+      if (!staff) {
+        return res.status(404).json({ success: false, message: 'Staff not found' });
+      }
 
-    const todayIndices = [];
-    if (staff.work && staff.work.length > 0) {
-      staff.work.forEach((w, idx) => {
-        if (w && w.date && isSameDayIST(w.date, now)) {
-          todayIndices.push(idx);
+      const todayIndices = [];
+      if (staff.work && staff.work.length > 0) {
+        staff.work.forEach((w, idx) => {
+          if (w && w.date && isSameDayIST(w.date, now)) {
+            todayIndices.push(idx);
+          }
+        });
+      }
+
+      if (todayIndices.length === 0 && staff.work && staff.work.length > 0) {
+        const lastEntry = staff.work[staff.work.length - 1];
+        if (lastEntry && lastEntry.date && (now - new Date(lastEntry.date)) < 24 * 60 * 60 * 1000) {
+          todayIndices.push(staff.work.length - 1);
+        }
+      }
+
+      if (todayIndices.length === 0) {
+        return res.status(404).json({ success: false, message: 'No tasks found for today' });
+      }
+
+      approvedCount = 0;
+      todayIndices.forEach(idx => {
+        const w = staff.work[idx];
+        if (Array.isArray(w.tasks)) {
+          w.tasks.forEach(task => {
+            if (!task.completed) {
+              task.completed = true;
+              approvedCount++;
+            }
+          });
         }
       });
-    }
 
-    if (todayIndices.length === 0 && staff.work && staff.work.length > 0) {
-      const lastEntry = staff.work[staff.work.length - 1];
-      if (lastEntry && lastEntry.date && (now - new Date(lastEntry.date)) < 24 * 60 * 60 * 1000) {
-        todayIndices.push(staff.work.length - 1);
-      }
-    }
+      // Consolidate duplicate today entries if any
+      if (todayIndices.length > 1) {
+        const mainIdx = todayIndices[0];
+        const consolidatedTasks = [...(staff.work[mainIdx].tasks || [])];
+        const seenNames = new Set(consolidatedTasks.map(t => normalizeTaskName(t.name)));
 
-    if (todayIndices.length === 0) {
-      return res.status(404).json({ success: false, message: 'No tasks found for today' });
-    }
+        for (let i = 1; i < todayIndices.length; i++) {
+          const duplicateIdx = todayIndices[i];
+          const dupTasks = staff.work[duplicateIdx]?.tasks || [];
+          dupTasks.forEach(task => {
+            const normalizedName = normalizeTaskName(task.name);
+            if (!seenNames.has(normalizedName)) {
+              seenNames.add(normalizedName);
+              consolidatedTasks.push(task);
+            }
+          });
+        }
 
-    let approvedCount = 0;
-    todayIndices.forEach(idx => {
-      const w = staff.work[idx];
-      if (Array.isArray(w.tasks)) {
-        w.tasks.forEach(task => {
-          if (!task.completed) {
-            task.completed = true;
-            approvedCount++;
-          }
-        });
-      }
-    });
+        staff.work[mainIdx].tasks = consolidatedTasks;
 
-    // Consolidate duplicate today entries if any
-    if (todayIndices.length > 1) {
-      const mainIdx = todayIndices[0];
-      const consolidatedTasks = [...(staff.work[mainIdx].tasks || [])];
-      const seenNames = new Set(consolidatedTasks.map(t => (t.name || '').trim().toLowerCase()));
-
-      for (let i = 1; i < todayIndices.length; i++) {
-        const duplicateIdx = todayIndices[i];
-        const dupTasks = staff.work[duplicateIdx]?.tasks || [];
-        dupTasks.forEach(task => {
-          const normalizedName = (task.name || '').trim().toLowerCase();
-          if (!seenNames.has(normalizedName)) {
-            seenNames.add(normalizedName);
-            consolidatedTasks.push(task);
-          }
-        });
+        for (let i = todayIndices.length - 1; i > 0; i--) {
+          staff.work.splice(todayIndices[i], 1);
+        }
       }
 
-      staff.work[mainIdx].tasks = consolidatedTasks;
+      staff.markModified('work');
 
-      for (let i = todayIndices.length - 1; i > 0; i--) {
-        staff.work.splice(todayIndices[i], 1);
+      try {
+        updatedStaff = await staff.save();
+        break;
+      } catch (saveErr) {
+        if ((saveErr.name === 'VersionError' || saveErr.message?.includes('No matching document')) && retries > 1) {
+          retries--;
+          await new Promise(r => setTimeout(r, 60 * (4 - retries)));
+          continue;
+        }
+        throw saveErr;
       }
     }
-
-    staff.markModified('work');
-    const updatedStaff = await staff.save();
 
     const mainWork = updatedStaff.work.find(w => w.date && isSameDayIST(w.date, now));
 
@@ -2327,7 +2437,35 @@ exports.addExtraTask = async (req, res) => {
     }
 
     staff.markModified('work');
-    const updatedStaff = await staff.save();
+    let updatedStaff = null;
+    let saveRetries = 3;
+    while (saveRetries > 0) {
+      try {
+        updatedStaff = await staff.save();
+        break;
+      } catch (saveErr) {
+        if ((saveErr.name === 'VersionError' || saveErr.message?.includes('No matching document')) && saveRetries > 1) {
+          saveRetries--;
+          const freshStaff = await Staff.findById(staffId);
+          if (!freshStaff) throw saveErr;
+          staff = freshStaff;
+          const freshIndices = [];
+          (staff.work || []).forEach((w, index) => {
+            if (w && w.date && isSameDayIST(w.date, now)) freshIndices.push(index);
+          });
+          if (freshIndices.length > 0) {
+            if (!staff.work[freshIndices[0]].tasks) staff.work[freshIndices[0]].tasks = [];
+            staff.work[freshIndices[0]].tasks.push({ name: taskName, completed: false, isExtra: true });
+          } else {
+            if (!staff.work) staff.work = [];
+            staff.work.push({ tasks: [{ name: taskName, completed: false, isExtra: true }], date: now });
+          }
+          staff.markModified('work');
+          continue;
+        }
+        throw saveErr;
+      }
+    }
 
     // Emit socket event
     const staffObj = updatedStaff.toObject();
