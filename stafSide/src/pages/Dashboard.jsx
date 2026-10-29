@@ -1552,7 +1552,19 @@ const Dashboard = ({ onNavigateToProgress }) => {
       });
       const result = await response.json();
       if (result.success && Array.isArray(result.data)) {
-        setNotifications(result.data);
+        // Guarantee deduplication by leadId so multiple notifications for the same lead never appear
+        const seenLeads = new Set();
+        const unique = [];
+        result.data.forEach(notif => {
+          const lId = notif.leadId?._id || notif.leadId;
+          if (lId) {
+            const lIdStr = lId.toString();
+            if (seenLeads.has(lIdStr)) return;
+            seenLeads.add(lIdStr);
+          }
+          unique.push(notif);
+        });
+        setNotifications(unique);
       }
     } catch (err) {
       console.error('Failed to fetch notifications:', err);
@@ -1774,8 +1786,17 @@ const Dashboard = ({ onNavigateToProgress }) => {
       }
 
       setNotifications(prev => {
-        if (prev.some(n => n._id === newNotification._id)) return prev;
-        return [newNotification, ...prev];
+        const leadId = newNotification.leadId?._id || newNotification.leadId;
+        // Filter out any notification with the same _id OR same leadId so only the latest notification remains
+        const filtered = prev.filter(n => {
+          if (n._id === newNotification._id) return false;
+          if (leadId) {
+            const nLeadId = n.leadId?._id || n.leadId;
+            if (nLeadId && nLeadId.toString() === leadId.toString()) return false;
+          }
+          return true;
+        });
+        return [newNotification, ...filtered];
       });
 
       // Show the popup and switch to appropriate tab for targeted notifications

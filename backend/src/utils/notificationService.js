@@ -78,7 +78,7 @@ const sendEmailNotification = async (toEmails, subject, textContent) => {
 };
 
 const cache = require('./cache');
-const moment = require('moment');
+const moment = require('moment-timezone');
 
 async function createNotification(title, message, type = 'Payment Reminder', priority = 'Medium', recipientRoles = ['Client Support'], clientId = null, oldClientId = null, recipientStaff = [], leadId = null, dueDate = null) {
   try {
@@ -185,21 +185,23 @@ async function notifyLeadAssignedStaff(lead) {
       ? lead.companyName.trim() 
       : (lead.name ? lead.name.trim() : 'Brand');
 
-    // Date and time format
-    const formattedDateTime = moment(lead.nextFollowUpDate).format('DD MMM YYYY, hh:mm A');
+    // Date and time format in IST
+    const formattedDateTime = moment(lead.nextFollowUpDate).tz('Asia/Kolkata').format('DD MMM YYYY, hh:mm A');
 
     const title = `Brand: ${brandName}`;
     const message = `Date & Time: ${formattedDateTime}`;
 
-    // Check if an existing notification exists for this lead
+    // Look for ANY existing notification for this lead
     let existingNotification = await Notification.findOne({
-      leadId: lead._id,
-      type: 'CRM Follow-up'
+      leadId: lead._id
     }).sort({ createdAt: -1 });
+
+    let savedNotification;
 
     if (existingNotification) {
       existingNotification.title = title;
       existingNotification.message = message;
+      existingNotification.type = 'CRM Follow-up';
       existingNotification.dueDate = lead.nextFollowUpDate;
       existingNotification.recipientStaff = [staffId];
       existingNotification.isActive = true;
@@ -207,21 +209,41 @@ async function notifyLeadAssignedStaff(lead) {
       existingNotification.readBy = [];
       existingNotification.dismissedBy = [];
 
-      const savedNotification = await existingNotification.save();
+      savedNotification = await existingNotification.save();
 
-      // Deactivate any duplicate notifications for this lead if any exist
-      await Notification.updateMany(
-        {
+      // Permanently remove all duplicate notifications for this lead to guarantee single notification
+      await Notification.deleteMany({
+        leadId: lead._id,
+        _id: { $ne: savedNotification._id }
+      });
+    } else {
+      const res = await createNotification(
+        title,
+        message,
+        'CRM Follow-up',
+        'Medium',
+        [], // No role broadcast, strictly to the assigned staff member
+        null,
+        null,
+        [staffId],
+        lead._id,
+        lead.nextFollowUpDate
+      );
+      savedNotification = res.notification;
+
+      if (savedNotification) {
+        await Notification.deleteMany({
           leadId: lead._id,
           _id: { $ne: savedNotification._id }
-        },
-        { isActive: false }
-      );
+        });
+      }
+    }
 
-      // Flush notification caches
-      cache.flushByPrefix('notifications:');
+    // Flush notification caches
+    cache.flushByPrefix('notifications:');
 
-      // Emit targeted socket events ONLY to designated staff member
+    // Emit targeted socket events ONLY to designated staff member
+    if (savedNotification) {
       try {
         const io = getIO();
         if (io) {
@@ -230,23 +252,10 @@ async function notifyLeadAssignedStaff(lead) {
       } catch (socketError) {
         console.error('Socket emission failed in notifyLeadAssignedStaff:', socketError);
       }
-
-      console.log('Updated existing CRM notification for lead:', lead._id, 'time:', formattedDateTime);
-      return { success: true, notification: savedNotification };
     }
 
-    return await createNotification(
-      title,
-      message,
-      'CRM Follow-up',
-      'Medium',
-      [], // No role broadcast, strictly to the assigned staff member
-      null,
-      null,
-      [staffId],
-      lead._id,
-      lead.nextFollowUpDate
-    );
+    console.log('Updated single CRM notification for lead:', lead._id, 'time:', formattedDateTime);
+    return { success: true, notification: savedNotification };
   } catch (error) {
     console.error('Error in notifyLeadAssignedStaff:', error);
     return { success: false, error: error.message };

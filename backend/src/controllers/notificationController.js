@@ -4,6 +4,7 @@ const Client = require('../models/Client');
 const OldClient = require('../models/OldClient');
 const CompanyLead = require('../models/CompanyLead');
 const cache = require('../utils/cache');
+const moment = require('moment-timezone');
 
 // Get notifications for a staff member based on their role
 exports.getNotificationsForStaff = async (req, res) => {
@@ -31,24 +32,85 @@ exports.getNotificationsForStaff = async (req, res) => {
         'dismissedBy.staffId': { $ne: staffId },
         $or: orConditions
       })
-        .sort({ createdAt: -1 })
+        .sort({ updatedAt: -1, createdAt: -1 })
         .populate('clientId', 'name phone pendingAmount deadline')
         .populate('oldClientId', 'name phone totalAmount paidAmount deadline')
-        .populate('leadId', 'name companyName unicId nextFollowUpDate')
+        .populate('leadId', 'name companyName unicId nextFollowUpDate leadStatus assignedStaffId')
         .lean();
 
-      // Check which notifications have been read by this staff member
-      return notifications.map(notification => {
-        const isRead = (notification.readBy || []).some(read => 
-          read.staffId && read.staffId.toString() === staffId.toString()
-        );
-        const dueDate = notification.dueDate || notification.leadId?.nextFollowUpDate || notification.clientId?.deadline || notification.createdAt;
-        return {
-          ...notification,
-          dueDate,
-          isRead
-        };
-      });
+      const seenLeadIds = new Set();
+      const duplicateNotifIdsToDelete = [];
+      const deduplicatedNotifications = [];
+
+      for (const notification of notifications) {
+        if (notification.leadId) {
+          const leadObj = notification.leadId;
+          const leadIdStr = (leadObj._id || leadObj).toString();
+
+          // 1. If lead is Converted or Lost, or reassigned to another staff member, do not show
+          if (leadObj && typeof leadObj === 'object') {
+            if (leadObj.leadStatus === 'Converted' || leadObj.leadStatus === 'Lost') {
+              duplicateNotifIdsToDelete.push(notification._id);
+              continue;
+            }
+            if (leadObj.assignedStaffId) {
+              const assignedId = (leadObj.assignedStaffId._id || leadObj.assignedStaffId).toString();
+              if (assignedId !== staffId.toString()) {
+                duplicateNotifIdsToDelete.push(notification._id);
+                continue;
+              }
+            }
+          }
+
+          // 2. Ensure only ONE notification per lead exists (the latest one)
+          if (seenLeadIds.has(leadIdStr)) {
+            duplicateNotifIdsToDelete.push(notification._id);
+            continue;
+          }
+          seenLeadIds.add(leadIdStr);
+
+          // 3. Format title & message to strictly match the latest brand name and follow-up date/time
+          const brandName = (leadObj?.companyName && leadObj.companyName.trim()) 
+            ? leadObj.companyName.trim() 
+            : (leadObj?.name ? leadObj.name.trim() : 'Brand');
+
+          const latestDueDate = leadObj?.nextFollowUpDate || notification.dueDate;
+          const formattedDateTime = latestDueDate 
+            ? moment(latestDueDate).tz('Asia/Kolkata').format('DD MMM YYYY, hh:mm A')
+            : null;
+
+          const isRead = (notification.readBy || []).some(read => 
+            read.staffId && read.staffId.toString() === staffId.toString()
+          );
+
+          deduplicatedNotifications.push({
+            ...notification,
+            title: `Brand: ${brandName}`,
+            message: formattedDateTime ? `Date & Time: ${formattedDateTime}` : notification.message,
+            dueDate: latestDueDate || notification.createdAt,
+            isRead
+          });
+        } else {
+          // Client payment reminder or system alert
+          const isRead = (notification.readBy || []).some(read => 
+            read.staffId && read.staffId.toString() === staffId.toString()
+          );
+          const dueDate = notification.dueDate || notification.clientId?.deadline || notification.oldClientId?.deadline || notification.createdAt;
+          deduplicatedNotifications.push({
+            ...notification,
+            dueDate,
+            isRead
+          });
+        }
+      }
+
+      // Clean up duplicate / obsolete notifications in the background
+      if (duplicateNotifIdsToDelete.length > 0) {
+        Notification.deleteMany({ _id: { $in: duplicateNotifIdsToDelete } })
+          .catch(err => console.error('Error deleting duplicate notifications:', err));
+      }
+
+      return deduplicatedNotifications;
     }, 30);
 
     if (responseData === null) {

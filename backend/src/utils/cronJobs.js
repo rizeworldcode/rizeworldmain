@@ -121,11 +121,12 @@ async function checkAndSendLeadFollowUpNotifications() {
     }).lean();
 
     for (const lead of leads) {
-      // Check if notification already sent today for this lead to this staff
+      // Check if notification already exists and is active for this lead with the current follow up date
       const alreadyNotified = await Notification.findOne({
         leadId: lead._id,
         recipientStaff: lead.assignedStaffId,
-        createdAt: { $gte: startOfToday }
+        isActive: true,
+        dueDate: lead.nextFollowUpDate
       });
 
       if (alreadyNotified) {

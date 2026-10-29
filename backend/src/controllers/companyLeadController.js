@@ -382,10 +382,10 @@ exports.updateLead = async (req, res) => {
       try {
         const Notification = require('../models/Notification');
         const cache = require('../utils/cache');
-        await Notification.updateMany({ leadId: existingLead._id }, { isActive: false });
+        await Notification.deleteMany({ leadId: existingLead._id });
         cache.flushByPrefix('notifications:');
       } catch (notifErr) {
-        console.error('Error deactivating notifications for converted/lost lead:', notifErr);
+        console.error('Error removing notifications for converted/lost lead:', notifErr);
       }
     }
 
@@ -417,10 +417,10 @@ exports.deleteLead = async (req, res) => {
     try {
       const Notification = require('../models/Notification');
       const cache = require('../utils/cache');
-      await Notification.updateMany({ leadId: id }, { isActive: false });
+      await Notification.deleteMany({ leadId: id });
       cache.flushByPrefix('notifications:');
     } catch (notifErr) {
-      console.error('Error deactivating notifications for deleted lead:', notifErr);
+      console.error('Error removing notifications for deleted lead:', notifErr);
     }
 
     return res.status(200).json({

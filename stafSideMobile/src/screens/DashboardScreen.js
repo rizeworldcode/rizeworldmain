@@ -342,7 +342,19 @@ const DashboardScreen = ({ staffInfo: initialStaffInfo, token, onLogout, onNavig
       });
       const result = await response.json();
       if (result.success) {
-        setNotifications(result.data || []);
+        // Guarantee deduplication by leadId so multiple notifications for the same lead never appear
+        const seenLeads = new Set();
+        const unique = [];
+        (result.data || []).forEach(notif => {
+          const lId = notif.leadId?._id || notif.leadId;
+          if (lId) {
+            const lIdStr = lId.toString();
+            if (seenLeads.has(lIdStr)) return;
+            seenLeads.add(lIdStr);
+          }
+          unique.push(notif);
+        });
+        setNotifications(unique);
       }
     } catch (err) {
       console.error('[Notification Debug] Failed to fetch:', err);
