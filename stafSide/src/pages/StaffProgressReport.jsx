@@ -36,6 +36,43 @@ const STANDARD_HOURS_PER_DAY = 8.5;
 const EXPECTED_MONTHLY_HOURS = STANDARD_HOURS_PER_DAY * 30; // 255 hours
 const CALCULATION_START_DATE = new Date(2026, 6, 1); // July 1, 2026
 
+/**
+ * Returns current 30-day sequence cycle details.
+ * Each cycle is strictly 30 days starting July 1, 2026:
+ * Cycle 0: July 2026 (Jul 1 - Jul 30)
+ * Cycle 1: August 2026 (Jul 31 - Aug 29)
+ * Cycle 2: September 2026 (Aug 30 - Sep 28)
+ * Cycle 3: October 2026 (Sep 29 - Oct 28)
+ * Cycle 4: November 2026 (Oct 29 - Nov 27)
+ */
+const getCurrentSalaryCycle = (dateInput = new Date()) => {
+  const d = new Date(dateInput);
+  d.setHours(0, 0, 0, 0);
+  const start = new Date(CALCULATION_START_DATE);
+  start.setHours(0, 0, 0, 0);
+  const diffDays = Math.round((d.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+  if (diffDays < 0) {
+    return {
+      monthOffset: 0,
+      year: d.getFullYear(),
+      monthIndex: d.getMonth(),
+      monthStr: d.toLocaleString('default', { month: 'long', year: 'numeric' })
+    };
+  }
+  const monthOffset = Math.floor(diffDays / 30);
+  const targetDate = new Date(2026, 6 + monthOffset, 1);
+  return {
+    monthOffset,
+    year: targetDate.getFullYear(),
+    monthIndex: targetDate.getMonth(),
+    monthStr: targetDate.toLocaleString('default', { month: 'long', year: 'numeric' })
+  };
+};
+
+const getCurrentSalaryCycleMonth = (dateInput = new Date()) => {
+  return getCurrentSalaryCycle(dateInput).monthStr;
+};
+
 const parseTotalHours = (totalHoursStr) => {
   if (!totalHoursStr || totalHoursStr === '-') return 0;
   let hours = 0;
@@ -115,8 +152,8 @@ const calculatePayoutForMonth = (staffInfo, year, monthIndex, paidHistory = null
   const baseSalary = paidHistory ? paidHistory.baseSalary : (staffInfo.monthlySalary || 0);
   const hourlyRate = baseSalary / EXPECTED_MONTHLY_HOURS;
 
-  const today = new Date();
-  const isCurrentMonth = today.getMonth() === monthIndex && today.getFullYear() === year;
+  const currentCycle = getCurrentSalaryCycle();
+  const isCurrentMonth = currentCycle.year === year && currentCycle.monthIndex === monthIndex;
 
   const createdAt = staffInfo.createdAt || staffInfo.joiningDate;
   const sequenceDates = get30DaySequenceDates(year, monthIndex, createdAt);
@@ -448,23 +485,21 @@ const StaffProgressReport = ({ onBack }) => {
     fetchStaffData();
   }, []);
 
-  // Generate Month Options from July 2026 / joining date to current month
+  // Generate Month Options from July 2026 to current 30-day cycle month
   const monthOptions = useMemo(() => {
     const options = [];
-    const now = new Date();
-    const start = CALCULATION_START_DATE;
-    let cursor = new Date(start.getFullYear(), start.getMonth(), 1);
-    const end = new Date(now.getFullYear(), now.getMonth(), 1);
+    const currentCycle = getCurrentSalaryCycle();
+    const endOffset = currentCycle.monthOffset;
 
-    while (cursor <= end) {
-      const monthStr = cursor.toLocaleDateString('default', { month: 'long', year: 'numeric' });
-      const isCurrent = cursor.getFullYear() === now.getFullYear() && cursor.getMonth() === now.getMonth();
+    for (let offset = 0; offset <= endOffset; offset++) {
+      const targetDate = new Date(2026, 6 + offset, 1);
+      const monthStr = targetDate.toLocaleDateString('default', { month: 'long', year: 'numeric' });
+      const isCurrent = offset === endOffset;
       options.unshift({
         value: monthStr,
         label: isCurrent ? `${monthStr} (Current)` : monthStr,
         isCurrent
       });
-      cursor.setMonth(cursor.getMonth() + 1);
     }
     return options;
   }, []);
