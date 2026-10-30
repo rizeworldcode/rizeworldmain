@@ -876,6 +876,7 @@ export default function NotFound() {
       <SEO 
         title="404 Page Not Found | RizeWorld" 
         description="Sorry, the page you are looking for doesn't exist, may have been moved, or the URL is incorrect." 
+        canonicalUrl="https://rizeworld.in/404"
         noIndex={true}
       />
       

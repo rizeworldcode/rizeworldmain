@@ -351,11 +351,13 @@ async function runPrerender() {
         }
 
         if (metadata.canonical) {
-          const canonicalRegex = /<link rel="canonical".*?>/;
+          const canonicalRegex = /<link\s+rel=["']canonical["'].*?>/i;
           if (canonicalRegex.test(html)) {
             html = html.replace(canonicalRegex, `<link rel="canonical" href="${metadata.canonical}" />`);
-          } else {
+          } else if (html.includes('</head>')) {
             html = html.replace('</head>', `  <link rel="canonical" href="${metadata.canonical}" />\n</head>`);
+          } else if (html.includes('<body')) {
+            html = html.replace('<body', `  <link rel="canonical" href="${metadata.canonical}" />\n</head>\n<body`);
           }
         }
 
