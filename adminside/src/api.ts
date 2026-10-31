@@ -360,9 +360,10 @@ export const deleteStaffTask = (
   taskData: number | { taskIndex?: number; taskId?: string; taskName?: string }
 ) => {
   clearApiCache('staff');
+  const adminRole = typeof window !== 'undefined' ? (localStorage.getItem('adminRole') || 'admin') : 'admin';
   const payload = typeof taskData === 'number'
-    ? { taskIndex: taskData, action: 'delete' }
-    : { ...taskData, action: 'delete' };
+    ? { taskIndex: taskData, action: 'delete', isAdmin: true, role: 'admin', managerRole: adminRole, adminPanelAccess: true }
+    : { ...taskData, action: 'delete', isAdmin: true, role: 'admin', managerRole: adminRole, adminPanelAccess: true };
   return apiRequest(`/staff/${staffId}/today-work`, {
     method: 'PATCH',
     body: JSON.stringify(payload),

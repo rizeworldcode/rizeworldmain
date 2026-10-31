@@ -319,7 +319,16 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
 
     try {
       clearApiCache('/staff');
-      const result = await deleteStaffTask(staffId, { taskIndex: targetIdx, taskId, taskName });
+      const adminRole = localStorage.getItem('adminRole') || 'admin';
+      const result = await deleteStaffTask(staffId, { 
+        taskIndex: targetIdx, 
+        taskId, 
+        taskName, 
+        isAdmin: true, 
+        role: 'admin', 
+        managerRole: adminRole, 
+        adminPanelAccess: true 
+      });
       if (!result.success) {
         alert(result.message || 'Failed to delete task');
         await fetchStaff(true);

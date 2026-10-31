@@ -4,6 +4,7 @@ const StudentAdmission = require('../models/StudentAdmission');
 const Sale = require('../models/Sale');
 const AssignedWorkReport = require('../models/AssignedWorkReport');
 const Transaction = require('../models/Transaction');
+const Admin = require('../models/adminModel');
 const cache = require('../utils/cache');
 const fs = require('fs');
 const cloudinary = require('../config/cloudinary');
@@ -1663,9 +1664,46 @@ exports.updateTodayWork = async (req, res) => {
 
       let isAllowed = allowedEmployeeIds.includes(reqEmployeeId);
 
-      // Check admin
-      if (!isAllowed && (reqRole === 'admin' || req.user?.isAdmin)) {
+      // Check admin / superadmin / subadmin / adminPanelAccess
+      if (!isAllowed && (
+        reqRole === 'admin' ||
+        reqRole === 'superadmin' ||
+        reqRole === 'subadmin' ||
+        req.user?.isAdmin ||
+        req.body?.isAdmin === true ||
+        req.body?.isAdmin === 'true' ||
+        req.body?.adminPanelAccess === true
+      )) {
         isAllowed = true;
+      }
+
+      // Check token in Authorization header or cookies to verify if requester is Admin / Admin panel user
+      if (!isAllowed) {
+        let token = null;
+        if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+          token = req.headers.authorization.split(' ')[1];
+        } else if (req.cookies && (req.cookies.token || req.cookies.jwt)) {
+          token = req.cookies.token || req.cookies.jwt;
+        }
+
+        if (token) {
+          try {
+            const decoded = jwt.verify(token, process.env.SECRET_KEY || 'default_secret');
+            if (decoded) {
+              const dRole = (decoded.role || '').toLowerCase();
+              if (dRole === 'admin' || dRole === 'superadmin' || dRole === 'subadmin' || decoded.isAdmin) {
+                isAllowed = true;
+              } else if (decoded.id) {
+                const adminUser = await Admin.findById(decoded.id).select('_id role isActive').lean();
+                if (adminUser && adminUser.isActive !== false) {
+                  isAllowed = true;
+                }
+              }
+            }
+          } catch (tErr) {
+            // Token verification failed or not an admin JWT
+          }
+        }
       }
 
       // Check if requester has a TL (Team Leader) role
