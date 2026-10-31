@@ -44,19 +44,21 @@ const WalletView = ({ onLock }) => {
 
   const now = new Date();
   const currentMonthName = now.toLocaleString('default', { month: 'long', year: 'numeric' });
-  const [selectedExpenseMonth, setSelectedExpenseMonth] = useState(currentMonthName);
-  const [selectedIncomeMonth, setSelectedIncomeMonth] = useState(currentMonthName);
-  const [selectedMonthFilter, setSelectedMonthFilter] = useState('all');
+  const monthFromUrl = searchParams.get('month');
+  const [selectedMonthFilter, setSelectedMonthFilter] = useState(monthFromUrl || currentMonthName);
+  const [selectedExpenseMonth, setSelectedExpenseMonth] = useState(monthFromUrl && monthFromUrl !== 'all' ? monthFromUrl : currentMonthName);
+  const [selectedIncomeMonth, setSelectedIncomeMonth] = useState(monthFromUrl && monthFromUrl !== 'all' ? monthFromUrl : currentMonthName);
 
-  const handleIncomeMonthChange = (month) => {
-    setSelectedIncomeMonth(month);
+  const handleMonthChange = (month) => {
     setSelectedMonthFilter(month);
+    if (month !== 'all') {
+      setSelectedIncomeMonth(month);
+      setSelectedExpenseMonth(month);
+    }
   };
 
-  const handleExpenseMonthChange = (month) => {
-    setSelectedExpenseMonth(month);
-    setSelectedMonthFilter(month);
-  };
+  const handleIncomeMonthChange = handleMonthChange;
+  const handleExpenseMonthChange = handleMonthChange;
 
   useEffect(() => {
     const filterFromUrl = searchParams.get('filter');
@@ -158,7 +160,8 @@ const WalletView = ({ onLock }) => {
           type: 'New Client',
           totalAmount: c.totalPrice || 0,
           paidAmount: c.paidAmount || 0,
-          pendingAmount: pending
+          pendingAmount: pending,
+          date: c.startDate || c.createdAt
         });
       }
       (c.history || []).forEach((h, idx) => {
@@ -174,7 +177,8 @@ const WalletView = ({ onLock }) => {
             type: 'Past Cycle',
             totalAmount: hTotal,
             paidAmount: hPaid,
-            pendingAmount: hPending
+            pendingAmount: hPending,
+            date: h.startDate || h.completedAt || c.startDate || c.createdAt
           });
         }
       });
@@ -192,7 +196,8 @@ const WalletView = ({ onLock }) => {
           type: 'Old Client',
           totalAmount: total,
           paidAmount: paid,
-          pendingAmount: pending
+          pendingAmount: pending,
+          date: c.startDate || c.createdAt
         });
       }
       (c.history || []).forEach((h, idx) => {
@@ -208,13 +213,42 @@ const WalletView = ({ onLock }) => {
             type: 'Past Cycle',
             totalAmount: hTotal,
             paidAmount: hPaid,
-            pendingAmount: hPending
+            pendingAmount: hPending,
+            date: h.startDate || h.completedAt || c.startDate || c.createdAt
           });
         }
       });
     });
     return list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   }, [allClientsList, allOldClientsList]);
+
+  const getClientItemMonth = (item) => {
+    const rawDate = item.date || item.startDate || item.createdAt;
+    if (rawDate) {
+      const d = new Date(rawDate);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleString('default', { month: 'long', year: 'numeric' });
+      }
+    }
+    return '';
+  };
+
+  const filteredPendingClientsList = useMemo(() => {
+    if (!selectedMonthFilter || selectedMonthFilter === 'all') {
+      return pendingClientsList;
+    }
+    return pendingClientsList.filter(c => {
+      const m = getClientItemMonth(c);
+      return m && m.toLowerCase() === selectedMonthFilter.toLowerCase();
+    });
+  }, [pendingClientsList, selectedMonthFilter]);
+
+  const monthlyPendingDues = useMemo(() => {
+    if (!selectedMonthFilter || selectedMonthFilter === 'all') {
+      return pendingDues;
+    }
+    return filteredPendingClientsList.reduce((sum, c) => sum + (c.pendingAmount || 0), 0);
+  }, [filteredPendingClientsList, selectedMonthFilter, pendingDues]);
 
   const filteredTransactions = useMemo(() => {
     let list = transactions || [];
@@ -268,15 +302,18 @@ const WalletView = ({ onLock }) => {
     });
   }, [transactions, currentMonthName]);
 
+  const activeIncomeMonth = selectedMonthFilter !== 'all' ? selectedMonthFilter : selectedIncomeMonth;
+  const activeExpenseMonth = selectedMonthFilter !== 'all' ? selectedMonthFilter : selectedExpenseMonth;
+
   const monthlyIncome = useMemo(() => {
     return (transactions || [])
       .filter(t => {
         if (t.type !== 'client_payment' && t.type !== 'income' && t.source !== 'client_payment') return false;
-        const m = getTransactionProjectMonth(t);
-        return m === selectedIncomeMonth;
+        const m = getTransactionMonth(t);
+        return m && m.toLowerCase() === activeIncomeMonth.toLowerCase();
       })
       .reduce((sum, t) => sum + (t.amount || 0), 0);
-  }, [transactions, selectedIncomeMonth]);
+  }, [transactions, activeIncomeMonth]);
 
   const totalOnlineIncome = useMemo(() => {
     return (transactions || [])
@@ -289,11 +326,11 @@ const WalletView = ({ onLock }) => {
       .filter(t => {
         if (t.type !== 'client_payment' && t.type !== 'income' && t.source !== 'client_payment') return false;
         if ((t.mode || '').toLowerCase() !== 'online') return false;
-        const m = getTransactionProjectMonth(t);
-        return m === selectedIncomeMonth;
+        const m = getTransactionMonth(t);
+        return m && m.toLowerCase() === activeIncomeMonth.toLowerCase();
       })
       .reduce((sum, t) => sum + (t.amount || 0), 0);
-  }, [transactions, selectedIncomeMonth]);
+  }, [transactions, activeIncomeMonth]);
 
   const totalCashIncome = useMemo(() => {
     return (transactions || [])
@@ -306,11 +343,11 @@ const WalletView = ({ onLock }) => {
       .filter(t => {
         if (t.type !== 'client_payment' && t.type !== 'income' && t.source !== 'client_payment') return false;
         if ((t.mode || '').toLowerCase() !== 'cash') return false;
-        const m = getTransactionProjectMonth(t);
-        return m === selectedIncomeMonth;
+        const m = getTransactionMonth(t);
+        return m && m.toLowerCase() === activeIncomeMonth.toLowerCase();
       })
       .reduce((sum, t) => sum + (t.amount || 0), 0);
-  }, [transactions, selectedIncomeMonth]);
+  }, [transactions, activeIncomeMonth]);
 
   const totalChequeIncome = useMemo(() => {
     return (transactions || [])
@@ -323,11 +360,11 @@ const WalletView = ({ onLock }) => {
       .filter(t => {
         if (t.type !== 'client_payment' && t.type !== 'income' && t.source !== 'client_payment') return false;
         if ((t.mode || '').toLowerCase() !== 'cheque' && (t.mode || '').toLowerCase() !== 'cheq') return false;
-        const m = getTransactionProjectMonth(t);
-        return m === selectedIncomeMonth;
+        const m = getTransactionMonth(t);
+        return m && m.toLowerCase() === activeIncomeMonth.toLowerCase();
       })
       .reduce((sum, t) => sum + (t.amount || 0), 0);
-  }, [transactions, selectedIncomeMonth]);
+  }, [transactions, activeIncomeMonth]);
 
   const totalExpense = useMemo(() => {
     return (transactions || [])
@@ -402,10 +439,10 @@ const WalletView = ({ onLock }) => {
       .filter(t => {
         if (t.type !== 'salary' && t.source !== 'salary') return false;
         const sMonth = getTransactionSalaryMonth(t);
-        return sMonth.toLowerCase() === selectedExpenseMonth.toLowerCase();
+        return sMonth && sMonth.toLowerCase() === activeExpenseMonth.toLowerCase();
       })
       .reduce((sum, t) => sum + (t.amount || 0), 0);
-  }, [transactions, selectedExpenseMonth]);
+  }, [transactions, activeExpenseMonth]);
 
   // Salary expense corresponding to the selected income month (for accurate revenue generation & salary deduction)
   const salaryForIncomeMonth = useMemo(() => {
@@ -413,10 +450,10 @@ const WalletView = ({ onLock }) => {
       .filter(t => {
         if (t.type !== 'salary' && t.source !== 'salary') return false;
         const sMonth = getTransactionSalaryMonth(t);
-        return sMonth.toLowerCase() === selectedIncomeMonth.toLowerCase();
+        return sMonth && sMonth.toLowerCase() === activeIncomeMonth.toLowerCase();
       })
       .reduce((sum, t) => sum + (t.amount || 0), 0);
-  }, [transactions, selectedIncomeMonth]);
+  }, [transactions, activeIncomeMonth]);
 
   // Net Monthly Revenue Generated (Monthly Income - Monthly Salary Paid)
   const monthlyNetRevenue = useMemo(() => {
@@ -427,16 +464,23 @@ const WalletView = ({ onLock }) => {
     return (transactions || [])
       .filter(t => {
         if (t.type !== 'other_expenses' && t.source !== 'other_expenses') return false;
-        if (!t.date) return false;
-        const d = new Date(t.date);
-        return !isNaN(d.getTime()) && d.toLocaleString('default', { month: 'long', year: 'numeric' }) === selectedExpenseMonth;
+        const m = getTransactionMonth(t);
+        return m && m.toLowerCase() === activeExpenseMonth.toLowerCase();
       })
       .reduce((sum, t) => sum + (t.amount || 0), 0);
-  }, [transactions, selectedExpenseMonth]);
+  }, [transactions, activeExpenseMonth]);
 
   const monthlyTotalExpense = useMemo(() => {
     return monthlySalaryExpense + monthlyOtherExpense;
   }, [monthlySalaryExpense, monthlyOtherExpense]);
+
+  const isAllTime = selectedMonthFilter === 'all';
+  const effectiveMonth = isAllTime ? null : selectedMonthFilter;
+  const displayedIncome = isAllTime ? totalIncome : monthlyIncome;
+  const displayedExpense = isAllTime ? totalExpense : monthlyTotalExpense;
+  const displayedSalaryExpense = isAllTime ? totalSalaryExpense : monthlySalaryExpense;
+  const displayedOtherExpense = isAllTime ? totalOtherExpense : monthlyOtherExpense;
+  const displayedPendingDues = isAllTime ? pendingDues : monthlyPendingDues;
 
   const getClientPhone = (t) => {
     if (t.referenceId) {
@@ -491,7 +535,13 @@ const WalletView = ({ onLock }) => {
   };
 
   const downloadIncomeReport = () => {
-    const incomeTx = transactions.filter(t => t.type === 'client_payment' || t.type === 'income' || t.source === 'client_payment');
+    let incomeTx = transactions.filter(t => t.type === 'client_payment' || t.type === 'income' || t.source === 'client_payment');
+    if (!isAllTime) {
+      incomeTx = incomeTx.filter(t => {
+        const m = getTransactionMonth(t);
+        return m && m.toLowerCase() === effectiveMonth.toLowerCase();
+      });
+    }
     const sorted = [...incomeTx].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     const headers = ['Client/Income Name', 'Phone Number', 'Amount', 'Date', 'Mode', 'Method', 'UTR Number', 'Description'];
     const rows = sorted.map(t => [
@@ -504,11 +554,18 @@ const WalletView = ({ onLock }) => {
       t.utrNumber || '',
       t.description || ''
     ]);
-    downloadCSV('total_income_report.csv', headers, rows);
+    const monthSuffix = !isAllTime ? `_${selectedMonthFilter.replace(/\s+/g, '_')}` : '_all_months';
+    downloadCSV(`total_income_report${monthSuffix}.csv`, headers, rows);
   };
 
   const downloadExpenseReport = () => {
-    const expenseTx = transactions.filter(t => t.type === 'salary' || t.type === 'other_expenses' || t.source === 'salary' || t.source === 'other_expenses');
+    let expenseTx = transactions.filter(t => t.type === 'salary' || t.type === 'other_expenses' || t.source === 'salary' || t.source === 'other_expenses');
+    if (!isAllTime) {
+      expenseTx = expenseTx.filter(t => {
+        const m = getTransactionMonth(t);
+        return m && m.toLowerCase() === effectiveMonth.toLowerCase();
+      });
+    }
     const sorted = [...expenseTx].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     const headers = ['Payee/Expense Name', 'Amount', 'Date', 'Mode', 'Method', 'UTR Number', 'Description'];
     const rows = sorted.map(t => [
@@ -520,11 +577,12 @@ const WalletView = ({ onLock }) => {
       t.utrNumber || '',
       t.description || ''
     ]);
-    downloadCSV('total_expense_report.csv', headers, rows);
+    const monthSuffix = !isAllTime ? `_${selectedMonthFilter.replace(/\s+/g, '_')}` : '_all_months';
+    downloadCSV(`total_expense_report${monthSuffix}.csv`, headers, rows);
   };
 
   const downloadPendingDuesReport = () => {
-    const pendingClients = [...pendingClientsList];
+    const pendingClients = isAllTime ? [...pendingClientsList] : [...filteredPendingClientsList];
     const headers = ['Client Name', 'Phone Number', 'Email', 'Client Type', 'Total Amount', 'Paid Amount', 'Pending Dues'];
     const rows = pendingClients.map(c => [
       c.name || '',
@@ -535,7 +593,8 @@ const WalletView = ({ onLock }) => {
       c.paidAmount,
       c.pendingAmount
     ]);
-    downloadCSV('pending_dues_report.csv', headers, rows);
+    const monthSuffix = !isAllTime ? `_${selectedMonthFilter.replace(/\s+/g, '_')}` : '_all_months';
+    downloadCSV(`pending_dues_report${monthSuffix}.csv`, headers, rows);
   };
 
   const fetchPendingDues = async () => {
@@ -631,53 +690,54 @@ const WalletView = ({ onLock }) => {
   const activeChartConfig = useMemo(() => {
     if (filterType === 'client_payment') {
       return {
-        title: 'Income Trajectory',
-        label: 'Total Cumulative Income',
+        title: isAllTime ? 'Income Trajectory' : `Income Trajectory - ${effectiveMonth}`,
+        label: isAllTime ? 'Total Cumulative Income' : `Total Income (${effectiveMonth})`,
         strokeColor: '#10b981',
         gradientId: 'colorIncome',
         stopColor: '#10b981',
-        value: totalIncome,
+        value: displayedIncome,
         valueColor: 'text-emerald-600 dark:text-emerald-400'
       };
     }
     if (filterType === 'expense' || filterType === 'salary' || filterType === 'other_expenses') {
       return {
-        title: 'Expense Trajectory',
-        label: 'Total Cumulative Expense',
+        title: isAllTime ? 'Expense Trajectory' : `Expense Trajectory - ${effectiveMonth}`,
+        label: isAllTime ? 'Total Cumulative Expense' : `Total Expense (${effectiveMonth})`,
         strokeColor: '#f43f5e',
         gradientId: 'colorExpense',
         stopColor: '#f43f5e',
-        value: totalExpense,
+        value: displayedExpense,
         valueColor: 'text-rose-600 dark:text-rose-400'
       };
     }
     if (filterType === 'pending_dues') {
       return {
-        title: 'Pending Dues Breakdown',
-        label: 'Total Pending Dues',
+        title: isAllTime ? 'Pending Dues Breakdown' : `Pending Dues - ${effectiveMonth}`,
+        label: isAllTime ? 'Total Pending Dues' : `Pending Dues (${effectiveMonth})`,
         strokeColor: '#f59e0b',
         gradientId: 'colorPending',
         stopColor: '#f59e0b',
-        value: pendingDues,
+        value: displayedPendingDues,
         valueColor: 'text-amber-600 dark:text-amber-400'
       };
     }
     return {
-      title: 'Balance Trajectory',
-      label: 'Current Balance',
+      title: isAllTime ? 'Balance Trajectory' : `Balance Trajectory - ${effectiveMonth}`,
+      label: isAllTime ? 'Current Balance' : `Net Balance (${effectiveMonth})`,
       strokeColor: '#3b82f6',
       gradientId: 'colorBalance',
       stopColor: '#3b82f6',
-      value: (totalIncome - totalExpense) || 0,
+      value: (displayedIncome - displayedExpense) || 0,
       valueColor: 'text-gray-900 dark:text-white'
     };
-  }, [filterType, totalIncome, totalExpense, pendingDues]);
+  }, [filterType, isAllTime, effectiveMonth, displayedIncome, displayedExpense, displayedPendingDues]);
 
   const chartData = useMemo(() => {
     if (filterType === 'pending_dues') {
-      if (!pendingClientsList || pendingClientsList.length === 0) return [];
+      const sourceList = isAllTime ? pendingClientsList : filteredPendingClientsList;
+      if (!sourceList || sourceList.length === 0) return [];
       let runningPending = 0;
-      return pendingClientsList.map(c => {
+      return sourceList.map(c => {
         runningPending += c.pendingAmount;
         return {
           date: c.name.length > 10 ? c.name.substring(0, 10) + '...' : c.name,
@@ -692,8 +752,16 @@ const WalletView = ({ onLock }) => {
 
     if (!transactions || transactions.length === 0) return [];
     
+    let sourceTx = transactions;
+    if (!isAllTime) {
+      sourceTx = sourceTx.filter(t => {
+        const m = getTransactionMonth(t);
+        return m && m.toLowerCase() === effectiveMonth.toLowerCase();
+      });
+    }
+
     // Sort chronologically (oldest first)
-    const sorted = [...transactions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const sorted = [...sourceTx].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     
     if (filterType === 'client_payment') {
       const incomeOnly = sorted.filter(t => t.type === 'client_payment' || t.type === 'income' || t.source === 'client_payment');
@@ -747,7 +815,7 @@ const WalletView = ({ onLock }) => {
         name: t.name
       };
     });
-  }, [transactions, filterType, pendingClientsList]);
+  }, [transactions, filterType, isAllTime, effectiveMonth, pendingClientsList, filteredPendingClientsList]);
 
   const handleAddTransaction = async (e) => {
     e.preventDefault();
@@ -1026,12 +1094,22 @@ const WalletView = ({ onLock }) => {
                 : 'border-gray-200/50 dark:border-white/5 shadow-xl'
             }`}>
               <div className="space-y-1">
-                <span className="text-gray-400 dark:text-gray-500 text-xs font-semibold uppercase tracking-wider block">Total Income</span>
+                <span className="text-gray-400 dark:text-gray-500 text-xs font-semibold uppercase tracking-wider block">
+                  {isAllTime ? 'Total Income' : `Total Income (${effectiveMonth})`}
+                </span>
                 <span className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 block">
-                  ₹{(totalIncome || 0).toLocaleString('en-IN')}
+                  ₹{(displayedIncome || 0).toLocaleString('en-IN')}
                 </span>
                 <div className="text-[11px] font-medium text-gray-500 dark:text-gray-400 flex items-center gap-2 pt-0.5">
-                  <span>Monthly ({selectedIncomeMonth.split(' ')[0]}): <strong className="text-emerald-500">₹{(monthlyIncome || 0).toLocaleString('en-IN')}</strong></span>
+                  {!isAllTime ? (
+                    <>
+                      <span>For: <strong className="text-emerald-500">{effectiveMonth}</strong></span>
+                      <span>•</span>
+                      <span>All-time: <strong>₹{(totalIncome || 0).toLocaleString('en-IN')}</strong></span>
+                    </>
+                  ) : (
+                    <span>Monthly ({activeIncomeMonth.split(' ')[0]}): <strong className="text-emerald-500">₹{(monthlyIncome || 0).toLocaleString('en-IN')}</strong></span>
+                  )}
                 </div>
               </div>
               <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 flex items-center justify-center">
@@ -1053,14 +1131,22 @@ const WalletView = ({ onLock }) => {
                 : 'border-gray-200/50 dark:border-white/5 shadow-xl'
             }`}>
               <div className="space-y-1">
-                <span className="text-gray-400 dark:text-gray-500 text-xs font-semibold uppercase tracking-wider block">Total Expense</span>
+                <span className="text-gray-400 dark:text-gray-500 text-xs font-semibold uppercase tracking-wider block">
+                  {isAllTime ? 'Total Expense' : `Total Expense (${effectiveMonth})`}
+                </span>
                 <span className="text-2xl font-extrabold text-rose-600 block">
-                  ₹{(totalExpense || 0).toLocaleString('en-IN')}
+                  ₹{(displayedExpense || 0).toLocaleString('en-IN')}
                 </span>
                 <div className="text-[11px] font-medium text-gray-500 dark:text-gray-400 flex items-center gap-2 pt-0.5">
-                  <span>Salary: <strong className="text-rose-500">₹{(totalSalaryExpense || 0).toLocaleString('en-IN')}</strong></span>
+                  <span>Salary: <strong className="text-rose-500">₹{(displayedSalaryExpense || 0).toLocaleString('en-IN')}</strong></span>
                   <span>•</span>
-                  <span>Other: <strong className="text-rose-500">₹{(totalOtherExpense || 0).toLocaleString('en-IN')}</strong></span>
+                  <span>Other: <strong className="text-rose-500">₹{(displayedOtherExpense || 0).toLocaleString('en-IN')}</strong></span>
+                  {!isAllTime && (
+                    <>
+                      <span>•</span>
+                      <span>All-time: <strong>₹{(totalExpense || 0).toLocaleString('en-IN')}</strong></span>
+                    </>
+                  )}
                 </div>
               </div>
               <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-rose-500 to-orange-500 flex items-center justify-center">
@@ -1082,10 +1168,23 @@ const WalletView = ({ onLock }) => {
                 : 'border-gray-200/50 dark:border-white/5 shadow-xl'
             }`}>
               <div className="space-y-1">
-                <span className="text-gray-400 dark:text-gray-500 text-xs font-semibold uppercase tracking-wider block">Pending Dues</span>
-                <span className="text-2xl font-extrabold text-amber-600 dark:text-amber-400 block">
-                  ₹{(pendingDues || 0).toLocaleString('en-IN')}
+                <span className="text-gray-400 dark:text-gray-500 text-xs font-semibold uppercase tracking-wider block">
+                  {isAllTime ? 'Pending Dues' : `Pending Dues (${effectiveMonth})`}
                 </span>
+                <span className="text-2xl font-extrabold text-amber-600 dark:text-amber-400 block">
+                  ₹{(displayedPendingDues || 0).toLocaleString('en-IN')}
+                </span>
+                <div className="text-[11px] font-medium text-gray-500 dark:text-gray-400 flex items-center gap-2 pt-0.5">
+                  {!isAllTime ? (
+                    <>
+                      <span>For: <strong className="text-amber-500">{effectiveMonth}</strong></span>
+                      <span>•</span>
+                      <span>All-time: <strong>₹{(pendingDues || 0).toLocaleString('en-IN')}</strong></span>
+                    </>
+                  ) : (
+                    <span>All-time pending client dues</span>
+                  )}
+                </div>
               </div>
               <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 flex items-center justify-center">
                 <Wallet className="text-white" size={24} />
@@ -1121,10 +1220,13 @@ const WalletView = ({ onLock }) => {
                 <Calendar size={15} className="text-emerald-500" />
                 <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">Active Month:</span>
                 <select
-                  value={selectedIncomeMonth}
-                  onChange={(e) => handleIncomeMonthChange(e.target.value)}
+                  value={selectedMonthFilter}
+                  onChange={(e) => handleMonthChange(e.target.value)}
                   className="bg-transparent text-xs font-bold text-gray-900 dark:text-white border-0 outline-none cursor-pointer pr-1"
                 >
+                  <option value="all" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
+                    All Months (All Time)
+                  </option>
                   {availableIncomeMonths.map((m) => (
                     <option key={m} value={m} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
                       {m}
@@ -1139,10 +1241,10 @@ const WalletView = ({ onLock }) => {
               <div 
                 onClick={() => {
                   setFilterType('client_payment');
-                  setSelectedMonthFilter('all');
+                  handleMonthChange('all');
                 }}
                 className={`text-left p-5 rounded-2xl glass border cursor-pointer transition-all duration-300 hover:scale-[1.01] hover:shadow-lg flex flex-col justify-between ${
-                  selectedMonthFilter === 'all'
+                  isAllTime
                     ? 'border-emerald-500 ring-2 ring-emerald-500/30 bg-emerald-500/5'
                     : 'border-emerald-500/40 bg-emerald-500/5'
                 }`}
@@ -1150,7 +1252,7 @@ const WalletView = ({ onLock }) => {
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                      Total Income
+                      Total Income (All Time)
                     </span>
                     <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
                       <IndianRupee size={18} />
@@ -1170,10 +1272,10 @@ const WalletView = ({ onLock }) => {
               <div 
                 onClick={() => {
                   setFilterType('client_payment');
-                  setSelectedMonthFilter(selectedIncomeMonth);
+                  handleMonthChange(activeIncomeMonth);
                 }}
                 className={`text-left p-5 rounded-2xl glass border cursor-pointer transition-all duration-300 hover:scale-[1.01] hover:shadow-lg flex flex-col justify-between ${
-                  selectedMonthFilter.toLowerCase() === selectedIncomeMonth.toLowerCase()
+                  !isAllTime && selectedMonthFilter.toLowerCase() === activeIncomeMonth.toLowerCase()
                     ? 'border-teal-500 ring-2 ring-teal-500/30 bg-teal-500/10 shadow-md'
                     : 'border-teal-500/60 bg-teal-500/5'
                 }`}
@@ -1186,10 +1288,13 @@ const WalletView = ({ onLock }) => {
                     <div className="flex items-center gap-1 bg-teal-50 dark:bg-teal-900/30 px-2 py-1 rounded-lg border border-teal-200/60 dark:border-teal-800/40" onClick={(e) => e.stopPropagation()}>
                       <Calendar size={13} className="text-teal-600 dark:text-teal-400" />
                       <select
-                        value={selectedIncomeMonth}
-                        onChange={(e) => handleIncomeMonthChange(e.target.value)}
+                        value={selectedMonthFilter}
+                        onChange={(e) => handleMonthChange(e.target.value)}
                         className="bg-transparent text-[11px] font-bold text-teal-700 dark:text-teal-300 border-0 outline-none cursor-pointer"
                       >
+                        <option value="all" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
+                          All Months
+                        </option>
                         {availableIncomeMonths.map((m) => (
                           <option key={m} value={m} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
                             {m}
@@ -1203,7 +1308,7 @@ const WalletView = ({ onLock }) => {
                   </div>
                 </div>
                 <div className="flex items-center justify-between text-xs pt-2 border-t border-gray-100 dark:border-white/5 text-gray-500 mt-2">
-                  <span>For: <strong className="text-gray-700 dark:text-gray-300">{selectedIncomeMonth}</strong></span>
+                  <span>For: <strong className="text-gray-700 dark:text-gray-300">{activeIncomeMonth}</strong></span>
                   <span className="text-[11px] font-semibold text-teal-600 dark:text-teal-400">Filter Table</span>
                 </div>
               </div>
@@ -1212,15 +1317,14 @@ const WalletView = ({ onLock }) => {
               <div 
                 onClick={() => {
                   setFilterType('salary');
-                  setSelectedMonthFilter(selectedIncomeMonth);
-                  setSelectedExpenseMonth(selectedIncomeMonth);
+                  handleMonthChange(activeIncomeMonth);
                 }}
                 className="text-left p-5 rounded-2xl glass border border-rose-500/40 bg-rose-500/5 flex flex-col justify-between cursor-pointer hover:scale-[1.01] hover:shadow-lg transition-all"
               >
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                      Salary Paid ({selectedIncomeMonth.split(' ')[0]})
+                      Salary Paid ({activeIncomeMonth.split(' ')[0]})
                     </span>
                     <div className="p-2 rounded-xl bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400">
                       <Users size={18} />
@@ -1240,7 +1344,7 @@ const WalletView = ({ onLock }) => {
               <div 
                 onClick={() => {
                   setFilterType('all');
-                  setSelectedMonthFilter(selectedIncomeMonth);
+                  handleMonthChange(activeIncomeMonth);
                 }}
                 className={`text-left p-5 rounded-2xl glass border flex flex-col justify-between cursor-pointer hover:scale-[1.01] hover:shadow-lg transition-all ${
                   monthlyNetRevenue >= 0
@@ -1278,7 +1382,7 @@ const WalletView = ({ onLock }) => {
               <div 
                 onClick={() => {
                   setFilterType('client_payment');
-                  setSelectedMonthFilter(selectedIncomeMonth);
+                  handleMonthChange(activeIncomeMonth);
                 }}
                 className="text-left p-4 rounded-2xl glass border border-gray-200/70 dark:border-white/10 flex items-center justify-between cursor-pointer hover:border-blue-400 hover:shadow-md transition-all"
               >
@@ -1292,7 +1396,7 @@ const WalletView = ({ onLock }) => {
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase block">Monthly</span>
+                  <span className="text-[10px] font-bold text-gray-400 uppercase block">Monthly ({activeIncomeMonth.split(' ')[0]})</span>
                   <span className="text-sm font-extrabold text-blue-600 dark:text-blue-400">₹{(monthlyOnlineIncome || 0).toLocaleString('en-IN')}</span>
                 </div>
               </div>
@@ -1301,7 +1405,7 @@ const WalletView = ({ onLock }) => {
               <div 
                 onClick={() => {
                   setFilterType('client_payment');
-                  setSelectedMonthFilter(selectedIncomeMonth);
+                  handleMonthChange(activeIncomeMonth);
                 }}
                 className="text-left p-4 rounded-2xl glass border border-gray-200/70 dark:border-white/10 flex items-center justify-between cursor-pointer hover:border-emerald-400 hover:shadow-md transition-all"
               >
@@ -1315,7 +1419,7 @@ const WalletView = ({ onLock }) => {
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase block">Monthly</span>
+                  <span className="text-[10px] font-bold text-gray-400 uppercase block">Monthly ({activeIncomeMonth.split(' ')[0]})</span>
                   <span className="text-sm font-extrabold text-emerald-700 dark:text-emerald-300">₹{(monthlyCashIncome || 0).toLocaleString('en-IN')}</span>
                 </div>
               </div>
@@ -1324,7 +1428,7 @@ const WalletView = ({ onLock }) => {
               <div 
                 onClick={() => {
                   setFilterType('client_payment');
-                  setSelectedMonthFilter(selectedIncomeMonth);
+                  handleMonthChange(activeIncomeMonth);
                 }}
                 className="text-left p-4 rounded-2xl glass border border-gray-200/70 dark:border-white/10 flex items-center justify-between cursor-pointer hover:border-purple-400 hover:shadow-md transition-all"
               >
@@ -1338,7 +1442,7 @@ const WalletView = ({ onLock }) => {
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase block">Monthly</span>
+                  <span className="text-[10px] font-bold text-gray-400 uppercase block">Monthly ({activeIncomeMonth.split(' ')[0]})</span>
                   <span className="text-sm font-extrabold text-purple-600 dark:text-purple-400">₹{(monthlyChequeIncome || 0).toLocaleString('en-IN')}</span>
                 </div>
               </div>
@@ -1373,10 +1477,13 @@ const WalletView = ({ onLock }) => {
                 <Calendar size={15} className="text-rose-500" />
                 <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">Active Month:</span>
                 <select
-                  value={selectedExpenseMonth}
-                  onChange={(e) => handleExpenseMonthChange(e.target.value)}
+                  value={selectedMonthFilter}
+                  onChange={(e) => handleMonthChange(e.target.value)}
                   className="bg-transparent text-xs font-bold text-gray-900 dark:text-white border-0 outline-none cursor-pointer pr-1"
                 >
+                  <option value="all" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
+                    All Months (All Time)
+                  </option>
                   {availableExpenseMonths.map((m) => (
                     <option key={m} value={m} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
                       {m}
@@ -1392,10 +1499,10 @@ const WalletView = ({ onLock }) => {
                 type="button"
                 onClick={() => {
                   setFilterType('expense');
-                  setSelectedMonthFilter('all');
+                  handleMonthChange('all');
                 }}
                 className={`text-left p-5 rounded-2xl glass border transition-all duration-300 hover:scale-[1.01] hover:shadow-lg flex flex-col justify-between cursor-pointer ${
-                  filterType === 'expense' && selectedMonthFilter === 'all'
+                  filterType === 'expense' && isAllTime
                     ? 'border-rose-500 ring-2 ring-rose-500/30 bg-rose-500/5'
                     : 'border-gray-200/70 dark:border-white/10'
                 }`}
@@ -1403,7 +1510,7 @@ const WalletView = ({ onLock }) => {
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                      Total Expense
+                      Total Expense (All Time)
                     </span>
                     <div className="p-2 rounded-xl bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400">
                       <CreditCard size={18} />
@@ -1414,7 +1521,7 @@ const WalletView = ({ onLock }) => {
                   </div>
                 </div>
                 <div className="flex items-center justify-between text-xs pt-2 border-t border-gray-100 dark:border-white/5 text-gray-500 mt-2">
-                  <span>Monthly ({selectedExpenseMonth.split(' ')[0]}):</span>
+                  <span>Monthly ({activeExpenseMonth.split(' ')[0]}):</span>
                   <span className="font-bold text-rose-600 dark:text-rose-400">₹{(monthlyTotalExpense || 0).toLocaleString('en-IN')}</span>
                 </div>
               </button>
@@ -1424,10 +1531,10 @@ const WalletView = ({ onLock }) => {
                 type="button"
                 onClick={() => {
                   setFilterType('salary');
-                  setSelectedMonthFilter('all');
+                  handleMonthChange('all');
                 }}
                 className={`text-left p-5 rounded-2xl glass border transition-all duration-300 hover:scale-[1.01] hover:shadow-lg flex flex-col justify-between cursor-pointer ${
-                  filterType === 'salary' && selectedMonthFilter === 'all'
+                  filterType === 'salary' && isAllTime
                     ? 'border-indigo-500 ring-2 ring-indigo-500/30 bg-indigo-500/5'
                     : 'border-gray-200/70 dark:border-white/10'
                 }`}
@@ -1455,10 +1562,10 @@ const WalletView = ({ onLock }) => {
               <div
                 onClick={() => {
                   setFilterType('salary');
-                  setSelectedMonthFilter(selectedExpenseMonth);
+                  handleMonthChange(activeExpenseMonth);
                 }}
                 className={`text-left p-5 rounded-2xl glass border transition-all duration-300 hover:scale-[1.01] hover:shadow-lg flex flex-col justify-between cursor-pointer ${
-                  filterType === 'salary' && selectedMonthFilter.toLowerCase() === selectedExpenseMonth.toLowerCase()
+                  filterType === 'salary' && !isAllTime && selectedMonthFilter.toLowerCase() === activeExpenseMonth.toLowerCase()
                     ? 'border-blue-500 ring-2 ring-blue-500/30 bg-blue-500/10 shadow-md'
                     : 'border-gray-200/70 dark:border-white/10'
                 }`}
@@ -1471,10 +1578,13 @@ const WalletView = ({ onLock }) => {
                     <div className="flex items-center gap-1 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-lg border border-blue-200/60 dark:border-blue-800/40" onClick={(e) => e.stopPropagation()}>
                       <Calendar size={13} className="text-blue-600 dark:text-blue-400" />
                       <select
-                        value={selectedExpenseMonth}
-                        onChange={(e) => handleExpenseMonthChange(e.target.value)}
+                        value={selectedMonthFilter}
+                        onChange={(e) => handleMonthChange(e.target.value)}
                         className="bg-transparent text-[11px] font-bold text-blue-700 dark:text-blue-300 border-0 outline-none cursor-pointer"
                       >
+                        <option value="all" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
+                          All Months
+                        </option>
                         {availableExpenseMonths.map((m) => (
                           <option key={m} value={m} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
                             {m}
@@ -1488,7 +1598,7 @@ const WalletView = ({ onLock }) => {
                   </div>
                 </div>
                 <div className="flex items-center justify-between text-xs pt-2 border-t border-gray-100 dark:border-white/5 text-gray-500 mt-2">
-                  <span>For: <strong className="text-gray-700 dark:text-gray-300">{selectedExpenseMonth}</strong></span>
+                  <span>For: <strong className="text-gray-700 dark:text-gray-300">{activeExpenseMonth}</strong></span>
                   <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400">Filter Table</span>
                 </div>
               </div>
@@ -1498,7 +1608,7 @@ const WalletView = ({ onLock }) => {
                 type="button"
                 onClick={() => {
                   setFilterType('other_expenses');
-                  setSelectedMonthFilter(selectedExpenseMonth);
+                  handleMonthChange(activeExpenseMonth);
                 }}
                 className={`text-left p-5 rounded-2xl glass border transition-all duration-300 hover:scale-[1.01] hover:shadow-lg flex flex-col justify-between cursor-pointer ${
                   filterType === 'other_expenses'
@@ -1520,7 +1630,7 @@ const WalletView = ({ onLock }) => {
                   </div>
                 </div>
                 <div className="flex items-center justify-between text-xs pt-2 border-t border-gray-100 dark:border-white/5 text-gray-500 mt-2">
-                  <span>Monthly ({selectedExpenseMonth.split(' ')[0]}):</span>
+                  <span>Monthly ({activeExpenseMonth.split(' ')[0]}):</span>
                   <span className="font-bold text-amber-600 dark:text-amber-400">₹{(monthlyOtherExpense || 0).toLocaleString('en-IN')}</span>
                 </div>
               </button>
@@ -1557,76 +1667,68 @@ const WalletView = ({ onLock }) => {
           </div>
         </div>
 
-        {/* Month Filter Selector for all tabs (except pending dues) */}
-        {filterType !== 'pending_dues' && (
-          <div className="flex items-center gap-2 self-start md:self-auto">
-            <div className="flex items-center gap-2 bg-white dark:bg-gray-800/90 px-3.5 py-2 rounded-xl border border-gray-200 dark:border-white/10 shadow-sm">
-              <Calendar size={16} className="text-blue-500" />
-              <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">Month:</span>
-              <select
-                value={selectedMonthFilter}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setSelectedMonthFilter(val);
-                  if (val !== 'all') {
-                    setSelectedIncomeMonth(val);
-                    setSelectedExpenseMonth(val);
-                  }
-                }}
-                className="bg-transparent text-xs font-bold text-gray-900 dark:text-white border-0 outline-none cursor-pointer pr-1"
-              >
-                <option value="all" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
-                  All Months (All Time)
+        {/* Month Filter Selector for all tabs */}
+        <div className="flex items-center gap-2 self-start md:self-auto">
+          <div className="flex items-center gap-2 bg-white dark:bg-gray-800/90 px-3.5 py-2 rounded-xl border border-gray-200 dark:border-white/10 shadow-sm">
+            <Calendar size={16} className="text-blue-500" />
+            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">Month:</span>
+            <select
+              value={selectedMonthFilter}
+              onChange={(e) => handleMonthChange(e.target.value)}
+              className="bg-transparent text-xs font-bold text-gray-900 dark:text-white border-0 outline-none cursor-pointer pr-1"
+            >
+              <option value="all" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
+                All Months (All Time)
+              </option>
+              {availableAllMonths.map((m) => (
+                <option key={m} value={m} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
+                  {m}
                 </option>
-                {availableAllMonths.map((m) => (
-                  <option key={m} value={m} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
-                    {m}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {selectedMonthFilter !== 'all' && (
-              <button
-                onClick={() => setSelectedMonthFilter('all')}
-                className="text-xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 px-2.5 py-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
-                title="Clear month filter to see all months"
-              >
-                Show All Months
-              </button>
-            )}
+              ))}
+            </select>
           </div>
-        )}
+          {!isAllTime && (
+            <button
+              onClick={() => handleMonthChange('all')}
+              className="text-xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 px-2.5 py-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+              title="Clear month filter to see all months"
+            >
+              Show All Months
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Transactions List */}
       <section className="glass rounded-2xl overflow-hidden border border-gray-200/50 dark:border-white/10 shadow-xl">
         {/* Table summary sub-header for active filter */}
-        {filterType !== 'pending_dues' && (
-          <div className="px-6 py-3.5 bg-gray-50/80 dark:bg-white/[0.03] border-b border-gray-200 dark:border-white/10 flex flex-wrap items-center justify-between gap-2 text-xs font-medium text-gray-500 dark:text-gray-400">
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-gray-800 dark:text-gray-200">
-                {filteredTransactions.length} {filteredTransactions.length === 1 ? 'Transaction' : 'Transactions'}
+        <div className="px-6 py-3.5 bg-gray-50/80 dark:bg-white/[0.03] border-b border-gray-200 dark:border-white/10 flex flex-wrap items-center justify-between gap-2 text-xs font-medium text-gray-500 dark:text-gray-400">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-gray-800 dark:text-gray-200">
+              {filterType === 'pending_dues'
+                ? `${(isAllTime ? pendingClientsList : filteredPendingClientsList).length} ${(isAllTime ? pendingClientsList : filteredPendingClientsList).length === 1 ? 'Client' : 'Clients'}`
+                : `${filteredTransactions.length} ${filteredTransactions.length === 1 ? 'Transaction' : 'Transactions'}`
+              }
+            </span>
+            <span>•</span>
+            {!isAllTime ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 font-semibold">
+                <Calendar size={12} />
+                {selectedMonthFilter}
               </span>
-              <span>•</span>
-              {selectedMonthFilter !== 'all' ? (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 font-semibold">
-                  <Calendar size={12} />
-                  {selectedMonthFilter}
-                </span>
-              ) : (
-                <span className="text-gray-600 dark:text-gray-400">All Months</span>
-              )}
-            </div>
-            {selectedMonthFilter !== 'all' && (
-              <button
-                onClick={() => setSelectedMonthFilter('all')}
-                className="text-blue-600 hover:text-blue-700 dark:text-blue-400 hover:underline font-semibold text-xs cursor-pointer"
-              >
-                Reset to All Months
-              </button>
+            ) : (
+              <span className="text-gray-600 dark:text-gray-400">All Months</span>
             )}
           </div>
-        )}
+          {!isAllTime && (
+            <button
+              onClick={() => handleMonthChange('all')}
+              className="text-blue-600 hover:text-blue-700 dark:text-blue-400 hover:underline font-semibold text-xs cursor-pointer"
+            >
+              Reset to All Months
+            </button>
+          )}
+        </div>
 
         <div className="overflow-x-auto">
           {filterType === 'pending_dues' ? (
@@ -1647,12 +1749,14 @@ const WalletView = ({ onLock }) => {
                   <tr>
                     <td colSpan={7} className="px-6 py-12 text-center text-gray-500">Loading pending dues...</td>
                   </tr>
-                ) : pendingClientsList.length === 0 ? (
+                ) : (isAllTime ? pendingClientsList : filteredPendingClientsList).length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center text-gray-500">No pending dues found</td>
+                    <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                      No pending dues found {!isAllTime ? `for ${selectedMonthFilter}` : ''}
+                    </td>
                   </tr>
                 ) : (
-                  pendingClientsList.map((client) => (
+                  (isAllTime ? pendingClientsList : filteredPendingClientsList).map((client) => (
                     <tr key={client._id} className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
                       <td className="px-6 py-4 font-semibold text-gray-900 dark:text-white">{client.name}</td>
                       <td className="px-6 py-4 text-gray-700 dark:text-gray-300">{client.phone || '-'}</td>
@@ -1701,7 +1805,7 @@ const WalletView = ({ onLock }) => {
                       </div>
                       {selectedMonthFilter !== 'all' && (
                         <button
-                          onClick={() => setSelectedMonthFilter('all')}
+                          onClick={() => handleMonthChange('all')}
                           className="mt-2 text-xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 hover:underline cursor-pointer"
                         >
                           View All Months
