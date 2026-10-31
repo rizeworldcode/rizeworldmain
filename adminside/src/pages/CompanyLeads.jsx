@@ -774,7 +774,7 @@ export default function CompanyLeads() {
                     <span>2. Contact Details</span>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {/* Phone Number */}
                     <div>
                       <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
@@ -816,21 +816,6 @@ export default function CompanyLeads() {
                         onChange={handleInputChange}
                         placeholder="e.g. 9876543210"
                         className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 text-gray-900 dark:text-white text-sm disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-
-                    {/* Email */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
-                        Email Address
-                      </label>
-                      <input
-                        type="email"
-                        name="email"
-                        value={formData.email}
-                        onChange={handleInputChange}
-                        placeholder="name@company.com"
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
                   </div>
