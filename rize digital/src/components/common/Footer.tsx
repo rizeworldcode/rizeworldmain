@@ -164,8 +164,12 @@ export default function Footer() {
           {/* Mascots (Inline Flex Item) */}
           <div className="w-[280px] sm:w-[350px] lg:w-[450px] pointer-events-none z-10 shrink-0">
             <img
-              src="/images/footer/mascots_transparent.png"
+              src="/images/footer/mascots_transparent.webp"
               alt="RizeWorld Mascots"
+              width="450"
+              height="225"
+              loading="lazy"
+              decoding="async"
               className="w-full h-auto object-contain filter drop-shadow-[0_0_25px_rgba(34,211,238,0.15)] brightness-95"
             />
           </div>

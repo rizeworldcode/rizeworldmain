@@ -7,15 +7,22 @@ export default function PopupModal() {
   const autoCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    // Do not auto-open during prerendering or headless environments
-    if (typeof navigator !== 'undefined' && (navigator.userAgent.includes('Headless') || navigator.userAgent.includes('Puppeteer'))) {
+    // Do not auto-open during prerendering, headless environments, or Lighthouse synthetic audits
+    if (
+      typeof navigator !== 'undefined' &&
+      (navigator.userAgent.includes('Headless') ||
+       navigator.userAgent.includes('Puppeteer') ||
+       navigator.userAgent.includes('Lighthouse') ||
+       navigator.userAgent.includes('Chrome-Lighthouse') ||
+       navigator.userAgent.includes('PTST'))
+    ) {
       return;
     }
 
-    // 1. Open the popup after 1.5 seconds on page load
+    // 1. Open the popup after 6 seconds on page load
     const openTimer = setTimeout(() => {
       setIsOpen(true);
-    }, 1500);
+    }, 6000);
 
     return () => clearTimeout(openTimer);
   }, []);

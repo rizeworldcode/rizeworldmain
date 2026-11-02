@@ -45,68 +45,18 @@ function useCountUp(end: number, duration: number = 2000, delay: number = 1200) 
   return count;
 }
 
-// Typewriter Heading Component
+// Typewriter Heading Component with instant LCP paint and pulsing cursor
 function TypewriterHeading() {
   const fullText = "Digital Marketing Agency in India for SEO, Growth & Online Success";
-  const [typedText, setTypedText] = useState("");
-  const [isFinished, setIsFinished] = useState(false);
-
-  useEffect(() => {
-    let interval: any;
-    setTypedText("");
-    setIsFinished(false);
-
-    const delayTimer = setTimeout(() => {
-      interval = setInterval(() => {
-        setTypedText((prev) => {
-          const nextIndex = prev.length;
-          if (nextIndex < fullText.length) {
-            return prev + fullText.charAt(nextIndex);
-          } else {
-            clearInterval(interval);
-            setIsFinished(true);
-            return prev;
-          }
-        });
-      }, 30);
-    }, 250);
-
-    return () => {
-      clearTimeout(delayTimer);
-      if (interval) clearInterval(interval);
-    };
-  }, []);
-
-  // Split colored text based on length
-  // First 38 characters ("Digital Marketing Agency in India for ") are white for contrast,
-  // and the core value proposition ("SEO, Growth & Online Success") is vibrant purple accent!
-  const renderText = () => {
-    const splitIndex = 38;
-    if (typedText.length <= splitIndex) {
-      return <span className="text-white">{typedText}</span>;
-    } else {
-      const part1 = typedText.substring(0, splitIndex);
-      const part2 = typedText.substring(splitIndex);
-      return (
-        <>
-          <span className="text-white">{part1}</span>
-          <span className="text-[#A068FF] font-black">{part2}</span>
-        </>
-      );
-    }
-  };
+  const splitIndex = 38;
+  const part1 = fullText.substring(0, splitIndex); // "Digital Marketing Agency in India for "
+  const part2 = fullText.substring(splitIndex);     // "SEO, Growth & Online Success"
 
   return (
     <h1 className="font-sans text-left text-4xl md:text-5xl lg:text-[3.2rem] font-black leading-[1.1] tracking-tight mb-8 select-none relative min-h-[120px] lg:min-h-[160px]">
-      {/* Permanent text for SEO, Crawlers, and HTML Source Code */}
-      <span className="sr-only">
-        {fullText}
-      </span>
-      {/* Animated visual display for visitors */}
-      <span aria-hidden="true">
-        {renderText()}
-        <span className={`inline-block w-[3px] h-[36px] md:h-[48px] bg-[#A068FF] ml-1 align-middle ${!isFinished ? 'animate-pulse' : 'hidden'}`} />
-      </span>
+      <span className="text-white">{part1}</span>
+      <span className="text-[#A068FF] font-black">{part2}</span>
+      <span className="inline-block w-[3px] h-[36px] md:h-[48px] bg-[#A068FF] ml-1 align-middle animate-pulse" aria-hidden="true" />
     </h1>
   );
 }
@@ -226,16 +176,14 @@ export default function HeroSection() {
           animation: spin-right var(--duration, 40s) linear infinite;
         }
 
-        /* Avatar entry animations */
+        /* Avatar entry animations (GPU composited) */
         @keyframes avatar-fly-in {
           0% {
             opacity: 0;
-            filter: blur(10px);
-            scale: 0.5;
+            scale: 0.6;
           }
           100% {
             opacity: 1;
-            filter: blur(0);
             scale: 1;
           }
         }

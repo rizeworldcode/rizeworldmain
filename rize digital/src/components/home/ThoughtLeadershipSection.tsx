@@ -53,6 +53,10 @@ export default function ThoughtLeadershipSection() {
                     <img 
                       src={card.image} 
                       alt={card.title} 
+                      width="300"
+                      height="400"
+                      loading="lazy"
+                      decoding="async"
                       className="w-full aspect-[3/4] object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                     />
                     <div className="p-4 sm:p-5 bg-white relative z-10 border-t border-gray-100 flex-1 flex flex-col justify-center">
@@ -70,6 +74,10 @@ export default function ThoughtLeadershipSection() {
                     <img 
                       src={card.image} 
                       alt={card.title} 
+                      width="300"
+                      height="400"
+                      loading="lazy"
+                      decoding="async"
                       className="w-full aspect-[3/4] object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                     />
                     <div className="p-4 sm:p-5 bg-white relative z-10 border-t border-gray-100 flex-1 flex flex-col justify-center">

@@ -86,12 +86,16 @@ export default function BusinessGrowthModern() {
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
             transition={{ delay: 0.2 }}
-            onClick={() => setActiveImage('/images/growth work 1.png')}
+            onClick={() => setActiveImage('/images/growth work 1.webp')}
             className="w-full sm:w-[80%] lg:w-[25%] h-[200px] lg:h-[220px] rounded-[3rem] lg:rounded-[4rem] relative overflow-hidden group mb-4 lg:mb-8 shadow-md bg-[#0a0216] cursor-pointer"
           >
             <img 
-              src="/images/growth work 1.png" 
+              src="/images/growth work 1.webp" 
               alt="Team collaborating" 
+              width="400"
+              height="220"
+              loading="lazy"
+              decoding="async"
               className="absolute inset-0 w-full h-full object-contain p-3 group-hover:scale-105 transition-transform duration-700"
             />
           </motion.div>
@@ -116,12 +120,16 @@ export default function BusinessGrowthModern() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.4 }}
-            onClick={() => setActiveImage('/images/growth2.1.png')}
+            onClick={() => setActiveImage('/images/growth2.1.webp')}
             className="hidden lg:block w-full sm:w-[80%] lg:w-[20%] h-[350px] lg:h-[450px] bg-white rounded-3xl lg:rounded-tl-[4rem] lg:rounded-br-[4rem] lg:rounded-tr-xl lg:rounded-bl-xl relative overflow-hidden group shadow-md hover:shadow-xl transition-shadow cursor-pointer border border-gray-100"
           >
             <img 
-              src="/images/growth2.1.png" 
+              src="/images/growth2.1.webp" 
               alt="Visibility to Revenue Poster" 
+              width="300"
+              height="450"
+              loading="lazy"
+              decoding="async"
               className="absolute inset-0 w-full h-full object-contain scale-115 group-hover:scale-125 transition-transform duration-700 p-2"
             />
           </motion.div>

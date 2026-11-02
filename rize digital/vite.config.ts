@@ -367,9 +367,10 @@ export default defineConfig({
           if (id.includes('node_modules')) {
             if (id.includes('three')) return 'three';
             if (id.includes('tsparticles') || id.includes('react-tsparticles')) return 'tsparticles';
-            if (id.includes('framer-motion')) return 'framer-motion';
             if (id.includes('gsap')) return 'gsap';
-            if (/\/node_modules\/(react|react-dom|react-router|react-router-dom|scheduler)\//.test(id)) return 'react-core';
+            if (id.includes('react') || id.includes('scheduler')) {
+              if (!id.includes('react-icons') && !id.includes('lucide-react')) return 'react-core';
+            }
             return 'vendor';
           }
         }

@@ -33,10 +33,14 @@ export default function AiRankingSection() {
       <div className="w-full border-t border-b border-gray-200 py-10 flex items-center overflow-hidden bg-[#f5f9fb] shadow-sm">
         <div className="flex w-max whitespace-nowrap animate-marquee items-center">
           {repeatedLogos.map((item, idx) => (
-            <div key={idx} className={`w-56 h-24 mx-4 flex items-center justify-center shrink-0 p-2 rounded-4xl shadow-sm border border-gray-100/50 overflow-hidden ${item.bg}`}>
+            <div key={idx} className={`w-56 h-24 aspect-[224/96] mx-4 flex items-center justify-center shrink-0 p-2 rounded-4xl shadow-sm border border-gray-100/50 overflow-hidden ${item.bg}`}>
               <img 
                 src={item.src} 
                 alt="Client Logo" 
+                width="224"
+                height="96"
+                loading="lazy"
+                decoding="async"
                 className={`${item.customClass || "max-h-[92%] max-w-[92%]"} object-contain`} 
               />
             </div>

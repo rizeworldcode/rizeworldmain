@@ -49,14 +49,14 @@ const PROJECT_LOGOS: Record<string, string> = {
   "autodetox": "/logos/autodetox.png",
   "easy-eyes": "/logos/Easyeyes_logo_-Recovered-__1_-1-1.jpg-removebg-preview (1).png",
   "ambhuti": "/logos/aa.jpg-removebg-preview.png",
-  "bhavik-dairy": "/logos/logo1/bhavikdairy_14050326_165157844.jpg.jpeg_nobg.png",
+  "bhavik-dairy": "/logos/logo1/bhavikdairy_14050326_165157844.jpg.jpeg_nobg.webp",
   "travelia": "/logos/TT logo.png",
-  "Santsukhdav Shah Charitable Hospital": "/logos/sant.png",
-  "santsukhdav": "/logos/sant.png",
-  "santsukhdav-shah-charitable-hospital": "/logos/sant.png",
-  "Chappan Bhog": "/logos/chappan.png",
-  "chappan-bhog": "/logos/chappan.png",
-  "chappan": "/logos/chappan.png"
+  "Santsukhdav Shah Charitable Hospital": "/logos/sant.webp",
+  "santsukhdav": "/logos/sant.webp",
+  "santsukhdav-shah-charitable-hospital": "/logos/sant.webp",
+  "Chappan Bhog": "/logos/chappan.webp",
+  "chappan-bhog": "/logos/chappan.webp",
+  "chappan": "/logos/chappan.webp"
 };
 
 const PROJECT_THEMES: Record<string, { bg: string; text: string; isDark: boolean }> = {

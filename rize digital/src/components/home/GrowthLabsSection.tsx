@@ -54,6 +54,10 @@ export default function GrowthLabsSection() {
           >
             <img
               src={lab.image}
+              width="400"
+              height="500"
+              loading="lazy"
+              decoding="async"
               className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:opacity-40 transition-opacity duration-500"
               alt={lab.title}
             />
@@ -124,6 +128,10 @@ export default function GrowthLabsSection() {
               <img
                 src={lab.image}
                 alt={lab.title}
+                width="400"
+                height="300"
+                loading="lazy"
+                decoding="async"
                 className="w-full h-full object-cover object-top opacity-80"
               />
               <div className="absolute inset-0 bg-black/15" />
