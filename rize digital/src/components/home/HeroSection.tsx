@@ -1,8 +1,15 @@
 import { useState, useEffect } from 'react';
-import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { FaInstagram, FaFacebook, FaReact, FaBrain } from 'react-icons/fa';
-import { SiGoogleanalytics, SiGoogleads, SiMeta } from 'react-icons/si';
+import {
+  HeroArrowRight,
+  HeroReactIcon,
+  HeroMetaIcon,
+  HeroGoogleAdsIcon,
+  HeroFacebookIcon,
+  HeroInstagramIcon,
+  HeroGoogleAnalyticsIcon,
+  HeroBrainIcon
+} from './HeroIcons';
 
 // Custom CountUp Hook
 function useCountUp(end: number, duration: number = 2000, delay: number = 1200) {
@@ -298,7 +305,7 @@ export default function HeroSection() {
                 className="btn-slide-hover-right inline-flex items-center gap-2 rounded-full bg-[#060218] px-8 py-4 text-white font-bold text-sm hover:text-white transition-colors duration-300 shadow-sm cursor-pointer"
               >
                 Start Project
-                <ArrowRight className="w-5 h-5" />
+                <HeroArrowRight className="w-5 h-5" />
               </Link>
             </div>
 
@@ -314,7 +321,7 @@ export default function HeroSection() {
             {/* React Icon (0deg) */}
             <div className="avatar-node" style={{ transform: 'translate(-50%, -50%) rotate(0deg) translate(398.5px) rotate(-0deg)', animationDelay: '0.2s' }}>
               <div className="w-[88px] h-[88px] flex items-center justify-center bg-[#20232a] text-[#61dafb] rounded-full border-2 border-[#61dafb] shadow-[0_0_20px_rgba(97,218,251,0.5)] hover:scale-115 transition-transform duration-300 cursor-pointer">
-                <FaReact size={48} className="animate-spin" style={{ animationDuration: '12s' }} />
+                <HeroReactIcon size={48} className="animate-spin" style={{ animationDuration: '12s' }} />
               </div>
             </div>
             {/* Mohit Avatar (72deg) */}
@@ -328,7 +335,7 @@ export default function HeroSection() {
             {/* Meta Icon (216deg) */}
             <div className="avatar-node" style={{ transform: 'translate(-50%, -50%) rotate(216deg) translate(398.5px) rotate(-216deg)', animationDelay: '1.4s' }}>
               <div className="w-[58px] h-[58px] flex items-center justify-center bg-[#0064e0] text-white rounded-full border-2 border-white shadow-[0_0_15px_rgba(0,100,224,0.5)] hover:scale-115 transition-transform duration-300 cursor-pointer">
-                <SiMeta size={28} />
+                <HeroMetaIcon size={28} />
               </div>
             </div>
             {/* Photoshop Icon (288deg) */}
@@ -345,13 +352,13 @@ export default function HeroSection() {
             {/* Google Ads Icon (0deg) */}
             <div className="avatar-node" style={{ transform: 'translate(-50%, -50%) rotate(0deg) translate(324.5px) rotate(-0deg)', animationDelay: '0.4s' }}>
               <div className="w-[88px] h-[88px] flex items-center justify-center bg-white text-[#4285F4] rounded-full border-2 border-[#4285F4] shadow-[0_0_20px_rgba(66,133,244,0.5)] p-4 hover:scale-115 transition-transform duration-300 cursor-pointer">
-                <SiGoogleads size={40} />
+                <HeroGoogleAdsIcon size={40} />
               </div>
             </div>
             {/* Facebook Icon (180deg) */}
             <div className="avatar-node" style={{ transform: 'translate(-50%, -50%) rotate(180deg) translate(324.5px) rotate(-180deg)', animationDelay: '0.8s' }}>
               <div className="w-[88px] h-[88px] flex items-center justify-center bg-[#1877f2] text-white rounded-full border-2 border-white shadow-[0_0_20px_rgba(24,119,242,0.5)] hover:scale-115 transition-transform duration-300 cursor-pointer">
-                <FaFacebook size={44} />
+                <HeroFacebookIcon size={44} />
               </div>
             </div>
           </div>
@@ -362,19 +369,19 @@ export default function HeroSection() {
             {/* Instagram Icon (0deg) */}
             <div className="avatar-node" style={{ transform: 'translate(-50%, -50%) rotate(0deg) translate(250.5px) rotate(-0deg)', animationDelay: '0.5s' }}>
               <div className="w-[78px] h-[78px] flex items-center justify-center bg-gradient-to-tr from-[#f9ce34] via-[#ee2a7b] to-[#6228d7] text-white rounded-full border-2 border-white shadow-[0_0_18px_rgba(238,42,123,0.5)] hover:scale-115 transition-transform duration-300 cursor-pointer">
-                <FaInstagram size={38} />
+                <HeroInstagramIcon size={38} />
               </div>
             </div>
             {/* Google Analytics Icon (72deg) */}
             <div className="avatar-node" style={{ transform: 'translate(-50%, -50%) rotate(72deg) translate(250.5px) rotate(-72deg)', animationDelay: '0.9s' }}>
               <div className="w-[58px] h-[58px] flex items-center justify-center bg-[#f9ab00] text-white rounded-full border-2 border-white shadow-[0_0_15px_rgba(249,171,0,0.5)] hover:scale-115 transition-transform duration-300 cursor-pointer">
-                <SiGoogleanalytics size={28} />
+                <HeroGoogleAnalyticsIcon size={28} />
               </div>
             </div>
             {/* AI Brain Icon (144deg) */}
             <div className="avatar-node" style={{ transform: 'translate(-50%, -50%) rotate(144deg) translate(250.5px) rotate(-144deg)', animationDelay: '1.3s' }}>
               <div className="w-[58px] h-[58px] flex items-center justify-center bg-[#0B0F19] text-[#10B981] rounded-2xl border-2 border-[#10B981] shadow-[0_0_15px_rgba(16,185,129,0.5)] hover:scale-115 transition-transform duration-300 cursor-pointer">
-                <FaBrain size={28} />
+                <HeroBrainIcon size={28} />
               </div>
             </div>
             {/* Kavin Avatar (216deg) */}

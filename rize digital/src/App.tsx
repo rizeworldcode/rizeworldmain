@@ -2,9 +2,10 @@ import { useEffect, Suspense, lazy } from 'react';
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import Header from './components/common/Header';
 import Footer from './components/common/Footer';
-import PopupModal from './components/common/PopupModal';
 import ScrollToTop from './components/common/ScrollToTop';
 import FloatingButtons from './components/common/FloatingButtons';
+
+const PopupModal = lazy(() => import('./components/common/PopupModal'));
 
 // Eagerly loaded primary landing page for instant FCP/LCP
 import Home from './pages/Home';
@@ -88,7 +89,11 @@ function App() {
   return (
     <div className="min-h-screen bg-rize-bg flex flex-col relative z-0 overflow-x-hidden">
       {!isNotFound && <ScrollToTop />}
-      {!isNotFound && <PopupModal />}
+      {!isNotFound && (
+        <Suspense fallback={null}>
+          <PopupModal />
+        </Suspense>
+      )}
       {!isNotFound && <FloatingButtons />}
       {!isNotFound && <Header />}
       

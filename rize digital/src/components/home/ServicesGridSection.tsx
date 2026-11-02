@@ -53,17 +53,17 @@ const SERVICES = [
 ];
 
 const COMPANY_LOGOS = [
-  "/compney/BEST COMPANIES png 3.png",
-  "/compney/CLUTCH.png",
-  "/compney/METAA.png",
-  "/compney/REVIEWS.png",
-  "/compney/goggle partner.png",
-  "/compney/good firms.png",
-  "/compney/msme.png",
-  "/compney/oneflare.png",
-  "/compney/tech behemoths.png",
-  "/compney/top 100 company clutch.png",
-  "/compney/toppccss.png"
+  "/compney/BEST COMPANIES png 3.webp",
+  "/compney/CLUTCH.webp",
+  "/compney/METAA.webp",
+  "/compney/REVIEWS.webp",
+  "/compney/goggle partner.webp",
+  "/compney/good firms.webp",
+  "/compney/msme.webp",
+  "/compney/oneflare.webp",
+  "/compney/tech behemoths.webp",
+  "/compney/top 100 company clutch.webp",
+  "/compney/toppccss.webp"
 ];
 
 const repeatedCompanyLogos = [...COMPANY_LOGOS, ...COMPANY_LOGOS, ...COMPANY_LOGOS, ...COMPANY_LOGOS];
@@ -99,6 +99,10 @@ export default function ServicesGridSection() {
                 <img 
                   src={src} 
                   alt="Partner Company Logo" 
+                  width="224"
+                  height="96"
+                  loading="lazy"
+                  decoding="async"
                   className="max-h-[92%] max-w-[92%] object-contain" 
                 />
               </div>

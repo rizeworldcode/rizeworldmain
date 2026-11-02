@@ -369,7 +369,7 @@ export default defineConfig({
             if (id.includes('tsparticles') || id.includes('react-tsparticles')) return 'tsparticles';
             if (id.includes('framer-motion')) return 'framer-motion';
             if (id.includes('gsap')) return 'gsap';
-            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) return 'react-core';
+            if (/\/node_modules\/(react|react-dom|react-router|react-router-dom|scheduler)\//.test(id)) return 'react-core';
             return 'vendor';
           }
         }
