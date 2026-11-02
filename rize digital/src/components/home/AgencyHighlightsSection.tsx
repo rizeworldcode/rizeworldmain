@@ -10,22 +10,22 @@ const CARDS = [
     id: 1, 
     user: "rizeworld",
     location: "",
-    avatar: "/card/RW.png",
-    src: "/card/rizeworld linkedin poster.jpg" 
+    avatar: "/card/RW.webp",
+    src: "/card/rizeworld-linkedin-poster.webp" 
   },
   { 
     id: 2, 
     user: "rizeworld",
     location: "",
-    avatar: "/card/RW.png",
-    src: "/card/IMG_8748.PNG" 
+    avatar: "/card/RW.webp",
+    src: "/card/IMG_8748.webp" 
   },
   { 
     id: 3, 
     user: "rizeworld",
     location: "",
-    avatar: "/card/RW.png",
-    src: "/card/rw linkedinnnn.jpg" 
+    avatar: "/card/RW.webp",
+    src: "/card/rw-linkedinnnn.webp" 
   }
 ];
 
@@ -129,7 +129,7 @@ export default function AgencyHighlightsSection() {
             >
               {/* Header */}
               <div className="flex items-center px-4 py-3 gap-3">
-                <img src={card.avatar} alt={card.user} className="w-10 h-10 rounded-full object-cover bg-gray-100" />
+                <img src={card.avatar} alt={card.user} width="40" height="40" loading="lazy" decoding="async" className="w-10 h-10 rounded-full object-cover bg-gray-100" />
                 <div className="flex flex-col">
                   <span className="text-sm font-bold text-gray-900 leading-tight">{card.user}</span>
                   <span className="text-xs text-gray-500">{card.location}</span>
@@ -138,7 +138,7 @@ export default function AgencyHighlightsSection() {
 
               {/* Image */}
               <div className="w-full aspect-square bg-gray-100">
-                <img src={card.src} alt="Post" className="w-full h-full object-cover" />
+                <img src={card.src} alt="Post" width="320" height="320" loading="lazy" decoding="async" className="w-full h-full object-cover" />
               </div>
 
               {/* Footer Icons */}

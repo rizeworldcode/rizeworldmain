@@ -18,20 +18,20 @@ const TEAM_MEMBERS = [
   {
     name: "Devesh Choudhary",
     role: "Digital Marketing Specialist",
-    image: "/team/D1.png",
+    image: "/team/D1.webp",
     socials: { linkedin: "#", twitter: "#", instagram: "#", facebook: "#" }
   },
   {
     name: "Mohit Srivastava",
     role: "Senior Graphic Designer",
-    image: "/team/mohit.jpg.jpeg",
+    image: "/team/mohit.webp",
     zoom: "scale-[1.35] group-hover:scale-[1.45]",
     socials: { linkedin: "#", twitter: "#", instagram: "#", facebook: "#" }
   },
   {
     name: "Kaveendra Saini",
     role: "Video Editor",
-    image: "/team/kavin.jpg.jpeg",
+    image: "/team/kavin.webp",
     zoom: "scale-[1.15] group-hover:scale-[1.25]",
     socials: { linkedin: "#", twitter: "#", instagram: "#", facebook: "#" }
   },
@@ -40,45 +40,45 @@ const TEAM_MEMBERS = [
   {
     name: "Manoj kumar",
     role: "Data Analyst",
-    image: "/team/manoj.jpg.jpeg",
+    image: "/team/manoj.webp",
     zoom: "scale-[1.35] group-hover:scale-[1.45]",
     socials: { linkedin: "#", twitter: "#", instagram: "#", facebook: "#" }
   },
   {
     name: "Aman",
     role: "Web Developer",
-    image: "/team/aman.jpg.jpeg",
+    image: "/team/aman.webp",
     socials: { linkedin: "#", twitter: "#", instagram: "#", facebook: "#" }
   },
   {
     name: "DEVENDRA SINGH",
     role: "SEO Executive",
-    image: "/team/bhai.jpg.jpeg",
+    image: "/team/bhai.webp",
     zoom: "scale-[1.35] group-hover:scale-[1.45]",
     socials: { linkedin: "#", twitter: "#", instagram: "#", facebook: "#" }
   },
   {
     name: "Vikas Jangid",
     role: "Web Developer",
-    image: "/team/vikas.jpeg",
+    image: "/team/vikas.webp",
     socials: { linkedin: "#", twitter: "#", instagram: "#", facebook: "#" }
   },
   {
     name: "Akash Saini",
     role: "Graphic Designer",
-    image: "/team/akash.jpeg",
+    image: "/team/akash.webp",
     socials: { linkedin: "#", twitter: "#", instagram: "#", facebook: "#" }
   },
   {
     name: "Komal Saini",
     role: "SEO Executive",
-    image: "/team/komal.jpeg",
+    image: "/team/komal.webp",
     socials: { linkedin: "#", twitter: "#", instagram: "#", facebook: "#" }
   },
   {
     name: "Ishika Sachdeva",
     role: "SEO Executive",
-    image: "/team/ishika.jpeg",
+    image: "/team/ishika.webp",
     socials: { linkedin: "#", twitter: "#", instagram: "#", facebook: "#" }
   },
 ];
@@ -209,6 +209,10 @@ export default function Team() {
                   <img
                     src={member.image}
                     alt={member.name}
+                    width="320"
+                    height="400"
+                    loading="lazy"
+                    decoding="async"
                     className={`w-full h-full object-cover transition-all duration-700 ${isActive ? 'grayscale-0' : 'md:grayscale md:group-hover:grayscale-0'
                       } ${zoomClasses} transform-[translateZ(0)] backface-hidden will-change-[transform,filter]`}
                   />

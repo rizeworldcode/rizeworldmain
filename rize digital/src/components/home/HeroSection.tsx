@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import { FaInstagram, FaFacebook, FaReact, FaBrain } from 'react-icons/fa';
 import { SiGoogleanalytics, SiGoogleads, SiMeta } from 'react-icons/si';
 
@@ -41,7 +40,7 @@ function useCountUp(end: number, duration: number = 2000, delay: number = 1200) 
 
 // Typewriter Heading Component
 function TypewriterHeading() {
-  const fullText = "RizeWorld helps Indian businesses grow with SEO, social media marketing, Google Ads, content, and web development to boost visibility and leads.";
+  const fullText = "Digital Marketing Agency in India for SEO, Growth & Online Success";
   const [typedText, setTypedText] = useState("");
   const [isFinished, setIsFinished] = useState(false);
 
@@ -72,10 +71,10 @@ function TypewriterHeading() {
   }, []);
 
   // Split colored text based on length
-  // First 44 characters ("RizeWorld helps Indian businesses grow with ") are white for contrast,
-  // and the rest ("SEO, social media marketing...") is purple accent!
+  // First 38 characters ("Digital Marketing Agency in India for ") are white for contrast,
+  // and the core value proposition ("SEO, Growth & Online Success") is vibrant purple accent!
   const renderText = () => {
-    const splitIndex = 44;
+    const splitIndex = 38;
     if (typedText.length <= splitIndex) {
       return <span className="text-white">{typedText}</span>;
     } else {
@@ -91,7 +90,7 @@ function TypewriterHeading() {
   };
 
   return (
-    <h1 className="font-sans text-left text-4xl md:text-5xl lg:text-[3.2rem] font-black leading-[1.1] tracking-tight mb-8 select-none relative min-h-[160px] lg:min-h-[220px]">
+    <h1 className="font-sans text-left text-4xl md:text-5xl lg:text-[3.2rem] font-black leading-[1.1] tracking-tight mb-8 select-none relative min-h-[120px] lg:min-h-[160px]">
       {/* Permanent text for SEO, Crawlers, and HTML Source Code */}
       <span className="sr-only">
         {fullText}
@@ -126,6 +125,21 @@ export default function HeroSection() {
           to {
             --border-angle: 360deg;
           }
+        }
+
+        @keyframes heroFadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .hero-btn-fade-in {
+          animation: heroFadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) 2.8s both;
         }
 
         .btn-border-wrap {
@@ -277,12 +291,7 @@ export default function HeroSection() {
           <TypewriterHeading />
 
           {/* Start Project wrap */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 2.8, duration: 0.6 }}
-            className="flex flex-col sm:flex-row items-start sm:items-center gap-6 w-full"
-          >
+          <div className="hero-btn-fade-in flex flex-col sm:flex-row items-start sm:items-center gap-6 w-full">
             <div className="btn-border-wrap">
               <Link
                 to="/contact"
@@ -293,7 +302,7 @@ export default function HeroSection() {
               </Link>
             </div>
 
-          </motion.div>
+          </div>
         </div>
 
         {/* Right Circles/Bubbles Visualization */}
@@ -310,11 +319,11 @@ export default function HeroSection() {
             </div>
             {/* Mohit Avatar (72deg) */}
             <div className="avatar-node" style={{ transform: 'translate(-50%, -50%) rotate(72deg) translate(398.5px) rotate(-72deg)', animationDelay: '0.6s' }}>
-              <img src="/team/mohit.jpg.jpeg" alt="Mohit" decoding="async" className="w-[74px] h-[74px] object-cover rounded-full border-2 border-[#00c8ff] shadow-[0_0_15px_rgba(0,200,255,0.6)] hover:scale-115 transition-transform duration-300 cursor-pointer" />
+              <img src="/team/mohit-avatar.webp" alt="Mohit" width="74" height="74" loading="eager" decoding="async" className="w-[74px] h-[74px] object-cover rounded-full border-2 border-[#00c8ff] shadow-[0_0_15px_rgba(0,200,255,0.6)] hover:scale-115 transition-transform duration-300 cursor-pointer" />
             </div>
             {/* Aman Avatar (144deg) */}
             <div className="avatar-node" style={{ transform: 'translate(-50%, -50%) rotate(144deg) translate(398.5px) rotate(-144deg)', animationDelay: '1.0s' }}>
-              <img src="/team/aman.jpg.jpeg" alt="Aman" decoding="async" className="w-[74px] h-[74px] object-cover rounded-full border-2 border-[#61dafb] shadow-[0_0_15px_rgba(97,218,251,0.6)] hover:scale-115 transition-transform duration-300 cursor-pointer" />
+              <img src="/team/aman-avatar.webp" alt="Aman" width="74" height="74" loading="eager" decoding="async" className="w-[74px] h-[74px] object-cover rounded-full border-2 border-[#61dafb] shadow-[0_0_15px_rgba(97,218,251,0.6)] hover:scale-115 transition-transform duration-300 cursor-pointer" />
             </div>
             {/* Meta Icon (216deg) */}
             <div className="avatar-node" style={{ transform: 'translate(-50%, -50%) rotate(216deg) translate(398.5px) rotate(-216deg)', animationDelay: '1.4s' }}>
@@ -370,11 +379,11 @@ export default function HeroSection() {
             </div>
             {/* Kavin Avatar (216deg) */}
             <div className="avatar-node" style={{ transform: 'translate(-50%, -50%) rotate(216deg) translate(250.5px) rotate(-216deg)', animationDelay: '1.7s' }}>
-              <img src="/team/kavin.jpg.jpeg" alt="Kavin" decoding="async" className="w-[74px] h-[74px] object-cover rounded-full border-2 border-[#ee2a7b] shadow-[0_0_15px_rgba(238,42,123,0.6)] hover:scale-115 transition-transform duration-300 cursor-pointer" />
+              <img src="/team/kavin-avatar.webp" alt="Kavin" width="74" height="74" loading="eager" decoding="async" className="w-[74px] h-[74px] object-cover rounded-full border-2 border-[#ee2a7b] shadow-[0_0_15px_rgba(238,42,123,0.6)] hover:scale-115 transition-transform duration-300 cursor-pointer" />
             </div>
             {/* Manoj Avatar (288deg) */}
             <div className="avatar-node" style={{ transform: 'translate(-50%, -50%) rotate(288deg) translate(250.5px) rotate(-288deg)', animationDelay: '2.1s' }}>
-              <img src="/team/manoj.jpg.jpeg" alt="Manoj" decoding="async" className="w-[74px] h-[74px] object-cover rounded-full border-2 border-[#10B981] shadow-[0_0_15px_rgba(16,185,129,0.6)] hover:scale-115 transition-transform duration-300 cursor-pointer" />
+              <img src="/team/manoj-avatar.webp" alt="Manoj" width="74" height="74" loading="eager" decoding="async" className="w-[74px] h-[74px] object-cover rounded-full border-2 border-[#10B981] shadow-[0_0_15px_rgba(16,185,129,0.6)] hover:scale-115 transition-transform duration-300 cursor-pointer" />
             </div>
           </div>
 
@@ -389,7 +398,7 @@ export default function HeroSection() {
             </div>
             {/* D1 Avatar (180deg) */}
             <div className="avatar-node" style={{ transform: 'translate(-50%, -50%) rotate(180deg) translate(176.5px) rotate(-180deg)', animationDelay: '1.5s' }}>
-              <img src="/team/D1.png" alt="D1" decoding="async" className="w-[68px] h-[68px] object-cover rounded-full border-2 border-[#4285F4] shadow-[0_0_15px_rgba(66,133,244,0.6)] hover:scale-115 transition-transform duration-300 cursor-pointer" />
+              <img src="/team/D1-avatar.webp" alt="D1" width="68" height="68" loading="eager" decoding="async" className="w-[68px] h-[68px] object-cover rounded-full border-2 border-[#4285F4] shadow-[0_0_15px_rgba(66,133,244,0.6)] hover:scale-115 transition-transform duration-300 cursor-pointer" />
             </div>
           </div>
 

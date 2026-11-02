@@ -1,0 +1,60 @@
+DirectoryIndex index.html index.php
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Enforce HTTPS and non-www domain
+  RewriteCond %{HTTP_HOST} ^www\.(.*)$ [NC]
+  RewriteRule ^(.*)$ https://%1/$1 [R=301,L]
+  RewriteCond %{HTTPS} off
+  RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
+
+  # 301 Redirects from old WordPress URLs (case-insensitive, optional trailing slash)
+  RewriteRule ^custom-website-development-services/?$ /services/custom-website-development [R=301,L,NC]
+  RewriteRule ^services/graphics-design/?$ /services/graphic-design [R=301,L,NC]
+  RewriteRule ^services/branding-design/?$ /services/graphic-design [R=301,L,NC]
+  RewriteRule ^services/email-marketing/?$ /services/digital-marketing [R=301,L,NC]
+  RewriteRule ^career/apply-support-engineer/?$ /careers [R=301,L,NC]
+  RewriteRule ^about-me/?$ /about [R=301,L,NC]
+  RewriteRule ^faqs/?$ /faq [R=301,L,NC]
+
+  # Old portfolio/projects URLs to new portfolio path
+  RewriteRule ^portfolio-item/(.*)/?$ /portfolio/$1 [R=301,L,NC]
+  RewriteRule ^projects/(.*)/?$ /portfolio/$1 [R=301,L,NC]
+
+  # Old case-study URLs to new case-studies path
+  RewriteRule ^case-study/(.*)/?$ /case-studies/$1 [R=301,L,NC]
+  RewriteRule ^case/(.*)/?$ /case-studies/$1 [R=301,L,NC]
+
+  # Return HTTP 404 for hacked or spam URLs
+  RewriteRule ^(mostbet.*|vavada.*|casino.*|olimp.*|chicken-road.*|hello-world|2024/.*|2025/.*)$ - [R=404,L,NC]
+
+  # Dynamic Blog Sitemap & Index: Ensure newly published blogs appear immediately in sitemaps
+  RewriteRule ^sitemap-blogs\.xml$ sitemap-blogs.php [L]
+  RewriteRule ^sitemap\.xml$ sitemap.php [L]
+
+  # 1. Direct hit on existing physical files (assets, images, scripts, styles)
+  RewriteCond %{REQUEST_FILENAME} -f
+  RewriteRule ^ - [L]
+
+  # 2. Prerendered Static Directory Fallback:
+  # If index.html exists in the requested folder, serve that specific page's static HTML!
+  RewriteCond %{DOCUMENT_ROOT}/$1/index.html -f
+  RewriteRule ^(.+?)/?$ /$1/index.html [L]
+
+  RewriteCond %{REQUEST_FILENAME}/index.html -f
+  RewriteRule ^(.+?)/?$ /$1/index.html [L]
+
+  # 3. Universal SPA routing fallback:
+  # Send all non-file requests to /index.html so React Router handles dynamic routes
+  # (even if a physical directory with that name exists on disk, e.g. /services or /team)
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteRule . /index.html [L]
+
+</IfModule>
+
+# Custom 404: serve React SPA which renders <NotFound /> component
+# IMPORTANT: Apache will set HTTP status 404, React handles the visual rendering
+ErrorDocument 404 /index.html

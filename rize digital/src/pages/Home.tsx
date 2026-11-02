@@ -1,15 +1,18 @@
+import { Suspense, lazy } from 'react';
 import HeroSection from '../components/home/HeroSection';
 import SEO from '../components/common/SEO';
-import AreasWeServe from '../components/common/AreasWeServe';
-import AgencyHighlightsSection from '../components/home/AgencyHighlightsSection';
-import AiRankingSection from '../components/home/AiRankingSection';
-import AwardsSection from '../components/home/AwardsSection';
-import CaseStudiesSection from '../components/home/teamSection';
-import StrategySection from '../components/home/StrategySection';
-import GrowthLabsSection from '../components/home/GrowthLabsSection';
-import ThoughtLeadershipSection from '../components/home/ThoughtLeadershipSection';
-import ServicesGridSection from '../components/home/ServicesGridSection';
-import MailboxRevealSection from '../components/home/MailboxRevealSection';
+
+// Lazy-load below-the-fold components to keep initial main-thread execution lightweight
+const AgencyHighlightsSection = lazy(() => import('../components/home/AgencyHighlightsSection'));
+const ServicesGridSection = lazy(() => import('../components/home/ServicesGridSection'));
+const CaseStudiesSection = lazy(() => import('../components/home/teamSection'));
+const StrategySection = lazy(() => import('../components/home/StrategySection'));
+const GrowthLabsSection = lazy(() => import('../components/home/GrowthLabsSection'));
+const ThoughtLeadershipSection = lazy(() => import('../components/home/ThoughtLeadershipSection'));
+const AiRankingSection = lazy(() => import('../components/home/AiRankingSection'));
+const AwardsSection = lazy(() => import('../components/home/AwardsSection'));
+const AreasWeServe = lazy(() => import('../components/common/AreasWeServe'));
+const MailboxRevealSection = lazy(() => import('../components/home/MailboxRevealSection'));
 
 export default function Home() {
   const orgSchema = {
@@ -17,7 +20,7 @@ export default function Home() {
     "@type": "Organization",
     "name": "RizeWorld Digital",
     "url": "https://rizeworld.in/",
-    "logo": "https://rizeworld.in/images/logo/RW.png",
+    "logo": "https://rizeworld.in/images/logo/RW.webp",
     "sameAs": [
       "https://www.facebook.com/share/1BcNrvpmuJ/",
       "https://www.instagram.com/rizeworld?igsh=MWYxOGs5NGhhdnNsNA==",
@@ -57,16 +60,18 @@ export default function Home() {
         </div>
       </div>
 
-      <AgencyHighlightsSection />
-      <ServicesGridSection />
-      <CaseStudiesSection />
-      <StrategySection />
-      <GrowthLabsSection />
-      <ThoughtLeadershipSection />
-      <AiRankingSection />
-      <AwardsSection />
-      <AreasWeServe />
-      <MailboxRevealSection />
+      <Suspense fallback={null}>
+        <AgencyHighlightsSection />
+        <ServicesGridSection />
+        <CaseStudiesSection />
+        <StrategySection />
+        <GrowthLabsSection />
+        <ThoughtLeadershipSection />
+        <AiRankingSection />
+        <AwardsSection />
+        <AreasWeServe />
+        <MailboxRevealSection />
+      </Suspense>
     </>
   );
 }

@@ -22,56 +22,56 @@ const TEAM_MEMBERS = [
   {
     name: "Devesh Choudhary",
     role: "Digital Marketing Specialist",
-    image: "/team/D1.png",
+    image: "/team/D1.webp",
   },
   {
     name: "Mohit Srivastava",
     role: "Senior Graphic Designer",
-    image: "/team/mohit.jpg.jpeg",
+    image: "/team/mohit.webp",
     zoom: "scale-[1.35] group-hover:scale-[1.45]",
   },
   {
     name: "Kaveendra Saini",
     role: "Video Editor",
-    image: "/team/kavin.jpg.jpeg",
+    image: "/team/kavin.webp",
     zoom: "scale-[1.15] group-hover:scale-[1.25]"
   },
   {
     name: "DEVENDRA SINGH",
     role: "SEO EXECUTIVE",
-    image: "/team/bhai.jpg.jpeg",
+    image: "/team/bhai.webp",
     zoom: "scale-[1.35] group-hover:scale-[1.45]",
   },
   {
     name: "Manoj kumar",
     role: "Data analyst",
-    image: "/team/manoj.jpg.jpeg",
+    image: "/team/manoj.webp",
     zoom: "scale-[1.35] group-hover:scale-[1.45]",
   },
   {
     name: "Aman",
     role: "Web developer",
-    image: "/team/aman.jpg.jpeg",
+    image: "/team/aman.webp",
   },
   {
     name: "Vikas Jangid",
     role: "Web Developer",
-    image: "/team/vikas.jpeg",
+    image: "/team/vikas.webp",
   },
   {
     name: "Akash Saini",
     role: "Graphic Designer",
-    image: "/team/akash.jpeg",
+    image: "/team/akash.webp",
   },
   {
     name: "Komal Saini",
     role: "SEO Executive",
-    image: "/team/komal.jpeg",
+    image: "/team/komal.webp",
   },
   {
     name: "Ishika Sachdeva",
     role: "SEO Executive",
-    image: "/team/ishika.jpeg",
+    image: "/team/ishika.webp",
   },
 ];
 
@@ -81,6 +81,10 @@ const TeamMemberCard = ({ data }: { data: typeof TEAM_MEMBERS[0] }) => (
       <img
         src={data.image}
         alt={data.name}
+        width="320"
+        height="400"
+        loading="lazy"
+        decoding="async"
         className={`w-full h-full object-cover transition-transform duration-700 lg:grayscale lg:group-hover:grayscale-0 ${data.zoom || 'group-hover:scale-105'} transform-[translateZ(0)] backface-hidden will-change-[transform,filter]`}
       />
     </div>
