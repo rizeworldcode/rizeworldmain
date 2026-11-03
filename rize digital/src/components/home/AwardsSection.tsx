@@ -13,7 +13,7 @@ export default function AwardsSection() {
             src="/images/DSC08992.webp" 
             alt="RizeWorld Founder" 
             width="600"
-            height="700"
+            height="900"
             loading="lazy"
             decoding="async"
             className="absolute inset-0 w-full h-full object-cover" 
