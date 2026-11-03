@@ -18,7 +18,7 @@ const TEAM_MEMBERS = [
   {
     name: "Devesh Choudhary",
     role: "Digital Marketing Specialist",
-    image: "/team/D1.webp",
+    image: "/team/devesh.webp",
     socials: { linkedin: "#", twitter: "#", instagram: "#", facebook: "#" }
   },
   {

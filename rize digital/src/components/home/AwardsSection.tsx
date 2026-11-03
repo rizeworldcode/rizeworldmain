@@ -10,7 +10,7 @@ export default function AwardsSection() {
         {/* Left: Large Image */}
         <div className="w-full h-[500px] lg:h-[700px] rounded-4xl overflow-hidden bg-gray-200 relative shadow-lg">
           <img 
-            src="/images/DSC08992.webp" 
+            src="/images/founder.webp" 
             alt="RizeWorld Founder" 
             width="600"
             height="900"
