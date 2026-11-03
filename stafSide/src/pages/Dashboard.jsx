@@ -25,7 +25,8 @@ import {
   CheckCircle2,
   Trash2,
   MessageSquare,
-  AlertCircle
+  AlertCircle,
+  Lock
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -1857,6 +1858,18 @@ const Dashboard = ({ onNavigateToProgress }) => {
         syncStaffDataStates(updatedStaff);
       });
     }
+
+    // Listen for global real-time salary & payout lock updates from Admin
+    socketRef.current.on('salary-lock-updated', ({ isSalaryLocked }) => {
+      setStaffInfo((prev) => {
+        if (!prev) return prev;
+        const updated = { ...prev, isSalaryLocked };
+        try {
+          localStorage.setItem('staffInfo', JSON.stringify(updated));
+        } catch (e) {}
+        return updated;
+      });
+    });
     
     const timer = setInterval(() => {
       setCurrentTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
@@ -1885,6 +1898,7 @@ const Dashboard = ({ onNavigateToProgress }) => {
         if (staffId) {
           socketRef.current.off(`staff-clock-update-${staffId}`);
         }
+        socketRef.current.off('salary-lock-updated');
         socketRef.current.disconnect();
       }
     };
@@ -3440,12 +3454,29 @@ const Dashboard = ({ onNavigateToProgress }) => {
         </div>
         <StatCard 
           title="Monthly Salary" 
-          value={`₹${baseSalary.toLocaleString()}`}
+          value={
+            staffInfo?.isSalaryLocked ? (
+              <span className="flex items-center gap-2 font-mono text-slate-400">
+                <span>••••••••</span>
+                <Lock size={20} className="text-purple-600 inline shrink-0" />
+              </span>
+            ) : (
+              `₹${baseSalary.toLocaleString()}`
+            )
+          }
           change={0} 
           isPositive={true} 
-          icon={DollarSign}
-          color="bg-[#8b5cf6]"
-          extra={`Payout: ₹${payout.toLocaleString()} | Hours: ${totalHoursWorked} | ₹${hourlyRate}/hr`}
+          icon={staffInfo?.isSalaryLocked ? Lock : DollarSign}
+          color={staffInfo?.isSalaryLocked ? "bg-rose-500" : "bg-[#8b5cf6]"}
+          extra={
+            staffInfo?.isSalaryLocked ? (
+              <span className="flex items-center gap-1.5 text-rose-500 font-bold text-[10px] sm:text-xs">
+                <Lock size={12} /> Salary & Payout locked by Admin
+              </span>
+            ) : (
+              `Payout: ₹${payout.toLocaleString()} | Hours: ${totalHoursWorked} | ₹${hourlyRate}/hr`
+            )
+          }
         />
       </section>
 
@@ -3491,71 +3522,88 @@ const Dashboard = ({ onNavigateToProgress }) => {
               <h3 className="text-lg sm:text-xl font-black text-black uppercase tracking-tight">Salary Analysis</h3>
               <p className="text-[10px] sm:text-xs font-bold text-black mt-1">Monthly Salary (Last 6 Months)</p>
             </div>
+            {staffInfo?.isSalaryLocked && (
+              <span className="flex items-center gap-1 px-3 py-1 bg-rose-50 border border-rose-200 text-rose-600 rounded-xl text-xs font-black">
+                <Lock size={13} /> Locked by Admin
+              </span>
+            )}
           </div>
-          <div className="h-[300px] sm:h-[350px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                <XAxis 
-                  dataKey="name" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{ fill: '#000', fontSize: 10, fontWeight: 700 }}
-                  dy={10}
-                />
-                <YAxis 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{ fill: '#000', fontSize: 10, fontWeight: 700 }}
-                />
-                <Tooltip 
-                  cursor={{ fill: 'rgba(139, 92, 246, 0.08)' }}
-                  content={({ active, payload }) => {
-                    if (active && payload && payload.length) {
-                      const data = payload[0].payload;
-                      return (
-                        <div className="bg-white/95 backdrop-blur-md p-4 rounded-2xl shadow-xl border border-purple-100 space-y-2 text-xs">
-                          <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-1.5">
-                            <span className="font-black text-slate-900 text-sm">{data.fullName || data.name}</span>
-                            {data.isPaid ? (
-                              <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 font-black text-[10px] rounded-md border border-emerald-200">
-                                ✓ Salary Cleared
-                              </span>
-                            ) : (
-                              <span className="px-2 py-0.5 bg-purple-50 text-purple-700 font-black text-[10px] rounded-md border border-purple-200">
-                                Calculated
-                              </span>
-                            )}
+          {staffInfo?.isSalaryLocked ? (
+            <div className="h-[250px] sm:h-[300px] flex flex-col items-center justify-center p-6 text-center bg-slate-50/70 rounded-2xl border border-dashed border-slate-300">
+              <div className="w-12 h-12 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 mb-3 shadow-inner">
+                <Lock size={24} />
+              </div>
+              <h4 className="text-sm sm:text-base font-black text-slate-800">Salary Analysis Locked</h4>
+              <p className="text-xs text-slate-500 font-bold max-w-sm mt-1">
+                Monthly salary and payout charts are currently locked by administration.
+              </p>
+            </div>
+          ) : (
+            <div className="h-[300px] sm:h-[350px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                  <XAxis 
+                    dataKey="name" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: '#000', fontSize: 10, fontWeight: 700 }}
+                    dy={10}
+                  />
+                  <YAxis 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: '#000', fontSize: 10, fontWeight: 700 }}
+                  />
+                  <Tooltip 
+                    cursor={{ fill: 'rgba(139, 92, 246, 0.08)' }}
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload;
+                        return (
+                          <div className="bg-white/95 backdrop-blur-md p-4 rounded-2xl shadow-xl border border-purple-100 space-y-2 text-xs">
+                            <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-1.5">
+                              <span className="font-black text-slate-900 text-sm">{data.fullName || data.name}</span>
+                              {data.isPaid ? (
+                                <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 font-black text-[10px] rounded-md border border-emerald-200">
+                                  ✓ Salary Cleared
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 bg-purple-50 text-purple-700 font-black text-[10px] rounded-md border border-purple-200">
+                                  Calculated
+                                </span>
+                              )}
+                            </div>
+                            <div className="space-y-1 font-bold text-slate-600">
+                              <div className="flex justify-between gap-4">
+                                <span>Base Salary:</span>
+                                <span className="text-slate-900">₹{(data.baseSalary || 0).toLocaleString('en-IN')}</span>
+                              </div>
+                              <div className="flex justify-between gap-4 text-emerald-600 font-black text-sm">
+                                <span>Payout:</span>
+                                <span>₹{(data.salary || 0).toLocaleString('en-IN')}</span>
+                              </div>
+                              <div className="flex justify-between gap-4 text-slate-500 pt-1 border-t border-slate-100 text-[11px]">
+                                <span>Full Leaves: {data.totalLeaves || 0}d</span>
+                                <span>Half Days: {data.totalHalfDays || 0}d</span>
+                              </div>
+                            </div>
                           </div>
-                          <div className="space-y-1 font-bold text-slate-600">
-                            <div className="flex justify-between gap-4">
-                              <span>Base Salary:</span>
-                              <span className="text-slate-900">₹{(data.baseSalary || 0).toLocaleString('en-IN')}</span>
-                            </div>
-                            <div className="flex justify-between gap-4 text-emerald-600 font-black text-sm">
-                              <span>Payout:</span>
-                              <span>₹{(data.salary || 0).toLocaleString('en-IN')}</span>
-                            </div>
-                            <div className="flex justify-between gap-4 text-slate-500 pt-1 border-t border-slate-100 text-[11px]">
-                              <span>Full Leaves: {data.totalLeaves || 0}d</span>
-                              <span>Half Days: {data.totalHalfDays || 0}d</span>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-                <Bar 
-                  dataKey="salary" 
-                  fill="#8b5cf6" 
-                  radius={[10, 10, 0, 0]} 
-                  barSize={30}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Bar 
+                    dataKey="salary" 
+                    fill="#8b5cf6" 
+                    radius={[10, 10, 0, 0]} 
+                    barSize={30}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </div>
       </section>
 

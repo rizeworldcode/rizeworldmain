@@ -428,6 +428,16 @@ export const changeAdminPassword = (data: { currentPassword?: string; newPasswor
     body: JSON.stringify(data),
   });
 
+// Global Staff Salary & Payout Lock (Admin 1-Click Control)
+export const getSalaryLockStatus = () => apiRequest('/staff/salary-lock-status');
+export const toggleSalaryLock = (locked?: boolean) => {
+  clearApiCache('staff');
+  return apiRequest('/staff/toggle-salary-lock', {
+    method: 'PATCH',
+    body: JSON.stringify(locked !== undefined ? { locked } : {}),
+  });
+};
+
 // Pre-fetch helper disabled per user request (only fetch data for the active page)
 export const prefetchAdminData = () => {};
 

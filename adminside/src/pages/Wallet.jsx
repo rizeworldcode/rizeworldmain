@@ -45,7 +45,7 @@ const WalletView = ({ onLock }) => {
   const now = new Date();
   const currentMonthName = now.toLocaleString('default', { month: 'long', year: 'numeric' });
   const monthFromUrl = searchParams.get('month');
-  const [selectedMonthFilter, setSelectedMonthFilter] = useState(monthFromUrl || currentMonthName);
+  const [selectedMonthFilter, setSelectedMonthFilter] = useState(monthFromUrl || 'all');
   const [selectedExpenseMonth, setSelectedExpenseMonth] = useState(monthFromUrl && monthFromUrl !== 'all' ? monthFromUrl : currentMonthName);
   const [selectedIncomeMonth, setSelectedIncomeMonth] = useState(monthFromUrl && monthFromUrl !== 'all' ? monthFromUrl : currentMonthName);
 
@@ -64,6 +64,10 @@ const WalletView = ({ onLock }) => {
     const filterFromUrl = searchParams.get('filter');
     if (filterFromUrl) {
       setFilterType(filterFromUrl);
+    }
+    const monthParam = searchParams.get('month');
+    if (monthParam) {
+      handleMonthChange(monthParam);
     }
   }, [searchParams]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);

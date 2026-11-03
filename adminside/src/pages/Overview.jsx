@@ -1,13 +1,13 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { IndianRupee, CalendarCheck, Briefcase, Wallet, Calendar, X, ChevronDown, Lock } from 'lucide-react';
+import { IndianRupee, CalendarCheck, Briefcase, Wallet, Calendar, X, ChevronDown, Lock, Unlock, Loader2 } from 'lucide-react';
 import StatsCard from '../components/dashboard/StatsCard';
 import RevenueChart from '../components/dashboard/RevenueChart';
 import RecentClients from '../components/dashboard/RecentClients';
 import StaffList from '../components/dashboard/StaffList';
 import DashboardMap from '../components/dashboard/DashboardMap';
-import { getDashboardStats, getAllStaff, getSalarySheet, markStaffLeave } from '../api';
+import { getDashboardStats, getAllStaff, getSalarySheet, markStaffLeave, getSalaryLockStatus, toggleSalaryLock } from '../api';
 import { getAvailableSalaryMonths, getMonthlySalarySummary, getCurrentSalaryCycleMonth } from '../utils/salaryCalculator';
 
 const Overview = ({ onViewClient, onViewStaff }) => {
@@ -55,6 +55,8 @@ const Overview = ({ onViewClient, onViewStaff }) => {
   const [endDate, setEndDate] = useState(null);
   const [leaveType, setLeaveType] = useState('Casual');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSalaryLocked, setIsSalaryLocked] = useState(false);
+  const [isTogglingLock, setIsTogglingLock] = useState(false);
 
   const currentMonthName = getCurrentSalaryCycleMonth();
   const [selectedSalaryMonth, setSelectedSalaryMonth] = useState(currentMonthName);
@@ -94,7 +96,43 @@ const Overview = ({ onViewClient, onViewStaff }) => {
         }
       })
       .catch((error) => console.error('Error fetching salary sheet for overview:', error));
+
+    // 4. Fetch salary lock status
+    getSalaryLockStatus()
+      .then((res) => {
+        if (res && res.success) {
+          setIsSalaryLocked(Boolean(res.isSalaryLocked));
+        }
+      })
+      .catch((error) => console.error('Error fetching salary lock status:', error));
+
+    const handleLockEvent = (e) => {
+      if (e.detail && typeof e.detail.isSalaryLocked === 'boolean') {
+        setIsSalaryLocked(e.detail.isSalaryLocked);
+      }
+    };
+    window.addEventListener('salaryLockChanged', handleLockEvent);
+    return () => window.removeEventListener('salaryLockChanged', handleLockEvent);
   }, []);
+
+  const handleToggleSalaryLock = async () => {
+    try {
+      setIsTogglingLock(true);
+      const targetState = !isSalaryLocked;
+      const res = await toggleSalaryLock(targetState);
+      if (res && res.success) {
+        setIsSalaryLocked(targetState);
+        window.dispatchEvent(new CustomEvent('salaryLockChanged', { detail: { isSalaryLocked: targetState } }));
+      } else {
+        alert(res?.message || 'Failed to update salary lock status');
+      }
+    } catch (err) {
+      console.error('Error toggling salary lock:', err);
+      alert('Failed to update salary lock status: ' + err.message);
+    } finally {
+      setIsTogglingLock(false);
+    }
+  };
 
   const staffForSalary = salaryStaffList.length > 0 ? salaryStaffList : staffList;
 
@@ -171,13 +209,42 @@ const Overview = ({ onViewClient, onViewStaff }) => {
               Welcome back, {getAdminNameFromEmail()}. Here's what's happening with your business today.
             </motion.p>
           </div>
-          <button
-            onClick={() => setIsLeaveModalOpen(true)}
-            className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white px-6 py-3 rounded-xl font-semibold shadow-lg shadow-amber-500/20 hover:shadow-amber-500/40 transition-all"
-          >
-            <Calendar size={20} />
-            Leave
-          </button>
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* 1-Click Staff Salary & Payout Lock Toggle */}
+            <button
+              onClick={handleToggleSalaryLock}
+              disabled={isTogglingLock}
+              className={`flex items-center gap-2.5 px-5 py-3 rounded-xl font-bold transition-all shadow-md active:scale-95 cursor-pointer ${
+                isSalaryLocked
+                  ? 'bg-gradient-to-r from-rose-600 to-red-600 text-white shadow-rose-500/25 hover:shadow-rose-500/40 ring-2 ring-rose-400/50'
+                  : 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-emerald-500/25 hover:shadow-emerald-500/40'
+              }`}
+              title={
+                isSalaryLocked 
+                  ? 'All staff salary & payout panels are LOCKED. Click to UNLOCK for all staff.' 
+                  : 'All staff salary & payout panels are UNLOCKED. Click to LOCK for all staff.'
+              }
+            >
+              {isTogglingLock ? (
+                <Loader2 size={18} className="animate-spin" />
+              ) : isSalaryLocked ? (
+                <Lock size={18} />
+              ) : (
+                <Unlock size={18} />
+              )}
+              <span className="text-sm">
+                {isSalaryLocked ? 'Staff Salary: Locked' : 'Staff Salary: Unlocked'}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setIsLeaveModalOpen(true)}
+              className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white px-6 py-3 rounded-xl font-semibold shadow-lg shadow-amber-500/20 hover:shadow-amber-500/40 transition-all cursor-pointer"
+            >
+              <Calendar size={20} />
+              Leave
+            </button>
+          </div>
         </div>
       </section>
 

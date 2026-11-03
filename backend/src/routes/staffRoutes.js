@@ -45,7 +45,9 @@ const {
   updateStaffAccess,
   addAdvance,
   deleteAdvance,
-  updateAdvance
+  updateAdvance,
+  getSalaryLockStatus,
+  toggleSalaryLock
 } = require('../controllers/staffController');
 const { protect } = require('../middleware/authMiddleware');
 const { requireOfficeWifi } = require('../middleware/officeWifi');
@@ -85,6 +87,11 @@ router.post('/approve-all-tasks', approveAllTasks);
 router.post('/mark-leave', markLeave);
 router.patch('/clock-out-all', requireOfficeWifi, clockOutAllStaff);
 router.post('/clock-out-all', requireOfficeWifi, clockOutAllStaff);
+
+// Salary lock routes for Admin 1-Click control
+router.get('/salary-lock-status', getSalaryLockStatus);
+router.patch('/toggle-salary-lock', toggleSalaryLock);
+router.post('/toggle-salary-lock', toggleSalaryLock);
 
 // Dynamic parameter routes
 router.get('/:id', getStaffById);

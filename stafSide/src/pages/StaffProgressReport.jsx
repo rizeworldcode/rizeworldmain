@@ -25,7 +25,8 @@ import {
   Printer,
   X,
   Coins,
-  Eye
+  Eye,
+  Lock
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -823,17 +824,22 @@ const StaffProgressReport = ({ onBack }) => {
                 <!-- Payout Summary Card -->
                 <td style="width: 48%; vertical-align: top; padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;">
                   <div style="font-size: 10px; font-weight: bold; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Monthly Payout Summary</div>
-                  <div style="font-size: 20px; font-weight: 800; color: #10b981; margin-bottom: 6px;">₹${payout.toLocaleString('en-IN')}</div>
-                  <table style="width: 100%; font-size: 11px; line-height: 1.6;">
-                    <tr><td style="color:#64748b; width: 45%;">Base Salary:</td><td style="font-weight:bold;">₹${baseSalary.toLocaleString('en-IN')}</td></tr>
-                    <tr><td style="color:#64748b;">Gross Earned:</td><td style="font-weight:bold;">₹${earnedSalary.toLocaleString('en-IN')}</td></tr>
-                    ${advanceDeduction > 0 ? `<tr><td style="color:#ef4444;">Advance Deducted:</td><td style="font-weight:bold; color:#ef4444;">- ₹${advanceDeduction.toLocaleString('en-IN')}</td></tr>` : ''}
-                    ${advanceBalance > 0 ? `<tr><td style="color:#f59e0b;">Pending Advance:</td><td style="font-weight:bold; color:#f59e0b;">₹${advanceBalance.toLocaleString('en-IN')}</td></tr>` : ''}
-                    <tr><td style="color:#64748b;">Hourly Rate:</td><td style="font-weight:bold;">₹${hourlyRate} / hr</td></tr>
-                    <tr><td style="color:#64748b;">Hours Worked:</td><td style="font-weight:bold;">${totalHoursWorked} hrs</td></tr>
-                    <tr><td style="color:#64748b;">Deductions:</td><td style="font-weight:bold; color:#ef4444;">- ₹${deduction.toLocaleString('en-IN')}</td></tr>
-                    <tr><td style="color:#64748b;">Efficiency:</td><td style="font-weight:bold; color:#2563eb;">${efficiency}%</td></tr>
-                  </table>
+                  ${staffInfo?.isSalaryLocked ? `
+                    <div style="font-size: 16px; font-weight: 800; color: #e11d48; margin-bottom: 6px;">[Locked by Admin]</div>
+                    <p style="font-size: 10px; color: #64748b; margin: 0;">Monthly salary and payout figures are currently locked by administration.</p>
+                  ` : `
+                    <div style="font-size: 20px; font-weight: 800; color: #10b981; margin-bottom: 6px;">₹${payout.toLocaleString('en-IN')}</div>
+                    <table style="width: 100%; font-size: 11px; line-height: 1.6;">
+                      <tr><td style="color:#64748b; width: 45%;">Base Salary:</td><td style="font-weight:bold;">₹${baseSalary.toLocaleString('en-IN')}</td></tr>
+                      <tr><td style="color:#64748b;">Gross Earned:</td><td style="font-weight:bold;">₹${earnedSalary.toLocaleString('en-IN')}</td></tr>
+                      ${advanceDeduction > 0 ? `<tr><td style="color:#ef4444;">Advance Deducted:</td><td style="font-weight:bold; color:#ef4444;">- ₹${advanceDeduction.toLocaleString('en-IN')}</td></tr>` : ''}
+                      ${advanceBalance > 0 ? `<tr><td style="color:#f59e0b;">Pending Advance:</td><td style="font-weight:bold; color:#f59e0b;">₹${advanceBalance.toLocaleString('en-IN')}</td></tr>` : ''}
+                      <tr><td style="color:#64748b;">Hourly Rate:</td><td style="font-weight:bold;">₹${hourlyRate} / hr</td></tr>
+                      <tr><td style="color:#64748b;">Hours Worked:</td><td style="font-weight:bold;">${totalHoursWorked} hrs</td></tr>
+                      <tr><td style="color:#64748b;">Deductions:</td><td style="font-weight:bold; color:#ef4444;">- ₹${deduction.toLocaleString('en-IN')}</td></tr>
+                      <tr><td style="color:#64748b;">Efficiency:</td><td style="font-weight:bold; color:#2563eb;">${efficiency}%</td></tr>
+                    </table>
+                  `}
                 </td>
               </tr>
             </table>
@@ -1112,45 +1118,63 @@ const StaffProgressReport = ({ onBack }) => {
         {/* Estimated / Final Payout Card */}
         <div className="clay-card p-6 space-y-4">
           <div className="flex justify-between items-start">
-            <div className="p-3.5 rounded-2xl clay-inset bg-emerald-500 text-white">
-              <IndianRupee size={22} />
+            <div className={cn("p-3.5 rounded-2xl clay-inset text-white", staffInfo?.isSalaryLocked ? "bg-rose-500" : "bg-emerald-500")}>
+              {staffInfo?.isSalaryLocked ? <Lock size={22} /> : <IndianRupee size={22} />}
             </div>
-            <span className="text-[11px] font-black text-emerald-600 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-xl">
-              {monthMetrics?.isCurrentMonth ? 'Estimated' : 'Final Payout'}
-            </span>
+            {staffInfo?.isSalaryLocked ? (
+              <span className="text-[11px] font-black text-rose-600 bg-rose-500/10 border border-rose-500/20 px-2.5 py-1 rounded-xl flex items-center gap-1">
+                <Lock size={12} /> Locked by Admin
+              </span>
+            ) : (
+              <span className="text-[11px] font-black text-emerald-600 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-xl">
+                {monthMetrics?.isCurrentMonth ? 'Estimated' : 'Final Payout'}
+              </span>
+            )}
           </div>
           <div>
             <p className="text-xs font-black uppercase tracking-wider text-slate-500">Monthly Payout</p>
-            <h3 className="text-3xl font-black text-slate-900 mt-1">
-              ₹{(monthMetrics?.finalPayout || 0).toLocaleString('en-IN')}
-            </h3>
+            {staffInfo?.isSalaryLocked ? (
+              <h3 className="text-3xl font-black text-slate-400 mt-1 flex items-center gap-2 font-mono">
+                <span>••••••••</span>
+                <Lock size={22} className="text-rose-500 inline" />
+              </h3>
+            ) : (
+              <h3 className="text-3xl font-black text-slate-900 mt-1">
+                ₹{(monthMetrics?.finalPayout || 0).toLocaleString('en-IN')}
+              </h3>
+            )}
           </div>
           <div className="pt-2 border-t border-slate-200/60 space-y-1.5">
             <div className="flex items-center justify-between text-xs text-slate-600 font-bold">
               <span>Base Salary:</span>
-              <span>₹{(monthMetrics?.baseSalary || staffInfo?.monthlySalary || 0).toLocaleString('en-IN')}</span>
+              <span>{staffInfo?.isSalaryLocked ? '••••••' : `₹${(monthMetrics?.baseSalary || staffInfo?.monthlySalary || 0).toLocaleString('en-IN')}`}</span>
             </div>
             <div className="flex items-center justify-between text-xs text-indigo-600 font-bold">
               <span>Gross Earned:</span>
-              <span>₹{(monthMetrics?.earnedSalary || monthMetrics?.finalPayout || 0).toLocaleString('en-IN')}</span>
+              <span>{staffInfo?.isSalaryLocked ? '••••••' : `₹${(monthMetrics?.earnedSalary || monthMetrics?.finalPayout || 0).toLocaleString('en-IN')}`}</span>
             </div>
             {monthMetrics?.advanceDeduction > 0 && (
               <div className="flex items-center justify-between text-xs text-rose-500 font-bold">
                 <span>Advance Deducted:</span>
-                <span>- ₹{monthMetrics.advanceDeduction.toLocaleString('en-IN')}</span>
+                <span>{staffInfo?.isSalaryLocked ? '••••••' : `- ₹${monthMetrics.advanceDeduction.toLocaleString('en-IN')}`}</span>
               </div>
             )}
             {monthMetrics?.totalPendingAdvance > 0 && (
               <div className="flex items-center justify-between text-xs text-amber-600 font-bold">
                 <span>Active Adv. Balance:</span>
-                <span>₹{monthMetrics.totalPendingAdvance.toLocaleString('en-IN')}</span>
+                <span>{staffInfo?.isSalaryLocked ? '••••••' : `₹${monthMetrics.totalPendingAdvance.toLocaleString('en-IN')}`}</span>
               </div>
             )}
             {monthMetrics?.deduction > 0 && (
               <div className="flex items-center justify-between text-xs text-rose-500 font-bold">
                 <span>Attendance Deductions:</span>
-                <span>- ₹{(monthMetrics?.deduction || 0).toLocaleString('en-IN')}</span>
+                <span>{staffInfo?.isSalaryLocked ? '••••••' : `- ₹${(monthMetrics?.deduction || 0).toLocaleString('en-IN')}`}</span>
               </div>
+            )}
+            {staffInfo?.isSalaryLocked && (
+              <p className="text-[10px] text-rose-500 font-bold pt-1 flex items-center gap-1">
+                <Lock size={11} /> Payout & deductions locked by Admin
+              </p>
             )}
           </div>
         </div>
@@ -1631,7 +1655,11 @@ const StaffProgressReport = ({ onBack }) => {
                     {/* Quick Stat Chips */}
                     <div className="flex flex-wrap items-center gap-2 mt-3.5">
                       <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
-                        Gross Payout: <strong className="font-black">₹{(monthMetrics?.earnedSalary || 0).toLocaleString('en-IN')}</strong>
+                        Gross Payout: {staffInfo?.isSalaryLocked ? (
+                          <span className="font-mono text-slate-500">•••••• (Locked)</span>
+                        ) : (
+                          <strong className="font-black">₹{(monthMetrics?.earnedSalary || 0).toLocaleString('en-IN')}</strong>
+                        )}
                       </span>
                       <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200">
                         Total Credited Hours: <strong className="font-black">{monthMetrics?.totalHoursWorked || 0} hrs</strong>
@@ -1701,7 +1729,9 @@ const StaffProgressReport = ({ onBack }) => {
                               )}
                             </td>
                             <td className="py-2.5 px-3 text-right font-extrabold text-emerald-600 whitespace-nowrap">
-                              {item.payout > 0 ? (
+                              {staffInfo?.isSalaryLocked ? (
+                                <span className="text-slate-400 font-mono text-[11px]">••••</span>
+                              ) : item.payout > 0 ? (
                                 <span>₹{item.payout.toLocaleString('en-IN')}</span>
                               ) : (
                                 <span className="text-slate-300">₹0</span>

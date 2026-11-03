@@ -8,6 +8,7 @@ import {
   LogOut, 
   KeyRound, 
   Lock, 
+  Unlock,
   Eye, 
   EyeOff, 
   X, 
@@ -28,7 +29,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { changeAdminPassword, getLeadReminders } from '../../api';
+import { changeAdminPassword, getLeadReminders, getSalaryLockStatus, toggleSalaryLock } from '../../api';
 
 const Header = ({ onMenuClick, theme, toggleTheme, onLogout, adminEmail }) => {
   const navigate = useNavigate();
@@ -52,6 +53,47 @@ const Header = ({ onMenuClick, theme, toggleTheme, onLogout, adminEmail }) => {
   const [loadingReminders, setLoadingReminders] = useState(false);
   const [reminderTab, setReminderTab] = useState('today');
   const notificationRef = useRef(null);
+
+  // Global Staff Salary & Payout Lock State
+  const [isSalaryLocked, setIsSalaryLocked] = useState(false);
+  const [isTogglingLock, setIsTogglingLock] = useState(false);
+
+  useEffect(() => {
+    getSalaryLockStatus()
+      .then((res) => {
+        if (res && res.success) {
+          setIsSalaryLocked(Boolean(res.isSalaryLocked));
+        }
+      })
+      .catch((err) => console.error('Error fetching salary lock in Header:', err));
+
+    const handleLockEvent = (e) => {
+      if (e.detail && typeof e.detail.isSalaryLocked === 'boolean') {
+        setIsSalaryLocked(e.detail.isSalaryLocked);
+      }
+    };
+    window.addEventListener('salaryLockChanged', handleLockEvent);
+    return () => window.removeEventListener('salaryLockChanged', handleLockEvent);
+  }, []);
+
+  const handleToggleSalaryLock = async () => {
+    try {
+      setIsTogglingLock(true);
+      const targetState = !isSalaryLocked;
+      const res = await toggleSalaryLock(targetState);
+      if (res && res.success) {
+        setIsSalaryLocked(targetState);
+        window.dispatchEvent(new CustomEvent('salaryLockChanged', { detail: { isSalaryLocked: targetState } }));
+      } else {
+        alert(res?.message || 'Failed to update salary lock');
+      }
+    } catch (err) {
+      console.error('Error toggling salary lock in Header:', err);
+      alert('Failed to update salary lock: ' + err.message);
+    } finally {
+      setIsTogglingLock(false);
+    }
+  };
 
   // Close notification popover when clicking outside or pressing Escape
   useEffect(() => {
@@ -517,6 +559,27 @@ const Header = ({ onMenuClick, theme, toggleTheme, onLogout, adminEmail }) => {
               )}
             </AnimatePresence>
           </div>
+
+          {/* 1-Click Staff Salary Lock Toggle */}
+          <button 
+            onClick={handleToggleSalaryLock}
+            disabled={isTogglingLock}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold transition-all shadow-sm cursor-pointer ${
+              isSalaryLocked
+                ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/40 ring-1 ring-rose-400/30'
+                : 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/40'
+            }`}
+            title={isSalaryLocked ? 'Staff Salary & Payout: LOCKED (Click to Unlock for all staff)' : 'Staff Salary & Payout: UNLOCKED (Click to Lock for all staff)'}
+          >
+            {isTogglingLock ? (
+              <Loader2 size={15} className="animate-spin" />
+            ) : isSalaryLocked ? (
+              <Lock size={15} />
+            ) : (
+              <Unlock size={15} />
+            )}
+            <span className="hidden md:inline">{isSalaryLocked ? 'Salary Locked' : 'Salary Unlocked'}</span>
+          </button>
 
           {/* Change Password Button */}
           <button 

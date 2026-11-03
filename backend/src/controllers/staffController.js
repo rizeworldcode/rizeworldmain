@@ -5,12 +5,24 @@ const Sale = require('../models/Sale');
 const AssignedWorkReport = require('../models/AssignedWorkReport');
 const Transaction = require('../models/Transaction');
 const Admin = require('../models/adminModel');
+const GlobalSetting = require('../models/GlobalSetting');
 const cache = require('../utils/cache');
 const fs = require('fs');
 const cloudinary = require('../config/cloudinary');
 const jwt = require('jsonwebtoken');
 const upload = require('../middleware/upload');
 const socketUtil = require('../../socket');
+
+// Helper function to check if staff salary & payout visibility is locked by admin
+const isStaffSalaryLocked = async () => {
+  try {
+    const setting = await GlobalSetting.findOne({ key: 'isSalaryLocked' });
+    return setting ? Boolean(setting.value) : false;
+  } catch (err) {
+    console.error('Error reading isSalaryLocked setting:', err);
+    return false;
+  }
+};
 
 // Helper function to check if two dates are the same day in IST
 const isSameDayIST = (d1, d2 = new Date()) => {
@@ -110,7 +122,8 @@ exports.loginStaff = async (req, res) => {
         todayComment: staff.todayComment || '',
         commentHistory: staff.commentHistory || [],
         commentUpdatedBy: staff.commentUpdatedBy || '',
-        permissions: staff.permissions
+        permissions: staff.permissions,
+        isSalaryLocked: (await isStaffSalaryLocked()) || Boolean(staff.isSalaryLocked)
       },
       token
     });
@@ -587,7 +600,8 @@ exports.getStaffById = async (req, res) => {
         todayComment: staff.todayComment || '',
         commentHistory: staff.commentHistory || [],
         commentUpdatedBy: staff.commentUpdatedBy || '',
-        permissions: staff.permissions || []
+        permissions: staff.permissions || [],
+        isSalaryLocked: (await isStaffSalaryLocked()) || Boolean(staff.isSalaryLocked)
       }
     });
   } catch (error) {
@@ -3464,6 +3478,61 @@ exports.updateProfilePic = async (req, res) => {
         fs.unlinkSync(req.file.path);
       } catch (err) {}
     }
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Get current global salary lock status
+exports.getSalaryLockStatus = async (req, res) => {
+  try {
+    const isLocked = await isStaffSalaryLocked();
+    res.status(200).json({
+      success: true,
+      isSalaryLocked: isLocked
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Toggle or explicitly set global salary & payout lock for all staff (Admin 1-Click action)
+exports.toggleSalaryLock = async (req, res) => {
+  try {
+    const current = await isStaffSalaryLocked();
+    const newStatus = typeof req.body.locked === 'boolean' ? req.body.locked : !current;
+
+    await GlobalSetting.findOneAndUpdate(
+      { key: 'isSalaryLocked' },
+      { key: 'isSalaryLocked', value: newStatus, updatedBy: req.user?.email || 'admin' },
+      { upsert: true, new: true }
+    );
+
+    // Update all staff documents in parallel
+    await Staff.updateMany({}, { $set: { isSalaryLocked: newStatus } });
+
+    // Invalidate cached staff responses
+    try {
+      if (cache && typeof cache.clearPattern === 'function') {
+        cache.clearPattern('staff:*');
+      }
+    } catch (e) {}
+
+    // Broadcast real-time Socket.IO event to all connected staff panels and admin dashboards
+    try {
+      const io = socketUtil.getIO();
+      if (io) {
+        io.emit('salary-lock-updated', { isSalaryLocked: newStatus });
+      }
+    } catch (sockErr) {
+      console.warn('Socket emit error for salary-lock-updated:', sockErr.message);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Staff monthly salary and payout visibility ${newStatus ? 'locked' : 'unlocked'} for all staff`,
+      isSalaryLocked: newStatus
+    });
+  } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };

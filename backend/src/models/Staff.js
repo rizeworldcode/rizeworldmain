@@ -212,6 +212,10 @@ const staffSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  isSalaryLocked: {
+    type: Boolean,
+    default: false
+  },
   removedAt: {
     type: Date,
     default: null

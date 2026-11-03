@@ -1193,20 +1193,29 @@ const DashboardScreen = ({ staffInfo: initialStaffInfo, token, onLogout, onNavig
           <View style={styles.cardHeader}>
             <DollarSign size={18} color="#8b5cf6" />
             <Text style={styles.cardTitle}>Salary Details</Text>
+            {staffInfo.isSalaryLocked && (
+              <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#e11d48', marginLeft: 'auto' }}>🔒 Locked</Text>
+            )}
           </View>
           <View style={styles.salaryGrid}>
             <View style={styles.salaryItem}>
               <Text style={styles.salaryLabel}>Base Monthly Salary</Text>
-              <Text style={styles.salaryValue}>₹{(staffInfo.monthlySalary || 0).toLocaleString()}</Text>
+              <Text style={styles.salaryValue}>
+                {staffInfo.isSalaryLocked ? '••••••' : `₹${(staffInfo.monthlySalary || 0).toLocaleString()}`}
+              </Text>
             </View>
             <View style={styles.salaryItem}>
               <Text style={styles.salaryLabel}>Calculated Payout</Text>
-              <Text style={[styles.salaryValue, { color: '#10b981' }]}>₹{payoutInfo.payout.toLocaleString()}</Text>
+              <Text style={[styles.salaryValue, { color: staffInfo.isSalaryLocked ? '#64748b' : '#10b981' }]}>
+                {staffInfo.isSalaryLocked ? '•••••• (Locked)' : `₹${payoutInfo.payout.toLocaleString()}`}
+              </Text>
             </View>
           </View>
           <View style={styles.salaryFooter}>
             <Text style={styles.salaryFooterText}>
-              Leaves Taken: <Text style={{ fontWeight: '900', color: '#1e293b' }}>{payoutInfo.fullLeaves}</Text> | Half Days: <Text style={{ fontWeight: '900', color: '#1e293b' }}>{payoutInfo.halfDays}</Text>
+              {staffInfo.isSalaryLocked 
+                ? 'Salary & payout locked by Admin' 
+                : `Leaves Taken: ${payoutInfo.fullLeaves} | Half Days: ${payoutInfo.halfDays}`}
             </Text>
           </View>
         </View>
