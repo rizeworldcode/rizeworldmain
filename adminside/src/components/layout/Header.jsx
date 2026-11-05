@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { changeAdminPassword, getLeadReminders, getSalaryLockStatus, toggleSalaryLock } from '../../api';
+import FestiveHeaderDecor from '../festival/FestiveHeaderDecor';
 
 const Header = ({ onMenuClick, theme, toggleTheme, onLogout, adminEmail }) => {
   const navigate = useNavigate();
@@ -262,6 +263,9 @@ const Header = ({ onMenuClick, theme, toggleTheme, onLogout, adminEmail }) => {
 
         {/* Right Side Actions */}
         <div className="flex items-center gap-2.5 sm:gap-4">
+          {/* Festive Diwali Lights & Toran Decor with Toggle */}
+          <FestiveHeaderDecor />
+
           {/* Notification Bell (CRM Follow-up Reminders) */}
           <div className="relative" ref={notificationRef}>
             <button

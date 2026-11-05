@@ -8,6 +8,7 @@ import {
   ResponsiveContainer 
 } from 'recharts';
 import { getRevenueAnalytics } from '../../api';
+import FestiveCardGarland from '../festival/FestiveCardGarland';
 
 const COLORS = [
   '#3b82f6', // Blue
@@ -106,7 +107,10 @@ const RevenueChart = () => {
   }, [timeRange]);
 
   return (
-    <div className="glass-card p-4 sm:p-6 rounded-2xl h-full flex flex-col transition-colors">
+    <div className="glass-card p-4 sm:p-6 rounded-2xl h-full flex flex-col transition-colors relative overflow-hidden">
+      {/* Festive Marigold Garland & Lights */}
+      <FestiveCardGarland showDiya={true} showLights={true} />
+
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-8">
         <div>
           <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">Revenue Analytics</h3>
