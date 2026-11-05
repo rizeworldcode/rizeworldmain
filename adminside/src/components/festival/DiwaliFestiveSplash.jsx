@@ -222,7 +222,7 @@ function HangingDiyaHoop({
   );
 }
 
-export default function DiwaliFestiveSplash({ onClose, duration = 2800 }) {
+export default function DiwaliFestiveSplash({ onClose, duration = 5000 }) {
   useEffect(() => {
     const timer = setTimeout(() => {
       if (onClose) onClose();

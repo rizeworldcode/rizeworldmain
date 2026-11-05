@@ -176,10 +176,10 @@ function App() {
 
   return (
     <>
-      {/* Festive Diwali Splash Screen (1 to 2 seconds every time site is opened) */}
+      {/* Festive Diwali Splash Screen (5 seconds every time site is opened) */}
       <AnimatePresence>
         {showFestiveSplash && (
-          <DiwaliFestiveSplash onClose={() => setShowFestiveSplash(false)} duration={2000} />
+          <DiwaliFestiveSplash onClose={() => setShowFestiveSplash(false)} duration={5000} />
         )}
       </AnimatePresence>
 
