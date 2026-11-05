@@ -5,6 +5,7 @@ import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
 import { adminLogout } from './api';
 import { ShieldAlert } from 'lucide-react';
+import DiwaliFestiveSplash from './components/festival/DiwaliFestiveSplash';
 
 const Overview = lazy(() => import('./pages/Overview'));
 const Clients = lazy(() => import('./pages/Clients'));
@@ -50,6 +51,7 @@ const AccessDenied = ({ onGoToAllowed }) => (
 );
 
 function App() {
+  const [showFestiveSplash, setShowFestiveSplash] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(() => {
     return localStorage.getItem('isLoggedIn') === 'true';
   });
@@ -173,7 +175,15 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#030303] text-gray-900 dark:text-gray-100 flex overflow-hidden bg-gradient-mesh transition-colors duration-300">
+    <>
+      {/* Festive Diwali Splash Screen (1 to 2 seconds every time site is opened) */}
+      <AnimatePresence>
+        {showFestiveSplash && (
+          <DiwaliFestiveSplash onClose={() => setShowFestiveSplash(false)} duration={2000} />
+        )}
+      </AnimatePresence>
+
+      <div className="min-h-screen bg-gray-50 dark:bg-[#030303] text-gray-900 dark:text-gray-100 flex overflow-hidden bg-gradient-mesh transition-colors duration-300">
       {!isLoggedIn ? (
         <div className="w-full">
           <AdminLogin onLogin={handleLogin} />
@@ -385,6 +395,7 @@ function App() {
         </>
       )}
     </div>
+    </>
   );
 }
 
