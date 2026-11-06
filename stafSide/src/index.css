@@ -57,18 +57,6 @@
     box-shadow: 0 14px 32px -4px rgba(0, 0, 0, 0.35), 0 0 20px 2px rgba(245, 158, 11, 0.18) !important;
     border: 1px solid rgba(251, 191, 36, 0.35) !important;
   }
-
-  .festive-theme-active .clay-flat {
-    background: #ffffff !important;
-    color: #1e293b !important;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18) !important;
-    border: 1px solid rgba(251, 191, 36, 0.25) !important;
-  }
-
-  .festive-theme-active .clay-inset {
-    background: #fffbeb !important;
-    box-shadow: inset 2px 2px 6px rgba(0, 0, 0, 0.08) !important;
-  }
 }
 
 /* Atmospheric Blobs */

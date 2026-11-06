@@ -19,7 +19,7 @@ import StaffFestiveDecor, {
   BlinkitFestiveBanner, 
   BlinkitToranRibbon 
 } from './components/festival/StaffFestiveDecor';
-import FirecrackerClickBursts from './components/festival/FirecrackerClickBursts';
+import FirecrackerCanvas from './components/festival/FirecrackerCanvas';
 
 const MainLayout = ({ onLogout, onOpenDiwaliLanding }) => {
   const navigate = useNavigate();
@@ -142,7 +142,13 @@ const MainLayout = ({ onLogout, onOpenDiwaliLanding }) => {
           : 'bg-[#eef2f6]'
       }`}>
         <div className="flex items-center gap-3 overflow-x-auto py-1 max-w-[85vw]">
-          <img src="/logo.png" className="w-10 h-10 object-contain rounded-xl shadow-lg shadow-purple-500/10 shrink-0 cursor-pointer" alt="RizeWorld Logo" onClick={() => handleTabChange('dashboard')} />
+          <div 
+            onClick={() => handleTabChange('dashboard')}
+            className="p-1 rounded-xl bg-white shadow-md shadow-amber-500/20 shrink-0 cursor-pointer hover:scale-105 transition-all flex items-center justify-center border border-amber-400/30"
+            title="RizeWorld Dashboard"
+          >
+            <img src="/logo.png" className="w-8 h-8 sm:w-9 sm:h-9 object-contain" alt="RizeWorld Logo" />
+          </div>
           
           {/* Universal Navigation Tabs Bar */}
           <div className={`flex items-center gap-1.5 sm:gap-2 p-1 rounded-2xl shrink-0 transition-all ${
@@ -310,8 +316,8 @@ const App = () => {
 
   return (
     <>
-      {/* Funny Pathake / Firecracker Bursts on Interactive Clicks */}
-      <FirecrackerClickBursts />
+      {/* Authentic Diwali Firecrackers / Pathake Canvas Animation on Button Clicks */}
+      <FirecrackerCanvas />
 
       {/* Immersive Diwali Celebration Video Landing Page */}
       <AnimatePresence>
