@@ -13,7 +13,12 @@ import ClientProjects from './pages/ClientProjects';
 import BlogManagement from './pages/BlogManagement';
 import StaffProgressReport from './pages/StaffProgressReport';
 import StaffDiwaliLanding from './components/festival/StaffDiwaliLanding';
-import StaffFestiveDecor from './components/festival/StaffFestiveDecor';
+import StaffFestiveDecor, { 
+  BlinkitAmbientGlow, 
+  BlinkitTopLights, 
+  BlinkitFestiveBanner, 
+  BlinkitToranRibbon 
+} from './components/festival/StaffFestiveDecor';
 import FirecrackerClickBursts from './components/festival/FirecrackerClickBursts';
 
 const MainLayout = ({ onLogout, onOpenDiwaliLanding }) => {
@@ -38,6 +43,33 @@ const MainLayout = ({ onLogout, onOpenDiwaliLanding }) => {
   const isClientsAllowed = ['admin', 'data analyst'].includes(staffInfo.role?.toLowerCase()) && staffInfo.employeeId !== 'RW-4559';
   const isMarketing = (staffInfo.department?.toLowerCase() || '').includes('marketing') || (staffInfo.role?.toLowerCase() || '').includes('marketing');
 
+  const [festiveTheme, setFestiveTheme] = useState(() => {
+    return localStorage.getItem('staffFestiveTheme') || 'gold';
+  });
+
+  const cycleFestiveTheme = () => {
+    const nextTheme =
+      festiveTheme === 'gold' ? 'carnival' :
+      festiveTheme === 'carnival' ? 'diamond' :
+      festiveTheme === 'diamond' ? 'off' : 'gold';
+    setFestiveTheme(nextTheme);
+    localStorage.setItem('staffFestiveTheme', nextTheme);
+    localStorage.setItem('staffFestiveDecor', nextTheme !== 'off' ? 'true' : 'false');
+    window.dispatchEvent(new CustomEvent('staffFestiveDecorChanged', { detail: { enabled: nextTheme !== 'off', theme: nextTheme } }));
+  };
+
+  const getTabClass = (tabKey) => {
+    const isActive = activeTab === tabKey;
+    if (isActive) {
+      return festiveTheme !== 'off'
+        ? 'bg-gradient-to-r from-amber-300 via-amber-400 to-yellow-400 text-[#451a03] font-black shadow-md shadow-amber-500/40 border border-amber-300'
+        : 'clay-flat text-[#8b5cf6] font-bold shadow-md shadow-purple-500/10';
+    }
+    return festiveTheme !== 'off'
+      ? 'text-amber-200/85 hover:text-white hover:bg-white/10'
+      : 'text-[#64748b] hover:text-[#8b5cf6]';
+  };
+
   useEffect(() => {
     const isAllowed =
       activeTab === 'dashboard' ||
@@ -61,49 +93,66 @@ const MainLayout = ({ onLogout, onOpenDiwaliLanding }) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#eef2f6] flex flex-col relative overflow-hidden">
-      {/* Background Atmospheric Blobs */}
-      <motion.div 
-        animate={{ 
-          x: [0, 50, 0],
-          y: [0, 100, 0],
-          scale: [1, 1.2, 1]
-        }}
-        transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-        className="blob w-[600px] h-[600px] bg-[#8b5cf6] -top-[10%] -left-[10%]"
-      />
-      <motion.div 
-        animate={{ 
-          x: [0, -100, 0],
-          y: [0, -50, 0],
-          scale: [1, 1.3, 1]
-        }}
-        transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-        className="blob w-[500px] h-[500px] bg-[#facc15] -bottom-[10%] -right-[10%]"
-      />
-      <motion.div 
-        animate={{ 
-          scale: [1, 1.5, 1],
-          opacity: [0.1, 0.2, 0.1]
-        }}
-        transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-        className="blob w-[400px] h-[400px] bg-[#f472b6] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
-      />
+    <div className={`min-h-screen flex flex-col relative overflow-hidden transition-colors duration-700 ${
+      festiveTheme !== 'off' 
+        ? 'festive-theme-active bg-[#3b1702] text-amber-50' 
+        : 'bg-[#eef2f6] text-[#334155]'
+    }`}>
+      {/* Background Ambience: Blinkit Warm Golden Glow or Atmospheric Blobs */}
+      {festiveTheme !== 'off' ? (
+        <BlinkitAmbientGlow theme={festiveTheme} />
+      ) : (
+        <>
+          <motion.div 
+            animate={{ 
+              x: [0, 50, 0],
+              y: [0, 100, 0],
+              scale: [1, 1.2, 1]
+            }}
+            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+            className="blob w-[600px] h-[600px] bg-[#8b5cf6] -top-[10%] -left-[10%]"
+          />
+          <motion.div 
+            animate={{ 
+              x: [0, -100, 0],
+              y: [0, -50, 0],
+              scale: [1, 1.3, 1]
+            }}
+            transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+            className="blob w-[500px] h-[500px] bg-[#facc15] -bottom-[10%] -right-[10%]"
+          />
+          <motion.div 
+            animate={{ 
+              scale: [1, 1.5, 1],
+              opacity: [0.1, 0.2, 0.1]
+            }}
+            transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+            className="blob w-[400px] h-[400px] bg-[#f472b6] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+          />
+        </>
+      )}
+
+      {/* Top Arched Hanging Micro-LED Fairy Lights (From Blinkit screenshot) */}
+      {festiveTheme !== 'off' && <BlinkitTopLights theme={festiveTheme} />}
 
       {/* Top Navbar */}
-      <div className="flex items-center justify-between p-4 bg-[#eef2f6] z-40 sticky top-0">
+      <div className={`flex items-center justify-between p-4 z-40 sticky top-0 transition-colors duration-500 ${
+        festiveTheme !== 'off'
+          ? 'bg-[#290f01]/85 backdrop-blur-md border-b border-amber-500/30 text-amber-100 shadow-md shadow-black/30'
+          : 'bg-[#eef2f6]'
+      }`}>
         <div className="flex items-center gap-3 overflow-x-auto py-1 max-w-[85vw]">
           <img src="/logo.png" className="w-10 h-10 object-contain rounded-xl shadow-lg shadow-purple-500/10 shrink-0 cursor-pointer" alt="RizeWorld Logo" onClick={() => handleTabChange('dashboard')} />
           
           {/* Universal Navigation Tabs Bar */}
-          <div className="flex items-center gap-1.5 sm:gap-2 bg-[#eef2f6] p-1 rounded-2xl clay-inset shrink-0">
+          <div className={`flex items-center gap-1.5 sm:gap-2 p-1 rounded-2xl shrink-0 transition-all ${
+            festiveTheme !== 'off'
+              ? 'bg-[#180900]/85 border border-amber-500/30'
+              : 'bg-[#eef2f6] clay-inset'
+          }`}>
             <button 
               onClick={() => handleTabChange('dashboard')}
-              className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-1.5 ${
-                activeTab === 'dashboard'
-                  ? 'clay-flat text-[#8b5cf6] font-bold shadow-md shadow-purple-500/10'
-                  : 'text-[#64748b] hover:text-[#8b5cf6]'
-              }`}
+              className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-1.5 ${getTabClass('dashboard')}`}
             >
               <LayoutDashboard size={15} />
               Dashboard
@@ -111,11 +160,7 @@ const MainLayout = ({ onLogout, onOpenDiwaliLanding }) => {
 
             <button 
               onClick={() => handleTabChange('progress')}
-              className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-1.5 ${
-                activeTab === 'progress'
-                  ? 'clay-flat text-[#8b5cf6] font-bold shadow-md shadow-purple-500/10'
-                  : 'text-[#64748b] hover:text-[#8b5cf6]'
-              }`}
+              className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-1.5 ${getTabClass('progress')}`}
             >
               <TrendingUp size={15} />
               Progress Report
@@ -124,11 +169,7 @@ const MainLayout = ({ onLogout, onOpenDiwaliLanding }) => {
             {isHR && (
               <button 
                 onClick={() => handleTabChange('hearing')}
-                className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all whitespace-nowrap ${
-                  activeTab === 'hearing'
-                    ? 'clay-flat text-[#8b5cf6] font-bold shadow-md shadow-purple-500/10'
-                    : 'text-[#64748b] hover:text-[#8b5cf6]'
-                }`}
+                className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all whitespace-nowrap ${getTabClass('hearing')}`}
               >
                 Hearing
               </button>
@@ -137,11 +178,7 @@ const MainLayout = ({ onLogout, onOpenDiwaliLanding }) => {
             {isCounselor && (
               <button 
                 onClick={() => handleTabChange('admissions')}
-                className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-1.5 ${
-                  activeTab === 'admissions'
-                    ? 'clay-flat text-[#8b5cf6] font-bold shadow-md shadow-purple-500/10'
-                    : 'text-[#64748b] hover:text-[#8b5cf6]'
-                }`}
+                className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-1.5 ${getTabClass('admissions')}`}
               >
                 <GraduationCap size={15} />
                 Admissions
@@ -151,11 +188,7 @@ const MainLayout = ({ onLogout, onOpenDiwaliLanding }) => {
             {isSalesTeam && (
               <button 
                 onClick={() => handleTabChange('sales')}
-                className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-1.5 ${
-                  activeTab === 'sales'
-                    ? 'clay-flat text-[#8b5cf6] font-bold shadow-md shadow-purple-500/10'
-                    : 'text-[#64748b] hover:text-[#8b5cf6]'
-                }`}
+                className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-1.5 ${getTabClass('sales')}`}
               >
                 <TrendingUp size={15} />
                 Sales log
@@ -165,11 +198,7 @@ const MainLayout = ({ onLogout, onOpenDiwaliLanding }) => {
             {isClientsAllowed && (
               <button 
                 onClick={() => handleTabChange('clients')}
-                className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-1.5 ${
-                  activeTab === 'clients'
-                    ? 'clay-flat text-[#8b5cf6] font-bold shadow-md shadow-purple-500/10'
-                    : 'text-[#64748b] hover:text-[#8b5cf6]'
-                }`}
+                className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-1.5 ${getTabClass('clients')}`}
               >
                 <Users size={15} />
                 Clients
@@ -179,11 +208,7 @@ const MainLayout = ({ onLogout, onOpenDiwaliLanding }) => {
             {isVisitingCardsAllowed && (
               <button 
                 onClick={() => handleTabChange('visitingCards')}
-                className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-1.5 ${
-                  activeTab === 'visitingCards'
-                    ? 'clay-flat text-[#8b5cf6] font-bold shadow-md shadow-purple-500/10'
-                    : 'text-[#64748b] hover:text-[#8b5cf6]'
-                }`}
+                className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-1.5 ${getTabClass('visitingCards')}`}
               >
                 <CreditCard size={15} />
                 Visiting Cards
@@ -193,11 +218,7 @@ const MainLayout = ({ onLogout, onOpenDiwaliLanding }) => {
             {isMarketing && (
               <button 
                 onClick={() => handleTabChange('blogs')}
-                className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-1.5 ${
-                  activeTab === 'blogs'
-                    ? 'clay-flat text-[#8b5cf6] font-bold shadow-md shadow-purple-500/10'
-                    : 'text-[#64748b] hover:text-[#8b5cf6]'
-                }`}
+                className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-1.5 ${getTabClass('blogs')}`}
               >
                 <BookOpen size={15} />
                 Blog Editor
@@ -207,11 +228,15 @@ const MainLayout = ({ onLogout, onOpenDiwaliLanding }) => {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <StaffFestiveDecor />
+          <StaffFestiveDecor currentTheme={festiveTheme} onChangeTheme={cycleFestiveTheme} />
 
           <button 
             onClick={onOpenDiwaliLanding}
-            className="px-3 py-2 clay-flat rounded-xl text-amber-600 hover:text-amber-700 hover:clay-inset transition-all flex items-center gap-1.5 text-xs sm:text-sm font-bold cursor-pointer"
+            className={`px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 text-xs sm:text-sm font-bold cursor-pointer ${
+              festiveTheme !== 'off'
+                ? 'bg-amber-500/20 text-amber-200 border border-amber-400/40 hover:bg-amber-500/30'
+                : 'clay-flat text-amber-600 hover:text-amber-700 hover:clay-inset'
+            }`}
             title="Watch Diwali Celebration Video"
           >
             <span className="animate-bounce">🪔</span>
@@ -220,13 +245,25 @@ const MainLayout = ({ onLogout, onOpenDiwaliLanding }) => {
 
           <button 
             onClick={onLogout}
-            className="p-3 clay-flat rounded-xl text-[#64748b] hover:text-rose-500 hover:clay-inset transition-all shrink-0 cursor-pointer"
+            className={`p-3 rounded-xl transition-all shrink-0 cursor-pointer ${
+              festiveTheme !== 'off'
+                ? 'bg-white/10 text-amber-200 hover:text-rose-400 hover:bg-rose-500/20 border border-white/15'
+                : 'clay-flat text-[#64748b] hover:text-rose-500 hover:clay-inset'
+            }`}
             title="Logout"
           >
             <LogOut size={22} />
           </button>
         </div>
       </div>
+
+      {/* Blinkit Inspired Festive Centerpiece Banner with Pixel Diyas & CHANGE LIGHTS button */}
+      {festiveTheme !== 'off' && (
+        <div className="relative z-20 pt-2">
+          <BlinkitFestiveBanner currentTheme={festiveTheme} onChangeTheme={cycleFestiveTheme} />
+          <BlinkitToranRibbon className="mt-1" />
+        </div>
+      )}
       
       {/* Main Content */}
       <main className="flex-1 p-4 md:p-8 relative z-10">
@@ -246,8 +283,14 @@ const MainLayout = ({ onLogout, onOpenDiwaliLanding }) => {
         )}
       </main>
 
-    </div>
+      {/* Traditional Toran Floral Garland at page footer */}
+      {festiveTheme !== 'off' && (
+        <div className="relative z-20 pb-2">
+          <BlinkitToranRibbon />
+        </div>
+      )}
 
+    </div>
   );
 };
 
