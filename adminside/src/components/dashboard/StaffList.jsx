@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Mail, Phone, Briefcase, Clock, Calendar, CheckCircle2, XCircle, MoreVertical, LogOut, LogIn, Trash2, Edit3 } from 'lucide-react';
 import { getAllStaff, clockOutAllStaff, BASE_URL } from '../../api';
-import FestiveCardGarland from '../festival/FestiveCardGarland';
 
 const container = {
   hidden: { opacity: 0 },
@@ -213,10 +212,7 @@ const StaffList = ({ onViewAll, staffMembers: externalStaff, loading: externalLo
   }
 
   return (
-    <div className="glass-card p-6 rounded-2xl overflow-hidden transition-colors relative">
-      {/* Festive Marigold Garland & Lights */}
-      <FestiveCardGarland showDiya={true} showLights={true} />
-
+    <div className="glass-card p-6 rounded-2xl overflow-hidden transition-colors">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <div>
           <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">Employee Management</h3>
