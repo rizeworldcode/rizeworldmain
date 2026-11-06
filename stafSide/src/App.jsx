@@ -13,6 +13,8 @@ import ClientProjects from './pages/ClientProjects';
 import BlogManagement from './pages/BlogManagement';
 import StaffProgressReport from './pages/StaffProgressReport';
 import StaffDiwaliLanding from './components/festival/StaffDiwaliLanding';
+import StaffFestiveDecor from './components/festival/StaffFestiveDecor';
+import FirecrackerClickBursts from './components/festival/FirecrackerClickBursts';
 
 const MainLayout = ({ onLogout, onOpenDiwaliLanding }) => {
   const navigate = useNavigate();
@@ -205,6 +207,8 @@ const MainLayout = ({ onLogout, onOpenDiwaliLanding }) => {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
+          <StaffFestiveDecor />
+
           <button 
             onClick={onOpenDiwaliLanding}
             className="px-3 py-2 clay-flat rounded-xl text-amber-600 hover:text-amber-700 hover:clay-inset transition-all flex items-center gap-1.5 text-xs sm:text-sm font-bold cursor-pointer"
@@ -263,6 +267,9 @@ const App = () => {
 
   return (
     <>
+      {/* Funny Pathake / Firecracker Bursts on Interactive Clicks */}
+      <FirecrackerClickBursts />
+
       {/* Immersive Diwali Celebration Video Landing Page */}
       <AnimatePresence>
         {showDiwaliLanding && (
