@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, User, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-const StaffLogin = ({ onLogin }) => {
+const StaffLogin = ({ onLogin, onOpenDiwaliLanding }) => {
   const [employeeId, setEmployeeId] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -169,6 +169,17 @@ const StaffLogin = ({ onLogin }) => {
                 'Sign In to Portal'
               )}
             </motion.button>
+
+            {onOpenDiwaliLanding && (
+              <button
+                type="button"
+                onClick={onOpenDiwaliLanding}
+                className="w-full mt-3 py-2.5 rounded-xl border border-amber-400/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+              >
+                <span className="animate-bounce">🪔</span>
+                <span>Watch Diwali Celebration Wish ✨</span>
+              </button>
+            )}
           </form>
 
 

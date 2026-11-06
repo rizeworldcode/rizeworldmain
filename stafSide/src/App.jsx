@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { LogOut, GraduationCap, LayoutDashboard, TrendingUp, CreditCard, Users, BookOpen } from 'lucide-react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
@@ -12,8 +12,9 @@ import Clients from './pages/Clients';
 import ClientProjects from './pages/ClientProjects';
 import BlogManagement from './pages/BlogManagement';
 import StaffProgressReport from './pages/StaffProgressReport';
+import StaffDiwaliLanding from './components/festival/StaffDiwaliLanding';
 
-const MainLayout = ({ onLogout }) => {
+const MainLayout = ({ onLogout, onOpenDiwaliLanding }) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { id: clientId } = useParams();
@@ -203,13 +204,24 @@ const MainLayout = ({ onLogout }) => {
           </div>
         </div>
 
-        <button 
-          onClick={onLogout}
-          className="p-3 clay-flat rounded-xl text-[#64748b] hover:text-rose-500 hover:clay-inset transition-all shrink-0"
-          title="Logout"
-        >
-          <LogOut size={22} />
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button 
+            onClick={onOpenDiwaliLanding}
+            className="px-3 py-2 clay-flat rounded-xl text-amber-600 hover:text-amber-700 hover:clay-inset transition-all flex items-center gap-1.5 text-xs sm:text-sm font-bold cursor-pointer"
+            title="Watch Diwali Celebration Video"
+          >
+            <span className="animate-bounce">🪔</span>
+            <span className="hidden md:inline">Diwali Wish</span>
+          </button>
+
+          <button 
+            onClick={onLogout}
+            className="p-3 clay-flat rounded-xl text-[#64748b] hover:text-rose-500 hover:clay-inset transition-all shrink-0 cursor-pointer"
+            title="Logout"
+          >
+            <LogOut size={22} />
+          </button>
+        </div>
       </div>
       
       {/* Main Content */}
@@ -237,6 +249,7 @@ const MainLayout = ({ onLogout }) => {
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('staffToken'));
+  const [showDiwaliLanding, setShowDiwaliLanding] = useState(true);
 
   const handleLoginSuccess = () => {
     setIsAuthenticated(true);
@@ -249,47 +262,65 @@ const App = () => {
   };
 
   return (
-    <Router>
-      <Routes>
-        {/* Main Route shows Login if not authenticated, else redirects to Dashboard */}
-        <Route 
-          path="/" 
-          element={
-            !isAuthenticated ? (
-              <StaffLogin onLogin={handleLoginSuccess} />
-            ) : (
-              <Navigate to="/dashboard" replace />
-            )
-          } 
-        />
+    <>
+      {/* Immersive Diwali Celebration Video Landing Page */}
+      <AnimatePresence>
+        {showDiwaliLanding && (
+          <StaffDiwaliLanding onClose={() => setShowDiwaliLanding(false)} />
+        )}
+      </AnimatePresence>
 
-        {/* Dashboard Route */}
-        <Route 
-          path="/dashboard" 
-          element={
-            isAuthenticated ? (
-              <MainLayout onLogout={handleLogout} />
-            ) : (
-              <Navigate to="/" replace />
-            )
-          } 
-        />
+      <Router>
+        <Routes>
+          {/* Main Route shows Login if not authenticated, else redirects to Dashboard */}
+          <Route 
+            path="/" 
+            element={
+              !isAuthenticated ? (
+                <StaffLogin 
+                  onLogin={handleLoginSuccess} 
+                  onOpenDiwaliLanding={() => setShowDiwaliLanding(true)} 
+                />
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
+            } 
+          />
 
-        <Route 
-          path="/clients/:id" 
-          element={
-            isAuthenticated ? (
-              <MainLayout onLogout={handleLogout} />
-            ) : (
-              <Navigate to="/" replace />
-            )
-          } 
-        />
+          {/* Dashboard Route */}
+          <Route 
+            path="/dashboard" 
+            element={
+              isAuthenticated ? (
+                <MainLayout 
+                  onLogout={handleLogout} 
+                  onOpenDiwaliLanding={() => setShowDiwaliLanding(true)} 
+                />
+              ) : (
+                <Navigate to="/" replace />
+              )
+            } 
+          />
 
-        {/* Catch all other routes */}
-        <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/"} replace />} />
-      </Routes>
-    </Router>
+          <Route 
+            path="/clients/:id" 
+            element={
+              isAuthenticated ? (
+                <MainLayout 
+                  onLogout={handleLogout} 
+                  onOpenDiwaliLanding={() => setShowDiwaliLanding(true)} 
+                />
+              ) : (
+                <Navigate to="/" replace />
+              )
+            } 
+          />
+
+          {/* Catch all other routes */}
+          <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/"} replace />} />
+        </Routes>
+      </Router>
+    </>
   );
 };
 
