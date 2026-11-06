@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import FestiveCardGarland from '../festival/FestiveCardGarland';
 
 const SectionHeading = ({ children }: { children: React.ReactNode }) => (
   <div className="max-w-5xl mx-auto text-center mb-16 md:mb-20">
@@ -77,6 +78,7 @@ const TEAM_MEMBERS = [
 
 const TeamMemberCard = ({ data }: { data: typeof TEAM_MEMBERS[0] }) => (
   <div className="group relative rounded-3xl overflow-hidden border border-gray-150 bg-white p-4 transition-all duration-500 hover:-translate-y-2 hover:border-rize-primary/20 hover:shadow-[0_0_40px_rgba(26,86,219,0.1)] flex flex-col w-[280px] sm:w-[320px] shrink-0">
+    <FestiveCardGarland showDiya={true} showLights={true} />
     <div className="relative overflow-hidden rounded-2xl mb-6 aspect-4/5 shrink-0 bg-gray-50 flex items-center justify-center">
       <img
         src={data.image}

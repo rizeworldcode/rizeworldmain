@@ -15,6 +15,7 @@ import { RiShieldCheckLine } from 'react-icons/ri';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import SEO from '../components/common/SEO';
 import Breadcrumbs from '../components/common/Breadcrumbs';
+import FestiveCardGarland from '../components/festival/FestiveCardGarland';
 import { 
   SEO_PACKAGES, 
   SMM_PACKAGES, 
@@ -443,10 +444,11 @@ export default function Pricing() {
                       boxShadow: FRAMER_BOX_SHADOW,
                       borderRadius: 24,
                     }}
-                    className={`w-[275px] xl:w-[295px] h-[505px] p-6 flex flex-col justify-between shrink-0 cursor-pointer relative select-none border border-white/20 transition-colors ${
+                    className={`w-[275px] xl:w-[295px] h-[505px] p-6 flex flex-col justify-between shrink-0 cursor-pointer relative select-none border border-white/20 transition-colors overflow-hidden ${
                       palette.isDarkText ? 'text-gray-950' : 'text-white'
                     }`}
                   >
+                    <FestiveCardGarland showDiya={true} showLights={true} />
                     {/* Top Content */}
                     <div>
                       <div className="flex items-center justify-between gap-2 mb-4">
@@ -609,10 +611,11 @@ export default function Pricing() {
                         boxShadow: FRAMER_BOX_SHADOW,
                         borderRadius: 24,
                       }}
-                      className={`w-[275px] h-[490px] p-6 flex flex-col justify-between shrink-0 snap-center cursor-pointer border border-white/20 ${
+                      className={`relative overflow-hidden w-[275px] h-[490px] p-6 flex flex-col justify-between shrink-0 snap-center cursor-pointer border border-white/20 ${
                         palette.isDarkText ? 'text-gray-950' : 'text-white'
                       }`}
                     >
+                      <FestiveCardGarland showDiya={true} showLights={true} />
                       <div>
                         <div className="flex items-center justify-between gap-2 mb-4">
                           <span className={`text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full border ${palette.pill}`}>
@@ -768,10 +771,11 @@ export default function Pricing() {
                     boxShadow: FRAMER_BOX_SHADOW,
                     borderRadius: 24,
                   }}
-                  className={`p-6 flex flex-col justify-between cursor-pointer border border-white/20 min-h-[490px] ${
+                  className={`relative overflow-hidden p-6 flex flex-col justify-between cursor-pointer border border-white/20 min-h-[490px] ${
                     palette.isDarkText ? 'text-gray-950' : 'text-white'
                   }`}
                 >
+                  <FestiveCardGarland showDiya={true} showLights={true} />
                   <div>
                     <div className="flex items-center justify-between gap-2 mb-4">
                       <span className={`text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full border ${palette.pill}`}>

@@ -6,6 +6,7 @@ import { PROJECTS } from '../data/projects';
 import { LOGOS } from '../data/logos';
 import SEO from '../components/common/SEO';
 import Breadcrumbs from '../components/common/Breadcrumbs';
+import FestiveCardGarland from '../components/festival/FestiveCardGarland';
 
 function FallbackImage({ src, fallback, alt, className }: { src: string; fallback: string; alt: string; className: string }) {
   const [imgSrc, setImgSrc] = useState(src);
@@ -256,6 +257,7 @@ export default function Portfolio() {
                 }}
                 className="w-full bg-white rounded-4xl p-4 border border-gray-200/80 shadow-sm flex flex-col group hover:border-rize-primary/40 hover:shadow-[0_20px_50px_rgba(26,86,219,0.12)] transition-all duration-300 relative overflow-hidden cursor-pointer"
               >
+                <FestiveCardGarland showDiya={true} showLights={true} />
                 {/* Image Box */}
                 <div className="relative overflow-hidden rounded-3xl aspect-[192/100] bg-transparent mb-5">
                   <FallbackImage

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import SEO from '../components/common/SEO';
 import Breadcrumbs from '../components/common/Breadcrumbs';
+import FestiveCardGarland from '../components/festival/FestiveCardGarland';
 
 const SKILLS_MARQUEE = [
   { text: "PHOTOSHOP", color: "text-amber-500" },
@@ -204,6 +205,7 @@ export default function Team() {
                   : 'bg-white border-gray-200 shadow-sm text-gray-900 md:hover:border-rize-primary/40 md:hover:shadow-[0_20px_50px_rgba(26,86,219,0.15)] md:hover:bg-gray-900 md:hover:text-white'
                   }`}
               >
+                <FestiveCardGarland showDiya={true} showLights={true} />
                 {/* Image Section */}
                 <div className="relative overflow-hidden rounded-2xl aspect-4/5 bg-gray-100 mb-6 flex items-center justify-center">
                   <img

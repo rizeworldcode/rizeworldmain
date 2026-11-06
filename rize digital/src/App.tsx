@@ -1,9 +1,12 @@
-import { useEffect, Suspense, lazy } from 'react';
+import { useState, useEffect, Suspense, lazy } from 'react';
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import Header from './components/common/Header';
 import Footer from './components/common/Footer';
 import ScrollToTop from './components/common/ScrollToTop';
 import FloatingButtons from './components/common/FloatingButtons';
+import { AnimatePresence } from 'framer-motion';
+import DiwaliFestiveSplash from './components/festival/DiwaliFestiveSplash';
+import DiwaliSiteDecor from './components/festival/DiwaliSiteDecor';
 
 const PopupModal = lazy(() => import('./components/common/PopupModal'));
 
@@ -57,6 +60,7 @@ const DigitalMarketingAgencyInChandigarh = lazy(() => import('./pages/services/D
 const DynamicCityLandingPage = lazy(() => import('./pages/services/DynamicCityLandingPage'));
 
 function App() {
+  const [showFestiveSplash, setShowFestiveSplash] = useState(true);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -87,6 +91,19 @@ function App() {
   const isNotFound = location.pathname !== '/' && !validRoutePrefixes.some(prefix => location.pathname.startsWith(prefix));
 
   return (
+    <>
+      {/* Festive Diwali Splash Screen (Disappears after 6s or on Skip) */}
+      <AnimatePresence>
+        {showFestiveSplash && (
+          <DiwaliFestiveSplash
+            onClose={() => setShowFestiveSplash(false)}
+            duration={6000}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Global Diwali Site Lighting & Festive Decorations */}
+      <DiwaliSiteDecor />
     <div className="min-h-screen bg-rize-bg flex flex-col relative z-0 overflow-x-hidden">
       {!isNotFound && <ScrollToTop />}
       {!isNotFound && (
@@ -152,6 +169,7 @@ function App() {
 
       {!isNotFound && <Footer />}
     </div>
+    </>
   );
 }
 

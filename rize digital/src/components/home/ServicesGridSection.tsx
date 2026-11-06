@@ -1,5 +1,6 @@
 import { Share2, Search, FileText, Palette, MousePointerClick, Layout, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import FestiveCardGarland from '../festival/FestiveCardGarland';
 
 const SERVICES = [
   {
@@ -130,8 +131,11 @@ export default function ServicesGridSection() {
             <Link 
               key={index} 
               to={service.path}
-              className="premium-card flex flex-col cursor-pointer h-full text-left"
+              className="premium-card flex flex-col cursor-pointer h-full text-left relative overflow-hidden"
             >
+              {/* Diwali Festive Golden Line & Corner Diya */}
+              <FestiveCardGarland showDiya={true} showLights={true} />
+
               {/* Icon */}
               <div className={`icon-box ${service.colorClass} mb-8 shadow-sm transition-transform duration-500 ease-out`}>
                 {service.icon}

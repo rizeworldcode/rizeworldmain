@@ -19,6 +19,7 @@ import { RiPaletteLine } from 'react-icons/ri';
 import SEO from '../../components/common/SEO';
 import Breadcrumbs from '../../components/common/Breadcrumbs';
 import AreasWeServe from '../../components/common/AreasWeServe';
+import FestiveCardGarland from '../../components/festival/FestiveCardGarland';
 
 const SERVICES_LIST = [
   {
@@ -362,6 +363,7 @@ export default function GraphicDesign() {
                 key={idx}
                 className="bg-white border border-gray-200/80 rounded-4xl p-8 flex flex-col justify-between group hover:border-orange-500/40 hover:shadow-[0_20px_50px_rgba(249,115,22,0.08)] transition-all duration-500 relative overflow-hidden cursor-pointer"
               >
+                <FestiveCardGarland showDiya={true} showLights={true} />
                 <div>
                   <div className="w-14 h-14 rounded-2xl bg-orange-500/15 text-orange-500 flex items-center justify-center mb-8 group-hover:bg-orange-500 group-hover:text-white transition-colors duration-300">
                     <Icon size={24} />

@@ -1,4 +1,5 @@
 import { Cpu, Repeat, Megaphone, BarChart } from 'lucide-react';
+import FestiveCardGarland from '../festival/FestiveCardGarland';
 
 const METHODOLOGIES = [
   {
@@ -48,6 +49,7 @@ export default function StrategySection() {
           
           {METHODOLOGIES.map((item, index) => (
             <div key={index} className="group relative rounded-4xl overflow-hidden border border-gray-200 bg-white p-8 lg:p-12 transition-all duration-500 ease-in-out hover:-translate-y-2 hover:shadow-xl hover:border-orange-500/30 flex flex-col">
+              <FestiveCardGarland showDiya={true} showLights={true} />
               <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-8 shadow-md group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-500 ease-out ${item.color}`}>
                 {item.icon}
               </div>

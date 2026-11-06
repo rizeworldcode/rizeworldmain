@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Heart, MessageCircle, Send, Bookmark } from 'lucide-react';
+import FestiveCardGarland from '../festival/FestiveCardGarland';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -127,6 +128,7 @@ export default function AgencyHighlightsSection() {
               className="absolute w-[220px] sm:w-[320px] bg-white rounded-3xl overflow-hidden shadow-2xl border border-gray-100 will-change-transform"
               style={{ zIndex }}
             >
+              <FestiveCardGarland showDiya={true} showLights={false} />
               {/* Header */}
               <div className="flex items-center px-4 py-3 gap-3">
                 <img src={card.avatar} alt={card.user} width="40" height="40" loading="lazy" decoding="async" className="w-10 h-10 rounded-full object-cover bg-gray-100" />

@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import FestiveCardGarland from '../festival/FestiveCardGarland';
 
 interface PricingTier {
     letter: string;
@@ -92,6 +93,7 @@ const PricingSwiss: React.FC<PricingSwissProps> = ({
                 <div className="grid grid-cols-1 md:grid-cols-3">
                     {tiers.map((tier, i) => (
                         <div key={i} className="group relative h-96 overflow-hidden border-b-4 md:border-b-0 md:border-r-4 last:border-r-0" style={{ borderColor: tierBorderColor }}>
+                            <FestiveCardGarland showDiya={true} showLights={true} />
                             <div className="absolute inset-0 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-in-out" style={{ backgroundColor: tierHoverBgColor }} />
 
                             <div className="relative h-full p-8 flex flex-col justify-between" style={{ backgroundColor: tierBgColor }}>

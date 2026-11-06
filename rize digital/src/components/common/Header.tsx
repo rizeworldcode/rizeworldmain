@@ -46,7 +46,7 @@ export default function Header() {
     <header className="fixed top-6 left-0 w-full z-[100] pointer-events-auto flex flex-col items-center px-4 sm:px-8">
 
       {/* Floating Pill Navbar */}
-      <div className={`w-full max-w-7xl backdrop-blur-md rounded-full py-2.5 px-4 sm:px-6 flex items-center justify-between border border-gray-100 transition-all duration-300 ${
+      <div className={`relative w-full max-w-7xl backdrop-blur-md rounded-full py-2.5 px-4 sm:px-6 flex items-center justify-between border border-gray-100 transition-all duration-300 ${
         isScrolled 
           ? 'bg-white/98 shadow-[0_4px_24px_rgba(0,0,0,0.08)]' 
           : 'bg-white/92 shadow-sm'
@@ -193,7 +193,6 @@ export default function Header() {
           >
             Let's Talk
           </a>
-
 
           {/* Mobile Menu Button (3-dots) */}
           <button

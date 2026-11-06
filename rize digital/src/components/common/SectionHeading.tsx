@@ -7,7 +7,7 @@ interface SectionHeadingProps {
 }
 
 export const SectionHeading = ({ titleLine1, titleLine2, description }: SectionHeadingProps) => (
-  <div className="max-w-5xl mb-16">
+  <div className="max-w-5xl mb-16 relative">
     <h2 className="text-black font-semibold leading-tight tracking-tight text-4xl sm:text-5xl lg:text-6xl">
       {titleLine1}
       {titleLine2 && (

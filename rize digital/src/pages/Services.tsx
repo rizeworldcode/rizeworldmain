@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { HiRocketLaunch } from 'react-icons/hi2';
 import SEO from '../components/common/SEO';
+import FestiveCardGarland from '../components/festival/FestiveCardGarland';
 
 const ALL_SERVICES = [
   {
@@ -182,6 +183,7 @@ export default function Services() {
               to={s.path}
               className="bg-white border border-gray-200/80 rounded-4xl p-8 flex flex-col justify-between group hover:border-rize-primary/40 hover:shadow-[0_20px_50px_rgba(26,86,219,0.06)] transition-all duration-500 relative overflow-hidden cursor-pointer"
             >
+              <FestiveCardGarland showDiya={true} showLights={true} />
               <div>
                 <div className={`icon-box ${s.colorClass} mb-8 shadow-xs`}>
                   {s.icon}

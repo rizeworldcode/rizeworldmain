@@ -4,6 +4,7 @@ import { RiAwardLine } from 'react-icons/ri';
 import { Link } from 'react-router-dom';
 import SEO from '../components/common/SEO';
 import Breadcrumbs from '../components/common/Breadcrumbs';
+import FestiveCardGarland from '../components/festival/FestiveCardGarland';
 import CASE_STUDIES_DATA from '../data/caseStudies';
 
 
@@ -70,8 +71,9 @@ export default function CaseStudies() {
               viewport={{ once: true }}
               transition={{ duration: 0.6, delay: idx * 0.1 }}
               key={idx}
-              className="bg-white border border-gray-200/80 rounded-4xl overflow-hidden shadow-2xs hover:shadow-md hover:border-orange-500/20 transition-all duration-300 flex flex-col justify-between"
+              className="relative bg-white border border-gray-200/80 rounded-4xl overflow-hidden shadow-2xs hover:shadow-md hover:border-orange-500/20 transition-all duration-300 flex flex-col justify-between"
             >
+              <FestiveCardGarland showDiya={true} showLights={false} />
               <div>
                 <div className="aspect-video relative overflow-hidden bg-gray-100">
                   <img 

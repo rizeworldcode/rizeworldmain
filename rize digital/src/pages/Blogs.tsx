@@ -4,6 +4,7 @@ import { ArrowDownRight, ArrowRight, Tag } from 'lucide-react';
 import { motion } from 'framer-motion';
 import SEO from '../components/common/SEO';
 import Breadcrumbs from '../components/common/Breadcrumbs';
+import FestiveCardGarland from '../components/festival/FestiveCardGarland';
 import BLOG_CATEGORIES from '../data/blogCategories';
 import { getApiBaseUrl, getImageUrl, formatDate, categoryToSlug } from '../utils/api';
 
@@ -223,6 +224,7 @@ export default function Blogs() {
               >
                 {/* Image Container */}
                 <div className="w-full aspect-video rounded-3xl overflow-hidden mb-6 bg-stone-100 relative">
+                  <FestiveCardGarland showDiya={true} showLights={false} />
                   <img 
                     src={blog.image} 
                     alt={blog.title}
