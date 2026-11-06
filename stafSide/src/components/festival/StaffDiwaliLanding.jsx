@@ -6,7 +6,6 @@ import diwaliPcVideo from '../../assets/diwali-wish-pc.mp4';
 export default function StaffDiwaliLanding({ onClose }) {
   const videoRef = useRef(null);
   const hasRedirectedRef = useRef(false);
-  const [isMuted, setIsMuted] = useState(false);
   const [isMobileScreen, setIsMobileScreen] = useState(() => {
     if (typeof window !== 'undefined') {
       return window.innerWidth < 768;
@@ -36,17 +35,10 @@ export default function StaffDiwaliLanding({ onClose }) {
     if (!video) return;
 
     video.currentTime = 0;
-    
-    // Attempt unmuted play first; if browser blocks, fallback to muted autoplay
-    video.muted = false;
-    setIsMuted(false);
     const playPromise = video.play();
     if (playPromise !== undefined) {
       playPromise.catch((err) => {
-        console.warn('Unmuted autoplay prevented by browser policy, falling back to muted:', err);
-        video.muted = true;
-        setIsMuted(true);
-        video.play().catch((e) => console.warn('Muted autoplay error:', e));
+        console.warn('Autoplay prevented:', err);
       });
     }
 
@@ -96,14 +88,14 @@ export default function StaffDiwaliLanding({ onClose }) {
       className="fixed inset-0 w-screen h-screen z-50 overflow-hidden bg-black select-none cursor-pointer"
       title="Click anywhere to enter Dashboard"
     >
-      {/* Pure Fullscreen Ultra-HD Video (Zero overlays, zero buttons, zero text) */}
+      {/* Pure Fullscreen Silent Ultra-HD Video (Zero sound, zero overlays) */}
       <video
         ref={videoRef}
         key={activeVideoSrc}
         src={activeVideoSrc}
         playsInline
         autoPlay
-        muted={isMuted}
+        muted
         onEnded={handleRedirect}
         className="w-full h-full object-cover pointer-events-none"
       />
