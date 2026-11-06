@@ -1,7 +1,6 @@
 import { motion } from 'framer-motion';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import TiltCard from '../shared/TiltCard';
-import FestiveCardGarland from '../festival/FestiveCardGarland';
 
 const StatsCard = ({ 
   title, 
@@ -22,9 +21,6 @@ const StatsCard = ({
         onClick={onClick}
         className={`glass-card p-4 sm:p-5 rounded-2xl h-full relative overflow-hidden group select-none ${onClick ? 'cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all duration-300' : ''}`}
       >
-        {/* Festive Marigold Garland (Phool Mala) & Lights */}
-        <FestiveCardGarland showDiya={true} showLights={true} />
-
         {/* Background Gradient Glow */}
         <div className={`absolute -right-4 -top-4 w-24 h-24 blur-3xl opacity-20 transition-opacity group-hover:opacity-40 bg-gradient-to-br ${gradient}`} />
         

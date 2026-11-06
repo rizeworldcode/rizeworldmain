@@ -12,7 +12,6 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { getLiveLocations } from '../../api';
-import FestiveCardGarland from '../festival/FestiveCardGarland';
 
 const DashboardMap = () => {
   const navigate = useNavigate();
@@ -60,10 +59,7 @@ const DashboardMap = () => {
   }, [employees, filterType]);
 
   return (
-    <section className="relative w-full bg-white dark:bg-[#111] p-5 sm:p-6 rounded-[2rem] border border-gray-200/50 dark:border-white/5 shadow-xl space-y-5 overflow-hidden">
-      {/* Festive Marigold Garland & Lights */}
-      <FestiveCardGarland showDiya={true} showLights={true} />
-
+    <section className="w-full bg-white dark:bg-[#111] p-5 sm:p-6 rounded-[2rem] border border-gray-200/50 dark:border-white/5 shadow-xl space-y-5">
       {/* Top Header & Sales Action / Redirection Buttons */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         {/* Title & Info */}

@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { MoreHorizontal, User, Briefcase, Clock } from 'lucide-react';
 import { getAllClients } from '../../api';
-import FestiveCardGarland from '../festival/FestiveCardGarland';
 
 const getTimeAgo = (date) => {
   const now = new Date();
@@ -78,10 +77,7 @@ const RecentClients = ({ onClientClick }) => {
   }, []);
 
   return (
-    <div className="glass-card p-6 rounded-2xl h-full flex flex-col transition-colors relative overflow-hidden">
-      {/* Festive Marigold Garland & Lights */}
-      <FestiveCardGarland showDiya={true} showLights={true} />
-
+    <div className="glass-card p-6 rounded-2xl h-full flex flex-col transition-colors">
       <div className="flex justify-between items-center mb-6">
         <div>
           <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">Recent Clients</h3>
