@@ -26,8 +26,10 @@ import {
   Trash2,
   MessageSquare,
   AlertCircle,
-  Lock
+  Lock,
+  Fingerprint
 } from 'lucide-react';
+import BiometricModal from '../components/BiometricModal';
 import { 
   BarChart, 
   Bar, 
@@ -596,6 +598,7 @@ const ActionCard = ({ title, time, icon: Icon, color, onClick, disabled, type })
 );
 
 const Dashboard = ({ onNavigateToProgress }) => {
+  const [isBiometricModalOpen, setIsBiometricModalOpen] = useState(false);
   const [greeting, setGreeting] = useState('');
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
   const [todayTasks, setTodayTasks] = useState([]);
@@ -3238,57 +3241,68 @@ const Dashboard = ({ onNavigateToProgress }) => {
         className="clay-card p-6 sm:p-10"
       >
         <div>
-          <div className="flex items-center gap-4 sm:gap-6 mb-6 sm:mb-8">
-            <div 
-              onClick={() => {
-                if (staffInfo.profilePic) {
-                  setFullImageModal({
-                    isOpen: true,
-                    src: getProfilePicUrl(staffInfo.profilePic),
-                    title: `${staffInfo.name || 'My Profile'}`
-                  });
-                }
-              }}
-              className={`w-14 h-14 sm:w-20 sm:h-20 rounded-2xl overflow-hidden shadow-lg bg-gradient-to-br from-[#8b5cf6] to-[#f472b6] flex items-center justify-center text-white font-black text-2xl sm:text-3xl shrink-0 ${
-                staffInfo.profilePic ? 'cursor-pointer hover:scale-105 transition-transform' : ''
-              }`}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
+            <div className="flex items-center gap-4 sm:gap-6">
+              <div 
+                onClick={() => {
+                  if (staffInfo.profilePic) {
+                    setFullImageModal({
+                      isOpen: true,
+                      src: getProfilePicUrl(staffInfo.profilePic),
+                      title: `${staffInfo.name || 'My Profile'}`
+                    });
+                  }
+                }}
+                className={`w-14 h-14 sm:w-20 sm:h-20 rounded-2xl overflow-hidden shadow-lg bg-gradient-to-br from-[#8b5cf6] to-[#f472b6] flex items-center justify-center text-white font-black text-2xl sm:text-3xl shrink-0 ${
+                  staffInfo.profilePic ? 'cursor-pointer hover:scale-105 transition-transform' : ''
+                }`}
+              >
+                {staffInfo?.profilePic ? (
+                  <img
+                    src={getProfilePicUrl(staffInfo.profilePic)}
+                    alt={staffInfo.name}
+                    className="w-full h-full object-cover rounded-2xl block border-0 outline-none"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  staffInfo?.name?.charAt(0) || 'U'
+                )}
+              </div>
+              <div>
+                <h3 className="text-xl sm:text-3xl font-black text-black">{staffInfo?.name || 'Employee'}</h3>
+                <p className="text-sm sm:text-lg font-bold text-black mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span>{staffInfo?.department || 'N/A'}</span>
+                  {staffInfo?.reportingPerson && (() => {
+                    const reportingPersonIds = Array.isArray(staffInfo.reportingPerson)
+                      ? staffInfo.reportingPerson
+                      : (staffInfo.reportingPerson && staffInfo.reportingPerson !== '-' ? [staffInfo.reportingPerson] : []);
+
+                    if (reportingPersonIds.length === 0) return null;
+
+                    const managerNames = staffInfo.reportingPersonName && staffInfo.reportingPersonName !== '-'
+                      ? staffInfo.reportingPersonName
+                      : reportingPersonIds.join(', ');
+
+                    return (
+                      <span className="text-xs text-gray-500 font-bold bg-black/5 border border-black/10 rounded-full px-2.5 py-0.5 whitespace-nowrap" title={`IDs: ${reportingPersonIds.join(', ')}`}>
+                        Report to: {managerNames}
+                      </span>
+                    );
+                  })()}
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsBiometricModalOpen(true)}
+              className="self-start sm:self-center px-4 py-2.5 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-blue-500/20 flex items-center gap-2 cursor-pointer transition-all hover:scale-105 active:scale-95"
             >
-              {staffInfo?.profilePic ? (
-                <img
-                  src={getProfilePicUrl(staffInfo.profilePic)}
-                  alt={staffInfo.name}
-                  className="w-full h-full object-cover rounded-2xl block border-0 outline-none"
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                  }}
-                />
-              ) : (
-                staffInfo?.name?.charAt(0) || 'U'
-              )}
-            </div>
-            <div>
-              <h3 className="text-xl sm:text-3xl font-black text-black">{staffInfo?.name || 'Employee'}</h3>
-              <p className="text-sm sm:text-lg font-bold text-black mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-                <span>{staffInfo?.department || 'N/A'}</span>
-                {staffInfo?.reportingPerson && (() => {
-                  const reportingPersonIds = Array.isArray(staffInfo.reportingPerson)
-                    ? staffInfo.reportingPerson
-                    : (staffInfo.reportingPerson && staffInfo.reportingPerson !== '-' ? [staffInfo.reportingPerson] : []);
-
-                  if (reportingPersonIds.length === 0) return null;
-
-                  const managerNames = staffInfo.reportingPersonName && staffInfo.reportingPersonName !== '-'
-                    ? staffInfo.reportingPersonName
-                    : reportingPersonIds.join(', ');
-
-                  return (
-                    <span className="text-xs text-gray-500 font-bold bg-black/5 border border-black/10 rounded-full px-2.5 py-0.5 whitespace-nowrap" title={`IDs: ${reportingPersonIds.join(', ')}`}>
-                      Report to: {managerNames}
-                    </span>
-                  );
-                })()}
-              </p>
-            </div>
+              <Fingerprint size={18} />
+              <span>Biometric Login Setup</span>
+            </button>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
@@ -4388,6 +4402,12 @@ const Dashboard = ({ onNavigateToProgress }) => {
           </div>
         </div>
       )}
+
+      {/* Biometric Touch ID / Face ID / Android Biometric Modal */}
+      <BiometricModal
+        isOpen={isBiometricModalOpen}
+        onClose={() => setIsBiometricModalOpen(false)}
+      />
 
     </div>
   );

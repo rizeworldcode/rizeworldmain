@@ -47,7 +47,13 @@ const {
   deleteAdvance,
   updateAdvance,
   getSalaryLockStatus,
-  toggleSalaryLock
+  toggleSalaryLock,
+  getBiometricRegisterChallenge,
+  verifyBiometricRegistration,
+  getBiometricLoginChallenge,
+  verifyBiometricLogin,
+  getStaffBiometricCredentials,
+  deleteBiometricCredential
 } = require('../controllers/staffController');
 const { protect } = require('../middleware/authMiddleware');
 const { requireOfficeWifi } = require('../middleware/officeWifi');
@@ -55,11 +61,21 @@ const upload = require('../middleware/upload');
 
 router.post('/login', loginStaff);
 
+// Biometric login routes (public)
+router.post('/biometric/login-challenge', getBiometricLoginChallenge);
+router.post('/biometric/login-verify', verifyBiometricLogin);
+
 // Salary sheet routes (password-verified, no JWT needed for verify)
 router.post('/salary-sheet/verify', verifySalaryPassword);
 router.get('/salary-sheet', protect, getSalarySheet);
 
 router.use(protect);
+
+// Biometric registration & management routes (authenticated)
+router.get('/biometric/credentials', getStaffBiometricCredentials);
+router.post('/biometric/register-challenge', getBiometricRegisterChallenge);
+router.post('/biometric/register-verify', verifyBiometricRegistration);
+router.delete('/biometric/credentials/:credentialId', deleteBiometricCredential);
 
 router.post('/', createStaff);
 router.get('/', getAllStaff);

@@ -224,7 +224,16 @@ const staffSchema = new mongoose.Schema({
   leaves: [{
     date: { type: Date, default: Date.now },
     type: { type: String, enum: ['Casual', 'Sick', 'Other'], default: 'Casual' }
-  }]
+  }],
+  biometricCredentials: [{
+    credentialID: { type: String, required: true },
+    publicKey: { type: String, required: true },
+    counter: { type: Number, default: 0 },
+    transports: [String],
+    deviceName: { type: String, default: 'My Device' },
+    createdAt: { type: Date, default: Date.now }
+  }],
+  currentBiometricChallenge: { type: String, default: null }
 }, {
   timestamps: true
 });
@@ -247,5 +256,6 @@ staffSchema.index({ isRemoved: 1, role: 1 });
 staffSchema.index({ isRemoved: 1, department: 1 });
 staffSchema.index({ reportingPerson: 1 });
 staffSchema.index({ createdAt: -1 });
+staffSchema.index({ 'biometricCredentials.credentialID': 1 });
 
 module.exports = mongoose.model('Staff', staffSchema);

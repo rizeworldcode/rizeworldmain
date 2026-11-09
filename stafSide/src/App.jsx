@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LogOut, GraduationCap, LayoutDashboard, TrendingUp, CreditCard, Users, BookOpen } from 'lucide-react';
+import { LogOut, GraduationCap, LayoutDashboard, TrendingUp, CreditCard, Users, BookOpen, Fingerprint } from 'lucide-react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import StaffLogin from './pages/StaffLogin';
@@ -13,6 +13,7 @@ import ClientProjects from './pages/ClientProjects';
 import BlogManagement from './pages/BlogManagement';
 import StaffProgressReport from './pages/StaffProgressReport';
 import StaffDiwaliLanding from './components/festival/StaffDiwaliLanding';
+import BiometricModal from './components/BiometricModal';
 import StaffFestiveDecor, { 
   BlinkitAmbientGlow, 
   BlinkitTopLights, 
@@ -46,6 +47,7 @@ const MainLayout = ({ onLogout, onOpenDiwaliLanding }) => {
   const [festiveTheme, setFestiveTheme] = useState(() => {
     return localStorage.getItem('staffFestiveTheme') || 'gold';
   });
+  const [isBiometricOpen, setIsBiometricOpen] = useState(false);
 
   const cycleFestiveTheme = () => {
     const nextTheme =
@@ -236,6 +238,19 @@ const MainLayout = ({ onLogout, onOpenDiwaliLanding }) => {
         <div className="flex items-center gap-2 shrink-0">
           <StaffFestiveDecor currentTheme={festiveTheme} onChangeTheme={cycleFestiveTheme} />
 
+          <button
+            onClick={() => setIsBiometricOpen(true)}
+            className={`px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 text-xs sm:text-sm font-bold cursor-pointer ${
+              festiveTheme !== 'off'
+                ? 'bg-blue-500/20 text-blue-200 border border-blue-400/40 hover:bg-blue-500/30'
+                : 'clay-flat text-blue-600 hover:text-blue-700 hover:clay-inset'
+            }`}
+            title="Setup Touch ID / Face ID / Fingerprint"
+          >
+            <Fingerprint size={16} />
+            <span className="hidden md:inline">Biometrics</span>
+          </button>
+
           <button 
             onClick={onOpenDiwaliLanding}
             className={`px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 text-xs sm:text-sm font-bold cursor-pointer ${
@@ -295,6 +310,12 @@ const MainLayout = ({ onLogout, onOpenDiwaliLanding }) => {
           <BlinkitToranRibbon />
         </div>
       )}
+
+      {/* Biometric Touch ID / Face ID / Fingerprint Setup Modal */}
+      <BiometricModal
+        isOpen={isBiometricOpen}
+        onClose={() => setIsBiometricOpen(false)}
+      />
 
     </div>
   );

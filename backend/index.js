@@ -15,6 +15,7 @@ const app = express();
 
 
 
+
 // CORS configuration
 const allowedOrigins = [
   'https://admin.rizeworld.in',

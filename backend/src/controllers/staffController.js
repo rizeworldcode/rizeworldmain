@@ -12,6 +12,12 @@ const cloudinary = require('../config/cloudinary');
 const jwt = require('jsonwebtoken');
 const upload = require('../middleware/upload');
 const socketUtil = require('../../socket');
+const {
+  generateRegistrationOptions,
+  verifyRegistrationResponse,
+  generateAuthenticationOptions,
+  verifyAuthenticationResponse
+} = require('@simplewebauthn/server');
 
 // Helper function to check if staff salary & payout visibility is locked by admin
 const isStaffSalaryLocked = async () => {
@@ -50,6 +56,111 @@ const normalizeTaskName = (name) => {
   return name.toLowerCase().replace(/[-_]/g, ' ').replace(/\s+/g, ' ').trim();
 };
 
+// Helper to extract RP ID & origins dynamically
+const getExpectedOriginsAndRpID = (req) => {
+  const originHeader = req.get('origin') || req.get('referer');
+  const origins = [
+    'http://localhost:5175',
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://localhost:45000',
+    'http://127.0.0.1:5175',
+    'http://127.0.0.1:5173',
+    'https://rizeworldmain.onrender.com',
+    'https://rizeworldinstitute.in',
+    'https://www.rizeworldinstitute.in',
+    'https://admin.rizeworld.in',
+    'https://staff.rizeworld.in'
+  ];
+
+  let rpID = 'localhost';
+  if (originHeader) {
+    try {
+      const parsed = new URL(originHeader);
+      rpID = parsed.hostname;
+      if (!origins.includes(parsed.origin)) {
+        origins.push(parsed.origin);
+      }
+    } catch (e) {}
+  } else {
+    rpID = (req.get('x-forwarded-host') || req.get('host') || 'localhost').split(':')[0];
+  }
+
+  const rpIDs = Array.from(new Set([
+    rpID,
+    'localhost',
+    '127.0.0.1',
+    'rizeworldinstitute.in',
+    'rizeworldmain.onrender.com'
+  ]));
+
+  return { expectedOrigin: origins, expectedRPID: rpIDs, rpID };
+};
+
+// Formats full staff login payload with token
+const formatStaffLoginPayload = async (staff) => {
+  const token = jwt.sign(
+    { id: staff._id, employeeId: staff.employeeId, role: 'staff' },
+    process.env.SECRET_KEY || 'default_secret',
+    { expiresIn: '30d' }
+  );
+
+  staff.authToken = token;
+  await staff.save();
+
+  const todayClockRecord = staff.clock?.find(c =>
+    c.date && isSameDayIST(c.date, new Date())
+  );
+
+  let reportingPersonName = '-';
+  if (staff.reportingPerson && staff.reportingPerson.length > 0) {
+    const managers = await Staff.find({ employeeId: { $in: staff.reportingPerson } });
+    if (managers && managers.length > 0) {
+      reportingPersonName = managers.map(m => m.name).join(', ');
+    }
+  }
+
+  return {
+    success: true,
+    message: 'Login successful',
+    data: {
+      id: staff._id,
+      name: staff.name,
+      employeeId: staff.employeeId,
+      department: staff.department,
+      email: staff.email,
+      profilePic: staff.profilePic || '',
+      joiningDate: staff.joiningDate,
+      monthlySalary: staff.monthlySalary,
+      clock: staff.clock,
+      work: staff.work,
+      status: staff.status,
+      clock_status: staff.clock_status,
+      attendance: staff.attendance,
+      salaryHistory: staff.salaryHistory,
+      salaryRevisions: staff.salaryRevisions || [],
+      advances: staff.advances || [],
+      jobType: staff.jobType || '',
+      createdAt: staff.createdAt,
+      leaves: staff.leaves,
+      totalCasualLeaves: staff.totalCasualLeaves,
+      todayClock: todayClockRecord || null,
+      role: staff.role,
+      reportingPerson: staff.reportingPerson || [],
+      reportingPersonName,
+      todaySatisfaction: staff.todaySatisfaction || 'none',
+      satisfactionHistory: staff.satisfactionHistory || [],
+      todayComment: staff.todayComment || '',
+      commentHistory: staff.commentHistory || [],
+      commentUpdatedBy: staff.commentUpdatedBy || '',
+      permissions: staff.permissions,
+      isSalaryLocked: (await isStaffSalaryLocked()) || Boolean(staff.isSalaryLocked),
+      hasBiometrics: Boolean(staff.biometricCredentials && staff.biometricCredentials.length > 0)
+    },
+    token
+  };
+};
+
 // Staff Login
 exports.loginStaff = async (req, res) => {
   try {
@@ -65,67 +176,336 @@ exports.loginStaff = async (req, res) => {
       return res.status(401).json({ success: false, message: 'Invalid Password' });
     }
 
-    // Generate real JWT token
-    const token = jwt.sign(
-      { id: staff._id, employeeId: staff.employeeId, role: 'staff' },
-      process.env.SECRET_KEY || 'default_secret',
-      { expiresIn: '30d' }
-    );
+    const responsePayload = await formatStaffLoginPayload(staff);
+    res.status(200).json(responsePayload);
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
 
-    // Save token in database as auth key
-    staff.authToken = token;
+// Biometric Registration: Step 1 - Generate challenge for logged in staff
+exports.getBiometricRegisterChallenge = async (req, res) => {
+  try {
+    const staffId = req.staff?._id || req.user?.id || req.staff?.id;
+    if (!staffId) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    const staff = await Staff.findById(staffId);
+    if (!staff || staff.isRemoved) {
+      return res.status(404).json({ success: false, message: 'Staff member not found' });
+    }
+
+    const { rpID } = getExpectedOriginsAndRpID(req);
+
+    const excludeCredentials = (staff.biometricCredentials || []).map(cred => ({
+      id: cred.credentialID,
+      transports: cred.transports || []
+    }));
+
+    const options = await generateRegistrationOptions({
+      rpName: 'RizeWorld Staff Portal',
+      rpID,
+      userID: new Uint8Array(Buffer.from(staff._id.toString())),
+      userName: staff.employeeId || staff.email,
+      userDisplayName: staff.name || staff.employeeId,
+      attestationType: 'none',
+      excludeCredentials,
+      authenticatorSelection: {
+        residentKey: 'preferred',
+        userVerification: 'preferred'
+      },
+      timeout: 60000
+    });
+
+    staff.currentBiometricChallenge = options.challenge;
     await staff.save();
 
-    // Get today's clock record for sending to frontend
-    const todayClockRecord = staff.clock?.find(c =>
-      c.date && isSameDayIST(c.date, new Date())
+    cache.set('bio_reg_' + options.challenge, { challenge: options.challenge, staffId: staff._id.toString() }, 300);
+
+    res.status(200).json({
+      success: true,
+      options
+    });
+  } catch (error) {
+    console.error('getBiometricRegisterChallenge error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Biometric Registration: Step 2 - Verify registration response and store public key
+exports.verifyBiometricRegistration = async (req, res) => {
+  try {
+    const staffId = req.staff?._id || req.user?.id || req.staff?.id;
+    if (!staffId) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    const { response, deviceName } = req.body;
+    if (!response) {
+      return res.status(400).json({ success: false, message: 'Biometric response data is required' });
+    }
+
+    const staff = await Staff.findById(staffId);
+    if (!staff || staff.isRemoved) {
+      return res.status(404).json({ success: false, message: 'Staff member not found' });
+    }
+
+    const expectedChallenge = staff.currentBiometricChallenge;
+    if (!expectedChallenge) {
+      return res.status(400).json({ success: false, message: 'Biometric registration expired or challenge missing. Please try again.' });
+    }
+
+    const { expectedOrigin, expectedRPID } = getExpectedOriginsAndRpID(req);
+
+    const verification = await verifyRegistrationResponse({
+      response,
+      expectedChallenge,
+      expectedOrigin,
+      expectedRPID,
+      requireUserVerification: false
+    });
+
+    if (!verification.verified || !verification.registrationInfo) {
+      return res.status(400).json({ success: false, message: 'Biometric registration verification failed.' });
+    }
+
+    const { credentialID, credentialPublicKey, counter } = verification.registrationInfo;
+
+    // Filter out duplicate if re-registering
+    staff.biometricCredentials = (staff.biometricCredentials || []).filter(
+      c => c.credentialID !== credentialID
     );
 
-    let reportingPersonName = '-';
-    if (staff.reportingPerson && staff.reportingPerson.length > 0) {
-      const managers = await Staff.find({ employeeId: { $in: staff.reportingPerson } });
-      if (managers && managers.length > 0) {
-        reportingPersonName = managers.map(m => m.name).join(', ');
+    staff.biometricCredentials.push({
+      credentialID,
+      publicKey: Buffer.from(credentialPublicKey).toString('base64url'),
+      counter,
+      transports: response.response?.transports || [],
+      deviceName: deviceName || 'Device ' + (staff.biometricCredentials.length + 1),
+      createdAt: new Date()
+    });
+
+    staff.currentBiometricChallenge = null;
+    await staff.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Biometric credential registered successfully',
+      credentials: staff.biometricCredentials.map(c => ({
+        credentialID: c.credentialID,
+        deviceName: c.deviceName,
+        createdAt: c.createdAt
+      }))
+    });
+  } catch (error) {
+    console.error('verifyBiometricRegistration error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Biometric Login: Step 1 - Generate authentication challenge (Public endpoint)
+exports.getBiometricLoginChallenge = async (req, res) => {
+  try {
+    const { employeeId } = req.body || {};
+    const { rpID } = getExpectedOriginsAndRpID(req);
+
+    let allowCredentials = undefined;
+    let targetStaff = null;
+
+    if (employeeId && typeof employeeId === 'string' && employeeId.trim()) {
+      targetStaff = await Staff.findOne({ employeeId: employeeId.trim(), isRemoved: { $ne: true } });
+      if (targetStaff && targetStaff.biometricCredentials?.length > 0) {
+        allowCredentials = targetStaff.biometricCredentials.map(c => ({
+          id: c.credentialID,
+          transports: c.transports || []
+        }));
       }
+    }
+
+    const options = await generateAuthenticationOptions({
+      rpID,
+      allowCredentials,
+      userVerification: 'preferred',
+      timeout: 60000
+    });
+
+    // Store in cache for 5 minutes
+    cache.set('bio_auth_' + options.challenge, {
+      challenge: options.challenge,
+      employeeId: targetStaff?.employeeId || null,
+      staffId: targetStaff?._id?.toString() || null
+    }, 300);
+
+    if (targetStaff) {
+      targetStaff.currentBiometricChallenge = options.challenge;
+      await targetStaff.save();
     }
 
     res.status(200).json({
       success: true,
-      message: 'Login successful',
-      data: {
-        id: staff._id,
-        name: staff.name,
-        employeeId: staff.employeeId,
-        department: staff.department,
-        email: staff.email,
-        profilePic: staff.profilePic || '',
-        joiningDate: staff.joiningDate,
-        monthlySalary: staff.monthlySalary,
-        clock: staff.clock,
-        work: staff.work,
-        status: staff.status,
-        clock_status: staff.clock_status,
-        attendance: staff.attendance,
-        salaryHistory: staff.salaryHistory,
-        salaryRevisions: staff.salaryRevisions || [],
-        advances: staff.advances || [],
-        jobType: staff.jobType || '',
-        createdAt: staff.createdAt,
-        leaves: staff.leaves,
-        totalCasualLeaves: staff.totalCasualLeaves,
-        todayClock: todayClockRecord || null, // Send today's specific clock record
-        role: staff.role, // Include role for notifications
-        reportingPerson: staff.reportingPerson || [],
-        reportingPersonName,
-        todaySatisfaction: staff.todaySatisfaction || 'none',
-        satisfactionHistory: staff.satisfactionHistory || [],
-        todayComment: staff.todayComment || '',
-        commentHistory: staff.commentHistory || [],
-        commentUpdatedBy: staff.commentUpdatedBy || '',
-        permissions: staff.permissions,
-        isSalaryLocked: (await isStaffSalaryLocked()) || Boolean(staff.isSalaryLocked)
+      options
+    });
+  } catch (error) {
+    console.error('getBiometricLoginChallenge error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Biometric Login: Step 2 - Verify biometric response and issue JWT (Public endpoint)
+exports.verifyBiometricLogin = async (req, res) => {
+  try {
+    const { response, employeeId } = req.body;
+    if (!response || !response.id) {
+      return res.status(400).json({ success: false, message: 'Invalid biometric authentication response' });
+    }
+
+    // 1. Locate the staff member
+    let staff = null;
+    if (employeeId && typeof employeeId === 'string' && employeeId.trim()) {
+      staff = await Staff.findOne({ employeeId: employeeId.trim(), isRemoved: { $ne: true } });
+    }
+
+    if (!staff) {
+      // Find by credential ID across all staff
+      staff = await Staff.findOne({
+        'biometricCredentials.credentialID': response.id,
+        isRemoved: { $ne: true }
+      });
+    }
+
+    if (!staff) {
+      return res.status(404).json({
+        success: false,
+        message: 'No staff account found associated with this biometric device. Please log in with Employee ID & Password first to register your Fingerprint / Face ID.'
+      });
+    }
+
+    // 2. Locate credential record
+    const cred = staff.biometricCredentials?.find(c => c.credentialID === response.id);
+    if (!cred) {
+      return res.status(400).json({
+        success: false,
+        message: 'Biometric credential not recognized for this account.'
+      });
+    }
+
+    // 3. Resolve challenge
+    let expectedChallenge = staff.currentBiometricChallenge;
+    if (!expectedChallenge) {
+      // Check cache if user didn't have currentBiometricChallenge directly
+      try {
+        const clientDataStr = Buffer.from(response.response.clientDataJSON, 'base64url').toString('utf8');
+        const clientData = JSON.parse(clientDataStr);
+        if (clientData.challenge) {
+          const cached = cache.get('bio_auth_' + clientData.challenge);
+          if (cached) {
+            expectedChallenge = cached.challenge;
+          }
+        }
+      } catch (e) {}
+    }
+
+    if (!expectedChallenge) {
+      return res.status(400).json({
+        success: false,
+        message: 'Biometric authentication session timed out. Please tap again to retry.'
+      });
+    }
+
+    const { expectedOrigin, expectedRPID } = getExpectedOriginsAndRpID(req);
+
+    const verification = await verifyAuthenticationResponse({
+      response,
+      expectedChallenge,
+      expectedOrigin,
+      expectedRPID,
+      authenticator: {
+        credentialID: cred.credentialID,
+        credentialPublicKey: new Uint8Array(Buffer.from(cred.publicKey, 'base64url')),
+        counter: cred.counter || 0,
+        transports: cred.transports || []
       },
-      token
+      requireUserVerification: false
+    });
+
+    if (!verification.verified) {
+      return res.status(401).json({
+        success: false,
+        message: 'Biometric verification failed. Please try again or use your password.'
+      });
+    }
+
+    // Update counter and clear challenge
+    cred.counter = verification.authenticationInfo.newCounter;
+    staff.currentBiometricChallenge = null;
+    await staff.save();
+
+    // Log the user in with the standard token and payload
+    const loginPayload = await formatStaffLoginPayload(staff);
+    return res.status(200).json(loginPayload);
+  } catch (error) {
+    console.error('verifyBiometricLogin error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Get registered biometric devices for current staff
+exports.getStaffBiometricCredentials = async (req, res) => {
+  try {
+    const staffId = req.staff?._id || req.user?.id || req.staff?.id;
+    if (!staffId) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    const staff = await Staff.findById(staffId).select('biometricCredentials');
+    if (!staff) {
+      return res.status(404).json({ success: false, message: 'Staff member not found' });
+    }
+
+    const credentials = (staff.biometricCredentials || []).map(c => ({
+      credentialID: c.credentialID,
+      deviceName: c.deviceName || 'Registered Device',
+      createdAt: c.createdAt
+    }));
+
+    res.status(200).json({
+      success: true,
+      credentials
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Delete a registered biometric device
+exports.deleteBiometricCredential = async (req, res) => {
+  try {
+    const staffId = req.staff?._id || req.user?.id || req.staff?.id;
+    const { credentialId } = req.params;
+
+    if (!staffId) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    const staff = await Staff.findById(staffId);
+    if (!staff) {
+      return res.status(404).json({ success: false, message: 'Staff member not found' });
+    }
+
+    staff.biometricCredentials = (staff.biometricCredentials || []).filter(
+      c => c.credentialID !== credentialId
+    );
+    await staff.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Device biometric removed successfully',
+      credentials: staff.biometricCredentials.map(c => ({
+        credentialID: c.credentialID,
+        deviceName: c.deviceName,
+        createdAt: c.createdAt
+      }))
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
