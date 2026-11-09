@@ -11,5 +11,6 @@ router.get('/:id', clientController.getClientById);
 router.put('/:id', clientController.updateClient);
 router.put('/:id/tasks', clientController.updateClientTasks);
 router.put('/:id/renew', clientController.renewClientPackage);
+router.delete('/:id/cycles/:cycleIndex', clientController.deleteClientCycle);
 
 module.exports = router;

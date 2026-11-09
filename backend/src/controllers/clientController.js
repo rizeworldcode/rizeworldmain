@@ -689,5 +689,67 @@ exports.renewClientPackage = async (req, res) => {
   }
 };
 
+exports.deleteClientCycle = async (req, res) => {
+  try {
+    const { id, cycleIndex } = req.params;
+    let client = await Client.findById(id);
+
+    if (!client) {
+      client = await OldClient.findById(id);
+    }
+
+    if (!client) {
+      return res.status(404).json({
+        success: false,
+        message: 'Client not found'
+      });
+    }
+
+    if (!client.history || client.history.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No past cycles found to delete'
+      });
+    }
+
+    const idx = parseInt(cycleIndex, 10);
+    let removed = null;
+
+    if (!isNaN(idx) && idx >= 0 && idx < client.history.length) {
+      removed = client.history.splice(idx, 1);
+    } else {
+      const foundIdx = client.history.findIndex(h => h._id && h._id.toString() === cycleIndex);
+      if (foundIdx !== -1) {
+        removed = client.history.splice(foundIdx, 1);
+      } else {
+        return res.status(404).json({
+          success: false,
+          message: 'Cycle not found in client history'
+        });
+      }
+    }
+
+    await client.save();
+
+    cache.flushByPrefix('clients:');
+    cache.flushByPrefix('dashboard:');
+    cache.flushByPrefix('transactions');
+    cache.flushByPrefix('old-clients');
+    cache.flushByPrefix('delaywork:');
+
+    res.status(200).json({
+      success: true,
+      message: 'Work cycle deleted successfully',
+      data: client
+    });
+  } catch (error) {
+    console.error('Error deleting client cycle:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Error deleting client cycle'
+    });
+  }
+};
+
 exports.parseWorkDetailToTasks = parseWorkDetailToTasks;
 

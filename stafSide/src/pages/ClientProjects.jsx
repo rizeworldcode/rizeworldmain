@@ -997,10 +997,12 @@ const ProjectSection = ({
   project,
   isHistory = false,
   cycleNumber = null,
+  originalIndex = null,
   onUpdate = (_p) => { },
   onRenew = (_p) => { },
   onAddTask = (_p) => { },
   onDeleteExtraTask = (_pid, _idx) => { },
+  onDeleteCycle,
   client
 }) => {
   const projectProgress = calculateProjectProgress(project);
@@ -1013,10 +1015,24 @@ const ProjectSection = ({
         {/* Work Progress Card */}
         <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm relative overflow-hidden">
           {isHistory ? (
-            <div className="absolute top-0 right-0 px-4 py-1.5 bg-purple-600 text-white text-[10px] font-black uppercase tracking-widest rounded-bl-2xl shadow-sm flex items-center gap-1.5">
+            <div className="absolute top-0 right-0 px-4 py-1.5 bg-purple-600 text-white text-[10px] font-black uppercase tracking-widest rounded-bl-2xl shadow-sm flex items-center gap-2">
               <span>📅 Completed Month / Cycle #{cycleNumber || 1}</span>
               {project.startDate && project.deadline && (
                 <span className="opacity-90 font-medium lowercase">({new Date(project.startDate).toLocaleDateString('en-IN')} - {new Date(project.deadline).toLocaleDateString('en-IN')})</span>
+              )}
+              {onDeleteCycle && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteCycle();
+                  }}
+                  className="ml-1 p-1 hover:bg-rose-600 bg-rose-500/40 text-white rounded-md transition-all cursor-pointer flex items-center gap-1 shadow-sm"
+                  title={`Delete Month / Cycle #${cycleNumber}`}
+                >
+                  <Trash2 size={12} />
+                  <span className="hidden sm:inline text-[9px] font-bold">Delete</span>
+                </button>
               )}
             </div>
           ) : (
@@ -1073,6 +1089,17 @@ const ProjectSection = ({
                     )}
                   </AnimatePresence>
                 </div>
+              )}
+              {isHistory && onDeleteCycle && (
+                <button
+                  type="button"
+                  onClick={onDeleteCycle}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-600 text-rose-600 hover:text-white font-bold text-[10px] uppercase tracking-widest transition-all border border-rose-500/20 hover:border-rose-600 cursor-pointer shadow-sm"
+                  title={`Delete Cycle #${cycleNumber}`}
+                >
+                  <Trash2 size={12} />
+                  <span>Delete Cycle</span>
+                </button>
               )}
             </div>
             <span className="text-sm font-black text-blue-500">{projectProgress}%</span>
@@ -1142,7 +1169,7 @@ const ProjectSection = ({
             <h4 className="text-lg font-black text-black flex items-center gap-2">
               Work in Progress
             </h4>
-            {!isHistory && (
+            {!isHistory ? (
               <div className="flex items-center gap-2">
                 <button onClick={() => onRenew?.(project)} className="p-2 hover:bg-purple-500/10 text-purple-600 rounded-xl transition-all" title="Renew">
                   <RefreshCw size={18} />
@@ -1154,7 +1181,17 @@ const ProjectSection = ({
                   <Plus size={18} />
                 </button>
               </div>
-            )}
+            ) : onDeleteCycle ? (
+              <button
+                type="button"
+                onClick={onDeleteCycle}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-600 text-rose-600 hover:text-white font-bold text-[10px] uppercase tracking-widest transition-all border border-rose-500/20 hover:border-rose-600 cursor-pointer shadow-sm"
+                title={`Delete Cycle #${cycleNumber}`}
+              >
+                <Trash2 size={13} />
+                <span>Delete</span>
+              </button>
+            ) : null}
           </div>
 
           <div className="space-y-4">
@@ -2399,6 +2436,34 @@ const ClientProjects = ({ onBack }) => {
     }
   };
 
+  const handleDeleteCycle = async (cycle, originalIndex, cycleNumber) => {
+    const cycleLabel = `Month / Cycle #${cycleNumber}` + (cycle.startDate && cycle.deadline ? ` (${new Date(cycle.startDate).toLocaleDateString('en-IN')} - ${new Date(cycle.deadline).toLocaleDateString('en-IN')})` : '');
+    const confirmed = window.confirm(
+      `Are you sure you want to delete ${cycleLabel}?\n\nThis will permanently remove this cycle from Past Cycles. This action cannot be undone.`
+    );
+    if (!confirmed) return;
+
+    try {
+      const id = clientId;
+      const targetParam = cycle._id ? cycle._id : originalIndex;
+      const response = await fetch(getApiUrl(`/clients/${id}/cycles/${targetParam}`), {
+        method: 'DELETE',
+        headers: getRequestHeaders(),
+        credentials: 'include'
+      });
+      const result = await response.json();
+      if (result.success) {
+        await fetchClientData();
+        alert(`Successfully deleted ${cycleLabel}.`);
+      } else {
+        alert(result.message || 'Failed to delete work cycle');
+      }
+    } catch (error) {
+      console.error('Error deleting work cycle:', error);
+      alert('Failed to delete work cycle');
+    }
+  };
+
   const overallStats = useMemo(() => {
     if (!projects[0]) return {
       avgProgress: 0,
@@ -2658,15 +2723,17 @@ const ClientProjects = ({ onBack }) => {
                 </h3>
               </div>
               {[...projects[0].history]
-                .map((cycle, origIdx) => ({ cycle, cycleNumber: origIdx + 1 }))
+                .map((cycle, origIdx) => ({ cycle, cycleNumber: origIdx + 1, originalIndex: origIdx }))
                 .reverse()
-                .map(({ cycle, cycleNumber }, index) => (
+                .map(({ cycle, cycleNumber, originalIndex }, index) => (
                   <ProjectSection
                     key={`hist-${cycleNumber}-${index}`}
                     project={cycle}
                     client={projects[0]}
                     isHistory={true}
                     cycleNumber={cycleNumber}
+                    originalIndex={originalIndex}
+                    onDeleteCycle={() => handleDeleteCycle(cycle, originalIndex, cycleNumber)}
                   />
                 ))}
             </div>
