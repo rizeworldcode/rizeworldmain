@@ -186,7 +186,7 @@ exports.loginStaff = async (req, res) => {
 // Biometric Registration: Step 1 - Generate challenge for logged in staff
 exports.getBiometricRegisterChallenge = async (req, res) => {
   try {
-    const staffId = req.staff?._id || req.user?.id || req.staff?.id;
+    const staffId = req.user?._id || req.staff?._id || req.user?.id || req.staff?.id;
     if (!staffId) {
       return res.status(401).json({ success: false, message: 'Authentication required' });
     }
@@ -236,7 +236,7 @@ exports.getBiometricRegisterChallenge = async (req, res) => {
 // Biometric Registration: Step 2 - Verify registration response and store public key
 exports.verifyBiometricRegistration = async (req, res) => {
   try {
-    const staffId = req.staff?._id || req.user?.id || req.staff?.id;
+    const staffId = req.user?._id || req.staff?._id || req.user?.id || req.staff?.id;
     if (!staffId) {
       return res.status(401).json({ success: false, message: 'Authentication required' });
     }
@@ -453,7 +453,7 @@ exports.verifyBiometricLogin = async (req, res) => {
 // Get registered biometric devices for current staff
 exports.getStaffBiometricCredentials = async (req, res) => {
   try {
-    const staffId = req.staff?._id || req.user?.id || req.staff?.id;
+    const staffId = req.user?._id || req.staff?._id || req.user?.id || req.staff?.id;
     if (!staffId) {
       return res.status(401).json({ success: false, message: 'Authentication required' });
     }
@@ -481,7 +481,7 @@ exports.getStaffBiometricCredentials = async (req, res) => {
 // Delete a registered biometric device
 exports.deleteBiometricCredential = async (req, res) => {
   try {
-    const staffId = req.staff?._id || req.user?.id || req.staff?.id;
+    const staffId = req.user?._id || req.staff?._id || req.user?.id || req.staff?.id;
     const { credentialId } = req.params;
 
     if (!staffId) {

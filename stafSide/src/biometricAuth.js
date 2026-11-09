@@ -25,6 +25,24 @@ export const getStaffApiBase = () => {
 };
 
 /**
+ * Safe JSON parser that provides helpful error messages instead of raw SyntaxError when HTML is returned.
+ */
+const safeParseJson = async (res) => {
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch (err) {
+    if (res.status === 404) {
+      throw new Error('Biometric endpoint not found (404). Please ensure the backend server has been restarted with the latest routes.');
+    }
+    if (res.status === 401) {
+      throw new Error('Your session has expired. Please log in again.');
+    }
+    throw new Error(`Server returned status ${res.status}: ${text.slice(0, 100)}`);
+  }
+};
+
+/**
  * Detect friendly platform name and biometric label (Touch ID, Face ID, Android Biometrics).
  */
 export const getDeviceBiometricLabel = () => {
@@ -76,7 +94,7 @@ export const loginWithBiometrics = async (employeeId = '') => {
     body: JSON.stringify({ employeeId: employeeId?.trim() || undefined })
   });
 
-  const challengeData = await challengeRes.json();
+  const challengeData = await safeParseJson(challengeRes);
   if (!challengeData.success || !challengeData.options) {
     throw new Error(challengeData.message || 'Failed to initiate biometric login');
   }
@@ -102,7 +120,7 @@ export const loginWithBiometrics = async (employeeId = '') => {
     })
   });
 
-  const verifyData = await verifyRes.json();
+  const verifyData = await safeParseJson(verifyRes);
   if (!verifyData.success) {
     throw new Error(verifyData.message || 'Biometric verification failed.');
   }
@@ -131,7 +149,7 @@ export const registerCurrentDeviceBiometrics = async (token, customDeviceName = 
     }
   });
 
-  const challengeData = await challengeRes.json();
+  const challengeData = await safeParseJson(challengeRes);
   if (!challengeData.success || !challengeData.options) {
     throw new Error(challengeData.message || 'Failed to initiate biometric registration');
   }
@@ -163,7 +181,7 @@ export const registerCurrentDeviceBiometrics = async (token, customDeviceName = 
     })
   });
 
-  const verifyData = await verifyRes.json();
+  const verifyData = await safeParseJson(verifyRes);
   if (!verifyData.success) {
     throw new Error(verifyData.message || 'Failed to register biometric credential.');
   }
@@ -179,11 +197,16 @@ export const getRegisteredBiometrics = async (token) => {
   const authToken = token || localStorage.getItem('staffToken');
   if (!authToken) return [];
 
-  const res = await fetch(`${base}/biometric/credentials`, {
-    headers: { Authorization: `Bearer ${authToken}` }
-  });
-  const data = await res.json();
-  return data.success ? data.credentials : [];
+  try {
+    const res = await fetch(`${base}/biometric/credentials`, {
+      headers: { Authorization: `Bearer ${authToken}` }
+    });
+    const data = await safeParseJson(res);
+    return data.success ? (data.credentials || []) : [];
+  } catch (err) {
+    console.warn('Failed to load registered biometrics:', err.message);
+    return [];
+  }
 };
 
 /**
@@ -194,10 +217,15 @@ export const deleteRegisteredBiometric = async (credentialId, token) => {
   const authToken = token || localStorage.getItem('staffToken');
   if (!authToken) return false;
 
-  const res = await fetch(`${base}/biometric/credentials/${credentialId}`, {
-    method: 'DELETE',
-    headers: { Authorization: `Bearer ${authToken}` }
-  });
-  const data = await res.json();
-  return data.success;
+  try {
+    const res = await fetch(`${base}/biometric/credentials/${credentialId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${authToken}` }
+    });
+    const data = await safeParseJson(res);
+    return Boolean(data.success);
+  } catch (err) {
+    console.warn('Failed to delete biometric:', err.message);
+    return false;
+  }
 };

@@ -242,3 +242,4 @@ const BiometricModal = ({ isOpen, onClose }) => {
 };
 
 export default BiometricModal;
+

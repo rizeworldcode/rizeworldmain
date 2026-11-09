@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Notification = require('../models/Notification');
 const Staff = require('../models/Staff');
 const Client = require('../models/Client');
@@ -10,6 +11,14 @@ const moment = require('moment-timezone');
 exports.getNotificationsForStaff = async (req, res) => {
   try {
     const staffId = req.params.staffId;
+    if (!staffId || !mongoose.isValidObjectId(staffId)) {
+      return res.status(200).json({
+        success: true,
+        count: 0,
+        data: []
+      });
+    }
+
     const cacheKey = `notifications:staff:${staffId}`;
 
     const responseData = await cache.fetchOrCompute(cacheKey, async () => {
