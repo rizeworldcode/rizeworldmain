@@ -160,8 +160,7 @@ export const registerCurrentDeviceBiometrics = async (token, customDeviceName = 
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${authToken}`,
-      'x-staff-id': staffId
+      Authorization: `Bearer ${authToken}`
     },
     body: JSON.stringify({ staffId })
   });
@@ -190,8 +189,7 @@ export const registerCurrentDeviceBiometrics = async (token, customDeviceName = 
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${authToken}`,
-      'x-staff-id': staffId
+      Authorization: `Bearer ${authToken}`
     },
     body: JSON.stringify({
       response: regResponse,
@@ -214,14 +212,12 @@ export const registerCurrentDeviceBiometrics = async (token, customDeviceName = 
 export const getRegisteredBiometrics = async (token) => {
   const base = getStaffApiBase();
   const authToken = token || localStorage.getItem('staffToken') || localStorage.getItem('token');
-  const staffId = getActiveStaffId();
   if (!authToken) return [];
 
   try {
     const res = await fetch(`${base}/biometric/credentials`, {
       headers: { 
-        Authorization: `Bearer ${authToken}`,
-        'x-staff-id': staffId
+        Authorization: `Bearer ${authToken}`
       }
     });
     const data = await safeParseJson(res);
@@ -238,15 +234,13 @@ export const getRegisteredBiometrics = async (token) => {
 export const deleteRegisteredBiometric = async (credentialId, token) => {
   const base = getStaffApiBase();
   const authToken = token || localStorage.getItem('staffToken') || localStorage.getItem('token');
-  const staffId = getActiveStaffId();
   if (!authToken) return false;
 
   try {
     const res = await fetch(`${base}/biometric/credentials/${credentialId}`, {
       method: 'DELETE',
       headers: { 
-        Authorization: `Bearer ${authToken}`,
-        'x-staff-id': staffId
+        Authorization: `Bearer ${authToken}`
       }
     });
     const data = await safeParseJson(res);
