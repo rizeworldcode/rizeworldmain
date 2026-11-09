@@ -6,7 +6,6 @@ import StatsCard from '../components/dashboard/StatsCard';
 import RevenueChart from '../components/dashboard/RevenueChart';
 import RecentClients from '../components/dashboard/RecentClients';
 import StaffList from '../components/dashboard/StaffList';
-import DashboardMap from '../components/dashboard/DashboardMap';
 import { getDashboardStats, getAllStaff, getSalarySheet, markStaffLeave, getSalaryLockStatus, toggleSalaryLock } from '../api';
 import { getAvailableSalaryMonths, getMonthlySalarySummary, getCurrentSalaryCycleMonth } from '../utils/salaryCalculator';
 
@@ -326,11 +325,6 @@ const Overview = ({ onViewClient, onViewStaff }) => {
             </div>
           }
         />
-      </section>
-
-      {/* Sales Team Live Tracking Map Section (100% Width) */}
-      <section className="w-full">
-        <DashboardMap />
       </section>
 
       {/* Analytics Grid */}
