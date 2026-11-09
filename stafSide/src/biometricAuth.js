@@ -129,13 +129,28 @@ export const loginWithBiometrics = async (employeeId = '') => {
 };
 
 /**
+ * Helper to get active staff ID from localStorage
+ */
+const getActiveStaffId = () => {
+  try {
+    const raw = localStorage.getItem('staffInfo');
+    if (!raw) return '';
+    const info = JSON.parse(raw);
+    return info._id || info.id || '';
+  } catch (e) {
+    return '';
+  }
+};
+
+/**
  * Registers this device's Touch ID / Face ID / Fingerprint for the logged-in staff.
  * @param {string} token Staff JWT auth token.
  * @param {string} [customDeviceName] Custom label for this device.
  */
 export const registerCurrentDeviceBiometrics = async (token, customDeviceName = '') => {
   const base = getStaffApiBase();
-  const authToken = token || localStorage.getItem('staffToken');
+  const authToken = token || localStorage.getItem('staffToken') || localStorage.getItem('token');
+  const staffId = getActiveStaffId();
   if (!authToken) {
     throw new Error('Please log in before registering biometric authentication.');
   }
@@ -145,8 +160,10 @@ export const registerCurrentDeviceBiometrics = async (token, customDeviceName = 
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${authToken}`
-    }
+      Authorization: `Bearer ${authToken}`,
+      'x-staff-id': staffId
+    },
+    body: JSON.stringify({ staffId })
   });
 
   const challengeData = await safeParseJson(challengeRes);
@@ -173,11 +190,13 @@ export const registerCurrentDeviceBiometrics = async (token, customDeviceName = 
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${authToken}`
+      Authorization: `Bearer ${authToken}`,
+      'x-staff-id': staffId
     },
     body: JSON.stringify({
       response: regResponse,
-      deviceName
+      deviceName,
+      staffId
     })
   });
 
@@ -194,12 +213,16 @@ export const registerCurrentDeviceBiometrics = async (token, customDeviceName = 
  */
 export const getRegisteredBiometrics = async (token) => {
   const base = getStaffApiBase();
-  const authToken = token || localStorage.getItem('staffToken');
+  const authToken = token || localStorage.getItem('staffToken') || localStorage.getItem('token');
+  const staffId = getActiveStaffId();
   if (!authToken) return [];
 
   try {
     const res = await fetch(`${base}/biometric/credentials`, {
-      headers: { Authorization: `Bearer ${authToken}` }
+      headers: { 
+        Authorization: `Bearer ${authToken}`,
+        'x-staff-id': staffId
+      }
     });
     const data = await safeParseJson(res);
     return data.success ? (data.credentials || []) : [];
@@ -214,13 +237,17 @@ export const getRegisteredBiometrics = async (token) => {
  */
 export const deleteRegisteredBiometric = async (credentialId, token) => {
   const base = getStaffApiBase();
-  const authToken = token || localStorage.getItem('staffToken');
+  const authToken = token || localStorage.getItem('staffToken') || localStorage.getItem('token');
+  const staffId = getActiveStaffId();
   if (!authToken) return false;
 
   try {
     const res = await fetch(`${base}/biometric/credentials/${credentialId}`, {
       method: 'DELETE',
-      headers: { Authorization: `Bearer ${authToken}` }
+      headers: { 
+        Authorization: `Bearer ${authToken}`,
+        'x-staff-id': staffId
+      }
     });
     const data = await safeParseJson(res);
     return Boolean(data.success);
