@@ -102,7 +102,7 @@ export const loginWithBiometrics = async (employeeId = '') => {
   // Step 2: Invoke native OS biometric prompt (Touch ID / Face ID / Android Biometric)
   let authResponse;
   try {
-    authResponse = await startAuthentication({ optionsJSON: challengeData.options });
+    authResponse = await startAuthentication(challengeData.options);
   } catch (err) {
     if (err.name === 'NotAllowedError') {
       throw new Error('Biometric scan was cancelled or timed out.');
@@ -157,7 +157,7 @@ export const registerCurrentDeviceBiometrics = async (token, customDeviceName = 
   // Step 2: Trigger platform registration prompt (Touch ID / Face ID / Android)
   let regResponse;
   try {
-    regResponse = await startRegistration({ optionsJSON: challengeData.options });
+    regResponse = await startRegistration(challengeData.options);
   } catch (err) {
     if (err.name === 'NotAllowedError') {
       throw new Error('Registration was cancelled.');
