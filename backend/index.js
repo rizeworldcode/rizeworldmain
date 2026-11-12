@@ -10,12 +10,7 @@ const { connectDB } = require('./db/dbconnection.js');
 // Load environment variables from .env file
 dotenv.config();
 
-const app = express();
-
-
-
-
-
+  const app = express();  
 // CORS configuration
 const allowedOrigins = [
   'https://admin.rizeworld.in',
