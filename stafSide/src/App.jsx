@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { LogOut, GraduationCap, LayoutDashboard, TrendingUp, CreditCard, Users, BookOpen, Fingerprint } from 'lucide-react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
@@ -12,17 +12,9 @@ import Clients from './pages/Clients';
 import ClientProjects from './pages/ClientProjects';
 import BlogManagement from './pages/BlogManagement';
 import StaffProgressReport from './pages/StaffProgressReport';
-import StaffDiwaliLanding from './components/festival/StaffDiwaliLanding';
 import BiometricModal from './components/BiometricModal';
-import StaffFestiveDecor, { 
-  BlinkitAmbientGlow, 
-  BlinkitTopLights, 
-  BlinkitFestiveBanner, 
-  BlinkitToranRibbon 
-} from './components/festival/StaffFestiveDecor';
-import FirecrackerCanvas from './components/festival/FirecrackerCanvas';
 
-const MainLayout = ({ onLogout, onOpenDiwaliLanding }) => {
+const MainLayout = ({ onLogout }) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { id: clientId } = useParams();
@@ -44,31 +36,12 @@ const MainLayout = ({ onLogout, onOpenDiwaliLanding }) => {
   const isClientsAllowed = ['admin', 'data analyst'].includes(staffInfo.role?.toLowerCase()) && staffInfo.employeeId !== 'RW-4559';
   const isMarketing = (staffInfo.department?.toLowerCase() || '').includes('marketing') || (staffInfo.role?.toLowerCase() || '').includes('marketing');
 
-  const [festiveTheme, setFestiveTheme] = useState(() => {
-    return localStorage.getItem('staffFestiveTheme') || 'gold';
-  });
   const [isBiometricOpen, setIsBiometricOpen] = useState(false);
-
-  const cycleFestiveTheme = () => {
-    const nextTheme =
-      festiveTheme === 'gold' ? 'carnival' :
-      festiveTheme === 'carnival' ? 'diamond' :
-      festiveTheme === 'diamond' ? 'off' : 'gold';
-    setFestiveTheme(nextTheme);
-    localStorage.setItem('staffFestiveTheme', nextTheme);
-    localStorage.setItem('staffFestiveDecor', nextTheme !== 'off' ? 'true' : 'false');
-    window.dispatchEvent(new CustomEvent('staffFestiveDecorChanged', { detail: { enabled: nextTheme !== 'off', theme: nextTheme } }));
-  };
 
   const getTabClass = (tabKey) => {
     const isActive = activeTab === tabKey;
-    if (isActive) {
-      return festiveTheme !== 'off'
-        ? 'bg-gradient-to-r from-amber-300 via-amber-400 to-yellow-400 text-[#451a03] font-black shadow-md shadow-amber-500/40 border border-amber-300'
-        : 'clay-flat text-[#8b5cf6] font-bold shadow-md shadow-purple-500/10';
-    }
-    return festiveTheme !== 'off'
-      ? 'text-amber-200/85 hover:text-white hover:bg-white/10'
+    return isActive
+      ? 'clay-flat text-[#8b5cf6] font-bold shadow-md shadow-purple-500/10'
       : 'text-[#64748b] hover:text-[#8b5cf6]';
   };
 
@@ -95,69 +68,48 @@ const MainLayout = ({ onLogout, onOpenDiwaliLanding }) => {
   };
 
   return (
-    <div className={`min-h-screen flex flex-col relative overflow-hidden transition-colors duration-700 ${
-      festiveTheme !== 'off' 
-        ? 'festive-theme-active bg-[#3b1702] text-amber-50' 
-        : 'bg-[#eef2f6] text-[#334155]'
-    }`}>
-      {/* Background Ambience: Blinkit Warm Golden Glow or Atmospheric Blobs */}
-      {festiveTheme !== 'off' ? (
-        <BlinkitAmbientGlow theme={festiveTheme} />
-      ) : (
-        <>
-          <motion.div 
-            animate={{ 
-              x: [0, 50, 0],
-              y: [0, 100, 0],
-              scale: [1, 1.2, 1]
-            }}
-            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-            className="blob w-[600px] h-[600px] bg-[#8b5cf6] -top-[10%] -left-[10%]"
-          />
-          <motion.div 
-            animate={{ 
-              x: [0, -100, 0],
-              y: [0, -50, 0],
-              scale: [1, 1.3, 1]
-            }}
-            transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-            className="blob w-[500px] h-[500px] bg-[#facc15] -bottom-[10%] -right-[10%]"
-          />
-          <motion.div 
-            animate={{ 
-              scale: [1, 1.5, 1],
-              opacity: [0.1, 0.2, 0.1]
-            }}
-            transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-            className="blob w-[400px] h-[400px] bg-[#f472b6] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
-          />
-        </>
-      )}
-
-      {/* Top Arched Hanging Micro-LED Fairy Lights (From Blinkit screenshot) */}
-      {festiveTheme !== 'off' && <BlinkitTopLights theme={festiveTheme} />}
+    <div className="min-h-screen flex flex-col relative overflow-hidden bg-[#eef2f6] text-[#334155]">
+      {/* Background Ambience: Atmospheric Blobs */}
+      <motion.div 
+        animate={{ 
+          x: [0, 50, 0],
+          y: [0, 100, 0],
+          scale: [1, 1.2, 1]
+        }}
+        transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+        className="blob w-[600px] h-[600px] bg-[#8b5cf6] -top-[10%] -left-[10%]"
+      />
+      <motion.div 
+        animate={{ 
+          x: [0, -100, 0],
+          y: [0, -50, 0],
+          scale: [1, 1.3, 1]
+        }}
+        transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+        className="blob w-[500px] h-[500px] bg-[#facc15] -bottom-[10%] -right-[10%]"
+      />
+      <motion.div 
+        animate={{ 
+          scale: [1, 1.5, 1],
+          opacity: [0.1, 0.2, 0.1]
+        }}
+        transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+        className="blob w-[400px] h-[400px] bg-[#f472b6] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+      />
 
       {/* Top Navbar */}
-      <div className={`flex items-center justify-between p-4 z-40 sticky top-0 transition-colors duration-500 ${
-        festiveTheme !== 'off'
-          ? 'bg-[#290f01]/85 backdrop-blur-md border-b border-amber-500/30 text-amber-100 shadow-md shadow-black/30'
-          : 'bg-[#eef2f6]'
-      }`}>
+      <div className="flex items-center justify-between p-4 z-40 sticky top-0 bg-[#eef2f6]">
         <div className="flex items-center gap-3 overflow-x-auto py-1 max-w-[85vw]">
           <div 
             onClick={() => handleTabChange('dashboard')}
-            className="p-1 rounded-xl bg-white shadow-md shadow-amber-500/20 shrink-0 cursor-pointer hover:scale-105 transition-all flex items-center justify-center border border-amber-400/30"
+            className="p-1 rounded-xl bg-white shadow-md shrink-0 cursor-pointer hover:scale-105 transition-all flex items-center justify-center border border-slate-200"
             title="RizeWorld Dashboard"
           >
             <img src="/logo.png" className="w-8 h-8 sm:w-9 sm:h-9 object-contain" alt="RizeWorld Logo" />
           </div>
           
           {/* Universal Navigation Tabs Bar */}
-          <div className={`flex items-center gap-1.5 sm:gap-2 p-1 rounded-2xl shrink-0 transition-all ${
-            festiveTheme !== 'off'
-              ? 'bg-[#180900]/85 border border-amber-500/30'
-              : 'bg-[#eef2f6] clay-inset'
-          }`}>
+          <div className="flex items-center gap-1.5 sm:gap-2 p-1 rounded-2xl shrink-0 transition-all bg-[#eef2f6] clay-inset">
             <button 
               onClick={() => handleTabChange('dashboard')}
               className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-1.5 ${getTabClass('dashboard')}`}
@@ -236,15 +188,9 @@ const MainLayout = ({ onLogout, onOpenDiwaliLanding }) => {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <StaffFestiveDecor currentTheme={festiveTheme} onChangeTheme={cycleFestiveTheme} />
-
           <button
             onClick={() => setIsBiometricOpen(true)}
-            className={`px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 text-xs sm:text-sm font-bold cursor-pointer ${
-              festiveTheme !== 'off'
-                ? 'bg-blue-500/20 text-blue-200 border border-blue-400/40 hover:bg-blue-500/30'
-                : 'clay-flat text-blue-600 hover:text-blue-700 hover:clay-inset'
-            }`}
+            className="px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 text-xs sm:text-sm font-bold cursor-pointer clay-flat text-blue-600 hover:text-blue-700 hover:clay-inset"
             title="Setup Touch ID / Face ID / Fingerprint"
           >
             <Fingerprint size={16} />
@@ -252,25 +198,8 @@ const MainLayout = ({ onLogout, onOpenDiwaliLanding }) => {
           </button>
 
           <button 
-            onClick={onOpenDiwaliLanding}
-            className={`px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 text-xs sm:text-sm font-bold cursor-pointer ${
-              festiveTheme !== 'off'
-                ? 'bg-amber-500/20 text-amber-200 border border-amber-400/40 hover:bg-amber-500/30'
-                : 'clay-flat text-amber-600 hover:text-amber-700 hover:clay-inset'
-            }`}
-            title="Watch Diwali Celebration Video"
-          >
-            <span className="animate-bounce">🪔</span>
-            <span className="hidden md:inline">Diwali Wish</span>
-          </button>
-
-          <button 
             onClick={onLogout}
-            className={`p-3 rounded-xl transition-all shrink-0 cursor-pointer ${
-              festiveTheme !== 'off'
-                ? 'bg-white/10 text-amber-200 hover:text-rose-400 hover:bg-rose-500/20 border border-white/15'
-                : 'clay-flat text-[#64748b] hover:text-rose-500 hover:clay-inset'
-            }`}
+            className="p-3 rounded-xl transition-all shrink-0 cursor-pointer clay-flat text-[#64748b] hover:text-rose-500 hover:clay-inset"
             title="Logout"
           >
             <LogOut size={22} />
@@ -278,14 +207,6 @@ const MainLayout = ({ onLogout, onOpenDiwaliLanding }) => {
         </div>
       </div>
 
-      {/* Blinkit Inspired Festive Centerpiece Banner with Pixel Diyas & CHANGE LIGHTS button */}
-      {festiveTheme !== 'off' && (
-        <div className="relative z-20 pt-2">
-          <BlinkitFestiveBanner currentTheme={festiveTheme} onChangeTheme={cycleFestiveTheme} />
-          <BlinkitToranRibbon className="mt-1" />
-        </div>
-      )}
-      
       {/* Main Content */}
       <main className="flex-1 p-4 md:p-8 relative z-10">
         {clientId && isClientsAllowed ? (
@@ -304,13 +225,6 @@ const MainLayout = ({ onLogout, onOpenDiwaliLanding }) => {
         )}
       </main>
 
-      {/* Traditional Toran Floral Garland at page footer */}
-      {festiveTheme !== 'off' && (
-        <div className="relative z-20 pb-2">
-          <BlinkitToranRibbon />
-        </div>
-      )}
-
       {/* Biometric Touch ID / Face ID / Fingerprint Setup Modal */}
       <BiometricModal
         isOpen={isBiometricOpen}
@@ -323,7 +237,6 @@ const MainLayout = ({ onLogout, onOpenDiwaliLanding }) => {
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('staffToken'));
-  const [showDiwaliLanding, setShowDiwaliLanding] = useState(true);
 
   const handleLoginSuccess = () => {
     setIsAuthenticated(true);
@@ -336,68 +249,47 @@ const App = () => {
   };
 
   return (
-    <>
-      {/* Authentic Diwali Firecrackers / Pathake Canvas Animation on Button Clicks */}
-      <FirecrackerCanvas />
+    <Router>
+      <Routes>
+        {/* Main Route shows Login if not authenticated, else redirects to Dashboard */}
+        <Route 
+          path="/" 
+          element={
+            !isAuthenticated ? (
+              <StaffLogin onLogin={handleLoginSuccess} />
+            ) : (
+              <Navigate to="/dashboard" replace />
+            )
+          } 
+        />
 
-      {/* Immersive Diwali Celebration Video Landing Page */}
-      <AnimatePresence>
-        {showDiwaliLanding && (
-          <StaffDiwaliLanding onClose={() => setShowDiwaliLanding(false)} />
-        )}
-      </AnimatePresence>
+        {/* Dashboard Route */}
+        <Route 
+          path="/dashboard" 
+          element={
+            isAuthenticated ? (
+              <MainLayout onLogout={handleLogout} />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        />
 
-      <Router>
-        <Routes>
-          {/* Main Route shows Login if not authenticated, else redirects to Dashboard */}
-          <Route 
-            path="/" 
-            element={
-              !isAuthenticated ? (
-                <StaffLogin 
-                  onLogin={handleLoginSuccess} 
-                  onOpenDiwaliLanding={() => setShowDiwaliLanding(true)} 
-                />
-              ) : (
-                <Navigate to="/dashboard" replace />
-              )
-            } 
-          />
+        <Route 
+          path="/clients/:id" 
+          element={
+            isAuthenticated ? (
+              <MainLayout onLogout={handleLogout} />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        />
 
-          {/* Dashboard Route */}
-          <Route 
-            path="/dashboard" 
-            element={
-              isAuthenticated ? (
-                <MainLayout 
-                  onLogout={handleLogout} 
-                  onOpenDiwaliLanding={() => setShowDiwaliLanding(true)} 
-                />
-              ) : (
-                <Navigate to="/" replace />
-              )
-            } 
-          />
-
-          <Route 
-            path="/clients/:id" 
-            element={
-              isAuthenticated ? (
-                <MainLayout 
-                  onLogout={handleLogout} 
-                  onOpenDiwaliLanding={() => setShowDiwaliLanding(true)} 
-                />
-              ) : (
-                <Navigate to="/" replace />
-              )
-            } 
-          />
-
-          {/* Catch all other routes */}
-          <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/"} replace />} />
-        </Routes>
-      </Router>
-    </>
+        {/* Catch all other routes */}
+        <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/"} replace />} />
+      </Routes>
+    </Router>
   );
 };
 

@@ -5,7 +5,6 @@ import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
 import { adminLogout } from './api';
 import { ShieldAlert } from 'lucide-react';
-import DiwaliFestiveSplash from './components/festival/DiwaliFestiveSplash';
 
 const Overview = lazy(() => import('./pages/Overview'));
 const Clients = lazy(() => import('./pages/Clients'));
@@ -51,7 +50,6 @@ const AccessDenied = ({ onGoToAllowed }) => (
 );
 
 function App() {
-  const [showFestiveSplash, setShowFestiveSplash] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(() => {
     return localStorage.getItem('isLoggedIn') === 'true';
   });
@@ -176,13 +174,6 @@ function App() {
 
   return (
     <>
-      {/* Festive Diwali Splash Screen (5 seconds every time site is opened) */}
-      <AnimatePresence>
-        {showFestiveSplash && (
-          <DiwaliFestiveSplash onClose={() => setShowFestiveSplash(false)} duration={5000} />
-        )}
-      </AnimatePresence>
-
       <div className="min-h-screen bg-gray-50 dark:bg-[#030303] text-gray-900 dark:text-gray-100 flex overflow-hidden bg-gradient-mesh transition-colors duration-300">
       {!isLoggedIn ? (
         <div className="w-full">

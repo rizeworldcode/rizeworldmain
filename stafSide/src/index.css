@@ -49,26 +49,6 @@
   .glass-morph {
     @apply backdrop-blur-md bg-white/30 border border-white/40;
   }
-
-  /* Blinkit Festive Theme Card & Surface Adaptations */
-  .festive-theme-active .clay-card {
-    background: #ffffff !important;
-    color: #0f172a !important;
-    box-shadow: 0 14px 32px -4px rgba(0, 0, 0, 0.35), 0 0 20px 2px rgba(245, 158, 11, 0.18) !important;
-    border: 1px solid rgba(251, 191, 36, 0.35) !important;
-  }
-}
-
-/* GPU-accelerated lightweight Fairy Light Twinkle */
-@keyframes fairyTwinkle {
-  0% {
-    opacity: 0.55;
-    transform: scale(0.9);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1.18);
-  }
 }
 
 /* Atmospheric Blobs */
