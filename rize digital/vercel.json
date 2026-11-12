@@ -5,6 +5,10 @@
       "destination": "https://rizeworldmain.onrender.com/sitemap-blogs.xml"
     },
     {
+      "source": "/robots.txt",
+      "destination": "/robots.txt"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

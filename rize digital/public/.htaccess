@@ -31,6 +31,9 @@ Options -Indexes
   # Return HTTP 404 for hacked or spam URLs
   RewriteRule ^(mostbet.*|vavada.*|casino.*|olimp.*|chicken-road.*|hello-world|2024/.*|2025/.*)$ - [R=404,L,NC]
 
+  # Directly serve robots.txt and bypass all rewrite processing
+  RewriteRule ^robots\.txt$ - [L]
+
   # Dynamic Blog Sitemap & Index: Ensure newly published blogs appear immediately in sitemaps
   RewriteRule ^sitemap-blogs\.xml$ sitemap-blogs.php [L]
   RewriteRule ^sitemap\.xml$ sitemap.php [L]
@@ -70,6 +73,11 @@ ErrorDocument 404 /index.html
   ExpiresByType text/html "access plus 0 seconds"
   ExpiresByType application/manifest+json "access plus 1 day"
 
+  # Robots and Sitemaps: Cache for 1 day to reduce origin requests
+  ExpiresByType text/plain "access plus 1 day"
+  ExpiresByType application/xml "access plus 1 day"
+  ExpiresByType text/xml "access plus 1 day"
+
   # Hashed CSS, JavaScript: 1 year immutable
   ExpiresByType text/css "access plus 1 year"
   ExpiresByType application/javascript "access plus 1 year"
@@ -105,6 +113,20 @@ ErrorDocument 404 /index.html
   <FilesMatch "\.(html|htm)$">
     Header set Cache-Control "no-cache, no-store, must-revalidate"
   </FilesMatch>
+
+  # Robots.txt & XML Sitemaps: Cache at CDN/Edge and allow all crawlers
+  <FilesMatch "^(robots\.txt|.*\.xml)$">
+    Header set Access-Control-Allow-Origin "*"
+    Header set Cache-Control "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400"
+    Header set X-Robots-Tag "all"
+  </FilesMatch>
+
+  # LiteSpeed Cache Acceleration for static search engine discovery files
+  <IfModule LiteSpeed>
+    <FilesMatch "^(robots\.txt|.*\.xml)$">
+      Header set X-LiteSpeed-Cache-Control "public,max-age=604800"
+    </FilesMatch>
+  </IfModule>
 
   # Security headers
   Header set X-Content-Type-Options "nosniff"
