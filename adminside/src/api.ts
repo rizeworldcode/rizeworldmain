@@ -357,7 +357,17 @@ export const addStaffExtraTask = (staffId: string, taskName: string) => {
 
 export const deleteStaffTask = (
   staffId: string, 
-  taskData: number | { taskIndex?: number; taskId?: string; taskName?: string }
+  taskData: number | { 
+    taskIndex?: number; 
+    taskId?: string; 
+    taskName?: string;
+    isAdmin?: boolean;
+    role?: string;
+    managerRole?: string;
+    adminPanelAccess?: boolean;
+    action?: string;
+    [key: string]: any;
+  }
 ) => {
   clearApiCache('staff');
   const adminRole = typeof window !== 'undefined' ? (localStorage.getItem('adminRole') || 'admin') : 'admin';
