@@ -56,7 +56,7 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
   const [loading, setLoading] = useState(true);
   const [reports, setReports] = useState([]);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(() => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }));
   const [submittingReport, setSubmittingReport] = useState(null);
   const [submittingAllReports, setSubmittingAllReports] = useState(false);
   const [approvingAll, setApprovingAll] = useState(false);
@@ -456,7 +456,9 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
   };
 
   const openReportModal = () => {
-    fetchReports(selectedDate);
+    const todayIST = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+    setSelectedDate(todayIST);
+    fetchReports(todayIST);
     setIsReportModalOpen(true);
   };
 
@@ -858,7 +860,7 @@ const TodayAssignedWork = ({ initialSearch = '' }) => {
                               <div>
                                 <h3 className="text-lg font-bold text-gray-900 dark:text-white">{report.staffName}</h3>
                                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                                  {new Date(report.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                                  {new Date(report.date).toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata', month: 'long', day: 'numeric', year: 'numeric' })}
                                 </p>
                               </div>
                               <div className={`px-4 py-2 rounded-full font-bold text-sm flex items-center gap-1.5 ${

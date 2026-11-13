@@ -41,10 +41,17 @@ const isSameDayIST = (d1, d2 = new Date()) => {
   return s1 === s2;
 };
 
-// Helper function to get exact IST day boundaries in UTC
-const getTodayRangeIST = (baseDate = new Date()) => {
-  const istString = baseDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
-  const [year, month, day] = istString.split('-').map(Number);
+// Helper function to get exact IST day boundaries in UTC (accepts Date or 'YYYY-MM-DD' string)
+const getTodayRangeIST = (dateInput = new Date()) => {
+  let year, month, day, istString;
+  if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
+    istString = dateInput;
+    [year, month, day] = dateInput.split('-').map(Number);
+  } else {
+    const baseDate = dateInput instanceof Date ? dateInput : new Date(dateInput);
+    istString = baseDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+    [year, month, day] = istString.split('-').map(Number);
+  }
   const start = new Date(Date.UTC(year, month - 1, day, 0, 0, 0) - (5.5 * 60 * 60 * 1000));
   const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
   return { start, end, istString };
@@ -3073,10 +3080,9 @@ exports.getWorkReports = async (req, res) => {
     let query = {};
 
     if (date) {
-      const [year, month, day] = date.split('-').map(Number);
-      const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0);
-      const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999);
-      query.date = { $gte: startOfDay, $lte: endOfDay };
+      // Calculate start and end of requested date in IST timezone (UTC+5:30)
+      const { start: startOfDay, end: endOfDay } = getTodayRangeIST(date);
+      query.date = { $gte: startOfDay, $lt: endOfDay };
     }
 
     if (staffId) {
