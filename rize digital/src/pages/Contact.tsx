@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import { Phone, Mail, MapPin, Globe, CheckCircle, Send } from 'lucide-react';
 import SEO from '../components/common/SEO';
 import Breadcrumbs from '../components/common/Breadcrumbs';
-import FestiveCardGarland from '../components/festival/FestiveCardGarland';
 
 export default function Contact() {
   const [formData, setFormData] = useState({
@@ -194,7 +193,6 @@ export default function Contact() {
 
         {/* Right Side: Dynamic Form */}
         <div className="relative overflow-hidden bg-white border border-gray-200/80 rounded-4xl p-6 md:p-10 shadow-sm text-left">
-          <FestiveCardGarland showDiya={true} showLights={true} />
           {submitted ? (
             <div className="py-20 text-center flex flex-col items-center justify-center">
               <div className="w-16 h-16 rounded-full bg-green-500/10 text-green-500 flex items-center justify-center mb-6 animate-bounce">

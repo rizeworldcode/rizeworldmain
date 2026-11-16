@@ -15,7 +15,6 @@ import { RiShieldCheckLine } from 'react-icons/ri';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import SEO from '../components/common/SEO';
 import Breadcrumbs from '../components/common/Breadcrumbs';
-import FestiveCardGarland from '../components/festival/FestiveCardGarland';
 import { 
   SEO_PACKAGES, 
   SMM_PACKAGES, 
@@ -448,7 +447,6 @@ export default function Pricing() {
                       palette.isDarkText ? 'text-gray-950' : 'text-white'
                     }`}
                   >
-                    <FestiveCardGarland showDiya={true} showLights={true} />
                     {/* Top Content */}
                     <div>
                       <div className="flex items-center justify-between gap-2 mb-4">
@@ -615,7 +613,6 @@ export default function Pricing() {
                         palette.isDarkText ? 'text-gray-950' : 'text-white'
                       }`}
                     >
-                      <FestiveCardGarland showDiya={true} showLights={true} />
                       <div>
                         <div className="flex items-center justify-between gap-2 mb-4">
                           <span className={`text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full border ${palette.pill}`}>
@@ -775,7 +772,6 @@ export default function Pricing() {
                     palette.isDarkText ? 'text-gray-950' : 'text-white'
                   }`}
                 >
-                  <FestiveCardGarland showDiya={true} showLights={true} />
                   <div>
                     <div className="flex items-center justify-between gap-2 mb-4">
                       <span className={`text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full border ${palette.pill}`}>

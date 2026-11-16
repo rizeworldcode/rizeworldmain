@@ -3,7 +3,6 @@ import { motion } from "framer-motion";
 import { Play } from "lucide-react";
 import { growthLabs } from "../../data/growthLabs";
 import { Link } from "react-router-dom";
-import FestiveCardGarland from "../festival/FestiveCardGarland";
 
 const VideoModal = ({ isOpen, onClose, videoUrl }: any) => {
   if (!isOpen) return null;
@@ -53,7 +52,6 @@ export default function GrowthLabsSection() {
             transition={{ type: "spring", stiffness: 200, damping: 25 }}
             className="relative rounded-4xl overflow-hidden cursor-pointer bg-black group h-full"
           >
-            <FestiveCardGarland showDiya={true} showLights={false} />
             <img
               src={lab.image}
               width="400"
@@ -125,7 +123,6 @@ export default function GrowthLabsSection() {
       <div className="flex md:hidden flex-col gap-8 w-full max-w-md mx-auto">
         {growthLabs.map((lab) => (
           <div key={lab.id} className="relative bg-white rounded-3xl overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-gray-150 flex flex-col">
-            <FestiveCardGarland showDiya={true} showLights={false} />
             {/* Image & Play Button Container */}
             <div className="relative aspect-[4/3] w-full bg-black flex items-center justify-center overflow-hidden">
               <img
