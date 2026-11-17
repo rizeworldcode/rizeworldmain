@@ -21,7 +21,7 @@ $getCleanIndex = function($blogDate) {
         '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n" .
         '  <sitemap>' . "\n" .
         '    <loc>https://rizeworld.in/sitemap-pages.xml</loc>' . "\n" .
-        '    <lastmod>2026-10-13</lastmod>' . "\n" .
+        '    <lastmod>2026-11-17</lastmod>' . "\n" .
         '  </sitemap>' . "\n" .
         '  <sitemap>' . "\n" .
         '    <loc>https://rizeworld.in/sitemap-services.xml</loc>' . "\n" .

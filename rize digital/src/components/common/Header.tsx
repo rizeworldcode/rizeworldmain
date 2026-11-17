@@ -7,6 +7,7 @@ export default function Header() {
   const [isServicesOpen, setIsServicesOpen] = useState(false);
   const [isCompanyOpen, setIsCompanyOpen] = useState(false);
   const [isResourcesOpen, setIsResourcesOpen] = useState(false);
+  const [isPortfolioOpen, setIsPortfolioOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const location = useLocation();
   const isActive = (path: string) => location.pathname === path;
@@ -120,7 +121,43 @@ export default function Header() {
             </div>
           </div>
 
-          <Link to="/portfolio" className={`${isActive('/portfolio') ? 'bg-rize-primary text-white shadow-sm' : 'text-gray-600 hover:text-rize-primary'} text-xs font-bold tracking-wide px-5 py-2.5 rounded-full transition-all uppercase`}>Portfolio</Link>
+          {/* Portfolio Dropdown */}
+          <div className="relative group">
+            <Link
+              to="/portfolio"
+              className={`${isActive('/portfolio') ? 'bg-rize-primary text-white shadow-sm' : 'text-gray-600 hover:text-rize-primary'} text-xs font-bold tracking-wide px-5 py-2.5 rounded-full transition-all uppercase block`}
+            >
+              Portfolio
+            </Link>
+            <div className="absolute top-full left-1/2 -translate-x-1/2 pt-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50 min-w-[220px]">
+              <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-2 flex flex-col gap-0.5">
+                <a
+                  href="https://graphicportfolio.rizeworld.in/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-700 hover:bg-blue-50 hover:text-rize-primary text-[10px] font-bold tracking-wide px-4 py-3 rounded-xl transition-all uppercase block text-left"
+                >
+                  Graphic Portfolio
+                </a>
+                <a
+                  href="https://videoportfolio.rizeworld.in/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-700 hover:bg-blue-50 hover:text-rize-primary text-[10px] font-bold tracking-wide px-4 py-3 rounded-xl transition-all uppercase block text-left"
+                >
+                  Video Portfolio
+                </a>
+                <a
+                  href="https://seoportfolio.rizeworld.in/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-700 hover:bg-blue-50 hover:text-rize-primary text-[10px] font-bold tracking-wide px-4 py-3 rounded-xl transition-all uppercase block text-left"
+                >
+                  SEO Portfolio
+                </a>
+              </div>
+            </div>
+          </div>
 
           {/* Locations Dropdown */}
           <div className="relative group">
@@ -328,14 +365,55 @@ export default function Header() {
             )}
           </div>
 
-          {/* Portfolio */}
-          <Link
-            to="/portfolio"
-            onClick={() => setIsOpen(false)}
-            className={`${isActive('/portfolio') ? 'bg-rize-primary text-white' : 'text-gray-700 hover:bg-gray-50'} text-xs font-bold tracking-wide px-5 py-3 rounded-2xl transition-colors uppercase block`}
-          >
-            Our Portfolio
-          </Link>
+          {/* Portfolio Accordion */}
+          <div className="flex flex-col">
+            <button
+              onClick={() => setIsPortfolioOpen(!isPortfolioOpen)}
+              className={`${isPortfolioOpen || isActive('/portfolio') ? 'bg-rize-primary text-white' : 'text-gray-700 hover:bg-gray-50'} text-xs font-bold tracking-wide px-5 py-3 rounded-2xl transition-colors uppercase flex justify-between items-center w-full cursor-pointer`}
+            >
+              <span>Our Portfolio</span>
+              <span className={`text-[8px] transition-transform duration-300 ${isPortfolioOpen ? 'rotate-90' : ''}`}>▶</span>
+            </button>
+
+            {isPortfolioOpen && (
+              <div className="pl-6 flex flex-col gap-1 mt-1 border-l-2 border-blue-500/20 ml-5">
+                <Link
+                  to="/portfolio"
+                  onClick={() => setIsOpen(false)}
+                  className="text-rize-primary font-bold tracking-wide px-4 py-2 rounded-xl transition-colors uppercase block text-left text-xs bg-blue-50/50 mb-1"
+                >
+                  All Portfolio (Overview)
+                </Link>
+                <a
+                  href="https://graphicportfolio.rizeworld.in/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setIsOpen(false)}
+                  className="text-gray-600 hover:bg-gray-50 text-xs font-bold tracking-wide px-4 py-2.5 rounded-xl transition-colors uppercase block text-left"
+                >
+                  Graphic Portfolio
+                </a>
+                <a
+                  href="https://videoportfolio.rizeworld.in/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setIsOpen(false)}
+                  className="text-gray-600 hover:bg-gray-50 text-xs font-bold tracking-wide px-4 py-2.5 rounded-xl transition-colors uppercase block text-left"
+                >
+                  Video Portfolio
+                </a>
+                <a
+                  href="https://seoportfolio.rizeworld.in/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setIsOpen(false)}
+                  className="text-gray-600 hover:bg-gray-50 text-xs font-bold tracking-wide px-4 py-2.5 rounded-xl transition-colors uppercase block text-left"
+                >
+                  SEO Portfolio
+                </a>
+              </div>
+            )}
+          </div>
 
           {/* Company Accordion */}
           <div className="flex flex-col">
