@@ -1,4 +1,5 @@
 const CompanyLead = require('../models/CompanyLead');
+const cache = require('../utils/cache');
 
 // Helper to calculate the next unique lead ID (e.g. CL-1001, CL-1002...)
 const generateNextLeadId = async () => {
@@ -36,7 +37,7 @@ exports.getNextUnicId = async (req, res) => {
   }
 };
 
-// GET /api/company-leads/reminders
+// GET /api/company-leads/reminders (Optimized Single-Query with In-Memory Categorization & Caching)
 exports.getLeadReminders = async (req, res) => {
   try {
     const { assignedStaffId, leadPersonName, targetDate } = req.query;
@@ -48,65 +49,65 @@ exports.getLeadReminders = async (req, res) => {
     const endOfDay = new Date(baseDate);
     endOfDay.setHours(23, 59, 59, 999);
 
-    const baseQuery = {
-      leadStatus: { $nin: ['Converted', 'Lost'] },
-      nextFollowUpDate: { $exists: true, $ne: null }
-    };
-
-    if (assignedStaffId) {
-      baseQuery.assignedStaffId = assignedStaffId;
-    } else if (leadPersonName && leadPersonName !== 'All') {
-      baseQuery.leadPersonName = new RegExp(leadPersonName.trim(), 'i');
-    }
-
-    const todayQuery = {
-      ...baseQuery,
-      nextFollowUpDate: { $gte: startOfDay, $lte: endOfDay }
-    };
-
-    const overdueQuery = {
-      ...baseQuery,
-      nextFollowUpDate: { $lt: startOfDay }
-    };
-
     const next48Hours = new Date(endOfDay.getTime() + 48 * 60 * 60 * 1000);
-    const upcomingQuery = {
-      ...baseQuery,
-      nextFollowUpDate: { $gt: endOfDay, $lte: next48Hours }
-    };
 
-    const [todayLeads, overdueLeads, upcomingLeads] = await Promise.all([
-      CompanyLead.find(todayQuery)
-        .populate('assignedStaffId', 'name employeeId department')
-        .sort({ nextFollowUpDate: 1 })
-        .lean(),
-      CompanyLead.find(overdueQuery)
-        .populate('assignedStaffId', 'name employeeId department')
-        .sort({ nextFollowUpDate: 1 })
-        .lean(),
-      CompanyLead.find(upcomingQuery)
-        .populate('assignedStaffId', 'name employeeId department')
-        .sort({ nextFollowUpDate: 1 })
-        .lean()
-    ]);
+    const cacheKey = `lead-reminders:${assignedStaffId || 'all'}:${leadPersonName || 'all'}:${startOfDay.toISOString().slice(0, 10)}`;
 
-    const urgentCount = todayLeads.length + overdueLeads.length;
-    const totalCount = urgentCount + upcomingLeads.length;
+    const responsePayload = await cache.fetchOrCompute(cacheKey, async () => {
+      const baseQuery = {
+        leadStatus: { $nin: ['Converted', 'Lost'] },
+        nextFollowUpDate: { $exists: true, $ne: null, $lte: next48Hours }
+      };
 
-    return res.status(200).json({
-      success: true,
-      totalCount,
-      urgentCount,
-      todayCount: todayLeads.length,
-      overdueCount: overdueLeads.length,
-      upcomingCount: upcomingLeads.length,
-      data: {
-        today: todayLeads,
-        overdue: overdueLeads,
-        upcoming: upcomingLeads,
-        all: [...overdueLeads, ...todayLeads, ...upcomingLeads]
+      if (assignedStaffId) {
+        baseQuery.assignedStaffId = assignedStaffId;
+      } else if (leadPersonName && leadPersonName !== 'All') {
+        baseQuery.leadPersonName = new RegExp(leadPersonName.trim(), 'i');
       }
-    });
+
+      // Single fast query for all overdue, today, and upcoming leads within 48h
+      const allRelevantLeads = await CompanyLead.find(baseQuery)
+        .populate('assignedStaffId', 'name employeeId department')
+        .sort({ nextFollowUpDate: 1 })
+        .lean();
+
+      const todayLeads = [];
+      const overdueLeads = [];
+      const upcomingLeads = [];
+      const startMs = startOfDay.getTime();
+      const endMs = endOfDay.getTime();
+
+      for (const lead of allRelevantLeads) {
+        const followUpMs = new Date(lead.nextFollowUpDate).getTime();
+        if (followUpMs < startMs) {
+          overdueLeads.push(lead);
+        } else if (followUpMs <= endMs) {
+          todayLeads.push(lead);
+        } else {
+          upcomingLeads.push(lead);
+        }
+      }
+
+      const urgentCount = todayLeads.length + overdueLeads.length;
+      const totalCount = urgentCount + upcomingLeads.length;
+
+      return {
+        success: true,
+        totalCount,
+        urgentCount,
+        todayCount: todayLeads.length,
+        overdueCount: overdueLeads.length,
+        upcomingCount: upcomingLeads.length,
+        data: {
+          today: todayLeads,
+          overdue: overdueLeads,
+          upcoming: upcomingLeads,
+          all: [...overdueLeads, ...todayLeads, ...upcomingLeads]
+        }
+      };
+    }, 45); // 45s TTL cache coalesces repeated tab requests
+
+    return res.status(200).json(responsePayload);
   } catch (error) {
     console.error('Error fetching lead reminders:', error);
     return res.status(500).json({
@@ -202,6 +203,7 @@ exports.createLead = async (req, res) => {
     });
 
     await newLead.save();
+    cache.flushByPrefix('lead-reminders:');
 
     // Send notification to the assigned employee's panel (Brand & Date/Time only)
     if (newLead.assignedStaffId && newLead.nextFollowUpDate) {
@@ -369,6 +371,7 @@ exports.updateLead = async (req, res) => {
 
     Object.assign(existingLead, updates);
     await existingLead.save();
+    cache.flushByPrefix('lead-reminders:');
 
     // Send notification to the assigned employee's panel (Brand & Date/Time only)
     if (existingLead.assignedStaffId && existingLead.nextFollowUpDate && existingLead.leadStatus !== 'Converted' && existingLead.leadStatus !== 'Lost') {
@@ -413,6 +416,8 @@ exports.deleteLead = async (req, res) => {
     if (!deleted) {
       return res.status(404).json({ success: false, message: 'Lead not found' });
     }
+
+    cache.flushByPrefix('lead-reminders:');
 
     try {
       const Notification = require('../models/Notification');

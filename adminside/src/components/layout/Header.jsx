@@ -151,15 +151,27 @@ const Header = ({ onMenuClick, theme, toggleTheme, onLogout, adminEmail }) => {
   };
 
   useEffect(() => {
+    // 1. Initial load on login / morning load
     fetchReminders();
-    // Poll every 45s for updates
-    const interval = setInterval(fetchReminders, 45000);
-    // Listen for instant mutations from CRM pages
+
+    // 2. Listen for instant mutations from CRM pages when a lead is updated
     const handleLeadUpdate = () => fetchReminders();
     window.addEventListener('leadUpdated', handleLeadUpdate);
+
+    // 3. Gentle refresh when user switches back to this browser tab (tab focus)
+    let lastFocusTime = Date.now();
+    const handleWindowFocus = () => {
+      // Only refresh on focus if at least 2 minutes have passed since last check
+      if (Date.now() - lastFocusTime > 120000) {
+        lastFocusTime = Date.now();
+        fetchReminders();
+      }
+    };
+    window.addEventListener('focus', handleWindowFocus);
+
     return () => {
-      clearInterval(interval);
       window.removeEventListener('leadUpdated', handleLeadUpdate);
+      window.removeEventListener('focus', handleWindowFocus);
     };
   }, []);
 
@@ -265,7 +277,13 @@ const Header = ({ onMenuClick, theme, toggleTheme, onLogout, adminEmail }) => {
           {/* Notification Bell (CRM Follow-up Reminders) */}
           <div className="relative" ref={notificationRef}>
             <button
-              onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+              onClick={() => {
+                const nextState = !isNotificationOpen;
+                setIsNotificationOpen(nextState);
+                if (nextState) {
+                  fetchReminders();
+                }
+              }}
               className={`relative p-2.5 rounded-xl border transition-all ${
                 isNotificationOpen
                   ? 'bg-blue-50 dark:bg-white/10 border-blue-500/40 text-blue-600 dark:text-blue-400 shadow-inner'
@@ -339,7 +357,7 @@ const Header = ({ onMenuClick, theme, toggleTheme, onLogout, adminEmail }) => {
                           className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
                           title="Refresh Reminders"
                         >
-                          <RefreshCw size={14} className={loadingReminders ? 'animate-spin' : ''} />
+                          <RefreshCw size={14} className={loadingReminders ? 'animate-spin text-blue-600' : ''} />
                         </button>
                         <button
                           onClick={() => setIsNotificationOpen(false)}

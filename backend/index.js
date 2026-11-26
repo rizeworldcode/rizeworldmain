@@ -273,8 +273,16 @@ app.get('/public-file', async (req, res) => {
 
 // Global error handling middleware - ensure all API errors return JSON instead of raw HTML
 app.use((err, req, res, next) => {
-  console.error('Unhandled server error:', err);
   const statusCode = err.statusCode || err.status || (err.type === 'entity.too.large' ? 413 : 500);
+
+  // Only log unexpected 500+ errors as server errors.
+  // 400, 401, 403, 404 are normal operational/client errors.
+  if (statusCode >= 500) {
+    console.error('Unhandled server error:', err);
+  } else if (process.env.NODE_ENV !== 'production') {
+    console.warn(`[Client Error ${statusCode}] ${req.method} ${req.originalUrl}: ${err.message}`);
+  }
+
   const message = err.type === 'entity.too.large'
     ? 'Payload too large. Please reduce the size of the images or content.'
     : (err.message || 'Internal server error');
