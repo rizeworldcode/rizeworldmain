@@ -25,7 +25,7 @@ async function discoverRoutes() {
   try {
     let res = await fetch('http://localhost:45000/sitemap-blogs.xml').catch(() => null);
     if (!res || !res.ok) {
-      res = await fetch('https://rizeworldmain.onrender.com/sitemap-blogs.xml').catch(() => null);
+      res = await fetch('https://rizeworldmain-jd14.onrender.com/sitemap-blogs.xml').catch(() => null);
     }
     if (res && res.ok) {
       const liveBlogXml = await res.text();
@@ -165,7 +165,7 @@ async function runPrerender() {
               return req.abort();
             }
             if (reqUrl.includes(':45000') || reqUrl.includes('localhost:45000')) {
-              const remoteUrl = reqUrl.replace(/https?:\/\/localhost:45000/, 'https://rizeworldmain.onrender.com');
+              const remoteUrl = reqUrl.replace(/https?:\/\/localhost:45000/, 'https://rizeworldmain-jd14.onrender.com');
               if (apiCache.has(remoteUrl)) {
                 const cached = apiCache.get(remoteUrl);
                 return req.respond(cached);

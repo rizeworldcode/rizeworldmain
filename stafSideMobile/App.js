@@ -12,7 +12,7 @@ import ClientProjectsScreen from './src/screens/ClientProjectsScreen';
 import BlogsScreen from './src/screens/BlogsScreen';
 
 const getApiUrl = (endpoint) => {
-  return `https://rizeworldmain.onrender.com/api${endpoint}`;
+  return `https://rizeworldmain-jd14.onrender.com/api${endpoint}`;
 };
 
 export default function App() {

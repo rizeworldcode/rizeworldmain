@@ -649,7 +649,7 @@ const Dashboard = ({ onNavigateToProgress }) => {
     const isLocal = h === 'localhost' || h === '127.0.0.1' || h.startsWith('192.168.') || h.startsWith('10.') || h.endsWith('.local');
     const base = isLocal
       ? `http://${h}:45000/api`
-      : 'https://rizeworldmain.onrender.com/api';
+      : 'https://rizeworldmain-jd14.onrender.com/api';
     return `${base}${endpoint}`;
   };
 
@@ -666,7 +666,7 @@ const Dashboard = ({ onNavigateToProgress }) => {
     const isLocal = h === 'localhost' || h === '127.0.0.1' || h.startsWith('192.168.') || h.startsWith('10.') || h.endsWith('.local');
     const base = isLocal
       ? `http://${h}:45000`
-      : 'https://rizeworldmain.onrender.com';
+      : 'https://rizeworldmain-jd14.onrender.com';
     return `${base}${pic.startsWith('/') ? '' : '/'}${pic}`;
   };
 
@@ -1798,7 +1798,7 @@ const Dashboard = ({ onNavigateToProgress }) => {
     const isLocal = h === 'localhost' || h === '127.0.0.1' || h.startsWith('192.168.') || h.startsWith('10.') || h.endsWith('.local');
     const socketBase = isLocal
       ? `http://${h}:45000`
-      : 'https://rizeworldmain.onrender.com';
+      : 'https://rizeworldmain-jd14.onrender.com';
     socketRef.current = io(socketBase);
 
     // Register staff ID & role so this socket joins targeted rooms

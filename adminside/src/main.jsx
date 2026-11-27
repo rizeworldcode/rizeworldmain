@@ -24,7 +24,7 @@ window.fetch = async (input, init = {}) => {
 
   // Rewrite localhost backend URL to production backend URL when running on production host (like admin.rizeworld.in)
   if (!isLocalHost) {
-    const targetBase = 'https://rizeworldmain.onrender.com';
+    const targetBase = 'https://rizeworldmain-jd14.onrender.com';
     if (url.includes('localhost:45000')) {
       url = url.replace(/https?:\/\/localhost:45000/g, targetBase);
       if (typeof input === 'string') {

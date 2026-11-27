@@ -79,7 +79,7 @@ const getExpectedOriginsAndRpID = (req) => {
     'http://www.rizeworld.in',
     'https://rizeworldinstitute.in',
     'https://www.rizeworldinstitute.in',
-    'https://rizeworldmain.onrender.com',
+    'https://rizeworldmain-jd14.onrender.com',
     'http://localhost:5175',
     'http://localhost:5173',
     'http://localhost:3000',
@@ -110,7 +110,7 @@ const getExpectedOriginsAndRpID = (req) => {
     'localhost',
     '127.0.0.1',
     'rizeworldinstitute.in',
-    'rizeworldmain.onrender.com'
+    'rizeworldmain-jd14.onrender.com'
   ]));
 
   return { expectedOrigin: origins, expectedRPID: rpIDs, rpID };

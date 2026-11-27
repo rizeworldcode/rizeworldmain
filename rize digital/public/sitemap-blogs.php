@@ -9,7 +9,7 @@ error_reporting(0);
 
 $cacheFile = __DIR__ . '/sitemap-blogs.xml';
 $indexFile = __DIR__ . '/sitemap.xml';
-$remoteUrl = 'https://rizeworldmain.onrender.com/sitemap-blogs.xml';
+$remoteUrl = 'https://rizeworldmain-jd14.onrender.com/sitemap-blogs.xml';
 $cacheDuration = 1800; // 30 minutes cache
 
 $forceRefresh = isset($_GET['refresh']);

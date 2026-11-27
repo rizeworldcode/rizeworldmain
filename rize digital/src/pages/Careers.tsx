@@ -9,7 +9,7 @@ const getApiBaseUrl = () => {
   if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
     return 'http://localhost:45000/api';
   }
-  return 'https://rizeworldmain.onrender.com/api';
+  return 'https://rizeworldmain-jd14.onrender.com/api';
 };
 
 const API_BASE_URL = getApiBaseUrl();

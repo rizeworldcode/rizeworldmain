@@ -1626,7 +1626,7 @@ const StaffDetails = ({ onAddStaff, onViewTasks }) => {
     if (pic.startsWith('http://') || pic.startsWith('https://')) return pic;
     const base = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
       ? `${BASE_URL.replace('/api', '')}`
-      : 'https://rizeworldmain.onrender.com';
+      : 'https://rizeworldmain-jd14.onrender.com';
     return `${base}${pic.startsWith('/') ? '' : '/'}${pic}`;
   };
 

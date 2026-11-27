@@ -2,7 +2,7 @@ export const getBackendHost = (): string => {
   if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
     return 'http://localhost:45000';
   }
-  return 'https://rizeworldmain.onrender.com';
+  return 'https://rizeworldmain-jd14.onrender.com';
 };
 
 export const getApiBaseUrl = (): string => {

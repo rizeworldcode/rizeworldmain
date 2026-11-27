@@ -25,7 +25,7 @@ const getApiBaseUrl = () => {
   if (h === 'localhost' || h === '127.0.0.1' || h.startsWith('192.168.') || h.startsWith('10.') || h.endsWith('.local')) {
     return `http://${h}:45000/api`;
   }
-  return 'https://rizeworldmain.onrender.com/api';
+  return 'https://rizeworldmain-jd14.onrender.com/api';
 };
 
 const API_BASE_URL = getApiBaseUrl();

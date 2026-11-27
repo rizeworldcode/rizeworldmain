@@ -17,7 +17,7 @@ const getApiBaseUrl = () => {
       return `http://${h}:45000`;
     }
   }
-  return 'https://rizeworldmain.onrender.com';
+  return 'https://rizeworldmain-jd14.onrender.com';
 };
 
 const API_BASE_URL = getApiBaseUrl();

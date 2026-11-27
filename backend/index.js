@@ -227,7 +227,7 @@ app.get('/public-file', async (req, res) => {
       const host = req.headers.host || '';
       if (host.includes('localhost') || host.includes('127.0.0.1')) {
         const axios = require('axios');
-        const prodUrl = `https://rizeworldmain.onrender.com/${normalizedRequested}`;
+        const prodUrl = `https://rizeworldmain-jd14.onrender.com/${normalizedRequested}`;
         try {
           // Fetch the file from production backend
           const response = await axios({

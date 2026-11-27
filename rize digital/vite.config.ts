@@ -319,7 +319,7 @@ function devPrerenderPlugin() {
           try {
             let response = await fetch('http://localhost:45000/sitemap-blogs.xml').catch(() => null);
             if (!response || !response.ok) {
-              response = await fetch('https://rizeworldmain.onrender.com/sitemap-blogs.xml').catch(() => null);
+              response = await fetch('https://rizeworldmain-jd14.onrender.com/sitemap-blogs.xml').catch(() => null);
             }
             if (response && response.ok) {
               let xml = await response.text();

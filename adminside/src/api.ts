@@ -6,7 +6,7 @@ const isLocal = typeof window !== 'undefined' && (
   window.location.hostname.startsWith('10.') ||
   window.location.hostname.endsWith('.local')
 );
-export const BASE_URL: string = isLocal ? 'http://localhost:45000/api' : 'https://rizeworldmain.onrender.com/api';
+export const BASE_URL: string = isLocal ? 'http://localhost:45000/api' : 'https://rizeworldmain-jd14.onrender.com/api';
 
 // In-Memory Client Cache & Single-Flight In-Flight Request Tracking
 const cacheStore = new Map<string, { timestamp: number; data: any }>();

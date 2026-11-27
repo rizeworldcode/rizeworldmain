@@ -330,7 +330,7 @@ const SalesTracking = () => {
       } else {
         const baseUrl = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
           ? 'http://localhost:45000'
-          : 'https://rizeworldmain.onrender.com';
+          : 'https://rizeworldmain-jd14.onrender.com';
         const photoPath = p.photoUrl.startsWith('/') ? p.photoUrl.slice(1) : p.photoUrl;
         imgUrl = `${baseUrl}/public-file?path=${photoPath}`;
       }

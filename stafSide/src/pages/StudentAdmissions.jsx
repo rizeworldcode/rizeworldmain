@@ -39,7 +39,7 @@ const StudentAdmissions = ({ onBack }) => {
     const isLocal = h === 'localhost' || h === '127.0.0.1' || h.startsWith('192.168.') || h.startsWith('10.') || h.endsWith('.local');
     const base = isLocal
       ? `http://${h}:45000/api`
-      : 'https://rizeworldmain.onrender.com/api';
+      : 'https://rizeworldmain-jd14.onrender.com/api';
     return `${base}${endpoint}`;
   };
 

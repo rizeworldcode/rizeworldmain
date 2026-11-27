@@ -917,7 +917,7 @@ const StaffPerformance = ({ staffId, onBack }) => {
     if (pic.startsWith('http://') || pic.startsWith('https://')) return pic;
     const base = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
       ? `${BASE_URL.replace('/api', '')}`
-      : 'https://rizeworldmain.onrender.com';
+      : 'https://rizeworldmain-jd14.onrender.com';
     return `${base}${pic.startsWith('/') ? '' : '/'}${pic}`;
   };
 
@@ -2212,7 +2212,7 @@ const StaffPerformance = ({ staffId, onBack }) => {
                         </div>
                         <div className="flex items-center gap-2">
                           <a
-                            href={doc.path.startsWith('http') ? doc.path : `${window.location.protocol}//${window.location.hostname === 'localhost' ? 'localhost:45000' : 'rizeworldmain.onrender.com'}${doc.path}`}
+                            href={doc.path.startsWith('http') ? doc.path : `${window.location.protocol}//${window.location.hostname === 'localhost' ? 'localhost:45000' : 'rizeworldmain-jd14.onrender.com'}${doc.path}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"

@@ -21,7 +21,7 @@ export const getStaffApiBase = () => {
       return `http://${h}:45000/api/staff`;
     }
   }
-  return 'https://rizeworldmain.onrender.com/api/staff';
+  return 'https://rizeworldmain-jd14.onrender.com/api/staff';
 };
 
 /**

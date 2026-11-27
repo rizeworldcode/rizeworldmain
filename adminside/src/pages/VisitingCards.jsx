@@ -63,7 +63,7 @@ export default function VisitingCards() {
     }
     const baseUrl = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
       ? 'http://localhost:45000'
-      : 'https://rizeworldmain.onrender.com';
+      : 'https://rizeworldmain-jd14.onrender.com';
     const photoPath = photoUrl.startsWith('/') ? photoUrl.slice(1) : photoUrl;
     return `${baseUrl}/public-file?path=${photoPath}`;
   };

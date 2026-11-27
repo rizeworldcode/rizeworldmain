@@ -68,7 +68,7 @@ const VisitingCardsScreen = ({ staffInfo, token, onBack, getApiUrl, onUpdateStaf
       return photoUrl;
     }
     const photoPath = photoUrl.startsWith('/') ? photoUrl.slice(1) : photoUrl;
-    return `https://rizeworldmain.onrender.com/public-file?path=${photoPath}`;
+    return `https://rizeworldmain-jd14.onrender.com/public-file?path=${photoPath}`;
   };
 
   const handleCopy = (text, fieldName) => {
